@@ -1,0 +1,747 @@
+/* LiraLoud
+ * Copyright 2026 José Pablo González Macías
+ * Licensed under the Apache License, Version 2.0
+ */
+
+/* |||||||||||||||||||| */
+/* |||||BOTONES GLOBALES */
+/* |||||||||||||||||||| */
+/* COLOR DE LOS BOTONES DE LA BARRA DE PDF, ABREVIATURAS, TEATRO Y MP3 (ICONO)*/
+button {
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+    font-size: 13px;
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-weight: bold;
+    transition: 0.2s;
+    color: white;
+}
+
+/* BOTON ABRIR PDF (fondo)*/
+.btn-principal {
+    background-color: #2c3e50;
+    transition: all 0.2s ease-in-out;
+    border: 1px solid transparent;
+}
+
+/* Tesis: Aclarado del tono base para mantener la identidad visual */
+.btn-principal:hover {
+    background-color: #658cb2 !important;
+    /* Versión más clara del 2c3e50 */
+    transform: translateY(-2px);
+    border-color: #4a6a8a;
+}
+
+/* Confirmación de pulsación (Sistema 1) */
+.btn-principal:active {
+    background-color: #253342 !important;
+    transform: scale(0.96);
+}
+
+.btn-secundario {
+    background-color: #8e44ad;
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-secundario:hover {
+    /* En lugar de cambiar a azul, se aclara el morado original */
+    background-color: #e47f7f !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgb(238 193 196 / 30%);
+}
+
+/* Efecto Hover específico para el Botón de Abreviaturas */
+#btn-dicc {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#btn-dicc:hover {
+    background: #9b59b6 !important;
+    color: #ffffff !important;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgb(162 75 255 / 25%);
+}
+
+#btn-dicc:hover svg {
+    transform: scale(1.06);
+    transition: transform 0.2s ease;
+}
+
+#btn-abrir-descarga {
+    background-color: #27ae60;
+    margin-left: auto;
+}
+
+/* ========================================== */
+/* DROPDOWN MENÚ OCR                         */
+/* ========================================== */
+.dropdown-ocr-container {
+    position: relative;
+    display: inline-block;
+}
+
+#btn-menu-ocr {
+    background-color: #8e44ad;
+    transition: all 0.2s ease-in-out;
+}
+
+#btn-menu-ocr:hover {
+    background-color: #9b59b6 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(142, 68, 173, 0.4);
+}
+
+.dropdown-ocr-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e1b2e;
+    border: 1px solid rgba(155, 89, 182, 0.4);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(142, 68, 173, 0.25);
+    min-width: 210px;
+    padding: 6px;
+    z-index: 1050;
+    flex-direction: column;
+    gap: 4px;
+    animation: animDropdownOcr 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dropdown-ocr-menu.activo {
+    display: flex !important;
+}
+
+@keyframes animDropdownOcr {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -6px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+    }
+}
+
+.dropdown-ocr-item {
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: #e2e8f0;
+    padding: 9px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.dropdown-ocr-item:hover {
+    background: rgba(142, 68, 173, 0.35);
+    color: #ffffff;
+    transform: translateX(3px);
+}
+
+.dropdown-ocr-item svg {
+    color: #d1b8ff;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.dropdown-ocr-item:hover svg {
+    color: #ffffff;
+    transform: scale(1.12);
+}
+
+/* Botón Engranaje (Config) */
+.btn-engranaje {
+    background: transparent;
+    color: #34495e;
+    font-size: 30px;
+    padding: 2px 8px;
+    transition: all 0.4s ease;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: rotate(90deg);
+}
+
+.btn-engranaje:hover {
+    color: #0000000;
+    transform: rotate(180deg) scale(1.1);
+}
+
+/* ELEMENTOS MINI */
+.box-columnas {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255, 255, 255, 0.7);
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+}
+
+.btn-mini {
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50% !important;
+    color: #333;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+}
+
+.btn-mini:hover {
+    background: #eee;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#texto-lectura {
+    background: white;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #333;
+    flex: 1;
+    border: 1px solid #ccc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --- MENU CONTEXTUAL --- */
+#menu-contextual,
+#menu-contextual-tab,
+.menu-contextual-custom {
+    display: none;
+    position: fixed;
+    z-index: 99999;
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    padding: 4px 0;
+    min-width: 160px;
+}
+
+.item-menu {
+    padding: 8px 15px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #2c3e50;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+
+.item-menu:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+}
+
+.borde-top {
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* Modo Oscuro para menú contextual */
+body.ui-dark-mode #menu-contextual,
+body.ui-dark-mode #menu-contextual-tab,
+body.ui-dark-mode .menu-contextual-custom {
+    background: #22272e;
+    border-color: #444c56;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+body.ui-dark-mode .item-menu {
+    color: #adbac7;
+}
+
+body.ui-dark-mode .item-menu:hover {
+    background: #2d333b;
+    color: #cdd9e5;
+}
+
+body.ui-dark-mode .borde-top {
+    border-top-color: #373e47;
+}
+
+/* Estilo para las cajitas de números manuales */
+.input-valor {
+    width: 45px;
+    font-size: 11px;
+    font-weight: bold;
+    text-align: center;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 20px;
+    padding: 2px 6px;
+    margin-left: 3px;
+    background-color: #fff;
+    color: #333;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.input-valor:focus {
+    border-color: #d33682;
+    outline: none;
+}
+
+/* Quitar las flechas del input number para que sea más limpio (opcional) */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* --- ESTILO PARA SLIDERS (Range Inputs) --- */
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: #dfe6e9;
+    height: 6px;
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+    vertical-align: middle;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+    accent-color: #3498db;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #3498db;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+    transition: transform 0.15s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    border: 2px solid #ffffff;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    background: #2980b9;
+    box-shadow: 0 2px 6px rgba(52, 152, 219, 0.4);
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #3498db;
+    border: 2px solid #ffffff;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+    transition: transform 0.15s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input[type="range"]::-moz-range-thumb:hover {
+    transform: scale(1.2);
+    background: #2980b9;
+    box-shadow: 0 2px 6px rgba(52, 152, 219, 0.4);
+}
+
+/* Modo Oscuro para Sliders (Tonalidad de Grises) */
+body.ui-dark-mode input[type="range"] {
+    background: #21262d;
+    border: 1px solid #30363d;
+    accent-color: #8b949e;
+}
+
+body.ui-dark-mode input[type="range"]::-webkit-slider-thumb {
+    background: #8b949e;
+    border: 2px solid #161b22;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+body.ui-dark-mode input[type="range"]::-webkit-slider-thumb:hover {
+    background: #c9d1d9;
+    transform: scale(1.2);
+    box-shadow: 0 0 8px rgba(201, 209, 217, 0.5);
+}
+
+body.ui-dark-mode input[type="range"]::-moz-range-thumb {
+    background: #8b949e;
+    border: 2px solid #161b22;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+body.ui-dark-mode input[type="range"]::-moz-range-thumb:hover {
+    background: #c9d1d9;
+    transform: scale(1.2);
+    box-shadow: 0 0 8px rgba(201, 209, 217, 0.5);
+}
+
+/* Checkbox estilo Switch pequeño - REFORMADO */
+.switch-individual {
+    appearance: none;
+    width: 24px;
+    height: 14px;
+    background: #ccc;
+    border-radius: 12px;
+    position: relative;
+    outline: none;
+    cursor: pointer;
+    /* Cambio: Curva de aceleración para suavidad orgánica */
+    transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.switch-individual:checked {
+    background: #27ae60;
+    /* Tu Verde original */
+    box-shadow: 0 0 5px rgba(39, 174, 96, 0.4);
+    /* Micro-aura de activación */
+}
+
+.switch-individual::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 10px;
+    height: 10px;
+    background: white;
+    border-radius: 50%;
+    /* Cambio: Efecto elástico al moverse */
+    transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55), background-color 0.2s ease;
+}
+
+.switch-individual:checked::after {
+    /* Usamos transform en lugar de left para mayor fluidez (GPU) */
+    transform: translateX(10px);
+}
+
+/* EFECTO ADICIONAL: Hover sutil */
+.switch-individual:hover {
+    filter: brightness(1.05);
+}
+
+/* Modo Oscuro para Switch Individual (True / Off en Grises) */
+body.ui-dark-mode .switch-individual {
+    background: #21262d;
+    border: 1px solid #363e48;
+}
+
+body.ui-dark-mode .switch-individual::after {
+    background: #6e7681;
+    top: 1px;
+    left: 1px;
+}
+
+body.ui-dark-mode .switch-individual:hover:not(:checked) {
+    background: #30363d;
+    border-color: #484f58;
+}
+
+body.ui-dark-mode .switch-individual:hover:not(:checked)::after {
+    background: #8b949e;
+}
+
+/* Estado ON (True) en Modo Oscuro: Gris un poco más claro y tirador blanco */
+body.ui-dark-mode .switch-individual:checked {
+    background: #57606a;
+    border-color: #768390;
+    box-shadow: 0 0 6px rgba(139, 148, 158, 0.3);
+}
+
+body.ui-dark-mode .switch-individual:checked::after {
+    background: #ffffff;
+    transform: translateX(10px);
+}
+
+body.ui-dark-mode .switch-individual:checked:hover {
+    background: #6e7681;
+    border-color: #8b949e;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.25);
+}
+
+/* Modo Oscuro para Checkboxes Estándar */
+body.ui-dark-mode input[type="checkbox"]:not(.switch-individual) {
+    accent-color: #6e7681;
+    cursor: pointer;
+}
+
+/* Modo Oscuro para Cajas de Controles y Mini Botones */
+body.ui-dark-mode .box-columnas {
+    background: #161b22;
+    border-color: #30363d;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+body.ui-dark-mode .box-columnas span {
+    color: #8b949e !important;
+}
+
+body.ui-dark-mode .btn-mini {
+    background: #21262d;
+    color: #e6edf3;
+    border-color: #30363d;
+}
+
+body.ui-dark-mode .btn-mini:hover {
+    background: #30363d;
+    border-color: #484f58;
+    color: #ffffff;
+}
+
+body.ui-dark-mode .input-valor {
+    background-color: #0d1117;
+    color: #e6edf3;
+    border-color: #30363d;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+body.ui-dark-mode .input-valor:focus {
+    border-color: #8b949e;
+}
+
+/* Cuando el switch NO está chequeado, atenuamos el texto de la fila */
+.fila-termino:has(.switch-individual:not(:checked)) {
+    opacity: 0.6;
+    /* Efecto de transparencia */
+}
+
+body.ui-dark-mode .fila-termino:has(.switch-individual:not(:checked)) .col-sigla {
+    color: #8b949e !important;
+}
+
+.fila-termino:has(.switch-individual:not(:checked)) .col-sigla {
+    color: #8e44ad !important;
+    /* Cambia de Rojo a Lavanda al desactivar */
+}
+
+/* Ajuste visual para cuando una fila está desactivada */
+.fila-termino {
+    transition: opacity 0.3s;
+}
+
+/* En style.css */
+#texto-lectura {
+    /* ... tus estilos actuales ... */
+    background: white;
+    padding: 6px 10px;
+    /* ... etc ... */
+
+    /* AGREGAR ESTO: */
+    transition: font-size 0.1s ease-out;
+    /* Hace el zoom super fluido */
+    display: flex;
+    /* Asegura centrado vertical */
+    align-items: center;
+    /* Centra el texto si la caja crece */
+}
+
+/* --- TABS DE CONFIGURACIÓN --- */
+.tabs-config-header {
+    display: flex;
+    gap: 5px;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 5px;
+}
+
+/* =====================*/
+/* ==========PESTAÑAS DE CONFIGURACIÓN (Micro-interacciones) ===========*/
+/* =====================*/
+.tab-btn {
+    background: #e0dacc;
+    /* Color crema base */
+    color: #333;
+    padding: 8px 15px;
+    border-radius: 4px 4px 0 0;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    opacity: 0.8;
+    transition: all 0.2s ease-in-out;
+    /* Transición suave de iluminación */
+}
+
+/* Iluminación verde clara al acercar el ratón (Hover) hacia los iconos de las pestañas */
+.tab-btn:hover:not(.active) {
+    background-color: #d1f2eb !important;
+    /* Verde menta muy claro */
+    color: #16a085 !important;
+    /* Texto en verde oscuro técnico */
+    opacity: 1;
+    transform: translateY(-1px);
+}
+
+/* Colores SVG dinámicos (Hover) */
+.tab-btn:hover:not(.active) .svg-main {
+    fill: #16a085 !important;
+}
+
+.tab-btn:hover:not(.active) .svg-sec {
+    fill: rgba(22, 160, 133, 0.6) !important;
+}
+
+.tab-btn:hover:not(.active) .svg-ter {
+    fill: rgba(22, 160, 133, 0.3) !important;
+}
+
+/* color verde sólido al estar seleccionado (Activo) */
+.tab-btn.active {
+    background: #27ae60 !important;
+    /* Tu Verde original */
+    color: white !important;
+    opacity: 1;
+    box-shadow: 0 2px 5px rgba(39, 174, 96, 0.2);
+}
+
+/* Colores SVG dinámicos [cambia de color los iconos y letras a blanco] (Activo) */
+.tab-btn.active .svg-main {
+    fill: white !important;
+}
+
+.tab-btn.active .svg-sec {
+    fill: rgba(255, 255, 255, 0.65) !important;
+}
+
+.tab-btn.active .svg-ter {
+    fill: rgba(255, 255, 255, 0.35) !important;
+}
+
+/* Confirmación de pulsación (Sistema 1) */
+.tab-btn:active {
+    transform: scale(0.96);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+
+
+/* Media Buttons SVG */
+.svg-btn,
+.svg-btn-main {
+    border-radius: 50%;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.svg-btn {
+    width: 35px;
+    height: 35px;
+    background: #ecf0f1;
+    color: #7f8c8d;
+}
+
+.svg-btn:hover {
+    background: #bdc3c7;
+    color: #2c3e50;
+    transform: scale(1.05);
+}
+
+.svg-btn-main {
+    width: 45px;
+    height: 45px;
+    background: #3498db;
+    color: white;
+   
+}
+
+.svg-btn-main:hover {
+    background: #2980b9;
+    transform: scale(1.05);
+}
+
+/* Buscadores de Voz e Idioma Redondeados */
+.combo-contenedor input[type="text"] {
+    border-radius: 20px !important;
+    padding: 6px 12px !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+
+/* BOTONES DE REPRODUCTOR (Play, Pause, Stop) */
+.btn-reproductor {
+    background-color: transparent !important;
+    color: #34495e;
+    /* Color base de los íconos */
+    transition: all 0.3s ease-in-out;
+    padding: 6px 10px;
+    border: none;
+    border-radius: 50%;
+    /* Para que el fondo hover sea circular */
+}
+
+.btn-reproductor:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    /* Pequeño fondo para notar que es clickeable */
+    color: #3e5871;
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.6));
+}
+
+.btn-reproductor:active {
+    transform: scale(0.92);
+    background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* NUEVAS CLASES DE BOTONES ESTETICOS */
+.btn-dorado {
+    background-color: #c3ac6f;
+    color: white;
+    transition: all 0.2s ease-in-out;
+    border: 1px solid transparent;
+}
+
+.btn-dorado:hover {
+    background-color: #d6be7b !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(195, 172, 111, 0.4);
+}
+
+.btn-dorado:active {
+    background-color: #b09a63 !important;
+    transform: scale(0.96);
+}
+
+.btn-azul {
+    background-color: #2c8ac7;
+    color: white;
+    transition: all 0.2s ease-in-out;
+    border: 1px solid transparent;
+}
+
+.btn-azul:hover {
+    background-color: #3fa1df !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(44, 138, 199, 0.4);
+}
+
+.btn-azul:active {
+    background-color: #2475a8 !important;
+    transform: scale(0.96);
+}

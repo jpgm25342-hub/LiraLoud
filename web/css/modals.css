@@ -1,0 +1,1413 @@
+/* LiraLoud
+ * Copyright 2026 José Pablo González Macías
+ * Licensed under the Apache License, Version 2.0
+ */
+
+/* --- SISTEMA DE MODALES (SEPARADO) --- */
+
+/* TIPO 1: Modal Bloqueante (Config y Descarga) */
+.overlay-bloqueante {
+    display: none;
+    /* JS lo cambia a flex */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 5000;
+    justify-content: center;
+    align-items: center;
+    pointer-events: auto;
+}
+
+/* TIPO 2: Modal No Bloqueante (Diccionario) */
+.overlay-diccionario {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 3000;
+    pointer-events: none;
+    /* Permite click atras */
+    justify-content: flex-end;
+    /* A la derecha */
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/* ESTILOS INTERNOS DE MODAL CONFIGURACIÓN */
+.modal-content {
+    background: #fdf6e3;
+    width: fit-content;
+    max-width: 90vw;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+.modal-header {
+    background: #fdf6e3;
+    padding: 15px 20px;
+    border-bottom: 2px solid #e0dacc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-body {
+    padding: 20px;
+    max-height: 60vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    width: 0;
+    min-width: 100%;
+    box-sizing: border-box;
+}
+
+/* Filas de Atajos */
+.atajo-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #ddd;
+}
+
+.btn-binder {
+    background: white;
+    border: 2px solid #ccc;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    min-width: 140px;
+    color: #333;
+}
+
+.btn-binder:hover {
+    border-color: #aaa;
+}
+
+/* Animación de escucha */
+.btn-binder.escuchando {
+    background: #ffeaa7;
+    border-color: #d35400;
+    color: #d35400;
+    animation: palpitar 1s infinite;
+}
+
+@keyframes palpitar {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.02);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* --- ESTILOS DICCIONARIO Y MODO TEATRO REMASTERIZADOS --- */
+
+#panel-diccionario,
+#panel-teatro {
+    pointer-events: auto;
+    background: #ffffff;
+    width: 480px;
+    max-width: 95vw;
+    height: 85vh;
+    max-height: 820px;
+    align-self: center;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(108, 92, 231, 0.2);
+    border: none;
+    overflow: hidden;
+    animation: modalDeslizarEntrada 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    font-family: inherit;
+}
+
+#panel-teatro {
+    width: 620px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(9, 132, 227, 0.2);
+}
+
+@keyframes modalDeslizarEntrada {
+    from {
+        opacity: 0;
+        transform: translateX(35px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+/* Headers con degradados modernos y suaves */
+.header-dicc {
+    background: linear-gradient(135deg, #5b4db8 0%, #4c3ea8 100%);
+    color: white;
+    padding: 13px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.3px;
+    box-shadow: 0 2px 10px rgba(91, 77, 184, 0.18);
+    border-bottom: none;
+}
+
+.header-teatro {
+    background: linear-gradient(135deg, #2b6cb0 0%, #1e528d 100%);
+    color: white;
+    padding: 13px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.3px;
+    box-shadow: 0 2px 10px rgba(43, 108, 176, 0.18);
+    border-bottom: none;
+}
+
+/* Botón Cerrar X Estilo Moderno */
+.btn-cerrar-x {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    backdrop-filter: blur(4px);
+}
+
+.btn-cerrar-x:hover {
+    background-color: rgba(231, 76, 60, 0.9) !important;
+    color: white !important;
+    transform: scale(1.1);
+}
+
+.btn-cerrar-x:active {
+    transform: scale(0.92);
+}
+
+/* Cuerpo de modales */
+.cuerpo-dicc,
+.cuerpo-teatro {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+    background: #ffffff;
+}
+
+.cuerpo-teatro {
+    padding: 14px;
+}
+
+/* Barras de Pestañas / Bloques (Scroll Horizontal) */
+.tabs-secciones,
+#lista-obras-teatro {
+    display: flex;
+    overflow-x: auto;
+    background: #f8f9fa;
+    padding: 8px 12px;
+    gap: 8px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    scrollbar-width: thin;
+    align-items: center;
+}
+
+.tab-item {
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    background: #e9ecef;
+    color: #495057;
+    border-radius: 20px;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid transparent;
+    user-select: none;
+}
+
+.tab-item:hover:not(.active) {
+    background: #dee2e6;
+    color: #212529;
+    transform: translateY(-1px);
+}
+
+.tab-item.active {
+    background: linear-gradient(135deg, #5b4db8, #4c3ea8) !important;
+    color: #ffffff !important;
+    border-color: transparent !important;
+    box-shadow: 0 2px 8px rgba(91, 77, 184, 0.25);
+    transform: translateY(-1px);
+}
+
+.tab-item.tab-teatro.active {
+    background: linear-gradient(135deg, #2b6cb0, #1e528d) !important;
+    box-shadow: 0 2px 8px rgba(43, 108, 176, 0.25);
+}
+
+.tab-nombre-texto {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.tab-acciones {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-cerrar-bloque {
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    color: currentColor;
+    opacity: 0.6;
+    transition: opacity 0.2s, transform 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-cerrar-bloque:hover {
+    opacity: 1;
+    transform: scale(1.2);
+    color: #e74c3c !important;
+}
+
+/* Grupos de Agregar Nueva Sección / Obra */
+.seccion-input-group,
+.teatro-input-group {
+    display: flex;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #ffffff;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.teatro-input-group {
+    padding: 0;
+    margin-bottom: 12px;
+    border-bottom: none;
+}
+
+.seccion-input-group input,
+.teatro-input-group input {
+    flex: 1;
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1px solid #dcdde1;
+    font-size: 13px;
+    background: #f8f9fa;
+    color: #2f3640;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.seccion-input-group input:focus,
+.teatro-input-group input:focus {
+    border-color: #5b4db8;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(91, 77, 184, 0.12);
+}
+
+.teatro-input-group input:focus {
+    border-color: #2b6cb0;
+    box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.12);
+}
+
+.btn-add-seccion,
+.btn-add-obra {
+    background: linear-gradient(135deg, #5b4db8, #4c3ea8);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 0 16px;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(91, 77, 184, 0.2);
+}
+
+.btn-add-obra {
+    background: linear-gradient(135deg, #2b6cb0, #1e528d);
+    box-shadow: 0 2px 6px rgba(43, 108, 176, 0.2);
+}
+
+.btn-add-seccion:hover,
+.btn-add-obra:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+}
+
+/* Área de Contenido y Modo Captura */
+.contenido-terminos {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 12px 14px;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.modo-captura-badge {
+    font-size: 11px;
+    font-weight: 500;
+    color: #5b4db8;
+    background: rgba(91, 77, 184, 0.07);
+    border: 1px solid rgba(91, 77, 184, 0.18);
+    padding: 5px 12px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    align-self: flex-start;
+}
+
+.modo-captura-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #5b4db8;
+    box-shadow: 0 0 6px rgba(91, 77, 184, 0.6);
+    animation: capturaPulso 1.8s infinite;
+}
+
+@keyframes capturaPulso {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0.6; }
+}
+
+/* Card para agregar Término o Actor */
+.add-termino-box {
+    background: rgba(91, 77, 184, 0.03);
+    padding: 12px 14px;
+    border: 1px solid rgba(91, 77, 184, 0.16);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 6px rgba(91, 77, 184, 0.04);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.add-termino-box.teatro-box {
+    background: rgba(43, 108, 176, 0.03);
+    border-color: rgba(43, 108, 176, 0.16);
+    box-shadow: 0 2px 6px rgba(43, 108, 176, 0.04);
+}
+
+.fila-inputs {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.fila-inputs input,
+.add-termino-box input,
+.add-termino-box select {
+    padding: 8px 12px;
+    border: 1px solid #dcdde1;
+    border-radius: 8px;
+    font-size: 13px;
+    background: #ffffff;
+    color: #2f3640;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.fila-inputs input:focus,
+.add-termino-box input:focus,
+.add-termino-box select:focus {
+    border-color: #5b4db8;
+    box-shadow: 0 0 0 3px rgba(91, 77, 184, 0.12);
+}
+
+.add-termino-box.teatro-box input:focus,
+.add-termino-box.teatro-box select:focus {
+    border-color: #2b6cb0;
+    box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.12);
+}
+
+.btn-guardar-termino {
+    background: linear-gradient(135deg, #5b4db8, #4c3ea8);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 6px rgba(91, 77, 184, 0.22);
+    width: 100%;
+}
+
+.btn-guardar-termino:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(91, 77, 184, 0.35);
+    filter: brightness(1.06);
+}
+
+.btn-guardar-actor {
+    background: linear-gradient(135deg, #2b6cb0, #1e528d);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 6px rgba(43, 108, 176, 0.22);
+    width: 100%;
+}
+
+.btn-guardar-actor:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(43, 108, 176, 0.35);
+    filter: brightness(1.06);
+}
+
+/* Buscadores */
+#buscador-terminos,
+#buscador-actores {
+    width: 100%;
+    padding: 8px 14px;
+    border-radius: 20px;
+    border: 1px solid #dcdde1;
+    font-size: 12px;
+    background: #f8f9fa;
+    color: #2f3640;
+    outline: none;
+    box-sizing: border-box;
+    margin-bottom: 8px;
+    transition: all 0.2s ease;
+}
+
+#buscador-terminos:focus,
+#buscador-actores:focus {
+    border-color: #5b4db8;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(91, 77, 184, 0.12);
+}
+
+#buscador-actores:focus {
+    border-color: #2b6cb0;
+    box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.12);
+}
+
+/* Listas con Scroll */
+.lista-terminos-scroll {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 10px;
+    background: #fafbfc;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* Filas de Términos y Actores */
+.fila-termino {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #ffffff;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 13px;
+    user-select: none;
+}
+
+.fila-termino:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+    border-color: rgba(91, 77, 184, 0.25);
+}
+
+.fila-actor:hover {
+    border-color: rgba(43, 108, 176, 0.25);
+}
+
+.col-sigla {
+    font-weight: 700;
+    color: #e74c3c;
+    font-size: 13px;
+    letter-spacing: 0.2px;
+}
+
+.col-significado {
+    font-size: 12px;
+    color: #636e72;
+    margin-top: 1px;
+}
+
+.badge-voz-actor {
+    font-size: 11px;
+    color: #2b6cb0;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 500;
+}
+
+.select-mover {
+    font-size: 11px;
+    border: 1px solid #dcdde1;
+    background: #f1f2f6;
+    color: #2f3640;
+    border-radius: 6px;
+    padding: 3px 6px;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.select-mover:hover {
+    background: #e4e7eb;
+    border-color: #5b4db8;
+}
+
+.btn-editar-term,
+.btn-borrar-term {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    color: #95a5a6;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.btn-editar-term:hover {
+    background: rgba(91, 77, 184, 0.12);
+    color: #5b4db8;
+}
+
+.btn-borrar-term:hover {
+    background: rgba(231, 76, 60, 0.12);
+    color: #e74c3c;
+}
+
+/* Footer de Modo Teatro */
+.footer-teatro {
+    padding: 12px 18px;
+    background: #f8f9fa;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.btn-listo-teatro {
+    background: linear-gradient(135deg, #27ae60, #219653);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 24px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 6px rgba(39, 174, 96, 0.25);
+}
+
+.btn-listo-teatro:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(39, 174, 96, 0.35);
+}
+
+/* Modo Oscuro para Diccionario y Teatro */
+body.ui-dark-mode #panel-diccionario {
+    background: #161b22;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(108, 92, 231, 0.3);
+}
+
+body.ui-dark-mode #panel-teatro {
+    background: #161b22;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(9, 132, 227, 0.3);
+}
+
+body.ui-dark-mode .cuerpo-dicc,
+body.ui-dark-mode .cuerpo-teatro,
+body.ui-dark-mode .contenido-terminos,
+body.ui-dark-mode .seccion-input-group {
+    background: #161b22;
+}
+
+body.ui-dark-mode .tabs-secciones,
+body.ui-dark-mode #lista-obras-teatro,
+body.ui-dark-mode .footer-teatro {
+    background: #0d1117;
+    border-color: #30363d;
+}
+
+body.ui-dark-mode .tab-item {
+    background: #21262d;
+    color: #8b949e;
+}
+
+body.ui-dark-mode .tab-item:hover:not(.active) {
+    background: #30363d;
+    color: #e6edf3;
+}
+
+body.ui-dark-mode .add-termino-box {
+    background: rgba(108, 92, 231, 0.06);
+    border-color: rgba(108, 92, 231, 0.3);
+}
+
+body.ui-dark-mode .add-termino-box.teatro-box {
+    background: rgba(9, 132, 227, 0.06);
+    border-color: rgba(9, 132, 227, 0.3);
+}
+
+body.ui-dark-mode .seccion-input-group input,
+body.ui-dark-mode .teatro-input-group input,
+body.ui-dark-mode .fila-inputs input,
+body.ui-dark-mode .add-termino-box input,
+body.ui-dark-mode .add-termino-box select,
+body.ui-dark-mode #buscador-terminos,
+body.ui-dark-mode #buscador-actores {
+    background: #0d1117;
+    color: #e6edf3;
+    border-color: #30363d;
+}
+
+body.ui-dark-mode .lista-terminos-scroll {
+    background: #0d1117;
+    border-color: #30363d;
+}
+
+body.ui-dark-mode .fila-termino {
+    background: #161b22;
+    border-color: #30363d;
+}
+
+body.ui-dark-mode .fila-termino:hover {
+    border-color: #6c5ce7;
+}
+
+body.ui-dark-mode .col-significado {
+    color: #8b949e;
+}
+
+body.ui-dark-mode .select-mover {
+    background: #21262d;
+    color: #e6edf3;
+    border-color: #30363d;
+}
+
+body.ui-dark-mode .btn-listo-teatro {
+    background: linear-gradient(135deg, #238636, #2ea043);
+    box-shadow: 0 2px 6px rgba(35, 134, 54, 0.3);
+}
+
+body.ui-dark-mode .btn-listo-teatro:hover {
+    background: linear-gradient(135deg, #2ea043, #3fb950);
+    box-shadow: 0 4px 10px rgba(46, 160, 67, 0.45);
+}
+
+body.ui-dark-mode #barra-contenedor {
+    background: #21262d;
+    border: 1px solid #30363d;
+}
+
+body.ui-dark-mode #barra-progreso {
+    background: #2ea043;
+    box-shadow: 0 0 8px rgba(46, 160, 67, 0.4);
+}
+
+body.ui-dark-mode .btn-add-seccion:hover {
+    background-color: #238636 !important;
+    border-color: #2ea043 !important;
+    box-shadow: 0 4px 10px rgba(35, 134, 54, 0.4);
+}
+
+/* --- MODAL DESCARGA --- */
+#panel-descarga {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 400px;
+    text-align: center;
+}
+
+.opcion-modal {
+    margin: 10px 0;
+    text-align: left;
+}
+
+.opcion-modal label {
+    font-weight: bold;
+    font-size: 12px;
+    display: block;
+}
+
+.opcion-modal select,
+.opcion-modal input {
+    width: 100%;
+    padding: 5px;
+    box-sizing: border-box;
+}
+
+#barra-contenedor {
+    height: 10px;
+    background: #ccc;
+    margin-top: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+    display: none;
+}
+
+#barra-progreso {
+    height: 100%;
+    width: 0%;
+    background: #27ae60;
+}
+
+/* --- GRUPOS DE CALIBRACIÓN --- */
+.grupo-calibracion {
+    background: #fff;
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+}
+
+.grupo-calibracion h4 {
+    margin: 0 0 10px 0;
+    color: #2c3e50;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+}
+
+.control-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.ayuda-text {
+    font-size: 11px;
+    color: #7f8c8d;
+    margin: 5px 0 0 0;
+    font-style: italic;
+}
+
+/* Clase para resaltar números en el test */
+.numero-test-activo {
+    background-color: #f1c40f !important;
+    color: #000 !important;
+    transform: scale(1.2);
+    border-color: #d35400 !important;
+    box-shadow: 0 0 10px #f1c40f;
+    transition: all 0.05s ease;
+}
+
+/* EFECTO KARAOKE PARA BOTONES DE TEST */
+.btn-numero-test.numero-test-activo {
+    background-color: #f1c40f !important;
+    /* Amarillo fuerte */
+    color: #000 !important;
+    border-color: #d35400 !important;
+    box-shadow: 0 0 15px #f1c40f !important;
+    transform: scale(1.15);
+    transition: all 0.05s ease;
+    z-index: 10;
+}
+
+/* La lista debe tener una transición suave */
+#tabla-terminos {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* La fila que se mueve se vuelve fantasma */
+.fila-termino.dragging {
+    opacity: 0.4;
+    background: #e1f5fe;
+    border: 2px dashed #03a9f4;
+}
+
+/* Animación opcional para cuando los elementos cambian de sitio */
+.fila-termino {
+    transition: transform 0.2s ease, background-color 0.2s ease;
+    background: white;
+    /* Asegura que no sean transparentes al moverse */
+}
+
+/* Feedback visual al pasar el mouse */
+.fila-termino:hover {
+    background-color: #f8f9fa;
+    border-color: #bdc3c7;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+/* Cambiar el cursor a una mano cerrada al arrastrar */
+.fila-termino:active {
+    cursor: grabbing;
+}
+
+/* Indicador de que la zona es soltable */
+#tabla-terminos {
+    min-height: 50px;
+    /* Evita que el contenedor colapse si está vacío */
+    transition: all 0.3s ease;
+}
+
+#panel-teatro {
+    pointer-events: auto;
+    /* Asegura que el panel interno reciba clics */
+    position: relative;
+    /* ... resto de tus estilos ... */
+}
+
+.btn-editar-term:hover {
+    transform: scale(1.2);
+    filter: brightness(1.2);
+    transition: all 0.2s ease;
+}
+
+.add-termino-box {
+    transition: border-color 0.3s ease;
+}
+
+.btn-editar-term {
+    transition: transform 0.2s, color 0.2s;
+}
+
+.btn-editar-term:hover {
+    transform: scale(1.3);
+    color: #e67e22 !important;
+}
+
+/* Efecto de "fila activa" al pasar el mouse por el texto */
+.fila-termino div[onclick]:hover span.col-sigla {
+    color: #3498db !important;
+}
+
+/* Feedback visual para el cierre de pestañas/bloques */
+.btn-cerrar-bloque {
+    transition: color 0.2s ease, transform 0.2s ease;
+    display: inline-block;
+    line-height: 1;
+}
+
+.btn-cerrar-bloque:hover {
+    color: #e74c3c !important;
+    /* Rojo de alerta técnica */
+    transform: scale(1.25);
+}
+
+/* Si prefieres el símbolo de casilla con X (☒), puedes cambiar el carácter 
+   en el JS y usar este ajuste de tamaño: */
+.btn-cerrar-bloque {
+    font-family: Arial, sans-serif;
+}
+
+/* Estilo para el botón de borrado (Tache) */
+.btn-borrar-term {
+    transition: color 0.2s, transform 0.2s;
+    user-select: none;
+}
+
+.btn-borrar-term:hover {
+    color: #e74c3c !important;
+    /* Rojo vibrante al pasar el mouse */
+    transform: scale(1.2);
+}
+
+
+/* Color para el Tache en Modo Teatro (Azul) */
+#modal-teatro .btn-cerrar-bloque:hover,
+#modal-teatro .btn-borrar-term:hover {
+    color: #2980b9 !important;
+    /* Azul intenso al borrar en teatro */
+}
+
+
+/* Pestañas de Obra: Azul Profundo Estilo Piano */
+.tab-item-teatro {
+    padding: 8px 16px;
+    cursor: pointer;
+    border-radius: 8px 8px 0 0;
+    font-size: 12px;
+    font-weight: bold;
+    background: #d4e6f1;
+    /* Azul claro para las inactivas */
+    color: #2980b9;
+    transition: all 0.3s ease;
+    border: 1px solid #aed6f1;
+    border-bottom: none;
+}
+
+.tab-item-teatro.active {
+    background: #1a5276 !important;
+    /* EL AZUL OSCURO QUE BUSCAS */
+    color: white !important;
+    transform: translateY(-2px);
+    /* Efecto de elevación */
+}
+
+/* Fila de Actor con Click & Drop */
+.fila-actor {
+    border-left: 4px solid #1a5276;
+    background: #ffffff;
+    cursor: grab;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.fila-actor.dragging {
+    opacity: 0.5;
+    transform: scale(0.98);
+    background: #ebf5fb !important;
+    border: 2px dashed #1a5276 !important;
+}
+
+/* --- ANIMACIÓN BOTÓN NUEVA SECCIÓN --- */
+
+/* Contenedor del input para alineación */
+.seccion-input-group {
+    display: flex;
+    gap: 5px;
+    padding: 8px;
+    background: #fdfefe;
+    border-bottom: 1px solid #ebedef;
+}
+
+/* El botón "+" específico */
+.btn-add-seccion {
+    background-color: #ecf0f1;
+    /* Gris neutro inicial */
+    color: #95a5a6;
+    border: 1px solid #d5dbdb;
+    border-radius: 4px;
+    width: 35px;
+    height: 32px;
+    font-weight: bold;
+    font-size: 18px;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    /* Rebote elástico */
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Efecto al acercar el ratón (Hover) */
+.btn-add-seccion:hover {
+    background-color: #27ae60 !important;
+    /* VERDE ESMERALDA  */
+    color: white !important;
+    border-color: #2ecc71 !important;
+    transform: scale(1.1);
+    /* Crece ligeramente */
+    box-shadow: 0 4px 10px rgba(39, 174, 96, 0.3);
+    /* Brillo verde */
+}
+
+/* --- BOTONES DE PAGINACIÓN (Flechas - Versión Minimalista) --- */
+.btn-nav {
+    background-color: #f1f2f6;
+    /* Color base neutro original */
+    color: #2c3e50;
+    border: 1px solid #dfe6e9;
+    border-radius: 4px;
+    padding: 2px 10px;
+    transition: all 0.2s ease-in-out;
+    /* Transición suave */
+    font-weight: bold;
+}
+
+/* Tesis: Iluminación discreta en lugar de cambio de color azulado */
+.btn-nav:hover {
+    background-color: #ffffff !important;
+    /* Solo se aclara a blanco puro */
+    border-color: #bdc3c7 !important;
+    /* El borde se define un poco más */
+    color: #34495e !important;
+    /* El texto se oscurece ligeramente */
+    transform: scale(1.05);
+    /* Crecimiento casi imperceptible */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Confirmación táctil al hacer clic */
+.btn-nav:active {
+    background-color: #ebeded !important;
+    transform: scale(0.95);
+}
+
+/* Ajuste Modo Teatro (Azul): Iluminación suave */
+/* Seleccionamos específicamente el botón de Teatro de la barra principal */
+#btn-teatro:not(.zen-icon-btn) {
+    background-color: none !important;
+    /* Tu Azul original */
+    transition: all 0.2s ease-in-out;
+}
+
+#btn-teatro:not(.zen-icon-btn):hover {
+    /* Se aclara el azul original discretamente */
+    background-color: #5499c7 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(41, 128, 185, 0.3);
+}
+
+/* Ajuste MP3 (Verde): Brillo discreto */
+#btn-abrir-descarga {
+    background-color: #27ae60;
+    transition: all 0.2s ease-in-out;
+}
+
+#btn-abrir-descarga:hover {
+    /* Verde esmeralda más claro */
+    background-color: #52be80 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(39, 174, 96, 0.3);
+}
+
+/* --- ILUMINACIÓN DISCRETA: SELECTOR DE IDIOMA --- */
+#busqueda-idioma-live,
+#busqueda-voz-live {
+    transition: all 0.2s ease-in-out;
+}
+
+#busqueda-idioma-live:hover,
+#busqueda-voz-live:hover {
+    /* El borde vira a un azul técnico y el fondo se aclara sutilmente */
+    border-color: #3498db !important;
+    background-color: #f7fbfe !important;
+    box-shadow: 0 0 4px rgba(52, 152, 219, 0.15);
+}
+
+/* --- ESTRELLA DE FAVORITOS (DIALÉCTICA DE AMARILLOS) --- */
+#btn-pin-voz {
+    transition: all 0.2s ease;
+    color: #ccc;
+    /* Gris base cuando no es favorito */
+    cursor: pointer;
+    background: transparent;
+}
+
+/* Hover: Amarillo clarito (indica posibilidad de agregar) */
+#btn-pin-voz:hover {
+    color: #f9e79f !important;
+    /* Amarillo muy suave */
+    transform: scale(1.2);
+    background-color: transparent !important;
+    /* Eliminamos el fondo gris */
+}
+
+/* Cuando ya es favorito (Estrella llena/clase activa desde JS) */
+/* Nota: Asegúrate que tu JS aplique el color #f1c40f al marcar favorito */
+#btn-pin-voz.favorito-activo {
+    color: #f1c40f !important;
+    /* Amarillo Fuerte */
+}
+
+/* Hover sobre una estrella que ya es favorita: Brillo extra */
+#btn-pin-voz.favorito-activo:hover {
+    color: #f4d03f !important;
+    filter: drop-shadow(0 0 2px rgba(241, 196, 15, 0.5));
+}
+
+/* --- INTERACCIÓN DE FLECHA EN SELECTORES --- */
+.combo-contenedor {
+    position: relative;
+    display: inline-block;
+}
+
+/* La flechita (span en tu HTML) */
+.combo-contenedor span {
+    transition: all 0.3s ease;
+    color: #bdc3c7;
+}
+
+/* Tesis: Al acercar el ratón al contenedor, la flecha se activa */
+.combo-contenedor:hover span {
+    color: #3498db !important;
+    /* Azul técnico */
+    transform: translateY(2px);
+    /* Pequeño brinco hacia abajo */
+}
+
+/* Si el selector está abierto (puedes disparar esto con una clase desde JS) */
+.combo-contenedor.open span {
+    transform: rotate(180deg);
+    /* Se invierte al abrir */
+}
+
+/* --- ANIMACIONES EXCLUSIVAS MODO TEATRO (AZUL) --- */
+
+/* Pestañas de Obra en Teatro */
+#modal-teatro .tab-item {
+    background-color: #e5e8e8;
+    transition: all 0.2s ease;
+}
+
+/* Hover Azul Bajito (Tu petición) */
+#modal-teatro .tab-item:hover:not(.active) {
+    background-color: #ebf5fb !important;
+    /* Azul bajito */
+    color: #2980b9 !important;
+    /* Texto azul técnico */
+    transform: translateY(-2px);
+}
+
+/* Pestaña de Obra Activa (Azul Oscuro) */
+#modal-teatro .tab-item.active {
+    background-color: #1a5276 !important;
+    color: white !important;
+}
+
+/* Filas de Actores (Iluminación Azul) */
+#modal-teatro .fila-termino {
+    transition: all 0.2s ease;
+    border-left: 4px solid transparent;
+}
+
+#modal-teatro .fila-termino:hover {
+    background-color: #f4f9fd !important;
+    /* Fondo azul sutil */
+    border-left-color: #3498db !important;
+    /* Borde azul brillante */
+    transform: translateX(4px);
+}
+
+/* --- ANIMACIÓN BOTÓN AGREGAR CUENTO (MODO TEATRO) --- */
+
+/* Selector específico para el botón "+" del panel de teatro */
+#panel-teatro .btn-mini {
+    background-color: #3498db;
+    /* Azul base del teatro */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Transición suave */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Tesis: Iluminación al acercar el ratón (Hover) */
+#panel-teatro .btn-mini:hover {
+    background-color: #5dade2 !important;
+    /* Azul más clarito/brillante */
+    transform: scale(1.1);
+    /* Ligero crecimiento para confirmar foco */
+    box-shadow: 0 0 8px rgba(52, 152, 219, 0.4);
+    /* Aura de activación */
+}
+
+/* Antítesis: Efecto de presión al hacer clic */
+#panel-teatro .btn-mini:active {
+    background-color: #2e86de !important;
+    /* Azul más profundo */
+    transform: scale(0.95);
+}
+
+/* --- ILUMINACIÓN EXCLUSIVA: GUARDAR PERSONAJE --- */
+
+/* Forzamos el color azul sobre la clase genérica cuando esté en el teatro */
+#modal-teatro .btn-secundario {
+    background-color: #2980b9 !important;
+    /* Azul original del botón Teatro */
+    transition: all 0.2s ease-in-out;
+}
+
+/* Tesis: Iluminación azul clara al acercar el ratón */
+#modal-teatro .btn-secundario:hover {
+    background-color: #5499c7 !important;
+    /* Azul más clarito/brillante */
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(41, 128, 185, 0.3);
+}
+
+/* Antítesis: Confirmación de pulsación */
+#modal-teatro .btn-secundario:active {
+    background-color: #21618c !important;
+    /* Azul más oscuro profundo */
+    transform: scale(0.98);
+}
+
+/* --- ANIMACIÓN DISCRETA: BOTONES MP3 --- */
+
+/* Botón Cancelar (Rojo Discreto) */
+#panel-descarga button[onclick*="cerrarModalDescarga"] {
+    background-color: #95a5a6;
+    /* Gris base */
+    transition: all 0.2s ease-in-out;
+}
+
+#panel-descarga button[onclick*="cerrarModalDescarga"]:hover {
+    background-color: #e74c3c !important;
+    /* Rojo alerta sutil */
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(231, 76, 60, 0.2);
+}
+
+/* Botón Generar Estudio (Verde Discreto) */
+#panel-descarga button[onclick*="iniciarDescargaFinal"] {
+    background-color: #27ae60;
+    /* Verde base */
+    transition: all 0.2s ease-in-out;
+}
+
+#panel-descarga button[onclick*="iniciarDescargaFinal"]:hover {
+    background-color: #52be80 !important;
+    /* Verde esmeralda claro */
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+}
+
+/* Confirmación de pulsación física */
+#panel-descarga button:active {
+    transform: scale(0.96);
+}
+
+/* --- ESTABILIZACIÓN DEL ELENCO (MODO TEATRO) --- */
+
+/* Contenedor principal: Bloqueo de eje X */
+#tabla-actores {
+    overflow-y: auto !important;
+    /* Solo desplazamiento vertical */
+    overflow-x: hidden !important;
+    /* Prohibido desplazamiento horizontal */
+    width: 100%;
+    box-sizing: border-box;
+    /* Los bordes no suman al ancho */
+    padding-right: 5px;
+    /* Espacio para la barra vertical */
+}
+
+/* Fila de Actor: Ajuste de ancho y animación */
+#modal-teatro .fila-actor {
+    width: 100%;
+    /* Forzamos que se ajuste al padre */
+    box-sizing: border-box;
+    /* Vital: los bordes azules crecen hacia ADENTRO */
+    margin-bottom: 4px;
+    transition: background-color 0.2s, transform 0.2s;
+    border-left: 4px solid transparent;
+}
+
+/* Tesis: Al seleccionar o acercar, el desplazamiento lateral es mínimo */
+#modal-teatro .fila-actor:hover {
+    background-color: #f4f9fd !important;
+    border-left-color: #3498db !important;
+    /* Limitamos el translateX para que no empuje el borde derecho */
+    transform: translateX(2px);
+}
+
+/* --- ANIMACIONES DRAG & DROP: ABREVIATURAS --- */
+
+/* ========================================== */
+/* --- OVERLAY DE ESCÁNER LÁSER OCR HUD --- */
+/* ========================================== */
+#ocr-scanner-overlay {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 250;
+    overflow: hidden;
+    transition: opacity 0.3s ease;
+}
+
+.ocr-laser-beam {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, rgba(0, 210, 255, 0) 0%, rgba(0, 210, 255, 0.95) 50%, rgba(0, 210, 255, 0) 100%);
+    box-shadow: 0 0 20px 5px rgba(0, 210, 255, 0.8), 0 0 8px 2px rgba(255, 255, 255, 0.9);
+    animation: ocrLaserScan 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes ocrLaserScan {
+    0% { top: 2%; opacity: 0.3; }
+    50% { opacity: 1; }
+    100% { top: 98%; opacity: 0.3; }
+}
+
+.ocr-hud-badge {
+    position: absolute;
+    top: 25px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(56, 189, 248, 0.6);
+    color: #f8fafc;
+    padding: 9px 20px;
+    border-radius: 30px;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(56, 189, 248, 0.4);
+    pointer-events: none;
+    z-index: 260;
+}
+
+.ocr-hud-spinner {
+    width: 15px;
+    height: 15px;
+    border: 2.5px solid rgba(56, 189, 248, 0.3);
+    border-top-color: #38bdf8;
+    border-radius: 50%;
+    animation: ocrSpin 0.75s linear infinite;
+}
+
+@keyframes ocrSpin {
+    to { transform: rotate(360deg); }
+}

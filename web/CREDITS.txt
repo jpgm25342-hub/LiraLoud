@@ -1,0 +1,76 @@
+========================================================================
+                       LIRALOUD v4.0 - CREDITS & LEGAL NOTICE
+========================================================================
+
+1. DEVELOPMENT & AUTHORSHIP ATTRIBUTION
+------------------------------------------------------------------------
+This software is an open-source development project created through an
+iterative, collaborative pair-programming process between:
+
+* Core Architect: José Pablo González Macías
+* AI Assistant:   Gemini (Collaborative Software Engineering Inferences)
+
+All moral rights regarding the authorship and integrity of the original
+source code are strictly retained by the creators under international
+intellectual property frameworks and local civil law provisions.
+
+2. SOFTWARE BILL OF MATERIALS (SBOM) & OPEN-SOURCE DEPENDENCIES
+------------------------------------------------------------------------
+LiraLoud is built upon and linked with the following third-party 
+libraries and open-source frameworks. Distribution and modifications 
+of this software are strictly subject to their respective licensing terms:
+
+- Piper TTS (Neural Text-to-Speech Engine)
+  License: MIT License
+  Project: https://github.com/rhasspy/piper
+
+- PyMuPDF (High-Performance PDF Processing Engine)
+  License: GNU General Public License v3 (GPL v3)
+  Project: https://github.com/pymupdf/PyMuPDF
+
+- Eel (Python-to-JavaScript Inter-Process Communication Bridge)
+  License: MIT License
+  Project: https://github.com/python-eel/Eel
+
+- Edge-TTS (Microsoft Azure Neural Speech Wrapper)
+  License: MIT License
+  Project: https://github.com/rany2/edge-tts
+
+- ONNX Runtime (Cross-Platform Neural Network Inference Engine)
+  License: MIT License
+  Project: https://github.com/microsoft/onnxruntime
+
+3. LEGAL DISCLAIMER & LIMITATION OF LIABILITY
+------------------------------------------------------------------------
+LiraLoud is a general-purpose document reader and accessibility utility 
+provided on an "AS IS" basis. 
+
+- NO WARRANTY: To the maximum extent permitted by applicable law, there
+  is absolutely no warranty for this free software. The entire risk as 
+  to the quality, accuracy, and performance of the document parsing and
+  audio synthesis is born entirely by the end user.
+
+- ACADEMIC AND EDUCATIONAL USE ONLY: This software is explicitly 
+  intended for personal academic assistance and text-to-speech 
+  document accessibility. It is NOT a medical device, nor is it 
+  certified as a clinical diagnostic support system. 
+
+- USER RESPONSIBILITY: The high-fidelity rendering of audio outputs 
+  depends entirely on the formatting of the source PDF files and the
+  underlying acoustic models. The author shall not be held liable for
+  any misinterpretations, omitted data, or clinical/educational decisions
+  made based on the synthesized audio. Users must invariably cross-reference 
+  and validate any critical data against the official, original 
+  peer-reviewed literature.
+
+4. LICENSING FRAMEWORK
+------------------------------------------------------------------------
+LiraLoud is fully licensed under the GNU General Public License v3 (GPL v3).
+The complete, verbatim terms and conditions of this license are located
+in the root directory of this software installation within the 'LICENSE' 
+file. Any downstream redistribution or derivation of this codebase must
+comply with the copyleft provisions mandated by the GPL v3.
+
+========================================================================
+             Copyright (C) 2026 José Pablo González Macías
+========================================================================

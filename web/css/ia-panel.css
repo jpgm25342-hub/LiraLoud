@@ -1,0 +1,1075 @@
+/* LiraLoud
+ * Copyright 2026 José Pablo González Macías
+ * Licensed under the Apache License, Version 2.0
+ */
+
+/* ==========================================================================
+   LIRALOUD - ESTILOS DEL PANEL DE INTELIGENCIA ARTIFICIAL (LiraAI / RAG)
+   ========================================================================== */
+
+#modal-ia {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 3000;
+    pointer-events: none;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+#panel-ia {
+    pointer-events: auto;
+    width: 520px;
+    max-width: 95vw;
+    height: 90vh;
+    max-height: 850px;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(108, 92, 231, 0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: iaDeslizarEntrada 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    font-family: inherit;
+}
+
+@keyframes iaDeslizarEntrada {
+    from {
+        opacity: 0;
+        transform: translateX(40px) scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+/* --- HEADER --- */
+.header-ia {
+    background: linear-gradient(135deg, #6c5ce7 0%, #4834d4 100%);
+    color: white;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 4px 12px rgba(108, 92, 231, 0.25);
+}
+
+.header-ia-titulo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.3px;
+}
+
+/* Ícono de Brillos / Inteligencia Artificial (LiraAI) */
+.svg-icon-ia {
+    fill: #ffd32a;
+    width: 18px;
+    height: 18px;
+    vertical-align: middle;
+    display: inline-block;
+    flex-shrink: 0;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.3s ease;
+    filter: drop-shadow(0 0 3px rgba(255, 211, 42, 0.5));
+}
+
+#btn-ia .svg-icon-ia {
+    width: 18px;
+    height: 18px;
+    margin-right: 2px;
+}
+
+#btn-ia:hover .svg-icon-ia {
+    transform: rotate(12deg) scale(1.18);
+    filter: drop-shadow(0 0 8px rgba(255, 211, 42, 0.85));
+}
+
+.header-ia-titulo .svg-icon-ia {
+    width: 22px;
+    height: 22px;
+    filter: drop-shadow(0 0 6px rgba(255, 211, 42, 0.65));
+}
+
+body.ui-dark-mode .svg-icon-ia {
+    fill: #ffd32a;
+    filter: drop-shadow(0 0 6px rgba(255, 211, 42, 0.65));
+}
+
+.header-ia-acciones {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ia-status-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.18);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    backdrop-filter: blur(4px);
+}
+
+.ia-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    background: #2ed573;
+    box-shadow: 0 0 6px #2ed573;
+}
+
+.ia-status-dot.offline {
+    background: #ff4757;
+    box-shadow: 0 0 6px #ff4757;
+}
+
+.btn-cerrar-ia {
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: background 0.2s, transform 0.15s;
+}
+
+.btn-cerrar-ia:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+}
+
+/* --- TABS --- */
+.tabs-ia {
+    display: flex;
+    background: #f1f2f6;
+    border-bottom: 1px solid #dfe4ea;
+    padding: 4px 8px 0 8px;
+    gap: 6px;
+}
+
+.tab-ia-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 10px 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #747d8c;
+    cursor: pointer;
+    border-radius: 8px 8px 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.tab-ia-btn:hover {
+    color: #4834d4;
+    background: rgba(108, 92, 231, 0.06);
+}
+
+.tab-ia-btn.active {
+    color: #4834d4;
+    background: #ffffff;
+    box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.04);
+    border-bottom: 2px solid #6c5ce7;
+}
+
+/* --- CONTENIDO DE TABS --- */
+.cuerpo-ia {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #fdfdfd;
+}
+
+.ia-tab-panel {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.ia-tab-panel.active {
+    display: flex;
+}
+
+/* --- TAB 1: CHAT --- */
+.ia-chat-historial {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.ia-mensaje {
+    display: flex;
+    gap: 10px;
+    max-width: 90%;
+    animation: iaFadeIn 0.2s ease;
+}
+
+@keyframes iaFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.ia-mensaje.user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+
+.ia-mensaje.ai {
+    align-self: flex-start;
+}
+
+.ia-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.ia-mensaje.user .ia-avatar {
+    background: #4834d4;
+    color: white;
+}
+
+.ia-mensaje.ai .ia-avatar {
+    background: linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%);
+    color: white;
+    box-shadow: 0 2px 8px rgba(108, 92, 231, 0.3);
+}
+
+.ia-avatar-svg {
+    width: 20px;
+    height: 20px;
+    display: block;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.15));
+}
+
+.ia-burbuja {
+    padding: 12px 16px;
+    border-radius: 14px;
+    font-size: 13px;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.ia-mensaje.user .ia-burbuja {
+    background: #6c5ce7;
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+.ia-mensaje.ai .ia-burbuja {
+    background: #f1f2f6;
+    color: #2d3436;
+    border-bottom-left-radius: 4px;
+    border: 1px solid #e4e7eb;
+}
+
+.ia-burbuja p {
+    margin: 0 0 8px 0;
+}
+
+.ia-burbuja p:last-child {
+    margin-bottom: 0;
+}
+
+.ia-burbuja ul,
+.ia-burbuja ol {
+    margin: 6px 0;
+    padding-left: 20px;
+}
+
+.ia-burbuja li {
+    margin-bottom: 4px;
+}
+
+.ia-burbuja strong {
+    color: #1e272e;
+}
+
+/* Fuertes / Citas colapsables */
+.ia-fuentes-box {
+    margin-top: 10px;
+    border-top: 1px dashed #dcdde1;
+    padding-top: 8px;
+    font-size: 11px;
+}
+
+.ia-fuentes-toggle {
+    background: none;
+    border: none;
+    color: #6c5ce7;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 11px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ia-fuentes-lista {
+    margin-top: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ia-fuente-item {
+    background: rgba(108, 92, 231, 0.06);
+    border-left: 3px solid #6c5ce7;
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #4b6584;
+}
+
+/* Sugerencias Rápidas */
+.ia-sugerencias-box {
+    padding: 8px 16px;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    background: #fafafa;
+    border-top: 1px solid #f0f0f0;
+}
+
+.ia-chip-sugerencia {
+    background: #ffffff;
+    border: 1px solid #dcdde1;
+    padding: 5px 10px;
+    border-radius: 16px;
+    font-size: 11px;
+    color: #57606f;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+
+.ia-chip-sugerencia:hover {
+    background: #6c5ce7;
+    color: white;
+    border-color: #6c5ce7;
+    transform: translateY(-1px);
+}
+
+/* Input Área Chat */
+.ia-input-container {
+    padding: 12px 16px;
+    background: #ffffff;
+    border-top: 1px solid #dfe4ea;
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.ia-textarea {
+    flex: 1;
+    border: 1px solid #ced6e0;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    resize: none;
+    max-height: 100px;
+    min-height: 40px;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.ia-textarea:focus {
+    border-color: #6c5ce7;
+    box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.15);
+}
+
+.btn-enviar-ia {
+    background: #6c5ce7;
+    color: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, transform 0.15s;
+    flex-shrink: 0;
+}
+
+.btn-enviar-ia:hover {
+    background: #5640e0;
+    transform: scale(1.05);
+}
+
+.btn-enviar-ia:disabled {
+    background: #dcdde1;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* --- TAB 2: SOLICITUDES RÁPIDAS --- */
+.ia-solicitudes-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.ia-grid-solicitudes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.ia-card-solicitud {
+    background: #ffffff;
+    border: 1px solid #e4e7eb;
+    border-radius: 10px;
+    padding: 12px;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.ia-card-solicitud:hover {
+    border-color: #6c5ce7;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(108, 92, 231, 0.12);
+}
+
+.ia-card-icon {
+    font-size: 20px;
+    margin-bottom: 2px;
+}
+
+.ia-card-title {
+    font-weight: 700;
+    font-size: 12px;
+    color: #2f3542;
+}
+
+.ia-card-desc {
+    font-size: 11px;
+    color: #747d8c;
+    line-height: 1.3;
+}
+
+/* Área de Resultado de Solicitud */
+.ia-resultado-box {
+    background: #f8f9fc;
+    border: 1px solid #dcdde1;
+    border-radius: 12px;
+    padding: 14px;
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ia-resultado-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #e4e7eb;
+    padding-bottom: 8px;
+}
+
+.ia-resultado-titulo {
+    font-weight: 700;
+    font-size: 13px;
+    color: #4834d4;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ia-resultado-acciones {
+    display: flex;
+    gap: 6px;
+}
+
+.btn-accion-ia {
+    background: #ffffff;
+    border: 1px solid #ced6e0;
+    color: #4834d4;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s ease;
+}
+
+.btn-accion-ia:hover {
+    background: #6c5ce7;
+    color: white;
+    border-color: #6c5ce7;
+}
+
+.ia-resultado-cuerpo {
+    font-size: 13px;
+    line-height: 1.6;
+    color: #2f3542;
+    max-height: 380px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+/* --- TAB 3: CONFIGURACIÓN & INDEXACIÓN --- */
+.ia-config-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.ia-config-card {
+    background: #ffffff;
+    border: 1px solid #e4e7eb;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+}
+
+.ia-config-card h4 {
+    margin: 0 0 10px 0;
+    font-size: 13px;
+    color: #2f3542;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ia-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    padding: 6px 0;
+    border-bottom: 1px solid #f1f2f6;
+}
+
+.ia-info-row:last-child {
+    border-bottom: none;
+}
+
+.btn-indexar-pdf {
+    width: 100%;
+    background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+    box-shadow: 0 4px 10px rgba(39, 174, 96, 0.25);
+    transition: all 0.2s ease;
+}
+
+.btn-indexar-pdf:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(39, 174, 96, 0.35);
+}
+
+.btn-indexar-pdf:disabled {
+    background: #bdc3c7;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Barra de progreso de indexación */
+.ia-progress-bar-container {
+    width: 100%;
+    height: 8px;
+    background: #e4e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 10px;
+    display: none;
+}
+
+.ia-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: #6c5ce7;
+    transition: width 0.3s ease;
+}
+
+/* Spinner animado */
+.ia-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: iaGiro 0.8s linear infinite;
+    display: inline-block;
+}
+
+@keyframes iaGiro {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* --- CITAS Y FUENTES INTERACTIVAS --- */
+.ia-cite-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #eef2ff;
+    color: #4338ca;
+    border: 1px solid #c7d2fe;
+    border-radius: 6px;
+    padding: 1px 7px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    margin: 0 3px;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    vertical-align: middle;
+    text-decoration: none;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.ia-cite-badge:hover {
+    background: #4338ca;
+    color: #ffffff;
+    border-color: #3730a3;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(67, 56, 202, 0.25);
+}
+
+.ia-btn-ir-fuente {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #f8fafc;
+    color: #3b82f6;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 3px 9px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: all 0.15s ease;
+}
+
+.ia-btn-ir-fuente:hover {
+    background: #3b82f6;
+    color: #ffffff;
+    border-color: #2563eb;
+}
+
+/* Toast flotante de navegación Lira */
+#ia-toast {
+    position: fixed;
+    top: 75px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background: rgba(30, 39, 46, 0.92);
+    color: #ffffff;
+    padding: 9px 18px;
+    border-radius: 30px;
+    font-size: 12.5px;
+    font-weight: 600;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    backdrop-filter: blur(8px);
+}
+
+#ia-toast.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Barra de acciones de mensajes de IA (Escuchar y Copiar) */
+.ia-msg-acciones {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.ia-btn-accion-msg {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #ffffff;
+    color: #4b6584;
+    border: 1px solid #dcdde1;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.ia-btn-accion-msg:hover {
+    background: #f1f2f6;
+    color: #2f3542;
+    border-color: #ced6e0;
+}
+
+/* Estado activo de lectura (con pulso) */
+.ia-btn-reading,
+.btn-mini.ia-btn-reading {
+    background: #e74c3c !important;
+    color: #ffffff !important;
+    border-color: #c0392b !important;
+    animation: iaPulseAudio 1.5s infinite ease-in-out;
+}
+
+@keyframes iaPulseAudio {
+    0% {
+        box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.5);
+    }
+
+    70% {
+        box-shadow: 0 0 0 8px rgba(231, 76, 60, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
+    }
+}
+
+/* ==========================================================================
+   🎤 KARAOKE VISUAL EN TIEMPO REAL PARA RESPUESTAS DE LIRAAI
+   ========================================================================== */
+
+.ia-k-palabra {
+    display: inline;
+    border-radius: 4px;
+    padding: 1px 2px;
+    margin: 0 1px;
+    transition: background-color 0.08s ease, color 0.08s ease, box-shadow 0.08s ease;
+}
+
+/* Palabra activa (se está pronunciando en este milisegundo) */
+.ia-k-palabra.ia-k-palabra-activa {
+    background: #6c5ce7 !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    box-shadow: 0 0 10px rgba(108, 92, 231, 0.7);
+    border-radius: 4px;
+    padding: 2px 5px;
+    display: inline-block;
+    position: relative;
+    z-index: 2;
+}
+
+/* Palabras ya pronunciadas en la lectura */
+.ia-k-palabra.ia-k-palabra-leida {
+    background: rgba(108, 92, 231, 0.15);
+    color: #2d3436;
+    border-bottom: 2px solid #a29bfe;
+}
+
+/* Contenedor en modo lectura activa */
+.ia-burbuja.ia-lectura-activa,
+.ia-resultado-cuerpo.ia-lectura-activa {
+    border-color: #6c5ce7 !important;
+    box-shadow: 0 0 0 2px rgba(108, 92, 231, 0.2);
+}
+
+/* Modo oscuro */
+body.dark-mode .ia-k-palabra.ia-k-palabra-leida,
+.dark-theme .ia-k-palabra.ia-k-palabra-leida {
+    background: rgba(162, 155, 254, 0.25);
+    color: #dfe6e9;
+    border-bottom: 2px solid #6c5ce7;
+}
+
+/* ==========================================================================
+   🖱️ LECTURA DIRECTA POR CLIC EN PÁRRAFOS / BLOQUES
+   ========================================================================== */
+
+.ia-toggle-leer-bloque {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #4b6584;
+    background: #f1f2f6;
+    border: 1px solid #dcdde1;
+    padding: 3px 9px;
+    border-radius: 16px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+}
+
+.ia-toggle-leer-bloque:hover {
+    background: #e4e7eb;
+    border-color: #6c5ce7;
+    color: #2f3542;
+}
+
+.ia-toggle-leer-bloque input[type="checkbox"] {
+    cursor: pointer;
+    accent-color: #6c5ce7;
+    margin: 0;
+}
+
+/* Bloques de texto legibles */
+.ia-bloque-texto,
+.ia-burbuja p,
+.ia-burbuja li,
+.ia-burbuja blockquote,
+#ia-resultado-cuerpo p,
+#ia-resultado-cuerpo li,
+#ia-resultado-cuerpo blockquote {
+    position: relative;
+    cursor: pointer;
+    border-radius: 5px;
+    padding: 3px 6px;
+    margin: 3px 0;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.ia-bloque-texto:hover,
+.ia-burbuja p:hover,
+.ia-burbuja li:hover,
+.ia-burbuja blockquote:hover,
+#ia-resultado-cuerpo p:hover,
+#ia-resultado-cuerpo li:hover,
+#ia-resultado-cuerpo blockquote:hover {
+    background: rgba(108, 92, 231, 0.07);
+}
+
+/* Bloque en reproducción activa */
+.ia-bloque-reproduciendo,
+.ia-bloque-texto.ia-bloque-reproduciendo,
+.ia-burbuja p.ia-bloque-reproduciendo,
+.ia-burbuja li.ia-bloque-reproduciendo,
+#ia-resultado-cuerpo p.ia-bloque-reproduciendo,
+#ia-resultado-cuerpo li.ia-bloque-reproduciendo {
+    background: rgba(108, 92, 231, 0.12) !important;
+    border-left: 3px solid #6c5ce7 !important;
+    padding-left: 8px !important;
+    border-radius: 0 5px 5px 0 !important;
+}
+
+/* ==========================================================================
+   ESTILOS PARA EL WIDGET DE GRÁFICO CIRCULAR DE TOKENS (GAUGE)
+   ========================================================================== */
+.ia-token-gauge-container {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    background: linear-gradient(135deg, rgba(108, 92, 231, 0.04) 0%, rgba(116, 185, 255, 0.04) 100%);
+    border: 1px solid rgba(108, 92, 231, 0.15);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-top: 8px;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.ia-gauge-svg-wrap {
+    position: relative;
+    width: 96px;
+    height: 96px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ia-token-gauge-svg {
+    width: 96px;
+    height: 96px;
+    transform: rotate(-90deg);
+}
+
+.ia-gauge-bg {
+    fill: none;
+    stroke: #e4e7eb;
+    stroke-width: 8;
+}
+
+.ia-gauge-bar {
+    fill: none;
+    stroke: #2ed573;
+    stroke-width: 8;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.4s ease;
+}
+
+.ia-gauge-center-text {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.ia-gauge-percent {
+    font-size: 16px;
+    font-weight: 800;
+    color: #2f3542;
+    line-height: 1.1;
+}
+
+.ia-gauge-label {
+    font-size: 9px;
+    font-weight: 700;
+    color: #747d8c;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ia-token-stats-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.ia-token-stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11.5px;
+}
+
+.ia-stat-name {
+    color: #57606f;
+    font-weight: 500;
+}
+
+.ia-stat-val {
+    font-weight: 700;
+    color: #2f3542;
+    font-family: monospace;
+}
+
+.ia-stat-val.highlight {
+    color: #6c5ce7;
+    font-size: 12px;
+}
+
+.ia-stat-val.sub {
+    color: #747d8c;
+    font-size: 10.5px;
+    font-weight: 500;
+}
+
+.ia-token-stat-badge {
+    margin-top: 4px;
+    display: inline-flex;
+    align-self: flex-start;
+    padding: 2px 8px;
+    background: rgba(108, 92, 231, 0.1);
+    color: #6c5ce7;
+    border-radius: 6px;
+    font-size: 10.5px;
+    font-weight: 600;
+}
+
+body.ui-dark-mode .ia-token-gauge-container {
+    background: rgba(22, 27, 34, 0.85);
+    border-color: rgba(108, 92, 231, 0.25);
+}
+
+body.ui-dark-mode .ia-gauge-bg {
+    stroke: #21262d;
+}
+
+body.ui-dark-mode .ia-gauge-percent {
+    color: #f1f2f6;
+}
+
+body.ui-dark-mode .ia-stat-name {
+    color: #8b949e;
+}
+
+body.ui-dark-mode .ia-stat-val {
+    color: #e6edf3;
+}
+
+body.ui-dark-mode #ia-chat-mini-tokens {
+    background: #161b22 !important;
+    border-color: #30363d !important;
+    color: #c9d1d9 !important;
+}
+
+body.ui-dark-mode .btn-indexar-pdf {
+    background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
+    box-shadow: 0 4px 10px rgba(35, 134, 54, 0.35);
+}
+
+body.ui-dark-mode .btn-indexar-pdf:hover {
+    background: linear-gradient(135deg, #2ea043 0%, #3fb950 100%);
+    box-shadow: 0 6px 16px rgba(46, 160, 67, 0.45);
+}

@@ -1,0 +1,737 @@
+/* LiraLoud
+ * Copyright 2026 José Pablo González Macías
+ * Licensed under the Apache License, Version 2.0
+ */
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #525659;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* --- BANNER SUPERIOR --- */
+#banner-container {
+    background-color: #fdf6e3;
+    padding: 10px 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-bottom: 3px solid #d33682;
+    align-items: center;
+    /* Centrar el contenido de banner horizontalmente en pantallas muy anchas */
+}
+
+.fila-top,
+.fila-ajustes {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: nowrap;
+    height: 60px;
+    box-sizing: border-box;
+    background: #fdfefe !important;
+    padding: 0 20px !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
+    border: 1px solid rgba(0, 0, 0, 0.05) !important;
+    max-width: 1250px;
+    /* Límite de ancho para que no se expanda al infinito */
+    width: 100%;
+}
+
+.fila-filtros {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    padding-left: 20px;
+}
+
+.fila-filtros label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+}
+
+/* Opciones de idioma (Modo Claro) */
+.idioma-opcion {
+    background-color: #fff9ee;
+    /* Fondo sutilmente distinto al blanco puro */
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.idioma-opcion:hover {
+    background-color: #edf2f7;
+    border-color: #3498db;
+}
+
+/* --- MODO OSCURO PREMIUM (UI y PDF) --- */
+/* Transiciones globales para un cambio suave */
+body,
+#banner-container,
+.fila-ajustes,
+.modal-content,
+.modal-header,
+.modal-footer,
+.grupo-calibracion,
+input,
+select,
+.tab-btn,
+.btn-reset-sector,
+#panel-busqueda,
+.btn-secundario,
+.btn-kofi,
+#btn-abrir-descarga,
+#panel-teatro,
+#panel-descarga,
+#panel-diccionario,
+.idioma-opcion,
+.header-dicc,
+.tabs-secciones,
+.tab-item,
+.contenido-terminos,
+.add-termino-box,
+.fila-termino,
+#lista-obras-teatro,
+.cuerpo-teatro,
+.footer-teatro,
+.seccion-input-group {
+    transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+        box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+canvas.canvas-dark-mode {
+    /* Filtro sepia cálido estilo "Luz Nocturna" de Windows */
+    filter: invert(0.93) hue-rotate(180deg) sepia(0.35) contrast(0.95) brightness(0.95);
+    /* Al invertir el canvas, la sombra negra se volvía blanca. 
+       Le pasamos una sombra blanca sutil para que, al invertirse, sea una sombra oscura sutil. */
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Paleta estética Basada en Literatura (Azul Muy Oscuro + Texto Suavizado) */
+/* Recomendación: Fondo #0D1117 + Texto #E6EDF3 */
+body.ui-dark-mode {
+    background-color: #0D1117 !important;
+    /* Fondo profundo base */
+}
+
+body.ui-dark-mode #banner-container {
+    background-color: #161B22 !important;
+    /* Paneles elevados */
+    color: #E6EDF3 !important;
+    border-bottom: 3px solid #2c3e50 !important;
+    /* Acento morado suave */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.ui-dark-mode .fila-ajustes {
+    background-color: #0D1117 !important;
+    border-bottom: 1px solid #21262D !important;
+}
+
+body.ui-dark-mode .fila-filtros {
+    color: #8B949E !important;
+}
+
+/* Paneles y Modales Generales */
+body.ui-dark-mode .modal-content,
+body.ui-dark-mode #panel-teatro,
+body.ui-dark-mode #panel-descarga,
+body.ui-dark-mode #panel-diccionario,
+body.ui-dark-mode #lista-personajes {
+    background-color: #161B22 !important;
+    color: #E6EDF3 !important;
+    border: 1px solid #30363D !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+}
+
+body.ui-dark-mode .header-teatro,
+body.ui-dark-mode .modal-header,
+body.ui-dark-mode .modal-footer,
+body.ui-dark-mode .footer-teatro {
+    background-color: #0D1117 !important;
+    border-color: #30363D !important;
+}
+
+body.ui-dark-mode .btn-cerrar-x {
+    color: #8B949E !important;
+}
+
+body.ui-dark-mode .btn-cerrar-x:hover {
+    color: #f87171 !important;
+}
+
+body.ui-dark-mode .grupo-calibracion {
+    background-color: #0D1117 !important;
+    border-color: #30363D !important;
+    border-radius: 8px !important;
+}
+
+body.ui-dark-mode .grupo-calibracion h4 {
+    color: #E6EDF3 !important;
+    border-bottom-color: #30363D !important;
+}
+
+body.ui-dark-mode label,
+body.ui-dark-mode span,
+body.ui-dark-mode p {
+    color: #E6EDF3 !important;
+}
+
+/* Inputs y Selects */
+body.ui-dark-mode input[type="text"],
+body.ui-dark-mode input[type="number"],
+body.ui-dark-mode select,
+body.ui-dark-mode .select-mover {
+    background-color: #0D1117 !important;
+    color: #E6EDF3 !important;
+    border: 1px solid #30363D !important;
+}
+
+body.ui-dark-mode input:focus,
+body.ui-dark-mode select:focus {
+    border-color: #8b949e !important;
+    outline: none !important;
+}
+
+/* Botones Secundarios */
+body.ui-dark-mode .tab-btn,
+body.ui-dark-mode .btn-secundario,
+body.ui-dark-mode #btn-abrir-descarga,
+body.ui-dark-mode .idioma-opcion,
+body.ui-dark-mode .btn-reset-sector {
+    background-color: #21262D !important;
+    color: #E6EDF3 !important;
+    border: 1px solid #363E48 !important;
+    border-radius: 6px !important;
+}
+
+body.ui-dark-mode .btn-kofi,
+body.ui-dark-mode #btn-kofi-global {
+    background-color: #21262D !important;
+    color: #E6EDF3 !important;
+    border: 1px solid #363E48 !important;
+    border-radius: 20px !important;
+}
+
+body.ui-dark-mode .tab-btn.active {
+    background-color: #3d444d !important;
+    color: #ffffff !important;
+    border-color: #3d444d !important;
+}
+
+/* Iconos de las pestañas en Modo Oscuro (Escala de Grises) */
+body.ui-dark-mode .tab-btn .svg-main {
+    fill: #8b949e !important;
+}
+
+body.ui-dark-mode .tab-btn .svg-sec {
+    fill: #6e7681 !important;
+}
+
+body.ui-dark-mode .tab-btn .svg-ter {
+    fill: #484f58 !important;
+}
+
+body.ui-dark-mode .tab-btn:hover:not(.active) {
+    background-color: #30363d !important;
+    color: #e6edf3 !important;
+}
+
+body.ui-dark-mode .tab-btn:hover:not(.active) .svg-main {
+    fill: #c9d1d9 !important;
+}
+
+body.ui-dark-mode .tab-btn:hover:not(.active) .svg-sec {
+    fill: #b1bac4 !important;
+}
+
+body.ui-dark-mode .tab-btn:hover:not(.active) .svg-ter {
+    fill: #8b949e !important;
+}
+
+body.ui-dark-mode .tab-btn.active .svg-main {
+    fill: #ffffff !important;
+}
+
+body.ui-dark-mode .tab-btn.active .svg-sec {
+    fill: rgba(255, 255, 255, 0.7) !important;
+}
+
+body.ui-dark-mode .tab-btn.active .svg-ter {
+    fill: rgba(255, 255, 255, 0.4) !important;
+}
+
+
+body.ui-dark-mode .btn-secundario:hover,
+body.ui-dark-mode #btn-abrir-descarga:hover,
+body.ui-dark-mode .btn-kofi:hover,
+body.ui-dark-mode .idioma-opcion:hover {
+    background-color: #30363D !important;
+    border-color: #484F58 !important;
+}
+
+body.ui-dark-mode #panel-busqueda {
+    background-color: #161B22 !important;
+    border-color: #30363D !important;
+    color: #E6EDF3 !important;
+}
+
+/* ---------------------------------------------------- */
+/* MODIFICACIONES ESPECÍFICAS: DICCIONARIO Y MODO TEATRO */
+/* ---------------------------------------------------- */
+body.ui-dark-mode .header-dicc {
+    background-color: #0D1117 !important;
+    border-bottom: 1px solid #30363D !important;
+    color: #E6EDF3 !important;
+}
+
+body.ui-dark-mode .tabs-secciones,
+body.ui-dark-mode #lista-obras-teatro {
+    background-color: #0D1117 !important;
+    border-bottom: 1px solid #30363D !important;
+}
+
+/* Alternancia de Iconos de Tema (Sol/Luna) en Configuración Avanzada */
+.icon-tema-luna {
+    display: none !important;
+}
+
+body.ui-dark-mode .icon-tema-sol {
+    display: none !important;
+}
+
+body.ui-dark-mode .icon-tema-luna {
+    display: inline-block !important;
+}
+
+body.ui-dark-mode .tab-item {
+    background-color: #21262D !important;
+    color: #8B949E !important;
+    border: 1px solid transparent !important;
+}
+
+body.ui-dark-mode .tab-item:hover:not(.active) {
+    background-color: #30363D !important;
+    color: #E6EDF3 !important;
+    border-color: #484F58 !important;
+}
+
+body.ui-dark-mode .tab-item.active {
+    background-color: #30363D !important;
+    color: #E6EDF3 !important;
+    border-color: #7d54c4 !important;
+    box-shadow: none !important;
+}
+
+/* Contenedores de Listas */
+body.ui-dark-mode .contenido-terminos,
+body.ui-dark-mode .cuerpo-teatro,
+body.ui-dark-mode #tabla-actores,
+body.ui-dark-mode .lista-terminos-scroll,
+body.ui-dark-mode .seccion-input-group {
+    background-color: #161B22 !important;
+    border-color: #30363D !important;
+}
+
+/* Cajas de Nuevos Ítems */
+body.ui-dark-mode .add-termino-box {
+    background-color: #0D1117 !important;
+    border: 1px solid #30363D !important;
+}
+
+/* Filas individuales (Abreviaturas / Actores / Pestañas de Cuentos) */
+body.ui-dark-mode .fila-termino,
+body.ui-dark-mode .fila-actor {
+    background-color: transparent !important;
+    /* Limpia cualquier blanco */
+    border-bottom: 1px solid #30363D !important;
+}
+
+body.ui-dark-mode .fila-termino:hover {
+    background-color: #21262D !important;
+    /* Efecto hover tenue */
+}
+
+/* Corrección de textos oscuros inline */
+body.ui-dark-mode .col-sigla {
+    color: #f87171 !important;
+    /* Rojo suave */
+}
+
+body.ui-dark-mode .col-significado {
+    color: #E6EDF3 !important;
+}
+
+body.ui-dark-mode .fila-actor span[style*="color:#2c3e50"],
+body.ui-dark-mode .tab-item span[style*="color:#2c3e50"],
+body.ui-dark-mode #lista-obras-teatro span[style*="color:#2c3e50"] {
+    color: #E6EDF3 !important;
+}
+
+body.ui-dark-mode .fila-actor span[style*="color:#3498db"] {
+    color: #58a6ff !important;
+    /* Azul amigable recomendado */
+}
+
+body.ui-dark-mode .btn-editar-term {
+    color: #fbbf24 !important;
+}
+
+body.modo-pdf #btn-reparto-teatro,
+body.modo-pdf #btn-nuevo-reparto {
+    display: none !important;
+}
+
+/* Panel Flotante Ovalado (Audio Ducking) */
+.panel-flotante-ovalado {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #bdc3c7;
+    border-radius: 25px;
+    /* Ovalado */
+    padding: 15px 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    z-index: 1500;
+    transition: opacity 0.4s ease, transform 0.4s ease, background-color 0.4s ease, border-color 0.4s ease;
+    opacity: 0.15;
+    /* Casi transparente por defecto (inline override) */
+    display: flex;
+    flex-direction: column;
+    min-width: 180px;
+    backdrop-filter: blur(5px);
+}
+
+/* Modo oscuro para el panel flotante */
+body.ui-dark-mode .panel-flotante-ovalado {
+    background: rgba(30, 33, 40, 0.95);
+    border-color: #2c313c;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+}
+
+body.ui-dark-mode .panel-flotante-ovalado div,
+body.ui-dark-mode .panel-flotante-ovalado label {
+    color: #e0e6ed !important;
+}
+
+
+/* Adaptación de Cajas de Grupo de Configuración al Modo Oscuro */
+body.ui-dark-mode .grupo-calibracion {
+    background-color: #1c2128 !important;
+    /* Fondo oscuro elegante */
+    border-color: #444c56 !important;
+    /* Borde gris oscuro mate */
+}
+
+body.ui-dark-mode .grupo-calibracion h4 {
+    color: #adbac7 !important;
+    /* Texto gris claro */
+    border-bottom-color: #444c56 !important;
+}
+
+/* Filtrado de SVGs de configuración para que se adapten al modo oscuro */
+body.ui-dark-mode .grupo-calibracion h4 .svg-icon {
+    /* Convierte los iconos a escala de grises, los invierte para que las líneas oscuras sean claras, y sube un poco el brillo */
+    filter: grayscale(100%) invert(80%) brightness(150%) !important;
+    opacity: 0.85;
+}
+
+body.ui-dark-mode .grupo-calibracion h5 {
+    color: #adbac7 !important;
+    border-bottom-color: #444c56 !important;
+}
+
+body.ui-dark-mode .grupo-calibracion .ayuda-text {
+    color: #8b949e !important;
+}
+
+body.ui-dark-mode .grupo-calibracion label {
+    color: #adbac7 !important;
+}
+
+body.ui-dark-mode .fila-ocultar-item {
+    border-bottom-color: #444c56 !important;
+}
+
+body.ui-dark-mode .subtitulos-traduccion-calib {
+    border-top-color: #444c56 !important;
+}
+
+body.ui-dark-mode .subtitulos-traduccion-titulo {
+    color: #adbac7 !important;
+}
+
+body.ui-dark-mode .subtitulos-traduccion-titulo svg {
+    color: #adbac7 !important;
+    stroke: #adbac7 !important;
+}
+
+body.ui-dark-mode #panel-segmentacion-manual {
+    background-color: #0d1117 !important;
+    border-color: #30363d !important;
+}
+
+/* ========================================== */
+/* SUBTÍTULOS DE TRADUCCIÓN FLOTANTES         */
+/* ========================================== */
+.subtitulo-traduccion-overlay {
+    position: fixed;
+    bottom: 25px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 85%;
+    min-width: 320px;
+    background: rgba(23, 32, 42, 0.92);
+    color: #ffffff;
+    padding: 12px 20px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    z-index: 6000;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    transition: all 0.3s ease;
+    animation: fadeInSubtitulo 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInSubtitulo {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 15px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
+
+.subtitulo-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 4px;
+}
+
+.subtitulo-badge {
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 0.8px;
+    color: #a29bfe;
+    text-transform: uppercase;
+}
+
+.subtitulo-lang {
+    font-size: 11px;
+    font-weight: bold;
+    color: #fdcb6e;
+    margin-left: 6px;
+}
+
+.btn-cerrar-subtitulo {
+    background: none;
+    border: none;
+    color: #b2bec3;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.btn-cerrar-subtitulo:hover {
+    color: #ff7675;
+}
+
+.subtitulo-cuerpo {
+    font-size: 15px;
+    line-height: 1.2;
+    font-weight: 500;
+    color: rgba(241, 242, 246, 0.75);
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+    word-break: break-word;
+    user-select: text;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0px 2px;
+}
+
+.sub-palabra {
+    display: inline-block;
+    padding: 1px 3px;
+    border-radius: 4px;
+    transition: color 0.12s ease, background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+    color: rgba(223, 230, 233, 0.7);
+    background: transparent;
+}
+
+.sub-palabra.sub-leida {
+    color: #ffffff;
+    opacity: 0.95;
+    font-weight: 500;
+}
+
+.sub-palabra.sub-activa {
+    color: #fff37a !important;
+    font-weight: 700 !important;
+    background: linear-gradient(135deg, rgba(254, 202, 87, 0.38), rgba(255, 107, 107, 0.32));
+    border: 1px solid rgba(254, 202, 87, 0.55);
+    box-shadow: 0 0 10px rgba(254, 202, 87, 0.5), inset 0 0 4px rgba(255, 255, 255, 0.2);
+    transform: scale(1.04) translateY(-0.5px);
+    text-shadow: 0 0 6px rgba(254, 202, 87, 0.8);
+    opacity: 1 !important;
+}
+
+/* Modo oscuro específico para paneles y subtítulos */
+body.ui-dark-mode #panel-ajustes-traduccion {
+    background-color: #161b22 !important;
+    border-color: #30363d !important;
+}
+
+body.ui-dark-mode #panel-ajustes-traduccion label {
+    color: #adbac7 !important;
+}
+
+body.ui-dark-mode #panel-ajustes-traduccion select {
+    background-color: #21262d !important;
+    color: #c9d1d9 !important;
+    border-color: #30363d !important;
+}
+
+/* ========================================== */
+/* MODO OSCURO: CONTROLES PRINCIPALES Y DUCKING */
+/* ========================================== */
+body.ui-dark-mode .btn-principal,
+body.ui-dark-mode #btn-pdf {
+    background-color: #21262d !important;
+    color: #adbac7 !important;
+}
+
+body.ui-dark-mode .btn-principal:hover,
+body.ui-dark-mode #btn-pdf:hover {
+    background-color: #30363d !important;
+    color: #ffffff !important;
+    border-color: #00000000 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.ui-dark-mode .btn-principal svg,
+body.ui-dark-mode #btn-pdf svg {
+    fill: currentColor !important;
+    color: inherit !important;
+}
+
+body.ui-dark-mode .btn-engranaje,
+body.ui-dark-mode #btn-config {
+    color: #adbac7 !important;
+}
+
+body.ui-dark-mode .btn-engranaje:hover,
+body.ui-dark-mode #btn-config:hover {
+    color: #ffffff !important;
+}
+
+body.ui-dark-mode .btn-engranaje svg,
+body.ui-dark-mode #btn-config svg,
+body.ui-dark-mode #btn-config svg path {
+  ;
+}
+
+body.ui-dark-mode .btn-reproductor,
+body.ui-dark-mode #btn-play,
+body.ui-dark-mode #btn-stop {
+    color: #adbac7 !important;
+    background-color: transparent !important;
+}
+
+body.ui-dark-mode .btn-reproductor:hover,
+body.ui-dark-mode #btn-play:hover,
+body.ui-dark-mode #btn-stop:hover {
+    color: #ffffff !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.ui-dark-mode .btn-reproductor svg,
+body.ui-dark-mode #btn-play svg,
+body.ui-dark-mode #btn-stop svg {
+    fill: currentColor !important;
+    color: inherit !important;
+}
+
+body.ui-dark-mode .paginacion-container {
+    color: #adbac7 !important;
+}
+
+body.ui-dark-mode .custom-nav-btn {
+    background: transparent !important;
+}
+
+body.ui-dark-mode .custom-nav-btn svg {
+    fill: #adbac7 !important;
+    color: #adbac7 !important;
+    opacity: 0.85;
+}
+
+body.ui-dark-mode .custom-nav-btn:hover svg {
+    fill: #ffffff !important;
+    color: #ffffff !important;
+    opacity: 1;
+}
+
+body.ui-dark-mode #total-paginas-texto {
+    color: #adbac7 !important;
+}
+
+body.ui-dark-mode #input-pagina-actual {
+    background: #0d1117 !important;
+    color: #e6edf3 !important;
+    border: 1px solid #30363d !important;
+}
+
+body.ui-dark-mode .panel-flotante-ovalado {
+    background: rgba(22, 27, 34, 0.95) !important;
+    border-color: #30363d !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6) !important;
+}
+
+body.ui-dark-mode .panel-flotante-ovalado .svg-btn,
+body.ui-dark-mode .panel-flotante-ovalado .svg-btn-main {
+    background-color: #21262d !important;
+    color: #adbac7 !important;
+    border: 1px solid #363e48 !important;
+}
+
+body.ui-dark-mode .panel-flotante-ovalado .svg-btn:hover,
+body.ui-dark-mode .panel-flotante-ovalado .svg-btn-main:hover {
+    background-color: #30363d !important;
+    color: #ffffff !important;
+    border-color: #8b949e !important;
+}
+
+body.ui-dark-mode .panel-flotante-ovalado .svg-btn svg,
+body.ui-dark-mode .panel-flotante-ovalado .svg-btn-main svg {
+    fill: currentColor !important;
+    color: inherit !important;
+}
+
+body.ui-dark-mode #lbl-ducking-flotante-nivel,
+body.ui-dark-mode #lbl-ducking-nivel {
+    color: #adbac7 !important;
+}
+
+body.ui-dark-mode .panel-flotante-ovalado span {
+    color: #adbac7 !important;
+}
