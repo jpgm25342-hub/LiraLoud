@@ -840,5 +840,7 @@ window.LIRA_I18N["hi"] = {
     "lbl-tienda-requiere-permiso": "Hugging Face अनुमति आवश्यक",
     "ttl-abrir-hf-repo": "Hugging Face पर मॉडल पृष्ठ खोलें",
     "msg-tienda-error-401": "इस मॉडल के लिए Hugging Face पर अनुमति आवश्यक है। Hugging Face पर इसका पृष्ठ खोलें, शर्तें स्वीकार करें (या लेखक की स्वीकृति की प्रतीक्षा करें), और स्टोर के लॉक आइकन में अपना टोकन सेट करें।",
-    "lbl-token-hf-sesion-activa": "आपका Hugging Face टोकन सहेजा गया है"
+    "lbl-token-hf-sesion-activa": "आपका Hugging Face टोकन सहेजा गया है",
+    "lbl-no-sup": "सुपरस्क्रिप्ट नहीं²",
+    "lbl-no-sub": "सबस्क्रिप्ट नहीं₂"
 };

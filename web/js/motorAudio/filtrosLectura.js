@@ -10,6 +10,8 @@ function aplicarMascaraParentesis(listaOriginalPalabras) {
     const saltarCorch = document.getElementById('chk-corch')?.checked;
     const saltarLlaves = document.getElementById('chk-llaves')?.checked;
     const saltarBarras = document.getElementById('chk-barras')?.checked;
+    const saltarSup = document.getElementById('chk-superindices')?.checked ?? document.getElementById('chk-referencias')?.checked ?? true;
+    const saltarSub = document.getElementById('chk-subindices')?.checked ?? false;
 
     if (!listaOriginalPalabras) return { listaVisual: [], textoClean: "" };
 
@@ -24,11 +26,18 @@ function aplicarMascaraParentesis(listaOriginalPalabras) {
         if (saltarLlaves) nivelLlaves += (txtRaw.match(/\{/g) || []).length;
 
         const ignorarBloque = (nivelParen > 0) || (nivelCorch > 0) || (nivelLlaves > 0);
-        let esLink = saltarUrls && (txtRaw.toLowerCase().includes("http") || txtRaw.toLowerCase().includes("www"));
+        let esLink = saltarUrls && /https?:\/\/\S+|www\.\S+|\b\w+\.(?:com|org|net|edu|gov|mx)\b/i.test(txtRaw);
 
         // 2. PROCESAMIENTO (Detección de Voz y Silencios del Usuario)
         if (!ignorarBloque && !esLink) {
             let p_audio = txtRaw;
+
+            if (saltarSup) {
+                p_audio = p_audio.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, '').replace(/\[\d{1,3}\]/g, '');
+            }
+            if (saltarSub) {
+                p_audio = p_audio.replace(/[₀₁₂₃₄₅₆₇₈₉]+/g, '');
+            }
 
             // A) Filtro Manual de Barras (UI)
             if (saltarBarras) {
@@ -59,10 +68,12 @@ function aplicarMascaraParentesis(listaOriginalPalabras) {
 
 function obtenerEstadosFiltros() {
     return {
-        'chk-urls': document.getElementById('chk-urls').checked,
-        'chk-paren': document.getElementById('chk-paren').checked,
-        'chk-corch': document.getElementById('chk-corch').checked,
-        'chk-llaves': document.getElementById('chk-llaves').checked
+        'chk-urls': document.getElementById('chk-urls')?.checked ?? false,
+        'chk-paren': document.getElementById('chk-paren')?.checked ?? false,
+        'chk-corch': document.getElementById('chk-corch')?.checked ?? false,
+        'chk-llaves': document.getElementById('chk-llaves')?.checked ?? false,
+        'chk-superindices': document.getElementById('chk-superindices')?.checked ?? true,
+        'chk-subindices': document.getElementById('chk-subindices')?.checked ?? false
     };
 }
 

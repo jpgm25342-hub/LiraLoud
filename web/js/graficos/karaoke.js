@@ -252,6 +252,12 @@ async function reproducirSecuencia(idx, esAutomatico = false) {
     }
 
     // 2. SINCRONIZACIÓN DE DATOS
+    if (window._oracionRecortadaActivaIdx !== undefined && window._oracionRecortadaActivaIdx !== -1 && window._oracionRecortadaActivaIdx !== idx) {
+        if (typeof window.restaurarOracionesRecortadas === 'function') {
+            window.restaurarOracionesRecortadas();
+        }
+        window._oracionRecortadaActivaIdx = -1;
+    }
     indiceOracion = idx;
     oracionActiva = datosPagina.oraciones[idx];
     window.palabraKaraoke = null;
@@ -506,8 +512,14 @@ function toggleLectura() {
     togglePlayPause();
 }
 
-function iniciarLectura() {
+async function iniciarLectura() {
     if (!leyendo) {
+        if (typeof bloqueoCambioPagina !== 'undefined' && bloqueoCambioPagina && window._promesaCargaPaginaActual) {
+            try {
+                await window._promesaCargaPaginaActual;
+            } catch (e) {}
+        }
+        if (leyendo) return;
         if (!datosPagina || !datosPagina.oraciones || datosPagina.oraciones.length === 0) {
             console.log("ℹ️ No hay oraciones disponibles en la página actual para lectura.");
             return;
@@ -594,6 +606,10 @@ function detenerLectura(resetUI = true) {
 
     // 6. LIMPIEZA VISUAL (Solo si es STOP total)
     if (resetUI) {
+        if (typeof window.restaurarOracionesRecortadas === 'function') {
+            window.restaurarOracionesRecortadas();
+        }
+        window._oracionRecortadaActivaIdx = -1;
         actualizarBotonPlayPause(false);
         window.palabraPausada = null;
         oracionActiva = null;

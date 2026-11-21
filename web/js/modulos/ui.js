@@ -478,6 +478,12 @@ function buscarOracionPorGeometria(palabra) {
 function obtenerPalabrasDeOracion(oracion) {
     if (!oracion || !datosPagina) return [];
 
+    // Priorizar las palabras ya filtradas y ordenadas de la oración (sin superíndices/subíndices omitidos)
+    const palabrasBase = oracion._palabrasOriginales || oracion.palabras;
+    if (Array.isArray(palabrasBase) && palabrasBase.length > 0) {
+        return [...palabrasBase];
+    }
+
     let palabrasEncontradas = [];
     let tol = 5;
 
@@ -497,30 +503,28 @@ function obtenerPalabrasDeOracion(oracion) {
         }
     }
 
-    // Si la búsqueda geométrica no arrojó palabras pero la oración contiene sus propias palabras
-    if (palabrasEncontradas.length === 0 && oracion.palabras && oracion.palabras.length > 0) {
-        for (let op of oracion.palabras) {
-            let found = (datosPagina.palabras || []).find(dp => 
-                dp.texto === op.texto && 
-                Math.abs(dp.bbox[0] - op.bbox[0]) <= 3 && 
-                Math.abs(dp.bbox[1] - op.bbox[1]) <= 3
-            );
-            palabrasEncontradas.push(found || op);
-        }
-    }
-
-    palabrasEncontradas.sort((a, b) => {
-        let yA = Math.floor(a.bbox[1] / 10);
-        let yB = Math.floor(b.bbox[1] / 10);
-        if (yA === yB) return a.bbox[0] - b.bbox[0];
-        return yA - yB;
-    });
-
     return palabrasEncontradas;
 }
 
+function restaurarOracionesRecortadas() {
+    if (typeof datosPagina === 'undefined' || !datosPagina || !Array.isArray(datosPagina.oraciones)) return;
+    for (const orac of datosPagina.oraciones) {
+        if (orac && orac._textoOriginal !== undefined) {
+            orac.texto = orac._textoOriginal;
+            delete orac._textoOriginal;
+        }
+        if (orac && orac._palabrasOriginales !== undefined) {
+            orac.palabras = orac._palabrasOriginales;
+            delete orac._palabrasOriginales;
+        }
+    }
+}
+window.restaurarOracionesRecortadas = restaurarOracionesRecortadas;
+
 // --- FUNCIÓN DE LECTURA MANUAL (VERSIÓN INTEGRAL V23) ---
 function empezarDesdePalabra(palabraObj) {
+    restaurarOracionesRecortadas();
+    window.palabraPausada = null;
     let idx = buscarOracionPorGeometria(palabraObj);
     if (idx === -1) return;
 
@@ -564,10 +568,28 @@ function empezarDesdePalabra(palabraObj) {
     let todasLasPalabras = obtenerPalabrasDeOracion(oracionActiva);
     let indicePalabra = todasLasPalabras.indexOf(palabraObj);
 
-    if (indicePalabra === -1) {
+    if (indicePalabra === -1 && palabraObj && palabraObj.bbox) {
         indicePalabra = todasLasPalabras.findIndex(p =>
-            p.bbox[0] === palabraObj.bbox[0] && p.bbox[1] === palabraObj.bbox[1]
+            p.bbox && Math.abs(p.bbox[0] - palabraObj.bbox[0]) <= 4 && Math.abs(p.bbox[1] - palabraObj.bbox[1]) <= 4
         );
+    }
+    if (indicePalabra === -1 && palabraObj && palabraObj.bbox) {
+        // Si se hizo clic sobre un token filtrado (ej. superíndice), buscar la palabra válida más cercana en la misma línea
+        let bestIdx = -1;
+        let bestDist = Infinity;
+        const targetX = palabraObj.bbox[0];
+        const targetY = (palabraObj.bbox[1] + palabraObj.bbox[3]) / 2;
+        for (let k = 0; k < todasLasPalabras.length; k++) {
+            const b = todasLasPalabras[k].bbox;
+            if (!b) continue;
+            const cy = (b[1] + b[3]) / 2;
+            const d = Math.abs(cy - targetY) * 4 + Math.abs(b[0] - targetX);
+            if (d < bestDist) {
+                bestDist = d;
+                bestIdx = k;
+            }
+        }
+        if (bestIdx !== -1) indicePalabra = bestIdx;
     }
     if (indicePalabra === -1) indicePalabra = 0;
 
@@ -601,19 +623,20 @@ function empezarDesdePalabra(palabraObj) {
     // reproducirSecuencia ya maneja TODO: modo solo_traduccion, aprendizaje,
     // subtítulos y lectura normal.
     if (datosPagina && datosPagina.oraciones && datosPagina.oraciones[idx]) {
-        // Guardamos el texto original por si acaso
-        const textoOriginalOracion = datosPagina.oraciones[idx].texto;
-        const palabrasOriginales = datosPagina.oraciones[idx].palabras;
+        if (datosPagina.oraciones[idx]._textoOriginal === undefined) {
+            datosPagina.oraciones[idx]._textoOriginal = datosPagina.oraciones[idx].texto;
+        }
+        if (datosPagina.oraciones[idx]._palabrasOriginales === undefined) {
+            datosPagina.oraciones[idx]._palabrasOriginales = datosPagina.oraciones[idx].palabras;
+        }
 
-        // Sobreescribimos temporalmente con el fragmento recortado
+        // Sobreescribimos temporalmente con el fragmento recortado solo durante esta lectura parcial
         datosPagina.oraciones[idx].texto = fragmentoTexto;
         datosPagina.oraciones[idx].palabras = visualesFinales;
+        window._oracionRecortadaActivaIdx = idx;
 
         // Lanzamos la secuencia completa (traducción incluida)
-        reproducirSecuencia(idx).finally(() => {
-            // (No restauramos: la oración se sobreescribirá en el siguiente ciclo
-            //  o cuando se vuelva a procesar la página. No genera efectos secundarios.)
-        });
+        reproducirSecuencia(idx);
     } else {
         // Fallback: si no hay datos de oración, llamamos directo
         hablarTexto(fragmentoTexto, () => {

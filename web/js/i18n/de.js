@@ -840,5 +840,7 @@ window.LIRA_I18N["de"] = {
     "lbl-tienda-requiere-permiso": "Erfordert Hugging-Face-Freigabe",
     "ttl-abrir-hf-repo": "Modellseite auf Hugging Face öffnen",
     "msg-tienda-error-401": "Dieses Modell erfordert eine Autorisierung auf Hugging Face. Öffnen Sie die Modellseite auf Hugging Face, akzeptieren Sie die Bedingungen (oder warten Sie auf die Freigabe) und hinterlegen Sie Ihr Token über das Schloss-Symbol.",
-    "lbl-token-hf-sesion-activa": "Sie haben ein Hugging-Face-Token gespeichert"
+    "lbl-token-hf-sesion-activa": "Sie haben ein Hugging-Face-Token gespeichert",
+    "lbl-no-sup": "Ohne Hoch.²",
+    "lbl-no-sub": "Ohne Tief.₂"
 };

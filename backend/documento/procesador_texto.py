@@ -105,11 +105,14 @@ def aplicar_reemplazos(texto, diccionario_activo, filtros=None, modo_teatro=Fals
     # 3. PROTECCIÓN DECIMAL (36.5 -> 36 punto 5)
     texto = re.sub(r'(\d)\.(\d)', r'\1 punto \2', texto)
     
-    # 4. PROCESAMIENTO DE REFERENCIAS
-    if filtros.get('chk-referencias'):
+    # 4. PROCESAMIENTO DE SUPERÍNDICES Y SUBÍNDICES (sin borrado ciego de CO2, SpO2, B12, T4)
+    omitir_sup = filtros.get('chk-superindices', filtros.get('omitirSuperindices', filtros.get('chk-referencias', True)))
+    omitir_sub = filtros.get('chk-subindices', filtros.get('omitirSubindices', False))
+    if omitir_sup:
         texto = re.sub(r'[⁰¹²³⁴⁵⁶⁷⁸⁹]', '', texto)
         texto = re.sub(r'\[\d{1,3}\]', '', texto)
-        texto = re.sub(r'([a-zA-Záéíóúñ])\d{1,3}([.,;:?\s]|$)', r'\1\2', texto)
+    if omitir_sub:
+        texto = re.sub(r'[₀₁₂₃₄₅₆₇₈₉]', '', texto)
 
     # 📚 DICCIONARIO DE ABREVIATURAS
     if diccionario_activo:
@@ -236,24 +239,33 @@ def ordenar_palabras_por_lineas_top_down(palabras_col):
         y0, y1 = p[1], p[3]
         centro_y = (y0 + y1) / 2.0
         altura_p = max(1.0, y1 - y0)
-        
-        # Buscar si pertenece a alguna línea ya abierta
-        asignado = False
+        tipo_script = p[8] if len(p) > 8 else None
+
+        # Asignar a la línea abierta más cercana dentro de la tolerancia
+        mejor_linea = None
+        mejor_dist = None
         for linea in lineas:
-            # Calcular la cota vertical promedio de la línea
             y_min_linea = min(item[1] for item in linea)
             y_max_linea = max(item[3] for item in linea)
             centro_linea = (y_min_linea + y_max_linea) / 2.0
             altura_promedio = max(1.0, (y_max_linea - y_min_linea))
-            
-            # Tolerancia: el centroide cae dentro del rango o a menos del 55% de la altura
+
+            # Anclaje simétrico: 'sup' por su borde inferior, 'sub' por su borde superior
+            if tipo_script == 'sup':
+                dist = abs(y1 - centro_linea)
+            elif tipo_script == 'sub':
+                dist = abs(y0 - centro_linea)
+            else:
+                dist = abs(centro_y - centro_linea)
+
             tolerancia = max(altura_p, altura_promedio) * 0.55
-            if abs(centro_y - centro_linea) <= tolerancia:
-                linea.append(p)
-                asignado = True
-                break
-        
-        if not asignado:
+            if dist <= tolerancia and (mejor_dist is None or dist < mejor_dist):
+                mejor_dist = dist
+                mejor_linea = linea
+
+        if mejor_linea is not None:
+            mejor_linea.append(p)
+        else:
             lineas.append([p])
             
     # 2. Ordenar las líneas verticalmente por su centro Y y cada línea horizontalmente por x0
@@ -361,12 +373,44 @@ def organizar_palabras_con_cortes_y_limites(palabras_raw, lista_cortes_v, limite
 
 
 
+def _pretokenizar_palabras(palabras):
+    """Divide puntos pegados (ej. '(2003).Treven') repartiendo [x0, x1] proporcionalmente, protegiendo números y siglas."""
+    if not palabras:
+        return palabras
+    resultado = []
+    # Patrón: cierre/letra (no dígito suelto ni abreviatura numérica) seguido de '.' y mayúscula/apertura sin espacio
+    patron_corte = re.compile(r'^(.+?[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\)\]\»\"\”\’]\.)([A-ZÁÉÍÓÚÑ\(\[\"\“\‘].+)$')
+    for p in palabras:
+        txt = p[4]
+        if (
+            '.' in txt
+            and not re.search(r'\d\.\d', txt)
+            and not re.match(r'^(?:No|Fig|Figs|Vol|Art|Cap|Sec|v)\.\d', txt, re.IGNORECASE)
+            and not re.match(r'^(?:[A-Za-z]\.){2,}$', txt)
+        ):
+            m = patron_corte.match(txt)
+            if m:
+                parte1, parte2 = m.group(1), m.group(2)
+                x0, y0, x1, y1 = p[0], p[1], p[2], p[3]
+                total_len = max(1, len(txt))
+                x_mid = x0 + (x1 - x0) * (len(parte1) / total_len)
+                resto = tuple(p[5:]) if len(p) > 5 else ()
+                resultado.append((x0, y0, x_mid, y1, parte1, *resto))
+                resultado.append((x_mid, y0, x1, y1, parte2, *resto))
+                continue
+        resultado.append(p)
+    return resultado
+
+
 def procesar_oraciones_de_palabras(palabras, dict_activo, filtros_externos=None, estructura_ia=None):
+    import statistics
+
+    palabras = _pretokenizar_palabras(palabras)
     oraciones = []
     texto_acumulado = []
     rects_acumulados = []
     palabras_objetos = []
-    parentesis_abiertos = 0 
+    parentesis_abiertos = 0
 
     # Mapa de cajas estructurales (DocLayout-YOLO: titulo / subtitulo / parrafo)
     mapa_cajas_ia = None
@@ -381,134 +425,221 @@ def procesar_oraciones_de_palabras(palabras, dict_activo, filtros_externos=None,
                     idx_caja = idx_b
                     break
             mapa_cajas_ia.append(idx_caja)
-    
-    # Calcular el margen izquierdo de la página para el detector de sangría
-    margen_izquierdo = min([p[0] for p in palabras]) if palabras else 0
-    
-    # Calcular la altura modal (Size_body) para comparar títulos de forma robusta
-    alturas_muestras = [round(p[3] - p[1], 1) for p in palabras] if palabras else []
-    altura_moda = max(set(alturas_muestras), key=alturas_muestras.count) if alturas_muestras else 10.0
-    
+
+    # Geometría adaptativa local (sin margen_izquierdo global ni umbral fijo 8.5)
+    alturas_validas = [max(1.0, p[3] - p[1]) for p in palabras] if palabras else [10.0]
+    altura_moda = statistics.median(alturas_validas) if alturas_validas else 10.0
+    anchos_char = [
+        (p[2] - p[0]) / len(p[4])
+        for p in palabras
+        if len(p[4]) > 0 and (p[2] - p[0]) > 0
+    ]
+    w_char = statistics.median(anchos_char) if anchos_char else max(3.5, altura_moda * 0.45)
+    min_x0_col = min((p[0] for p in palabras), default=0.0)
+    max_x1_col = max((p[2] for p in palabras), default=400.0)
+    ancho_columna_local = max(80.0, max_x1_col - min_x0_col)
+
+    brechas_linea = []
+    for k in range(len(palabras) - 1):
+        p_cur, p_nxt = palabras[k], palabras[k + 1]
+        if (p_nxt[1] - p_cur[1]) > (altura_moda * 0.45):
+            gap = max(0.0, p_nxt[1] - p_cur[3])
+            if gap <= (2.2 * altura_moda):
+                brechas_linea.append(gap)
+    dy_modal = max(0.25 * altura_moda, statistics.median(brechas_linea)) if len(brechas_linea) >= 3 else (0.35 * altura_moda)
+
     # Priorizamos filtros directos sobre lectura de disco para velocidad
     if filtros_externos:
-        omitir_ref = filtros_externos.get('chk-referencias', True)
+        omitir_sup = filtros_externos.get('chk-superindices', filtros_externos.get('omitirSuperindices', filtros_externos.get('chk-referencias', True)))
+        omitir_sub = filtros_externos.get('chk-subindices', filtros_externos.get('omitirSubindices', False))
         usar_bloques = filtros_externos.get('usarBloquesNativos', True)
         umbral_mult = float(filtros_externos.get('sensibilidadSalto', 0.5))
         usar_sangria = filtros_externos.get('detectarSangria', True)
     else:
-        ajustes = cargar_ajustes_lectura() # Usa la versión blindada del Bloque 1
-        omitir_ref = ajustes.get('omitirReferencias', True)
+        ajustes = cargar_ajustes_lectura()
+        omitir_sup = ajustes.get('omitirSuperindices', ajustes.get('omitirReferencias', True))
+        omitir_sub = ajustes.get('omitirSubindices', False)
         usar_bloques = ajustes.get('usarBloquesNativos', True)
         umbral_mult = float(ajustes.get('sensibilidadSalto', 0.5))
         usar_sangria = ajustes.get('detectarSangria', True)
 
+    patron_lista_vineta = re.compile(r'^(?:[•\-–—*▪►]|\d+[.)]|[a-zA-Z][.)])')
+    patron_cierre = re.compile(r'(?:[.?!][)\]"\'”’»]?|[)\]"\'”’»][.?!])$')
+    patron_letra = re.compile(r'[a-zA-ZÁÉÍÓÚáéíóúñÑüÜ]')
+    siglas_protegidas = {'dr.', 'dra.', 'sr.', 'sra.', 'prof.', 'fig.', 'figs.', 'vs.', 'et.', 'al.', 'e.g.', 'i.e.', 'p.', 'pp.', 'vol.', 'no.'}
+    margen_base_columna = min_x0_col
+    inicio_linea_x0 = palabras[0][0] if palabras else 0.0
+    inicio_linea_txt = palabras[0][4] if palabras else ""
+    inicio_linea_alto = (palabras[0][3] - palabras[0][1]) if palabras else altura_moda
+
+    def _es_abreviatura(token):
+        tok = re.sub(r'[*_]', '', (token or '')).lower().strip()
+        if not patron_letra.search(tok):
+            return False
+        ultima = tok.split()[-1] if tok.split() else tok
+        if ultima in siglas_protegidas or tok in siglas_protegidas:
+            return True
+        if re.match(r'^(?:[a-záéíóúñ]\.){2,}$', ultima, re.IGNORECASE):
+            return True
+        if re.search(r'\d+[.)]', ultima):
+            return False
+        return len(ultima.replace('.', '')) <= 2 and ultima.endswith('.')
+
+    def _tipo(idx):
+        if 0 <= idx < len(palabras):
+            q = palabras[idx]
+            return q[8] if len(q) > 8 else None
+        return None
 
     for i, p in enumerate(palabras):
         x0, y0, x1, y1, txt = p[0], p[1], p[2], p[3], p[4]
         altura_palabra = y1 - y0
-        
-        # --- PROCESAMIENTO DE REFERENCIAS ---
-        if omitir_ref:
-            es_superindice = False
-            # A. Detección por altura relativa (Baseline)
-            if i > 0:
-                prev_y0, prev_y1 = palabras[i-1][1], palabras[i-1][3]
-                punto_medio_prev = prev_y0 + ((prev_y1 - prev_y0) / 2)
-                if y1 < punto_medio_prev: es_superindice = True
+        tipo_script = p[8] if len(p) > 8 else None
+        token_omitido = False
+        cierre_por_sup = False
 
-            # B. Números pegados (Ej: glucosa2 o phase.2)
-            match_pegado = re.search(r'([a-zA-Záéíóúñ][.,]?)(\d{1,3})([.,]?)$', txt)
-            if match_pegado and altura_palabra < 10:
-                txt = txt.replace(match_pegado.group(2), "")
-
-            # C. Filtro de omisión (Números flotantes pequeños / superíndices)
-            txt_limpio = txt.strip().replace(',', '').replace('.', '')
-            if (es_superindice or (altura_palabra < 8.5)) and txt_limpio.isdigit() and len(txt_limpio) <= 3:
-                # Si el superíndice traía un punto (ej: ".2" o "2."), preservamos el punto en el texto acumulado
-                if '.' in txt and texto_acumulado and not texto_acumulado[-1].endswith('.'):
-                    texto_acumulado[-1] += '.'
+        # --- PROCESAMIENTO DE SUPERÍNDICES Y SUBÍNDICES ---
+        if omitir_sup:
+            if tipo_script == 'sup':
+                token_omitido = True
+                if re.search(r'[.?!]', txt) and texto_acumulado:
+                    if not texto_acumulado[-1].endswith(('.', '?', '!')):
+                        texto_acumulado[-1] += '.'
+                    cierre_por_sup = True
+            elif txt.strip() in {',', '-', '–', '—'} and _tipo(i - 1) == 'sup' and _tipo(i + 1) == 'sup':
                 continue
+            else:
+                txt_sin_sup = re.sub(r'[⁰¹²³⁴⁵⁶⁷⁸⁹]+', '', txt)
+                if txt_sin_sup != txt:
+                    if not txt_sin_sup.strip():
+                        token_omitido = True
+                        if re.search(r'[.?!]', txt) and texto_acumulado:
+                            if not texto_acumulado[-1].endswith(('.', '?', '!')):
+                                texto_acumulado[-1] += '.'
+                            cierre_por_sup = True
+                    else:
+                        txt = txt_sin_sup
 
-        # Monitor de paréntesis
-        parentesis_abiertos += (txt.count('(') + txt.count('['))
-        parentesis_abiertos -= (txt.count(')') + txt.count(']'))
-        if parentesis_abiertos < 0:
-            parentesis_abiertos = 0
-        
-        texto_acumulado.append(txt)
-        rects_acumulados.append([x0, y0, x1, y1])
-        palabras_objetos.append({"texto": txt, "bbox": [int(x0), int(y0), int(x1), int(y1)]})
-        
-        # --- LÓGICA DE SEGMENTACIÓN HÍBRIDA ROBUSTA (DLA Coalescence V2 Blindada) ---
-        # Detectar puntuación final incluso si viene pegada a paréntesis/corchetes, ej: "(2).", "[12].", "paciente."
-        es_final = bool(re.search(r'[.?!:;][)\]"\'”’]?$', txt))
+        if not token_omitido and omitir_sub:
+            if tipo_script == 'sub':
+                continue
+            txt_sin_sub = re.sub(r'[₀₁₂₃₄₅₆₇₈₉]+', '', txt)
+            if txt_sin_sub != txt:
+                if not txt_sin_sub.strip():
+                    continue
+                txt = txt_sin_sub
+
+        if token_omitido and not cierre_por_sup:
+            continue
+
+        es_solo_puntuacion = not patron_letra.search(txt) and not re.search(r'\d', txt)
+
+        if not token_omitido:
+            # Monitor de paréntesis
+            parentesis_abiertos += (txt.count('(') + txt.count('['))
+            parentesis_abiertos -= (txt.count(')') + txt.count(']'))
+            if parentesis_abiertos < 0:
+                parentesis_abiertos = 0
+
+            if es_solo_puntuacion and texto_acumulado:
+                texto_acumulado[-1] += txt.strip()
+            else:
+                texto_acumulado.append(txt)
+            rects_acumulados.append([x0, y0, x1, y1])
+            palabras_objetos.append({"texto": txt, "bbox": [int(x0), int(y0), int(x1), int(y1)]})
+
+        token_eval = texto_acumulado[-1] if texto_acumulado else txt
+
+        # --- LÓGICA DE SEGMENTACIÓN HÍBRIDA ROBUSTA ---
+        es_numeracion_lista = (
+            len(texto_acumulado) == 1
+            and bool(re.match(r'^\d+(?:\.\d+)*\.$|^\d+[.)]$', token_eval.strip()))
+        )
+        es_final = (cierre_por_sup or bool(patron_cierre.search(token_eval))) and not es_numeracion_lista
+        termina_suspensivos = token_eval.rstrip().endswith(('...', '…'))
+        termina_punto_dentro_paren = bool(re.search(r'[.?!][)\]]$', token_eval.strip()))
+        termina_dos_puntos = bool(re.search(r'[:;][)\]"\'”’»]?$', token_eval))
+        if termina_dos_puntos and len(texto_acumulado) >= 25:
+            es_final = True
         es_salto = False
         es_titulo_aislado = False
-        
+        sig_inicia_coma = False
+
         if i + 1 < len(palabras):
-            siguiente_txt = palabras[i+1][4]
-            siguiente_x0 = palabras[i+1][0]
-            siguiente_y0 = palabras[i+1][1]
-            siguiente_y1 = palabras[i+1][3]
-            
-            # Altura efectiva de la línea
+            siguiente_txt = palabras[i + 1][4]
+            siguiente_x0 = palabras[i + 1][0]
+            siguiente_y0 = palabras[i + 1][1]
+            siguiente_y1 = palabras[i + 1][3]
+
+            if termina_suspensivos:
+                es_final = bool(re.match(r'^[A-ZÁÉÍÓÚÜÑ¿¡«(]', siguiente_txt))
+            elif termina_punto_dentro_paren and re.match(r'^[a-záéíóúüñ]', siguiente_txt):
+                es_final = False
+            elif es_final and not termina_dos_puntos and re.match(r'^[a-záéíóúüñ]', siguiente_txt):
+                es_final = False
+            sig_inicia_coma = bool(re.match(r'^[,;]', siguiente_txt))
+
             altura_referencia = max(altura_palabra, siguiente_y1 - siguiente_y0, 8.0)
             brecha_vertical = siguiente_y0 - y1
             es_nueva_linea = (siguiente_y0 - y0) > (altura_referencia * 0.45)
-            
-            # Regla 1: Encabezado/Título aislado (ej: "Introduction", "Abstract", "INTRODUCCIÓN", "Resumen")
-            # Si hay cambio de línea y lo acumulado tiene 1 a 3 palabras y está solo en su línea
-            if es_nueva_linea and len(texto_acumulado) <= 3:
+
+            if es_nueva_linea and len(texto_acumulado) <= 8 and not termina_dos_puntos and not es_final:
                 frase_acumulada_temp = " ".join(texto_acumulado).strip()
                 letras = re.sub(r'[^a-zA-ZáéíóúñÁÉÍÓÚÑ]', '', frase_acumulada_temp)
-                
-                # A: Mayúsculas (ej: "INTRODUCCIÓN")
                 es_mayus = bool(letras and len(letras) >= 4 and letras.isupper())
-                # B: Título en renglón solitario con salto visual apreciable o fuente mayor
-                es_titulo_solitario = bool(brecha_vertical >= (altura_referencia * 0.4) or altura_palabra >= (altura_moda * 1.15))
-                
+                es_titulo_solitario = bool(
+                    (len(texto_acumulado) <= 3 and (brecha_vertical >= (altura_referencia * 0.4) or altura_palabra >= (altura_moda * 1.15)))
+                    or (len(texto_acumulado) <= 8 and brecha_vertical >= (altura_referencia * 0.55) and bool(re.match(r'^[A-ZÁÉÍÓÚÑ]', texto_acumulado[0])))
+                )
                 if es_mayus or es_titulo_solitario:
                     es_titulo_aislado = True
-            
-            # Regla 2: Sangría de nuevo párrafo
-            # Si la siguiente línea tiene un sangrado evidente a la derecha de la columna
-            # y la línea actual ya terminó con punto o cita (ej: "...fast phase.²")
-            tiene_sangria_sig = siguiente_x0 > (margen_izquierdo + (altura_referencia * 1.4))
+
+            # Sangría híbrida adaptativa con candados (viñeta / letra capital)
+            diff_margen = siguiente_x0 - margen_base_columna
+            es_lista_actual = bool(patron_lista_vineta.match(inicio_linea_txt.strip()))
+            es_letra_capital = inicio_linea_alto > (1.8 * altura_moda)
+            tiene_sangria_sig = (
+                (1.5 * w_char) <= diff_margen <= (0.22 * ancho_columna_local)
+                and (siguiente_x0 > inicio_linea_x0 + 1.0 * w_char or es_final)
+                and not es_lista_actual
+                and not es_letra_capital
+            )
+
             if es_nueva_linea and tiene_sangria_sig and es_final:
                 es_salto = True
-            
-            # Si la siguiente palabra empieza con Mayúscula y la actual termina con punto real,
-            # el punto es concluyente y forzamos reinicio de paréntesis
+
             sig_empieza_mayus = bool(re.match(r'^[A-ZÁÉÍÓÚÑ]', siguiente_txt))
             if es_final and sig_empieza_mayus:
                 parentesis_abiertos = 0
-            
-            if mapa_cajas_ia is not None and (mapa_cajas_ia[i] != mapa_cajas_ia[i+1]) and (mapa_cajas_ia[i] != -1 or mapa_cajas_ia[i+1] != -1):
+
+            if mapa_cajas_ia is not None and (mapa_cajas_ia[i] != mapa_cajas_ia[i + 1]) and (mapa_cajas_ia[i] != -1 or mapa_cajas_ia[i + 1] != -1):
                 es_salto = True
 
+            salto_vertical_adaptativo = brecha_vertical > (dy_modal * (1.35 + umbral_mult))
+
             if usar_bloques:
-                # LÓGICA AUTOMÁTICA BLINDADA:
                 bloque_actual = p[5] if len(p) > 5 else 0
-                siguiente_bloque = palabras[i+1][5] if len(palabras[i+1]) > 5 else 0
-                
+                siguiente_bloque = palabras[i + 1][5] if len(palabras[i + 1]) > 5 else 0
                 if siguiente_bloque != bloque_actual:
-                    if es_final or es_titulo_aislado or brecha_vertical > (altura_referencia * 1.3):
+                    if es_final or es_titulo_aislado or salto_vertical_adaptativo:
                         es_salto = True
             else:
-                # LÓGICA MANUAL (GEOMÉTRICA)
                 if es_nueva_linea:
-                    if brecha_vertical > (altura_referencia * umbral_mult) or es_titulo_aislado: 
+                    if salto_vertical_adaptativo or es_titulo_aislado:
                         es_salto = True
                     elif usar_sangria and tiene_sangria_sig:
-                        if es_final or brecha_vertical > (altura_referencia * 0.6):
+                        if es_final or brecha_vertical > (dy_modal * 0.6):
                             es_salto = True
 
-        # Siglas y abreviaturas comunes protegidas (para no cortar en "Dr.", "Fig.", "et al.", "vs.")
-        siglas_protegidas = {'dr.', 'dra.', 'sr.', 'sra.', 'prof.', 'fig.', 'figs.', 'vs.', 'et.', 'al.', 'e.g.', 'i.e.', 'p.', 'pp.', 'vol.', 'no.'}
-        txt_lower = txt.lower().strip()
-        es_abreviatura = txt_lower in siglas_protegidas or (len(txt.replace('.', '')) <= 2 and not bool(re.search(r'\d+[.)]', txt)))
-        
-        esperar = (parentesis_abiertos > 0) or es_abreviatura
+            if es_nueva_linea:
+                inicio_linea_x0 = siguiente_x0
+                inicio_linea_txt = siguiente_txt
+                inicio_linea_alto = siguiente_y1 - siguiente_y0
+
+        # Siglas y abreviaturas comunes protegidas (exige al menos una letra)
+        es_abreviatura = _es_abreviatura(token_eval)
+
+        esperar = (parentesis_abiertos > 0) or es_abreviatura or sig_inicia_coma
         
         # Cortar si termina en punto legítimo, o si es un salto de párrafo real, o un título aislado
         cortar_ahora = (es_final and not esperar) or (es_salto and not esperar) or es_titulo_aislado
@@ -568,26 +699,20 @@ def reaplicar_filtros_desde_snapshot(dict_activo, filtros=None, resegmentar=Fals
     # RE-ENSAMBLAJE (Segmentación en vivo)
     if resegmentar and estado_app.snapshot_palabras_raw:
         pagina = estado_app.doc[estado_app.pagina_actual_global] if estado_app.doc else None
+        _doc_key = (getattr(estado_app.doc, "name", "") if estado_app.doc else "") or "doc"
+        _est_ia = estado_app.cache_estructura_layout.get((_doc_key, int(estado_app.pagina_actual_global)))
         if pagina and (estado_app.snapshot_cortes_v or estado_app.snapshot_limites_h):
             palabras_organizadas = organizar_palabras_con_cortes_y_limites(
                 estado_app.snapshot_palabras_raw, estado_app.snapshot_cortes_v, estado_app.snapshot_limites_h, pagina.rect.width, pagina.rect.height
             )
-            estado_app.snapshot_oraciones_raw = procesar_oraciones_de_palabras(palabras_organizadas, dict_activo, filtros)
+            estado_app.snapshot_oraciones_raw = procesar_oraciones_de_palabras(palabras_organizadas, dict_activo, filtros, estructura_ia=_est_ia)
         else:
-            estado_app.snapshot_oraciones_raw = procesar_oraciones_de_palabras(estado_app.snapshot_palabras_raw, dict_activo, filtros)
+            estado_app.snapshot_oraciones_raw = procesar_oraciones_de_palabras(estado_app.snapshot_palabras_raw, dict_activo, filtros, estructura_ia=_est_ia)
 
-    omitir_ref = filtros.get('chk-referencias', True)
     nuevas_oraciones = []
-    
-    for oracion in estado_app.snapshot_oraciones_raw:
-        palabras_limpias = []
-        for p_obj in oracion['palabras']:
-            txt_p = p_obj['texto']
-            if omitir_ref:
-                match = re.search(r'([a-zA-Záéíóúñ])(\d{1,3})([.,]?)$', txt_p)
-                if match: txt_p = txt_p.replace(match.group(2), "")
-            palabras_limpias.append(txt_p)
 
+    for oracion in estado_app.snapshot_oraciones_raw:
+        palabras_limpias = [p_obj['texto'] for p_obj in oracion['palabras']]
         texto_reconstruido = " ".join(palabras_limpias).strip()
         
         # Aplicamos reemplazos globales

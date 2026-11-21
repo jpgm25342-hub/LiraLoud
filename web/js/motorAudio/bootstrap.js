@@ -59,7 +59,9 @@ async function guardarTodosAjustes(forceRamReload = false) {
             "omitirCorch": document.getElementById('chk-corch')?.checked ?? true,
             "omitirLlaves": document.getElementById('chk-llaves')?.checked ?? true,
             "omitirUrls": document.getElementById('chk-urls')?.checked ?? true,
-            "omitirReferencias": document.getElementById('chk-referencias')?.checked ?? true,
+            "omitirReferencias": document.getElementById('chk-superindices')?.checked ?? true,
+            "omitirSuperindices": document.getElementById('chk-superindices')?.checked ?? true,
+            "omitirSubindices": document.getElementById('chk-subindices')?.checked ?? false,
             "usarBloquesNativos": document.getElementById('chk-usar-bloques')?.checked ?? true,
             "modo_subrayador": window.modoSubrayadorActivo ?? false,
             "modo_borrador": window.modoBorradorActivo ?? false,
@@ -400,7 +402,8 @@ window.onload = async () => {
         safeCheck('chk-corch', ajustes?.omitirCorch ?? true);
         safeCheck('chk-llaves', ajustes?.omitirLlaves ?? true);
         safeCheck('chk-urls', ajustes?.omitirUrls ?? true);
-        safeCheck('chk-referencias', ajustes?.omitirReferencias ?? true);
+        safeCheck('chk-superindices', ajustes?.omitirSuperindices ?? ajustes?.omitirReferencias ?? true);
+        safeCheck('chk-subindices', ajustes?.omitirSubindices ?? false);
         safeCheck('chk-usar-bloques', ajustes?.usarBloquesNativos ?? true);
 
         const rngSalto = document.getElementById('rng-sensibilidad-salto');

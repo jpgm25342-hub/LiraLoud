@@ -147,7 +147,7 @@ def cargar_ajustes_lectura():
         "colorGuia": "#00b4ff", "padGuia": 2, "llenado": False,
         "margenPDF": 20, "seguirTexto": True,
         "omitirParen": True, "omitirCorch": True, "omitirLlaves": True,
-        "omitirUrls": True, "omitirReferencias": True, "alto_rendimiento": False,
+        "omitirUrls": True, "omitirReferencias": True, "omitirSuperindices": True, "omitirSubindices": False, "alto_rendimiento": False,
         "tema_oscuro": False, "pausa_sistema": False, "ducking_volumen": False,
         "ducking_nivel": 20,
         "traduccion_activa": False,

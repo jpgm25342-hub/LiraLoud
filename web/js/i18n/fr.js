@@ -840,5 +840,7 @@ window.LIRA_I18N["fr"] = {
     "lbl-tienda-requiere-permiso": "Autorisation Hugging Face requise",
     "ttl-abrir-hf-repo": "Ouvrir la page du modèle sur Hugging Face",
     "msg-tienda-error-401": "Ce modèle nécessite une autorisation sur Hugging Face. Ouvrez sa page sur Hugging Face, acceptez les conditions (ou attendez l’approbation de l’auteur) et configurez votre jeton via l’icône de cadenas.",
-    "lbl-token-hf-sesion-activa": "Vous avez un jeton Hugging Face enregistré"
+    "lbl-token-hf-sesion-activa": "Vous avez un jeton Hugging Face enregistré",
+    "lbl-no-sup": "Sans exp.²",
+    "lbl-no-sub": "Sans ind.₂"
 };

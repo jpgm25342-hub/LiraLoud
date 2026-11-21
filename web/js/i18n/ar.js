@@ -840,5 +840,7 @@ window.LIRA_I18N["ar"] = {
     "lbl-tienda-requiere-permiso": "يتطلب إذناً من Hugging Face",
     "ttl-abrir-hf-repo": "فتح صفحة النموذج على Hugging Face",
     "msg-tienda-error-401": "يتطلب هذا النموذج تصريحاً على Hugging Face. افتح صفحته على Hugging Face، ووافق على الشروط (أو انتظر موافقة المؤلف)، ثم أضف رمزك عبر أيقونة القفل في المتجر.",
-    "lbl-token-hf-sesion-activa": "لديك رمز Hugging Face محفوظ"
+    "lbl-token-hf-sesion-activa": "لديك رمز Hugging Face محفوظ",
+    "lbl-no-sup": "بدون علوي²",
+    "lbl-no-sub": "بدون سفلي₂"
 };

@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import gc
 import json
@@ -183,7 +184,8 @@ def editar_texto_pdf(pdf_path, pagina_idx, datos):
             pdf_path, pagina_idx, datos, doc_obj=estado_app.doc
         )
         if not res.get("success") and res.get("error") == "NEEDS_FULL_SAVE":
-            return _ejecutar_full_save_seguro(pdf_path, res)
+            res = _ejecutar_full_save_seguro(pdf_path, res)
+        invalidar_layout_pagina(pagina_idx)
         return res
 
 
@@ -207,7 +209,9 @@ def crear_cuadro_texto_pdf(pdf_path, pagina_idx, bbox):
             doc_obj=estado_app.doc,
         )
         if not res.get("success") and res.get("error") == "NEEDS_FULL_SAVE":
-            return _ejecutar_full_save_seguro(pdf_path, res)
+            res = _ejecutar_full_save_seguro(pdf_path, res)
+        invalidar_layout_pagina(pagina_idx)
+        return res
         return res
 
 
@@ -215,7 +219,7 @@ def crear_cuadro_texto_pdf(pdf_path, pagina_idx, bbox):
 # 2. CARGA Y SELECCIÓN DE DOCUMENTOS (PDF / EPUB / WORD / IMÁGENES)
 # ==========================================
 @eel.expose
-def cargar_documento(ruta):
+def cargar_documento(ruta, tipo_documento=None):
     """Carga un PDF (o EPUB, Word o Imagen convertidos) directamente desde una ruta, sin diálogo."""
     if estado_app.doc:
         try:
@@ -225,6 +229,11 @@ def cargar_documento(ruta):
         estado_app.doc = None
         gc.collect()
 
+    estado_app.tipo_documento = str(tipo_documento or "pdf")
+    estado_app.cache_estructura_layout = {}
+    estado_app.layouts_por_pagina = {}
+    estado_app.layout_lookahead_token += 1
+
     if ruta and os.path.exists(ruta):
         try:
             asegurar_permiso_escritura(ruta)
@@ -232,6 +241,8 @@ def cargar_documento(ruta):
             asegurar_permiso_escritura(ruta)
             estado_app.doc = fitz.open(ruta)
             estado_app.ruta_pdf_actual = ruta
+            if estado_app.tipo_documento != "texto_escrito":
+                _cargar_cache_layout_disco(ruta)
             return True
         except Exception as e:
             print(f"🔥 Error cargando documento {ruta}: {e}")
@@ -378,6 +389,61 @@ def obtener_vista_rapida_pagina(num):
         return None
 
 
+def _extraer_palabras_con_tipografia(pagina, sort=False):
+    """Extrae palabras con bbox y clasificación tipográfica ('sup', 'sub' o None) desde get_text('dict')."""
+    import statistics
+
+    dic = pagina.get_text("dict")
+    palabras = []
+    for b_idx, block in enumerate(dic.get("blocks", [])):
+        if block.get("type", 0) != 0:
+            continue
+        for l_idx, line in enumerate(block.get("lines", [])):
+            spans = [s for s in line.get("spans", []) if (s.get("text") or "").strip()]
+            if not spans:
+                continue
+            sizes = [float(s.get("size", 10.0) or 10.0) for s in spans]
+            baselines = [
+                float(s["origin"][1]) if isinstance(s.get("origin"), (list, tuple)) and len(s["origin"]) >= 2
+                else float(s.get("bbox", [0, 0, 0, 0])[3])
+                for s in spans
+            ]
+            s_linea = statistics.median(sizes) if sizes else 10.0
+            b_linea = statistics.median(baselines) if baselines else 0.0
+
+            w_idx = 0
+            for sp in spans:
+                txt_sp = sp.get("text", "")
+                bbox = sp.get("bbox", (0, 0, 0, 0))
+                sx0, sy0, sx1, sy1 = float(bbox[0]), float(bbox[1]), float(bbox[2]), float(bbox[3])
+                s_span = float(sp.get("size", s_linea) or s_linea)
+                b_span = (
+                    float(sp["origin"][1])
+                    if isinstance(sp.get("origin"), (list, tuple)) and len(sp["origin"]) >= 2
+                    else sy1
+                )
+                flags = int(sp.get("flags", 0) or 0)
+
+                tipo_script = None
+                if (flags & 1) or (s_linea > 0 and (s_span / s_linea) <= 0.82 and ((b_linea - b_span) / s_linea) > 0.18):
+                    tipo_script = "sup"
+                elif s_linea > 0 and (s_span / s_linea) <= 0.82 and ((b_span - b_linea) / s_linea) > 0.12:
+                    tipo_script = "sub"
+
+                total_len = max(1, len(txt_sp))
+                span_w = max(0.0, sx1 - sx0)
+                for m in re.finditer(r"\S+", txt_sp):
+                    tok = m.group(0)
+                    wx0 = sx0 + (m.start() / total_len) * span_w
+                    wx1 = sx0 + (m.end() / total_len) * span_w
+                    palabras.append((wx0, sy0, wx1, sy1, tok, b_idx, l_idx, w_idx, tipo_script))
+                    w_idx += 1
+
+    if sort and palabras:
+        palabras.sort(key=lambda p: (round(p[1], 1), p[0]))
+    return palabras
+
+
 @eel.expose
 def obtener_pagina_data(
     num,
@@ -413,8 +479,18 @@ def obtener_pagina_data(
             "chk-corch": ajustes_json.get("omitirCorch", False),
             "chk-llaves": ajustes_json.get("omitirLlaves", False),
             "chk-barras": ajustes_json.get("omitirBarras", False),
-            "chk-referencias": ajustes_json.get("omitirReferencias", True),
+            "chk-referencias": ajustes_json.get("omitirSuperindices", ajustes_json.get("omitirReferencias", True)),
+            "chk-superindices": ajustes_json.get("omitirSuperindices", ajustes_json.get("omitirReferencias", True)),
+            "chk-subindices": ajustes_json.get("omitirSubindices", False),
         }
+
+        es_texto_escrito = getattr(estado_app, "tipo_documento", "pdf") == "texto_escrito"
+        if es_texto_escrito:
+            lista_cortes_v = None
+            limites_h = {}
+            zonas_excluidas = []
+            forzar_ocr = False
+            auto_ocr = False
 
         tiene_cortes_v = bool(lista_cortes_v and len(lista_cortes_v) > 0)
         tiene_limites_h = False
@@ -427,6 +503,17 @@ def obtener_pagina_data(
 
         usar_sort = not tiene_cortes_v and not tiene_limites_h
         doc_path = getattr(doc, "name", "doc_actual")
+
+        if not es_texto_escrito:
+            prev_lay = estado_app.layouts_por_pagina.get(int(num)) or {}
+            doc_key_cur = getattr(doc, "name", "") or "doc"
+            est_actual = estado_app.cache_estructura_layout.get((doc_key_cur, int(num))) or prev_lay.get("estructura")
+            estado_app.layouts_por_pagina[int(num)] = {
+                "cortesV": list(lista_cortes_v) if lista_cortes_v else [],
+                "limitesH": dict(limites_h) if isinstance(limites_h, dict) else {},
+                "zonasExcluidas": list(zonas_excluidas) if zonas_excluidas else [],
+                "estructura": est_actual,
+            }
 
         if forzar_ocr:
             print(f"🔍 [PY] Forzando RapidOCR en página {num}...")
@@ -456,12 +543,14 @@ def obtener_pagina_data(
                     except Exception:
                         pass
         else:
-            palabras_raw = pagina.get_text("words", sort=usar_sort)
+            palabras_raw = _extraer_palabras_con_tipografia(pagina, sort=usar_sort)
 
             auto_ocr_activo = (
-                auto_ocr if auto_ocr is not None else ajustes_json.get("auto_ocr", True)
+                False
+                if es_texto_escrito
+                else (auto_ocr if auto_ocr is not None else ajustes_json.get("auto_ocr", True))
             )
-            esta_cacheador = esta_en_cache_ocr(doc_path, num)
+            esta_cacheador = False if es_texto_escrito else esta_en_cache_ocr(doc_path, num)
 
             if len(palabras_raw) == 0 or esta_cacheador:
                 if esta_cacheador:
@@ -586,6 +675,10 @@ def obtener_pagina_data(
         try:
             _doc_key = getattr(doc, "name", "") or "doc"
             _est_ia = estado_app.cache_estructura_layout.get((_doc_key, int(num)))
+            if _est_ia is None and int(num) in estado_app.layouts_por_pagina:
+                _est_ia = estado_app.layouts_por_pagina[int(num)].get("estructura")
+                if _est_ia is not None:
+                    estado_app.cache_estructura_layout[(_doc_key, int(num))] = _est_ia
         except Exception:
             _est_ia = None
 
@@ -630,15 +723,81 @@ def obtener_pagina_data(
         return None
 
 
-def obtener_solo_texto_pagina_ligera(num, dict_activo):
+def _filtrar_palabras_por_exclusiones(palabras_raw, zonas_excluidas):
+    if not zonas_excluidas or not isinstance(zonas_excluidas, (list, tuple)):
+        return palabras_raw
+
+    def _palabra_en_exclusion(p, zonas):
+        cx = (p[0] + p[2]) / 2.0
+        cy = (p[1] + p[3]) / 2.0
+        for z in zonas:
+            if isinstance(z, (list, tuple)) and len(z) >= 4:
+                x0 = min(z[0], z[2])
+                x1 = max(z[0], z[2])
+                y0 = min(z[1], z[3])
+                y1 = max(z[1], z[3])
+                if x0 <= cx <= x1 and y0 <= cy <= y1:
+                    return True
+                ix0 = max(p[0], x0)
+                iy0 = max(p[1], y0)
+                ix1 = min(p[2], x1)
+                iy1 = min(p[3], y1)
+                if ix1 > ix0 and iy1 > iy0:
+                    area_inter = (ix1 - ix0) * (iy1 - iy0)
+                    area_palabra = max(1.0, (p[2] - p[0]) * (p[3] - p[1]))
+                    if (area_inter / area_palabra) >= 0.35:
+                        return True
+        return False
+
+    return [p for p in palabras_raw if not _palabra_en_exclusion(p, zonas_excluidas)]
+
+
+def obtener_solo_texto_pagina_ligera(num, dict_activo, layout_pagina=None, auto_layout=False):
     """Extrae oraciones de una página sin renderizar imágenes ni snapshots visuales."""
     doc = estado_app.doc
     if not doc or num < 0 or num >= len(doc):
         return []
     try:
         pagina = doc[num]
-        palabras_raw = pagina.get_text("words", sort=True)
-        if len(palabras_raw) == 0:
+        es_texto_escrito = getattr(estado_app, "tipo_documento", "pdf") == "texto_escrito"
+        doc_key = getattr(doc, "name", "") or "doc"
+
+        layout = None
+        if not es_texto_escrito:
+            if isinstance(layout_pagina, dict):
+                layout = layout_pagina
+            elif int(num) in estado_app.layouts_por_pagina:
+                layout = estado_app.layouts_por_pagina.get(int(num))
+            elif auto_layout:
+                try:
+                    res_ia = analizar_layout_pagina(doc, int(num))
+                    if isinstance(res_ia, dict) and res_ia.get("exito"):
+                        estado_app.cache_estructura_layout[(doc_key, int(num))] = res_ia.get("estructura")
+                        layout = {
+                            "cortesV": res_ia.get("cortesV") or [],
+                            "limitesH": res_ia.get("limitesH") or {},
+                            "zonasExcluidas": res_ia.get("zonasExcluidas") or [],
+                        }
+                        estado_app.layouts_por_pagina[int(num)] = layout
+                except Exception:
+                    layout = None
+
+        lista_cortes_v = (layout.get("cortesV") or []) if isinstance(layout, dict) else []
+        limites_h = (layout.get("limitesH") or {}) if isinstance(layout, dict) else {}
+        zonas_excluidas = (layout.get("zonasExcluidas") or []) if isinstance(layout, dict) else []
+
+        tiene_cortes_v = bool(lista_cortes_v and len(lista_cortes_v) > 0)
+        tiene_limites_h = False
+        if limites_h and isinstance(limites_h, dict):
+            for lim in limites_h.values():
+                if isinstance(lim, (list, tuple)) and len(lim) >= 2:
+                    if lim[0] > 5 or lim[1] < (pagina.rect.height - 5):
+                        tiene_limites_h = True
+                        break
+        usar_sort = not tiene_cortes_v and not tiene_limites_h
+
+        palabras_raw = _extraer_palabras_con_tipografia(pagina, sort=usar_sort)
+        if len(palabras_raw) == 0 and not es_texto_escrito:
             doc_path = getattr(doc, "name", "doc_actual")
             if esta_en_cache_ocr(doc_path, num):
                 palabras_ocr = obtener_palabras_cache_ocr(doc_path, num)
@@ -656,6 +815,9 @@ def obtener_solo_texto_pagina_ligera(num, dict_activo):
                     )
                 if palabras_ocr:
                     palabras_raw = palabras_ocr
+
+        if not es_texto_escrito and zonas_excluidas:
+            palabras_raw = _filtrar_palabras_por_exclusiones(palabras_raw, zonas_excluidas)
 
         ajustes_json = cargar_ajustes_lectura()
         recorte_val = ajustes_json.get("recortePDF", 0)
@@ -678,7 +840,17 @@ def obtener_solo_texto_pagina_ligera(num, dict_activo):
                 and (y_min_visible <= (p[1] + p[3]) / 2.0 <= y_max_visible)
             ]
 
-        oraciones_raw = procesar_oraciones_de_palabras(palabras_raw, None)
+        if not es_texto_escrito and (tiene_cortes_v or tiene_limites_h):
+            palabras_raw = organizar_palabras_con_cortes_y_limites(
+                palabras_raw,
+                lista_cortes_v,
+                limites_h,
+                pagina.rect.width,
+                pagina.rect.height,
+            )
+
+        _est_ia = None if es_texto_escrito else estado_app.cache_estructura_layout.get((doc_key, int(num)))
+        oraciones_raw = procesar_oraciones_de_palabras(palabras_raw, None, estructura_ia=_est_ia)
 
         textos_limpios = []
         for oracion in oraciones_raw:
@@ -727,20 +899,145 @@ def forzar_ocr_pagina_actual(
         return {"exito": False, "error": str(e)}
 
 
+def _huella_documento(ruta):
+    import hashlib
+    abs_p = os.path.abspath(ruta or "")
+    try:
+        st = os.stat(abs_p)
+        raw = f"{abs_p}|{st.st_size}|{int(st.st_mtime)}"
+    except OSError:
+        raw = abs_p
+    return hashlib.sha256(raw.encode("utf-8", errors="ignore")).hexdigest()[:24]
+
+
+def _ruta_cache_layout(ruta):
+    carpeta = os.path.join(estado_app.base_dir, "cache_layout")
+    os.makedirs(carpeta, exist_ok=True)
+    return os.path.join(carpeta, f"{_huella_documento(ruta)}.json")
+
+
+def _cargar_cache_layout_disco(ruta):
+    if not ruta:
+        return
+    try:
+        p = _ruta_cache_layout(ruta)
+        if os.path.exists(p):
+            with open(p, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                estado_app.layouts_por_pagina = {
+                    int(k): v for k, v in data.items() if isinstance(v, dict)
+                }
+                doc_key = getattr(estado_app.doc, "name", "") or ruta or "doc"
+                for k, v in estado_app.layouts_por_pagina.items():
+                    if isinstance(v, dict) and v.get("estructura") is not None:
+                        estado_app.cache_estructura_layout[(doc_key, int(k))] = v.get("estructura")
+    except Exception:
+        pass
+
+
+def _guardar_cache_layout_disco(ruta):
+    if not ruta or getattr(estado_app, "tipo_documento", "pdf") == "texto_escrito":
+        return
+    try:
+        p = _ruta_cache_layout(ruta)
+        serializable = {str(k): v for k, v in estado_app.layouts_por_pagina.items()}
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(serializable, f, ensure_ascii=False)
+    except Exception:
+        pass
+
+
 @eel.expose
-def autodetectar_layout_pagina(num=None):
+def invalidar_layout_pagina(num_pagina):
+    try:
+        idx = int(num_pagina)
+    except Exception:
+        return False
+    eliminado = estado_app.layouts_por_pagina.pop(idx, None) is not None
+    if eliminado and estado_app.ruta_pdf_actual:
+        _guardar_cache_layout_disco(estado_app.ruta_pdf_actual)
+    return eliminado
+
+
+@eel.expose
+def iniciar_lookahead_layout(pagina_actual, total_paginas=None, auto_layout=True):
+    """Worker único secuencial de precarga por ventana deslizante (N+1 a N+5)."""
+    import threading
+    estado_app.layout_lookahead_token += 1
+    token_local = estado_app.layout_lookahead_token
+    if not auto_layout or getattr(estado_app, "tipo_documento", "pdf") == "texto_escrito":
+        return False
+    if not estado_app.doc:
+        return False
+
+    def _worker():
+        for offset in range(1, 6):
+            if token_local != estado_app.layout_lookahead_token or not estado_app.doc:
+                break
+            sig = int(pagina_actual) + offset
+            if sig < 0 or sig >= len(estado_app.doc):
+                break
+            if sig in estado_app.layouts_por_pagina:
+                continue
+            try:
+                with estado_app.lock_edicion_pdf:
+                    if token_local != estado_app.layout_lookahead_token or not estado_app.doc:
+                        break
+                    res = analizar_layout_pagina(estado_app.doc, sig)
+                if isinstance(res, dict) and res.get("exito"):
+                    doc_key = getattr(estado_app.doc, "name", "") or "doc"
+                    estado_app.cache_estructura_layout[(doc_key, sig)] = res.get("estructura")
+                    estado_app.layouts_por_pagina[sig] = {
+                        "cortesV": res.get("cortesV") or [],
+                        "limitesH": res.get("limitesH") or {},
+                        "zonasExcluidas": res.get("zonasExcluidas") or [],
+                        "estructura": res.get("estructura"),
+                    }
+                    _guardar_cache_layout_disco(estado_app.ruta_pdf_actual)
+            except Exception:
+                pass
+
+    threading.Thread(target=_worker, daemon=True).start()
+    return True
+
+
+@eel.expose
+def autodetectar_layout_pagina(num=None, forzar=False):
     """Ejecuta DocLayout-YOLO en la página solicitada y devuelve cortesV, limitesH y zonasExcluidas."""
     doc = estado_app.doc
     if not doc:
         return {"exito": False, "error": "No hay ningún documento abierto"}
+    if getattr(estado_app, "tipo_documento", "pdf") == "texto_escrito":
+        return {"exito": False, "omitido": True, "cortesV": [], "limitesH": {}, "zonasExcluidas": []}
     target_num = estado_app.pagina_actual_global if num is None else num
     try:
-        resultado = analizar_layout_pagina(doc, target_num)
+        doc_key = getattr(doc, "name", "") or "doc"
+        if not forzar and int(target_num) in estado_app.layouts_por_pagina:
+            cached = estado_app.layouts_por_pagina[int(target_num)]
+            if cached.get("estructura") is not None:
+                estado_app.cache_estructura_layout[(doc_key, int(target_num))] = cached.get("estructura")
+                return {
+                    "exito": True,
+                    "desde_cache": True,
+                    "cortesV": list(cached.get("cortesV") or []),
+                    "limitesH": dict(cached.get("limitesH") or {}),
+                    "zonasExcluidas": list(cached.get("zonasExcluidas") or []),
+                    "estructura": cached.get("estructura"),
+                }
+        with estado_app.lock_edicion_pdf:
+            resultado = analizar_layout_pagina(doc, target_num)
         if isinstance(resultado, dict) and resultado.get("exito"):
-            doc_key = getattr(doc, "name", "") or "doc"
             estado_app.cache_estructura_layout[(doc_key, int(target_num))] = (
                 resultado.get("estructura")
             )
+            estado_app.layouts_por_pagina[int(target_num)] = {
+                "cortesV": resultado.get("cortesV") or [],
+                "limitesH": resultado.get("limitesH") or {},
+                "zonasExcluidas": resultado.get("zonasExcluidas") or [],
+                "estructura": resultado.get("estructura"),
+            }
+            _guardar_cache_layout_disco(estado_app.ruta_pdf_actual)
         return resultado
     except Exception as e:
         logger.error(f"[DOCLAYOUT] Error al detectar layout: {e}")
@@ -753,6 +1050,14 @@ def detectar_si_documento_es_escaneado():
     doc = estado_app.doc
     if not doc or len(doc) == 0:
         return {"es_escaneado": False, "total_paginas": 0}
+    if getattr(estado_app, "tipo_documento", "pdf") == "texto_escrito":
+        return {
+            "es_escaneado": False,
+            "total_paginas": len(doc),
+            "doc_path": getattr(doc, "name", ""),
+            "paginas_en_cache": 0,
+            "completamente_cacheado": False,
+        }
     try:
         total = len(doc)
         doc_path = getattr(doc, "name", "")

@@ -21,6 +21,7 @@ class EstadoApp:
         self.lock_edicion_pdf = threading.RLock()
         self.doc = None
         self.ruta_pdf_actual = ""
+        self.tipo_documento = "pdf"
         self.pagina_actual_global = 0
 
         # Snapshots de la página activa
@@ -30,6 +31,8 @@ class EstadoApp:
         self.snapshot_limites_h = {}
         self.snapshot_zonas_excluidas = []
         self.cache_estructura_layout = {}
+        self.layouts_por_pagina = {}
+        self.layout_lookahead_token = 0
 
         # Colas y caché de streaming de audio
         self.audio_queue = queue.Queue()

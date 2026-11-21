@@ -170,7 +170,7 @@ async function ejecutarImportarURL() {
             cerrarLanzador();
             detenerLectura();
             if (typeof rutaPDFActual !== 'undefined' && rutaPDFActual) guardarEstadoPaginaActual();
-            await abrirDocumentoDesdeRuta(resultado.ruta, true);
+            await abrirDocumentoDesdeRuta(resultado.ruta, true, false, { tipoDocumento: 'web' });
         } else {
             const msg = (resultado && resultado.error) || 'Error desconocido al procesar la URL.';
             console.error('[WebReader] Error en resultado:', msg);
@@ -220,7 +220,7 @@ async function ejecutarImportarTexto() {
             cerrarLanzador();
             detenerLectura();
             if (typeof rutaPDFActual !== 'undefined' && rutaPDFActual) guardarEstadoPaginaActual();
-            await abrirDocumentoDesdeRuta(resultado.ruta, true);
+            await abrirDocumentoDesdeRuta(resultado.ruta, true, false, { tipoDocumento: 'texto_escrito' });
         } else {
             const msg = (resultado && resultado.error) || 'Error generando PDF.';
             _setEstado('lira-texto-estado', msg, true, 'error');

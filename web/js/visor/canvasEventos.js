@@ -682,7 +682,12 @@ canvas.addEventListener('click', (e) => {
                 if (typeof window.currentReadingSession === 'undefined') window.currentReadingSession = 0;
                 window.currentReadingSession++;
 
-                // 3. INICIAR NUEVA SECUENCIA
+                // 3. INICIAR NUEVA SECUENCIA (Restaurando cualquier recorte previo de "Leer desde aquí")
+                if (typeof window.restaurarOracionesRecortadas === 'function') {
+                    window.restaurarOracionesRecortadas();
+                }
+                window._oracionRecortadaActivaIdx = -1;
+                window.palabraPausada = null;
                 leyendo = true;
                 reproducirSecuencia(idx);
             }

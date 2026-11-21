@@ -435,7 +435,9 @@ def run_local_logic_v21(thread_id, texto_hilo, voz_hilo, vel_hilo, teatro_on, ob
             'chk-corch': ajustes_act.get('omitirCorch', False),
             'chk-llaves': ajustes_act.get('omitirLlaves', False),
             'chk-barras': ajustes_act.get('omitirBarras', False),
-            'chk-referencias': ajustes_act.get('omitirReferencias', True),
+            'chk-referencias': ajustes_act.get('omitirSuperindices', ajustes_act.get('omitirReferencias', True)),
+            'chk-superindices': ajustes_act.get('omitirSuperindices', ajustes_act.get('omitirReferencias', True)),
+            'chk-subindices': ajustes_act.get('omitirSubindices', False),
         }
         lang_filtro_iso = (idioma_filtro or "").strip().lower()[:2]
         clave_reemp = (
@@ -637,7 +639,7 @@ def limpiar_pasteleria():
     return True
 
 @eel.expose
-def pre_renderizar_bloque_paginas(lista_paginas, voz, velocidad, dict_activo, trad_config=None):
+def pre_renderizar_bloque_paginas(lista_paginas, voz, velocidad, dict_activo, trad_config=None, layouts_por_pagina=None, auto_layout=False):
     # 🛡️ Si la voz es Pocket o Kokoro (modelos pesados), o si es Edge online,
     # no saturar la CPU/red cocinando páginas enteras en ráfaga
     if not voz or es_voz_pocket(voz) or es_voz_kokoro(voz):
@@ -676,9 +678,18 @@ def pre_renderizar_bloque_paginas(lista_paginas, voz, velocidad, dict_activo, tr
 
         for num_pag in orden:
             if estado_app.abortar_renderizado: return
-            
-            # Extraer oraciones de forma ligera (0% GPU/Imagen)
-            textos = obtener_solo_texto_pagina_ligera(num_pag, dict_activo)
+
+            layout_pag = None
+            if isinstance(layouts_por_pagina, dict):
+                layout_pag = layouts_por_pagina.get(str(num_pag)) or layouts_por_pagina.get(num_pag)
+
+            # Extraer oraciones de forma ligera (0% GPU/Imagen) respetando el layout de esa página
+            textos = obtener_solo_texto_pagina_ligera(
+                num_pag,
+                dict_activo,
+                layout_pagina=layout_pag,
+                auto_layout=bool(auto_layout),
+            )
             es_prioridad_max = (num_pag == actual)
             
             # Construir la lista de textos a hornear según el modo

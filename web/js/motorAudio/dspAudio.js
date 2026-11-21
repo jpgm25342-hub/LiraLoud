@@ -116,9 +116,18 @@ function cicloConsumoPiper() {
                     // Pausa extra configurada por el usuario (slider rng-pausa). Por defecto 0ms.
                     const _pausaExtra = (typeof pausaPunto !== 'undefined' && pausaPunto > 0) ? pausaPunto : 0;
 
-                    // Pedimos B ~280ms antes de que termine A; la pausaPunto se suma directo a nextScheduleTime
-                    const _adelantoMs = (tiempoRestante > 80) ? 280 : 0;
-                    const _delayFin = Math.max(0, tiempoRestante - _adelantoMs);
+                    // Solo adelantamos 280ms si hay una siguiente oración en la misma página;
+                    // en la última oración esperamos el tiempoRestante completo (+40ms) para no cortar la última palabra.
+                    const _haySiguienteEnPagina = (
+                        typeof datosPagina !== 'undefined' &&
+                        datosPagina &&
+                        Array.isArray(datosPagina.oraciones) &&
+                        typeof indiceOracion === 'number' &&
+                        (indiceOracion + 1) < datosPagina.oraciones.length
+                    );
+                    const _delayFin = _haySiguienteEnPagina
+                        ? Math.max(0, tiempoRestante - ((tiempoRestante > 80) ? 280 : 0))
+                        : (tiempoRestante > 0 ? tiempoRestante + 40 : 0);
 
                     // Programamos el salto a la siguiente frase
                     setTimeout(() => {

@@ -840,5 +840,7 @@ window.LIRA_I18N["zh"] = {
     "lbl-tienda-requiere-permiso": "需要 Hugging Face 权限",
     "ttl-abrir-hf-repo": "在 Hugging Face 上打开模型页面",
     "msg-tienda-error-401": "此模型需要在 Hugging Face 上授权。请打开其 Hugging Face 页面同意条款（或等待作者批准），然后在商店的锁图标中配置您的令牌。",
-    "lbl-token-hf-sesion-activa": "您已保存 Hugging Face 令牌"
+    "lbl-token-hf-sesion-activa": "您已保存 Hugging Face 令牌",
+    "lbl-no-sup": "无上标²",
+    "lbl-no-sub": "无下标₂"
 };
