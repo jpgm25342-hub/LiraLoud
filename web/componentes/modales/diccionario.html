@@ -1,0 +1,52 @@
+<div id="modal-diccionario" class="overlay-diccionario">
+            <div id="panel-diccionario">
+                <div class="header-dicc">
+                    <span style="display:flex; align-items:center; gap:8px;">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="svg-icon"
+                            style="width:18px; height:18px;">
+                            <path
+                                d="M10 22C7.17157 22 5.75736 22 4.87868 21.1213C4 20.2426 4 18.8284 4 16V8C4 5.17157 4 3.75736 4.87868 2.87868C5.75736 2 7.17157 2 10 2H14C16.8284 2 18.2426 2 19.1213 2.87868C20 3.75736 20 5.17157 20 8M14 22C16.8284 22 18.2426 22 19.1213 21.1213C20 20.2426 20 18.8284 20 16V12"
+                                stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+                            <path
+                                d="M19.8978 16H7.89778C6.96781 16 6.50282 16 6.12132 16.1022C5.08604 16.3796 4.2774 17.1883 4 18.2235"
+                                stroke="currentColor" stroke-width="1.5"></path>
+                            <path d="M7 16V9M7 2.5V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                            </path>
+                            <path
+                                d="M13 16V19.5309C13 19.8065 13 19.9443 12.9051 20C12.8103 20.0557 12.6729 20.0076 12.3981 19.9115L10 19.0722"
+                                stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+                        </svg> <span data-i18n="lbl-abreviaturas-titulo">Abreviaturas</span>
+                    </span>
+                    <button class="btn-cerrar-x" onclick="cerrarDiccionario()">✕</button>
+                </div>
+                <div class="cuerpo-dicc">
+                    <div class="tabs-secciones" id="lista-secciones"></div>
+
+                    <div class="seccion-input-group">
+                        <input type="text" id="input-nueva-seccion" placeholder="Nueva sección"
+                            data-i18n-ph="ph-nueva-seccion">
+                        <button class="btn-add-seccion" onclick="crearSeccion()" title="Agregar nuevo bloque" data-i18n-title="ttl-agregar-seccion">+</button>
+                    </div>
+
+                    <div class="contenido-terminos">
+                        <div class="modo-captura-badge">
+                            <span class="modo-captura-dot"></span>
+                            <span data-i18n="lbl-modo-captura"><b>Modo Captura:</b> Haz clic en el texto para
+                                copiar.</span>
+                        </div>
+                        <div class="add-termino-box">
+                            <div class="fila-inputs">
+                                <input type="text" id="input-sigla" placeholder="Sigla" data-i18n-ph="ph-sigla"
+                                    style="width:35%;">
+                                <input type="text" id="input-significado" placeholder="Significado"
+                                    data-i18n-ph="ph-significado" style="flex:1;">
+                            </div>
+                            <button class="btn-guardar-termino" onclick="agregarTermino()" data-i18n="btn-guardar">Guardar</button>
+                        </div>
+                        <input type="text" id="buscador-terminos" placeholder="Buscar abreviatura..."
+                            data-i18n-ph="ph-buscar" onkeyup="filtrarTerminosUI()">
+                        <div class="lista-terminos-scroll" id="tabla-terminos"></div>
+                    </div>
+                </div>
+            </div>
+        </div>

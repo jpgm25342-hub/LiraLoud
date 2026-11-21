@@ -1,0 +1,945 @@
+<div id="tab-karaoke" class="tab-content" style="display:none;">
+                        <div class="grupo-calibracion"
+                            style="border: 2px solid #2980b9; background: #f0f7ff; padding: 15px; border-radius: 8px;">
+                            <h4
+                                style="margin-top:0; color: #2c3e50; border-bottom: 1px solid #b8daff; padding-bottom: 5px; display:flex; align-items:center; gap:5px;">
+                                <svg class="svg-icon" viewBox="0 0 64 64" enable-background="new 0 0 64 64"
+                                    xml:space="preserve">
+                                    <g>
+                                        <g>
+                                            <path fill="#394240"
+                                                d="M59.998,28.001h-7.999c-2.211,0-4,1.789-4,4s1.789,4,4,4h7.999c2.211,0,4-1.789,4-4 S62.209,28.001,59.998,28.001z" />
+                                            <path fill="#394240"
+                                                d="M49.71,19.466l6.929-4c1.914-1.105,2.57-3.551,1.461-5.465c-1.102-1.914-3.547-2.57-5.46-1.465l-6.93,4 c-1.914,1.105-2.57,3.551-1.461,5.464C45.351,19.915,47.796,20.571,49.71,19.466z" />
+                                            <path fill="#394240"
+                                                d="M56.639,48.535l-6.929-3.999c-1.914-1.105-4.355-0.449-5.461,1.464c-1.105,1.914-0.453,4.359,1.461,5.465 l6.93,4c1.913,1.105,4.358,0.449,5.464-1.465S58.553,49.641,56.639,48.535z" />
+                                            <path fill="#394240"
+                                                d="M37.53,0.307c-1.492-0.625-3.211-0.277-4.359,0.867L18.343,16.001H4c-2.211,0-4,1.789-4,4v24 C0,46.211,1.789,48,4,48h14.343l14.828,14.828C33.937,63.594,34.96,64,35.999,64c0.516,0,1.035-0.098,1.531-0.305 c1.496-0.617,2.469-2.078,2.469-3.695V4.001C39.999,2.384,39.026,0.924,37.53,0.307z M31.999,50.344l-9.172-9.171 c-0.75-0.75-1.766-1.172-2.828-1.172H8v-16h11.999c1.062,0,2.078-0.422,2.828-1.172l9.172-9.171V50.344z" />
+                                        </g>
+                                        <path fill="#cfccd2"
+                                            d="M31.999,50.344l-9.172-9.171c-0.75-0.75-1.766-1.172-2.828-1.172H8v-16h11.999 c1.062,0,2.078-0.422,2.828-1.172l9.172-9.171V50.344z" />
+                                    </g>
+                                </svg>
+                                <span data-i18n="lbl-vol-titulo">Control de Volumen</span>
+                            </h4>
+
+                            <div class="control-row"
+                                style="display:flex; justify-content:space-between; align-items:center;">
+                                <label style="font-size:13px;" data-i18n="lbl-vol-maestro">Volumen:</label>
+                                <div
+                                    style="display:flex; gap:10px; align-items:center; flex:1; justify-content:flex-end;">
+                                    <input type="range" id="rng-volumen-master" min="0" max="100" step="1" value="100"
+                                        oninput="sincronizarVolumen(this.value)" style="width:120px;">
+                                    <input type="number" id="num-volumen-master" min="0" max="100" value="100"
+                                        class="input-valor" style="width:60px;"
+                                        onchange="sincronizarVolumen(this.value)">
+                                    <span style="font-size:12px; width:30px;">%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ECUALIZADOR ACÚSTICO PIPER / LOCAL -->
+                        <div class="grupo-calibracion" id="sec-eq-piper"
+                            style="border: 2px solid #2980b9; background: #f0f7ff; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                            <h4
+                                style="margin-top:0; color: #2c3e50; border-bottom: 1px solid #b8daff; padding-bottom: 5px; display:flex; align-items:center; gap:6px;">
+                                <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                    style="width:18px; height:18px; color:#2980b9;">
+                                    <line x1="4" y1="21" x2="4" y2="14"></line>
+                                    <line x1="4" y1="10" x2="4" y2="3"></line>
+                                    <line x1="12" y1="21" x2="12" y2="12"></line>
+                                    <line x1="12" y1="8" x2="12" y2="3"></line>
+                                    <line x1="20" y1="21" x2="20" y2="16"></line>
+                                    <line x1="20" y1="12" x2="20" y2="3"></line>
+                                    <line x1="1" y1="14" x2="7" y2="14"></line>
+                                    <line x1="9" y1="8" x2="15" y2="8"></line>
+                                    <line x1="17" y1="16" x2="23" y2="16"></line>
+                                </svg>
+                                <span data-i18n="lbl-eq-piper-titulo">Ecualizador Acústico (Piper / Local)</span>
+                            </h4>
+                            <div class="ayuda-text" style="font-size:11px; color:#576574; margin-bottom:10px;"
+                                data-i18n="lbl-eq-piper-desc">
+                                Aplica filtros de audio en tiempo real para eliminar ruido digital, resonancias metálicas y mejorar la claridad.
+                            </div>
+
+                            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+                                <div style="flex:1; min-width:140px;">
+                                    <label for="sel-eq-piper-perfil" style="font-size:12px; font-weight:600; color:#34495e; display:block;"
+                                        data-i18n="lbl-eq-piper-perfil">Perfil Sonoro:</label>
+                                    <div style="font-size:10px; color:#7f8c8d;" data-i18n="lbl-eq-piper-sub">Procesamiento DSP en altavoces</div>
+                                </div>
+                                <select id="sel-eq-piper-perfil" class="combo-config"
+                                    onchange="actualizarVisibilidadEqPiperPersonalizado(); window.perfilEqPiperActivo = this.value; guardarTodosAjustes(false)"
+                                    style="padding:6px 10px; font-size:12px; border-radius:4px; border:1px solid #ccc; min-width:210px;">
+                                    <option value="estudio" data-i18n="opt-eq-estudio" selected>Estudio Cálido (Anti-ruido / Recomendado)</option>
+                                    <option value="cristalino" data-i18n="opt-eq-cristalino">Cristalino (Alta Claridad y Velocidad)</option>
+                                    <option value="radio" data-i18n="opt-eq-radio">Radiodifusión (Graves Profundos / Audiolibro)</option>
+                                    <option value="anti_siseo" data-i18n="opt-eq-antisiseo">Reducción Máxima de Siseo (Filtro 5 kHz)</option>
+                                    <option value="natural" data-i18n="opt-eq-natural">Plano / Natural (Sin filtros DSP)</option>
+                                    <option value="personalizado" data-i18n="opt-eq-personalizado">Personalizado (Ajuste Manual)</option>
+                                </select>
+                            </div>
+
+                            <!-- CONTROLES DEL PERFIL PERSONALIZADO -->
+                            <div id="panel-eq-piper-personalizado" style="display:none; margin-top:12px; padding-top:12px; border-top:1px dashed #b8daff;">
+                                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
+                                    <!-- Graves / Calidez -->
+                                    <div>
+                                        <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:3px;">
+                                            <span style="font-weight:600; color:#2c3e50;" data-i18n="lbl-eq-graves">Graves (Cuerpo / 200 Hz):</span>
+                                            <span id="lbl-eq-piper-graves-val" style="color:#2980b9; font-weight:600;">0 dB</span>
+                                        </div>
+                                        <input type="range" id="rng-eq-piper-graves" min="-12" max="12" step="1" value="0" style="width:100%;"
+                                            oninput="document.getElementById('lbl-eq-piper-graves-val').textContent = (this.value > 0 ? '+' : '') + this.value + ' dB'; guardarTodosAjustes(false)">
+                                    </div>
+
+                                    <!-- Medios / Claridad -->
+                                    <div>
+                                        <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:3px;">
+                                            <span style="font-weight:600; color:#2c3e50;" data-i18n="lbl-eq-medios">Medios (Presencia / 3 kHz):</span>
+                                            <span id="lbl-eq-piper-medios-val" style="color:#2980b9; font-weight:600;">0 dB</span>
+                                        </div>
+                                        <input type="range" id="rng-eq-piper-medios" min="-12" max="12" step="1" value="0" style="width:100%;"
+                                            oninput="document.getElementById('lbl-eq-piper-medios-val').textContent = (this.value > 0 ? '+' : '') + this.value + ' dB'; guardarTodosAjustes(false)">
+                                    </div>
+
+                                    <!-- Agudos / Brillo -->
+                                    <div>
+                                        <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:3px;">
+                                            <span style="font-weight:600; color:#2c3e50;" data-i18n="lbl-eq-agudos">Agudos (Brillo / 6 kHz):</span>
+                                            <span id="lbl-eq-piper-agudos-val" style="color:#2980b9; font-weight:600;">0 dB</span>
+                                        </div>
+                                        <input type="range" id="rng-eq-piper-agudos" min="-12" max="12" step="1" value="0" style="width:100%;"
+                                            oninput="document.getElementById('lbl-eq-piper-agudos-val').textContent = (this.value > 0 ? '+' : '') + this.value + ' dB'; guardarTodosAjustes(false)">
+                                    </div>
+
+                                    <!-- Corte de Frecuencia (Corte de Siseo) -->
+                                    <div>
+                                        <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:3px;">
+                                            <span style="font-weight:600; color:#2c3e50;" data-i18n="lbl-eq-corte">Corte Anti-siseo (Hz):</span>
+                                            <span id="lbl-eq-piper-corte-val" style="color:#2980b9; font-weight:600;">8000 Hz</span>
+                                        </div>
+                                        <input type="range" id="rng-eq-piper-corte" min="3000" max="14000" step="500" value="8000" style="width:100%;"
+                                            oninput="document.getElementById('lbl-eq-piper-corte-val').textContent = this.value + ' Hz'; guardarTodosAjustes(false)">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grupo-calibracion"
+                            style="border: 2px solid #2980b9; background: #f0f7ff; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                            <h4
+                                style="margin-top:0; color: #2c3e50; border-bottom: 1px solid #b8daff; padding-bottom: 5px; display:flex; align-items:center; gap:5px;">
+                                <svg class="svg-icon" viewBox="0 0 64 64" enable-background="new 0 0 64 64"
+                                    xml:space="preserve">
+                                    <g>
+                                        <path fill="#394240"
+                                            d="M56,32.734V24C56,10.746,45.254,0,32,0S8,10.746,8,24v8.734C3.348,34.387,0,38.781,0,44v8 c0,6.629,5.371,12,12,12h8c2.211,0,4-1.789,4-4V36c0-2.211-1.789-4-4-4h-4v-8c0-8.836,7.164-16,16-16s16,7.164,16,16v8h-4 c-2.211,0-4,1.789-4,4v24c0,2.211,1.789,4,4,4h8c6.629,0,12-5.371,12-12v-8C64,38.781,60.652,34.387,56,32.734z M16,56h-4 c-2.211,0-4-1.789-4-4v-8c0-2.211,1.789-4,4-4h4V56z M56,52c0,2.211-1.789,4-4,4h-4V40h4c2.211,0,4,1.789,4,4V52z" />
+                                        <g>
+                                            <path fill="#45AAB8"
+                                                d="M8,44v8c0,2.211,1.789,4,4,4h4V40h-4C9.789,40,8,41.789,8,44z" />
+                                            <path fill="#45AAB8"
+                                                d="M52,40h-4v16h4c2.211,0,4-1.789,4-4v-8C56,41.789,54.211,40,52,40z" />
+                                        </g>
+                                    </g>
+                                </svg>
+                                <span data-i18n="lbl-audio-fondo-titulo">Audio de fondo</span>
+                            </h4>
+
+                            <label title="Pausa automáticamente la música (Spotify, YouTube) al empezar a leer" data-i18n-title="ttl-pausa-sistema"
+                                style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; font-size:13px; cursor: pointer; color: #34495e;">
+                                <span data-i18n="lbl-pausa-sistema">Pausar audio (Pausa inteligente)</span>
+                                <input type="checkbox" id="chk-pausa-sistema" class="switch-individual"
+                                    onchange="guardarTodosAjustes(false)">
+                            </label>
+
+                            <label title="En lugar de pausar, reduce el volumen de las demás apps" data-i18n-title="ttl-ducking-volumen"
+                                style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; font-size:13px; cursor: pointer; color: #34495e;">
+                                <span data-i18n="lbl-ducking-volumen">Audio Ducking</span>
+                                <input type="checkbox" id="chk-ducking-volumen" class="switch-individual"
+                                    onchange="guardarTodosAjustes(false); aplicarVisibilidadDucking()">
+                            </label>
+
+                            <div class="control-row"
+                                style="display:flex; justify-content:space-between; align-items:center;">
+                                <div style="display:flex; flex-direction:column; gap:2px; flex:1;">
+                                    <div
+                                        style="display:flex; justify-content:space-between; font-size:13px; color:#34495e; align-items:center;">
+                                        <span data-i18n="lbl-ducking-nivel">Nivel de reducción:</span>
+                                        <span id="lbl-ducking-nivel" style="font-weight:bold; color:#2c3e50;">20%</span>
+                                    </div>
+                                    <input type="range" id="rng-ducking-nivel" min="0" max="100" step="1" value="20"
+                                        oninput="sincronizarDuckingNivel(this.value)"
+                                        style="width: 100%; margin-top:5px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grupo-calibracion"
+                            style="border: 2px solid #8e44ad; background: #fbf5fc; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                            <h4
+                                style="margin-top:0; color: #6c3483; border-bottom: 1px solid #e8daef; padding-bottom: 5px; display:flex; align-items:center; gap:6px;">
+                                <svg class="svg-icon" viewBox="0 0 24 24" fill="currentColor"
+                                    style="width:18px; height:18px; color: #8e44ad;">
+                                    <path
+                                        d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z" />
+                                </svg>
+                                <span data-i18n="lbl-traduccion-titulo">Traducción en Tiempo Real</span>
+                            </h4>
+
+                            <div class="ajuste-row"
+                                style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+                                <div>
+                                    <label for="chk-traduccion-activa"
+                                        style="font-weight:600; color:#34495e; cursor:pointer;"
+                                        data-i18n="lbl-traduccion-activar">Activar Traductor al Leer</label>
+                                    <div class="ayuda-text" style="font-size:11px; color:#7f8c8d; margin-top:2px;"
+                                        data-i18n="lbl-traduccion-desc">Traduce automáticamente cada oración punto a
+                                        punto durante la lectura.</div>
+                                </div>
+                                <input type="checkbox" id="chk-traduccion-activa" class="switch-individual"
+                                    onchange="safeCheck('zen-chk-traduccion-activa', this.checked); toggleMenuTraduccion(this.checked); guardarTodosAjustes(false)">
+                            </div>
+
+                            <div id="panel-ajustes-traduccion"
+                                style="display:none; background:#ffffff; padding:12px; border-radius:6px; border:1px solid #d2b4de; margin-top:8px;">
+
+                                <div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
+                                    <div style="flex:1; min-width:140px;">
+                                        <label
+                                            style="font-size:12px; font-weight:600; color:#2c3e50; display:block; margin-bottom:4px;"
+                                            data-i18n="lbl-traduccion-origen">Idioma del Texto (Origen):</label>
+                                        <select id="sel-traduccion-origen" class="combo-config"
+                                            onchange="safeUI('zen-sel-traduccion-origen', this.value); guardarTodosAjustes(false)"
+                                            style="width:100%; padding:6px; font-size:12px; border-radius:4px; border:1px solid #ccc;">
+                                            <option value="auto" data-i18n="opt-auto-detect">🌐 Autodetectar</option>
+                                            <option value="en">Inglés (English)</option>
+                                            <option value="es">Español (Spanish)</option>
+                                            <option value="fr">Francés (Français)</option>
+                                            <option value="de">Alemán (Deutsch)</option>
+                                            <option value="it">Italiano (Italiano)</option>
+                                            <option value="pt">Portugués (Português)</option>
+                                            <option value="ru">Ruso (Русский)</option>
+                                            <option value="zh-CN">Chino (中文)</option>
+                                            <option value="ja">Japonés (日本語)</option>
+                                            <option value="ko">Coreano (한국어)</option>
+                                            <option value="ar">Árabe (العربية)</option>
+                                            <option value="hi">Hindi (हिन्दी)</option>
+                                            <option value="bn">Bengalí (বাংলা)</option>
+                                        </select>
+                                    </div>
+                                    <div style="flex:1; min-width:140px;">
+                                        <label
+                                            style="font-size:12px; font-weight:600; color:#2c3e50; display:block; margin-bottom:4px;"
+                                            data-i18n="lbl-traduccion-destino">Idioma de Traducción (Destino):</label>
+                                        <select id="sel-traduccion-destino" class="combo-config"
+                                            onchange="safeUI('zen-sel-traduccion-destino', this.value); guardarTodosAjustes(false)"
+                                            style="width:100%; padding:6px; font-size:12px; border-radius:4px; border:1px solid #ccc;">
+                                            <option value="es">Español (Spanish)</option>
+                                            <option value="en">Inglés (English)</option>
+                                            <option value="fr">Francés (Français)</option>
+                                            <option value="de">Alemán (Deutsch)</option>
+                                            <option value="it">Italiano (Italiano)</option>
+                                            <option value="pt">Portugués (Português)</option>
+                                            <option value="ru">Ruso (Русский)</option>
+                                            <option value="zh-CN">Chino (中文)</option>
+                                            <option value="ja">Japonés (日本語)</option>
+                                            <option value="ko">Coreano (한국어)</option>
+                                            <option value="ar">Árabe (العربية)</option>
+                                            <option value="hi">Hindi (हिन्दी)</option>
+                                            <option value="bn">Bengalí (বাংলা)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div style="display:flex; gap:10px; margin-bottom:6px; flex-wrap:wrap;">
+                                    <div style="flex:1; min-width:140px;">
+                                        <label
+                                            style="font-size:12px; font-weight:600; color:#2c3e50; display:block; margin-bottom:4px;"
+                                            data-i18n="lbl-traduccion-motor">Tipo de Traductor:</label>
+                                        <select id="sel-traduccion-motor" class="combo-config"
+                                            onchange="validarCambioMotorTraduccion(this)"
+                                            style="width:100%; padding:6px; font-size:12px; border-radius:4px; border:1px solid #ccc;">
+                                            <option value="online" data-i18n="opt-motor-online">🌐 Traductor en Línea
+                                                (Google / Rápido)</option>
+                                            <option value="offline" data-i18n="opt-motor-offline">💻 Traductor Local
+                                                (Offline / Sin Internet)</option>
+                                            <option value="hibrido" data-i18n="opt-motor-hibrido">⚡ Híbrido Automático
+                                                (Online + Local)</option>
+                                        </select>
+                                    </div>
+                                    <div style="flex:1; min-width:140px;">
+                                        <label
+                                            style="font-size:12px; font-weight:600; color:#2c3e50; display:block; margin-bottom:4px;"
+                                            data-i18n="lbl-traduccion-modo">Modo de Lectura:</label>
+                                        <select id="sel-traduccion-modo" class="combo-config"
+                                            onchange="safeUI('zen-sel-traduccion-modo', this.value); guardarTodosAjustes(false)"
+                                            style="width:100%; padding:6px; font-size:12px; border-radius:4px; border:1px solid #ccc;">
+                                            <option value="solo_traduccion" data-i18n="opt-modo-directo" selected>🔊
+                                                Solo
+                                                Traducción (Lee directamente la traducción)</option>
+                                            <option value="subtitulos" data-i18n="opt-modo-subtitulos">📺 Subtítulos
+                                                Traducidos (Voz original + Subtítulo)</option>
+                                            <option value="aprendizaje" data-i18n="opt-modo-aprendizaje">🎓 Modo
+                                                Aprendizaje (Lee Original + Lee Traducción)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+                                    <button type="button" onclick="limpiarCacheTraduccionFrontend()"
+                                        class="btn-secundario"
+                                        style="font-size:11px; padding:6px 12px; background:#e74c3c; color:white; border:none; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:6px; font-weight:600;">
+                                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                                            style="width:14px; height:14px;">
+                                            <path d="M20.5001 6H3.5" stroke="#ffffff" stroke-width="1.5"
+                                                stroke-linecap="round"></path>
+                                            <path d="M9.5 11L10 16" stroke="#ffffff" stroke-width="1.5"
+                                                stroke-linecap="round"></path>
+                                            <path d="M14.5 11L14 16" stroke="#ffffff" stroke-width="1.5"
+                                                stroke-linecap="round"></path>
+                                            <path
+                                                d="M6.5 6C6.55588 6 6.58382 6 6.60915 5.99936C7.43259 5.97849 8.15902 5.45491 8.43922 4.68032C8.44784 4.65649 8.45667 4.62999 8.47434 4.57697L8.57143 4.28571C8.65431 4.03708 8.69575 3.91276 8.75071 3.8072C8.97001 3.38607 9.37574 3.09364 9.84461 3.01877C9.96213 3 10.0932 3 10.3553 3H13.6447C13.9068 3 14.0379 3 14.1554 3.01877C14.6243 3.09364 15.03 3.38607 15.2493 3.8072C15.3043 3.91276 15.3457 4.03708 15.4286 4.28571L15.5257 4.57697C15.5433 4.62992 15.5522 4.65651 15.5608 4.68032C15.841 5.45491 16.5674 5.97849 17.3909 5.99936C17.4162 6 17.4441 6 17.5 6"
+                                                stroke="#ffffff" stroke-width="1.5"></path>
+                                            <path
+                                                d="M18.3735 15.3991C18.1965 18.054 18.108 19.3815 17.243 20.1907C16.378 21 15.0476 21 12.3868 21H11.6134C8.9526 21 7.6222 21 6.75719 20.1907C5.89218 19.3815 5.80368 18.054 5.62669 15.3991L5.16675 8.5M18.8334 8.5L18.6334 11.5"
+                                                stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"></path>
+                                        </svg>
+                                        <span data-i18n="btn-limpiar-cache-trad">Limpiar Caché de Traducciones</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grupo-calibracion"
+                            style="border: 2px solid #27ae60; background: #eafaf1; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                            <h4
+                                style="margin-top:0; color: #2c3e50; border-bottom: 1px solid #c3e6cb; padding-bottom: 5px; display:flex; align-items:center; gap:5px;">
+                                <svg class="svg-icon" viewBox="0 0 512.001 512.001" transform="rotate(180)">
+                                    <path style="fill:#A9AFBF;"
+                                        d="M259.486,262.366c0.001-0.001,0.002-0.003,0.003-0.004l-41.697,5.995l-8.785-41.593L363.142,8.187 C420.686,48.766,311.782,189.071,259.486,262.366z" />
+                                    <path style="fill:#CC5051;"
+                                        d="M255.208,268.394c1.378-1.954,2.809-3.968,4.281-6.033l-50.482-35.598l-49.744,70.542 c0.002,0,0.003,0,0.005,0c-0.491-0.01-0.978-0.037-1.472-0.037c-40.593,0-73.618,33.025-73.618,73.619v59.305 c0,40.593,33.025,73.618,73.618,73.618c40.594,0,73.619-33.025,73.619-73.618v-59.305c0-12.978-3.389-25.173-9.306-35.771 c0,0.001,0.001,0.002,0.002,0.003C226.776,317.504,236.389,295.081,255.208,268.394z M188.592,430.194 c0,16.979-13.814,30.792-30.794,30.792c-16.979,0-30.792-13.814-30.792-30.792v-59.305c0-16.98,13.814-30.794,30.792-30.794 c16.98,0,30.794,13.814,30.794,30.794L188.592,430.194L188.592,430.194z" />
+                                    <path style="fill:#C7CFE2;"
+                                        d="M252.516,262.366c-0.001-0.001-0.002-0.003-0.003-0.004l41.697,5.995l8.785-41.593L148.861,8.187 C91.316,48.766,200.22,189.071,252.516,262.366z" />
+                                    <path style="fill:#E65A5B;"
+                                        d="M354.204,297.269c-0.495,0-0.981,0.027-1.474,0.037h0.007l-49.744-70.542l-50.482,35.598 c1.473,2.064,2.904,4.078,4.281,6.033c18.819,26.688,28.432,49.109,33.096,66.724c-5.918,10.598-9.305,22.793-9.305,35.768v59.305 c0,40.593,33.025,73.618,73.619,73.618c40.593,0,73.618-33.025,73.618-73.618v-59.305 C427.822,330.294,394.797,297.269,354.204,297.269z M384.997,430.194c0,16.979-13.814,30.792-30.792,30.792 c-16.98,0-30.794-13.814-30.794-30.792v-59.305c0-16.98,13.814-30.794,30.794-30.794c16.979,0,30.792,13.814,30.792,30.794V430.194z " />
+                                    <path
+                                        d="M356.989,289.128l-47.305-67.082l-5.55-7.871c45.85-65.073,90.431-136.73,82.637-182.131 c-2.23-12.993-8.592-23.271-18.91-30.546c-1.775-1.252-3.976-1.748-6.113-1.378c-2.141,0.37-4.046,1.574-5.297,3.349 L256.001,145.918L155.551,3.469c-1.251-1.775-3.156-2.979-5.297-3.349c-2.137-0.369-4.337,0.126-6.113,1.378 c-10.386,7.324-16.761,17.686-18.952,30.8c-7.721,46.234,38.553,119.372,82.67,181.89l-5.542,7.86l-47.305,67.084 c-43.821,1.476-79.02,37.585-79.02,81.76v59.305c0,45.107,36.697,81.806,81.806,81.806s81.807-36.697,81.807-81.806V370.89 c0-12.745-3.011-25.369-8.732-36.723c4.803-16.582,13.239-34.143,25.13-52.357c11.886,18.208,20.323,35.769,25.128,52.356 c-5.721,11.354-8.732,23.978-8.732,36.723v59.307c0,45.107,36.698,81.806,81.807,81.806c45.107,0,81.806-36.697,81.806-81.806 v-59.307C436.01,326.711,400.815,290.6,356.989,289.128z M364.474,20.506c3.158,3.927,5.189,8.661,6.158,14.306 c3.065,17.853-4.502,44.415-22.493,78.948c-15.479,29.715-36.219,60.766-54.029,86.2l-28.091-39.836L364.474,20.506z M214.256,332.802c-0.526,1.791-0.441,3.751,0.329,5.541c0.122,0.285,0.26,0.561,0.412,0.827c5.387,9.669,8.233,20.635,8.233,31.718 v59.305c0,36.078-29.353,65.431-65.432,65.431c-36.078,0-65.431-29.353-65.431-65.431v-59.305c0-36.079,29.353-65.432,65.431-65.432 c0.211,0,0.42,0.009,0.629,0.015l0.567,0.017c0.028,0,0.059,0.001,0.087,0.002h0.021c0.056,0.001,0.115,0.002,0.169,0.002 c2.851,0,5.364-1.458,6.829-3.672l44.881-63.648l17.718,12.494l10.822,7.631c2.184,3.033,4.299,5.979,6.326,8.821 c0.001,0.001,0.001,0.002,0.002,0.003c0.047,0.065,0.092,0.129,0.139,0.194C230.462,289.997,219.795,312.009,214.256,332.802z M256.001,249.883l-4.8-3.384c-1.798-2.496-24.489-34.05-25.884-36.017c-17.962-25.311-36.995-53.241-52.495-80.353 c-24.327-42.548-34.918-74.556-31.481-95.134c0.956-5.727,2.998-10.521,6.189-14.488l144.056,204.286l-15.361,10.831 L256.001,249.883z M419.635,430.195c0,36.078-29.353,65.431-65.431,65.431c-36.079,0-65.432-29.353-65.432-65.431v-59.307 c0-11.104,2.858-22.092,8.266-31.775c1.035-1.854,1.31-4.036,0.766-6.088c-5.765-21.773-17.158-44.885-33.865-68.701l37.083-26.15 l44.904,63.679c1.456,2.177,3.929,3.616,6.734,3.642c0.005,0,0.009,0,0.014,0c0.134,0.002,0.255,0,0.383-0.007l0.533-0.015 c0.205-0.008,0.409-0.016,0.615-0.016c36.078,0,65.431,29.353,65.431,65.432v59.307H419.635z" />
+                                    <path
+                                        d="M354.205,331.907c-21.495,0-38.982,17.487-38.982,38.98v59.307c0,21.493,17.487,38.98,38.982,38.98 c21.493,0,38.98-17.487,38.98-38.98v-59.307C393.185,349.394,375.698,331.907,354.205,331.907z M376.81,430.195 c0,12.465-10.14,22.605-22.605,22.605c-12.466,0-22.607-10.14-22.607-22.605v-59.307c0-12.465,10.142-22.605,22.607-22.605 c12.465,0,22.605,10.14,22.605,22.605V430.195z" />
+                                    <path
+                                        d="M157.798,331.907c-21.493,0-38.98,17.487-38.98,38.981v59.305c0,21.493,17.487,38.98,38.98,38.98 c21.495,0,38.982-17.487,38.982-38.98v-59.305C196.78,349.394,179.293,331.907,157.798,331.907z M180.405,430.195 c0,12.465-10.141,22.605-22.607,22.605c-12.465,0-22.605-10.14-22.605-22.605v-59.305c0-12.466,10.14-22.606,22.605-22.606 c12.466,0,22.607,10.14,22.607,22.606V430.195z" />
+                                </svg>
+                                <span data-i18n="lbl-segmentacion-titulo">Segmentación Avanzada</span>
+                            </h4>
+
+                            <div class="ajuste-row"
+                                style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
+                                <div>
+                                    <label style="font-weight:600; color:#34495e;" data-i18n="lbl-inteligencia-nativa">Usar Inteligencia Nativa del PDF
+                                        (Recomendado)</label>
+                                    <div style="font-size:11px; color:#7f8c8d; margin-top:2px;" data-i18n="lbl-inteligencia-nativa-desc">Usa el detector de
+                                        bloques interno del PDF para evitar problemas con columnas y títulos.</div>
+                                </div>
+                                <input type="checkbox" id="chk-usar-bloques" class="switch-individual" checked
+                                    onchange="toggleOpcionesSegmentacion(); guardarTodosAjustes(true).then(() => actualizarFiltrosSnapshot(true))">
+                            </div>
+
+                            <div id="panel-segmentacion-manual"
+                                style="background:#f9f9f9; padding:15px; border-radius:8px; border:10px solid #ddd; display:none;">
+                                <h5
+                                    style="margin-top:0; color:#e67e22; margin-bottom:10px; display:flex; align-items:center; gap:5px;">
+                                    <svg class="svg-icon" viewBox="0 0 64 64" xml:space="preserve">
+                                        <style type="text/css">
+                                            .st0 {
+                                                fill: none;
+                                            }
+
+                                            .st1 {
+                                                opacity: 1;
+                                            }
+
+                                            .st2 {
+                                                fill: none;
+                                            }
+
+                                            .st3 {
+                                                fill: none;
+                                            }
+
+                                            .st4 {
+                                                fill: none;
+                                            }
+                                        </style>
+                                        <g>
+                                            <g>
+                                                <circle class="st0" cx="32" cy="32" r="32" />
+                                            </g>
+                                            <g class="st1">
+                                                <path class="st2"
+                                                    d="M17,50c-4.4,0-6.2-3.1-4-6.9L28,17c2.2-3.8,5.8-3.8,8,0l15,26.1c2.2,3.8,0.4,6.9-4,6.9H17z" />
+                                            </g>
+                                            <g>
+                                                <path class="st3"
+                                                    d="M17,48c-4.4,0-6.2-3.1-4-6.9L28,15c2.2-3.8,5.8-3.8,8,0l15,26.1c2.2,3.8,0.4,6.9-4,6.9H17z" />
+                                            </g>
+                                            <g>
+                                                <path class="st4"
+                                                    d="M34,32c0,1.1-0.9,2-2,2l0,0c-1.1,0-2-0.9-2-2v-8c0-1.1,0.9-2,2-2l0,0c1.1,0,2,0.9,2,2V32z" />
+                                            </g>
+                                            <g>
+                                                <path class="st4"
+                                                    d="M34,40c0,1.1-0.9,2-2,2l0,0c-1.1,0-2-0.9-2-2l0,0c0-1.1,0.9-2,2-2l0,0C33.1,38,34,38.9,34,40L34,40z" />
+                                            </g>
+                                        </g>
+                                    </svg>
+                                    <span data-i18n="lbl-modo-manual">Modo Manual Activado</span>
+                                </h5>
+                                <div class="ajuste-row"
+                                    style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
+                                    <div style="flex:1;">
+                                        <label style="font-weight:600; color:#34495e;" data-i18n="lbl-sensibilidad-salto">Sensibilidad de Salto de
+                                            Párrafo</label>
+                                        <div style="font-size:11px; color:#7f8c8d; margin-top:2px;" data-i18n="lbl-sensibilidad-salto-desc">Multiplicador de
+                                            altura de letra para cortar la oración (por defecto 0.5)</div>
+                                    </div>
+                                    <div style="display:flex; align-items:center; gap:10px;">
+                                        <input type="range" id="rng-sensibilidad-salto" min="0.1" max="3.0" step="0.1"
+                                            value="0.5"
+                                            oninput="document.getElementById('lbl-sensibilidad').innerText = this.value; guardarTodosAjustes(true)"
+                                            style="width:100px;">
+                                        <span id="lbl-sensibilidad" style="font-weight:bold; width:30px;">0.5</span>
+                                    </div>
+                                </div>
+
+                                <div class="ajuste-row"
+                                    style="display:flex; justify-content:space-between; align-items:center;">
+                                    <div>
+                                        <label style="font-weight:600; color:#34495e;" data-i18n="lbl-detectar-sangria">Detectar Sangría
+                                            Horizontal</label>
+                                        <div style="font-size:11px; color:#7f8c8d; margin-top:2px;" data-i18n="lbl-detectar-sangria-desc">Corta párrafos si el
+                                            texto empieza muy separado del margen (causa fallos en columnas).</div>
+                                    </div>
+                                    <input type="checkbox" id="chk-detectar-sangria" class="switch-individual" checked
+                                        onchange="guardarTodosAjustes(true)">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- CLONACIÓN DE VOZ (POCKET TTS / KYUTAI) -->
+                        <div class="grupo-calibracion" id="sec-pocket-voice-clone"
+                            style="border: 2px solid #2980b9; background: #f0f7fb; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                            <h4
+                                style="margin-top:0; color: #1f618d; border-bottom: 1px solid #bce2f5; padding-bottom: 5px; display:flex; align-items:center; gap:8px;">
+                                <svg width="20px" height="20px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #2980b9;">
+                                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                                    <line x1="12" x2="12" y1="19" y2="22"></line>
+                                </svg>
+                                <span data-i18n="lbl-pocket-clone-titulo">Clonación de Voz (Pocket AI)</span>
+                            </h4>
+                            <div class="ayuda-text" style="font-size:11px; color:#576574; margin-bottom:12px;" data-i18n="lbl-pocket-clone-desc">
+                                Clona cualquier voz real (incluso susurros, textura vocal y respiración) a partir de una grabación de 5 a 15 segundos mediante Pocket-TTS.
+                            </div>
+
+                            <!-- Fila: Nombre del Clon -->
+                            <div style="margin-bottom: 10px;">
+                                <label style="font-size:12px; font-weight:600; color:#2c3e50; display:block; margin-bottom:4px;" data-i18n="lbl-pocket-clone-nombre">
+                                    Nombre de la voz clonada:
+                                </label>
+                                <input type="text" id="txt-pocket-clone-nombre" class="input-valor"
+                                    placeholder="Ej: Mi Voz Propia, Narrador Susurrado..." data-i18n-placeholder="ph-pocket-clone-nombre"
+                                    style="width: 100%; box-sizing: border-box; text-align: left; padding: 6px 10px; font-size: 13px; border-radius: 4px; border: 1px solid #74b9ff;">
+                            </div>
+
+                            <!-- Tarjeta de Entrada de Audio -->
+                            <div style="background: #eaf2f8; border: 1px dashed #2980b9; border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                <div style="flex: 1; min-width: 200px;">
+                                    <div style="font-size: 12px; font-weight: 600; color: #1f618d; display: flex; align-items: center; gap: 6px;">
+                                        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 14px; height: 14px;"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>
+                                        <span data-i18n="lbl-muestra-audio-clon">Muestra de Audio para Clonación</span>
+                                    </div>
+                                    <div style="font-size: 11px; color: #576574; margin-top: 2px;" data-i18n="lbl-muestra-audio-clon-desc">
+                                        Habla o carga un audio de 5 a 15 segundos para clonar el timbre exacto.
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                    <input type="file" id="file-pocket-clone-audio" accept="audio/*,.mp3,.wav,.m4a,.ogg" style="display: none;" onchange="procesarArchivoClonPocket(this)">
+                                    <button type="button" id="btn-cargar-clon-pocket" onclick="document.getElementById('file-pocket-clone-audio').click()"
+                                        class="btn-secundario btn-voz-lab-cargar-pocket">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                        <span id="lbl-btn-cargar-clon-pocket" data-i18n="btn-cargar-audio">Cargar Audio...</span>
+                                    </button>
+                                    <button type="button" id="btn-grabar-clon-pocket" onclick="toggleGrabacionClonPocket()"
+                                        class="btn-secundario btn-voz-lab-grabar">
+                                        <svg id="icon-grabar-clon-pocket" viewBox="0 0 24 24" fill="currentColor" style="width: 12px; height: 12px; color: #e74c3c;"><circle cx="12" cy="12" r="8"/></svg>
+                                        <span id="lbl-btn-grabar-clon-pocket" data-i18n="btn-grabar-voz">Grabar Voz</span>
+                                    </button>
+                                    <span id="lbl-tiempo-grabacion-pocket" style="font-size: 11px; font-weight: bold; color: #e74c3c; display: none;">00:00</span>
+                                </div>
+                            </div>
+
+                            <!-- Lista de Clones Creados -->
+                            <div style="border-top: 1px dashed #b2bec3; padding-top: 10px;">
+                                <div style="font-size:12px; font-weight:600; color:#2c3e50; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+                                    <span data-i18n="lbl-voces-clonadas">Tus Voces Clonadas:</span>
+                                    <span id="lbl-total-clones-pocket-count" style="font-size:11px; color:#636e72;">(0)</span>
+                                </div>
+                                <div id="lista-clones-pocket-items" style="display:flex; flex-direction:column; gap:6px; max-height:160px; overflow-y:auto; padding-right:4px;">
+                                    <div style="font-size:11px; color:#95a5a6; font-style:italic; padding:6px 0;" data-i18n="lbl-sin-voces-clonadas">No has clonado ninguna voz aún.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- LABORATORIO DE MEZCLA DE VOZ KOKORO -->
+                        <div class="grupo-calibracion" id="sec-kokoro-voice-lab"
+                            style="border: 2px solid #27ae60; background: #f2fbf5; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                            <h4
+                                style="margin-top:0; color: #1e824c; border-bottom: 1px solid #c8e6c9; padding-bottom: 5px; display:flex; align-items:center; gap:8px;">
+                                <svg width="20px" height="20px" version="1.1" viewBox="0 0 512 512" xml:space="preserve" style="vertical-align: middle; display: inline-block;">
+                                    <path style="fill:#a5d981;" d="M397.617,8.17l-43.574,495.66h43.574c23.966,0,43.574-19.609,43.574-43.574V8.17H397.617z"></path>
+                                    <path style="fill:#b4e9a5;" d="M397.617,8.17H70.808l32.681,76.255v375.83c0,23.966,19.609,43.574,43.574,43.574h206.979 c23.966,0,43.574-19.609,43.574-43.574L375.83,343.367l21.787-116.889V8.17z"></path>
+                                    <path style="fill:#148a3d;" d="M367.551,255.68l-30.147,97.535l30.147,107.497c-0.02,0.031,29.986,0.081,29.986,0.081 c0.031-0.02,0.06-0.05,0.081-0.081V245.637C382.794,245.637,374.977,250.528,367.551,255.68z"></path>
+                                    <path style="fill:#47b120;" d="M334.979,267.425c-31.319,0-31.319-21.788-62.638-21.788s-31.319,21.788-62.638,21.788 s-31.319-21.788-62.638-21.788v215.075c0.02,0.031,0.05,0.06,0.081,0.081h220.406v-205.13 C359.28,261.383,351.473,267.425,334.979,267.425z"></path>
+                                    <path style="fill:#1e824c;" d="M441.191,0H70.808c-2.746,0-5.31,1.38-6.82,3.672c-1.512,2.293-1.771,5.192-0.688,7.717l32.02,74.714v374.152 c0,28.531,23.213,51.745,51.745,51.745h250.553c28.531,0,51.745-23.213,51.745-51.745V8.17C449.362,3.658,445.704,0,441.191,0z M433.021,460.255c0,19.521-15.883,35.404-35.404,35.404H147.064c-19.521,0-35.404-15.883-35.404-35.404V84.426 c0-1.107-0.226-2.202-0.66-3.219L83.199,16.34h349.822V460.255z"></path>
+                                    <path style="fill:#148a3d;" d="M141.948,466.563c1.463,1.205,3.299,1.863,5.194,1.863H397.54c1.923,0,3.783-0.678,5.255-1.914 c0.41-0.344,0.79-0.728,1.13-1.139c1.205-1.463,1.863-3.299,1.863-5.194v-91.195c0-4.512-3.658-8.17-8.17-8.17 c-4.512,0-8.17,3.658-8.17,8.17v83.102H155.234V253.927c7.827,1.367,12.689,4.75,18.481,8.779 c8.326,5.792,17.763,12.357,35.984,12.357c18.222,0,27.659-6.564,35.985-12.357c7.573-5.268,13.556-9.431,26.652-9.431 c13.097,0,19.08,4.161,26.654,9.431c8.326,5.792,17.763,12.357,35.986,12.357c18.222,0,27.659-6.564,35.985-12.357 c5.794-4.031,10.656-7.413,18.484-8.78V336.3c0,4.512,3.658,8.17,8.17,8.17c4.512,0,8.17-3.658,8.17-8.17v-91.194 c0-4.512-3.658-8.17-8.17-8.17c-18.223,0-27.66,6.564-35.986,12.357c-7.574,5.268-13.557,9.431-26.654,9.431 c-13.097,0-19.08-4.161-26.654-9.431c-8.326-5.792-17.763-12.357-35.986-12.357c-18.222,0-27.659,6.564-35.985,12.357 c-7.573,5.268-13.556,9.431-26.652,9.431c-13.097,0-19.079-4.161-26.652-9.431c-8.324-5.792-17.76-12.357-35.982-12.357 c-4.512,0-8.17,3.658-8.17,8.17v215.07c0,1.928,0.681,3.793,1.924,5.267C141.161,465.85,141.541,466.226,141.948,466.563z"></path>
+                                </svg>
+                                <span data-i18n="lbl-kokoro-blend-titulo">Mezcla de Voz (Kokoro AI)</span>
+                            </h4>
+                            <div class="ayuda-text" style="font-size:11px; color:#576574; margin-bottom:12px;" data-i18n="lbl-kokoro-blend-desc">
+                                Crea combinaciones neuronales personalizadas mezclando timbres de voz o afinando a partir de una muestra de audio.
+                            </div>
+
+                            <!-- Opción: Crear a partir de Muestra de Audio -->
+                            <div style="background: #e8f8f0; border: 1px dashed #27ae60; border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                <div style="flex: 1; min-width: 200px;">
+                                    <div style="font-size: 12px; font-weight: 600; color: #1e824c; display: flex; align-items: center; gap: 6px;">
+                                        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 14px; height: 14px;"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>
+                                        <span data-i18n="lbl-afinar-mezcla-audio">Afinar Mezcla desde Audio</span>
+                                    </div>
+                                    <div style="font-size: 11px; color: #576574; margin-top: 2px;" data-i18n="lbl-afinar-mezcla-audio-desc">
+                                        Sube un audio de 5 a 15 segundos para capturar el timbre y la entonación en una nueva voz.
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                    <input type="file" id="file-kokoro-muestra-audio" accept="audio/*,.mp3,.wav,.m4a,.ogg" style="display: none;" onchange="procesarArchivoMuestraAudio(this)">
+                                    <button type="button" id="btn-cargar-muestra-audio" onclick="document.getElementById('file-kokoro-muestra-audio').click()"
+                                        class="btn-secundario btn-voz-lab-cargar-kokoro">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                        <span id="lbl-btn-cargar-audio" data-i18n="btn-cargar-audio">Cargar Audio...</span>
+                                    </button>
+                                    <button type="button" id="btn-grabar-muestra-audio" onclick="toggleGrabacionMuestraAudio()"
+                                        class="btn-secundario btn-voz-lab-grabar">
+                                        <svg id="icon-grabar-muestra-audio" viewBox="0 0 24 24" fill="currentColor" style="width: 12px; height: 12px; color: #e74c3c;"><circle cx="12" cy="12" r="8"/></svg>
+                                        <span id="lbl-btn-grabar-audio" data-i18n="btn-grabar-voz">Grabar Voz</span>
+                                    </button>
+                                    <span id="lbl-tiempo-grabacion" style="font-size: 11px; font-weight: bold; color: #e74c3c; display: none;">00:00</span>
+                                </div>
+                            </div>
+
+                            <!-- Fila 1: Nombre Personalizado -->
+                            <div style="margin-bottom: 10px;">
+                                <label style="font-size:12px; font-weight:600; color:#2c3e50; display:block; margin-bottom:4px;" data-i18n="lbl-kokoro-blend-nombre">
+                                    Nombre de la nueva voz:
+                                </label>
+                                <input type="text" id="txt-kokoro-blend-nombre" class="input-valor"
+                                    placeholder="Ej: Mi Voz Narradora, Clara Dinámica..." data-i18n-placeholder="ph-kokoro-blend-nombre"
+                                    style="width: 100%; box-sizing: border-box; text-align: left; padding: 6px 10px; font-size: 13px; border-radius: 4px; border: 1px solid #74b9ff;">
+                            </div>
+
+                            <!-- Fila 2: Voces Base A y B -->
+                            <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
+                                <div style="flex: 1; min-width: 140px;">
+                                    <label style="font-size:12px; font-weight:600; color:#2c3e50; display:block; margin-bottom:4px;" data-i18n="lbl-voz-principal-a">
+                                        Voz Principal (A):
+                                    </label>
+                                    <select id="sel-kokoro-blend-voza" class="combo-config"
+                                        onchange="actualizarEtiquetasBlendKokoro(); guardarTodosAjustes(false)"
+                                        style="width:100%; padding:6px; font-size:12px; border-radius:4px; border:1px solid #ccc;">
+                                        <optgroup label="Español">
+                                            <option value="ef_dora" selected>Dora (Español · Femenina Clara)</option>
+                                            <option value="em_alex">Alex (Español · Masculina Estándar)</option>
+                                            <option value="em_santa">Santa (Español · Masculina Profunda)</option>
+                                        </optgroup>
+                                        <optgroup label="Inglés Americano · Femeninas">
+                                            <option value="af_heart">Heart (Insignia · Ultra Natural)</option>
+                                            <option value="af_bella">Bella (Cálida · Audiolibros)</option>
+                                            <option value="af_nicole">Nicole (Suave / ASMR · Relajante)</option>
+                                            <option value="af_sarah">Sarah (Formal · Articulada)</option>
+                                            <option value="af_nova">Nova (Dinámica · Juvenil)</option>
+                                            <option value="af_sky">Sky (Fresca · Enérgica)</option>
+                                            <option value="af_alloy">Alloy (Neutra · Asistente)</option>
+                                            <option value="af_jessica">Jessica (Madura · Expresiva)</option>
+                                            <option value="af_river">River (Pausada · Profunda)</option>
+                                            <option value="af_aoede">Aoede (Melódica · Teatral)</option>
+                                            <option value="af_kore">Kore (Serena · Equilibrada)</option>
+                                            <option value="af">Default Female (Original)</option>
+                                        </optgroup>
+                                        <optgroup label="Inglés Americano · Masculinas">
+                                            <option value="am_adam">Adam (Locutor de Noticias · Firme)</option>
+                                            <option value="am_michael">Michael (Corporativo · Serio)</option>
+                                            <option value="am_fenrir">Fenrir (Grave · Épico / Tráiler)</option>
+                                            <option value="am_echo">Echo (Resonante · Teatral)</option>
+                                            <option value="am_eric">Eric (Conversacional · Cercano)</option>
+                                            <option value="am_liam">Liam (Joven · Dinámico)</option>
+                                            <option value="am_onyx">Onyx (Muy Grave · Cinematográfico)</option>
+                                            <option value="am_puck">Puck (Enérgico · Jovial)</option>
+                                            <option value="am_santa">Santa (Maduro · Profundo)</option>
+                                        </optgroup>
+                                        <optgroup label="Inglés Británico · Femeninas">
+                                            <option value="bf_emma">Emma (Británica · Refinada / Audiolibros)</option>
+                                            <option value="bf_isabella">Isabella (Británica · Poética)</option>
+                                            <option value="bf_alice">Alice (Británica · Estilo BBC)</option>
+                                            <option value="bf_lily">Lily (Británica · Pedagógica)</option>
+                                        </optgroup>
+                                        <optgroup label="Inglés Británico · Masculinas">
+                                            <option value="bm_george">George (Británico · Documental Clásico)</option>
+                                            <option value="bm_fable">Fable (Británico · Cuentos / Narrativa)</option>
+                                            <option value="bm_lewis">Lewis (Británico · Sobrio / Académico)</option>
+                                            <option value="bm_daniel">Daniel (Británico · Conversacional)</option>
+                                        </optgroup>
+                                        <optgroup label="Portugués">
+                                            <option value="pf_dora">Dora (Portugués · Femenina)</option>
+                                            <option value="pm_alex">Alex (Portugués · Masculina)</option>
+                                            <option value="pm_santa">Santa (Portugués · Profunda)</option>
+                                        </optgroup>
+                                        <optgroup label="Italiano">
+                                            <option value="if_sara">Sara (Italiano · Femenina)</option>
+                                            <option value="im_nicola">Nicola (Italiano · Masculina)</option>
+                                        </optgroup>
+                                        <optgroup label="Francés">
+                                            <option value="ff_siwis">Siwis (Francés · Femenina)</option>
+                                        </optgroup>
+                                        <optgroup label="Japonés">
+                                            <option value="jf_alpha">Alpha (Japonés · Femenina)</option>
+                                            <option value="jf_gongitsune">Gongitsune (Japonés · Cuentos)</option>
+                                            <option value="jf_nezumi">Nezumi (Japonés · Caracterizada)</option>
+                                            <option value="jf_tebukuro">Tebukuro (Japonés · Suave)</option>
+                                            <option value="jm_kumo">Kumo (Japonés · Masculina)</option>
+                                        </optgroup>
+                                        <optgroup label="Chino Mandarín">
+                                            <option value="zf_xiaoxiao">Xiaoxiao (Chino · Femenina Clásica)</option>
+                                            <option value="zf_xiaobei">Xiaobei (Chino · Femenina Cálida)</option>
+                                            <option value="zf_xiaoni">Xiaoni (Chino · Femenina Suave)</option>
+                                            <option value="zf_xiaoyi">Xiaoyi (Chino · Femenina Expresiva)</option>
+                                            <option value="zm_yunxi">Yunxi (Chino · Masculina Natural)</option>
+                                            <option value="zm_yunjian">Yunjian (Chino · Masculina Narrativa)</option>
+                                            <option value="zm_yunxia">Yunxia (Chino · Masculina Dinámica)</option>
+                                            <option value="zm_yunyang">Yunyang (Chino · Masculina Formal)</option>
+                                        </optgroup>
+                                        <optgroup label="Hindi">
+                                            <option value="hf_alpha">Alpha (Hindi · Femenina)</option>
+                                            <option value="hf_beta">Beta (Hindi · Femenina)</option>
+                                            <option value="hm_omega">Omega (Hindi · Masculina)</option>
+                                            <option value="hm_psi">Psi (Hindi · Masculina)</option>
+                                        </optgroup>
+                                    </select>
+                                </div>
+
+                                <div style="flex: 1; min-width: 140px;">
+                                    <label style="font-size:12px; font-weight:600; color:#2c3e50; display:block; margin-bottom:4px;" data-i18n="lbl-voz-secundaria-b">
+                                        Voz Secundaria (B):
+                                    </label>
+                                    <select id="sel-kokoro-blend-vozb" class="combo-config"
+                                        onchange="actualizarEtiquetasBlendKokoro(); guardarTodosAjustes(false)"
+                                        style="width:100%; padding:6px; font-size:12px; border-radius:4px; border:1px solid #ccc;">
+                                        <optgroup label="Inglés Americano · Femeninas">
+                                            <option value="af_heart" selected>Heart (Insignia · Ultra Natural)</option>
+                                            <option value="af_bella">Bella (Cálida · Audiolibros)</option>
+                                            <option value="af_nicole">Nicole (Suave / ASMR · Relajante)</option>
+                                            <option value="af_sarah">Sarah (Formal · Articulada)</option>
+                                            <option value="af_nova">Nova (Dinámica · Juvenil)</option>
+                                            <option value="af_sky">Sky (Fresca · Enérgica)</option>
+                                            <option value="af_alloy">Alloy (Neutra · Asistente)</option>
+                                            <option value="af_jessica">Jessica (Madura · Expresiva)</option>
+                                            <option value="af_river">River (Pausada · Profunda)</option>
+                                            <option value="af_aoede">Aoede (Melódica · Teatral)</option>
+                                            <option value="af_kore">Kore (Serena · Equilibrada)</option>
+                                            <option value="af">Default Female (Original)</option>
+                                        </optgroup>
+                                        <optgroup label="Inglés Americano · Masculinas">
+                                            <option value="am_adam">Adam (Locutor de Noticias · Firme)</option>
+                                            <option value="am_michael">Michael (Corporativo · Serio)</option>
+                                            <option value="am_fenrir">Fenrir (Grave · Épico / Tráiler)</option>
+                                            <option value="am_echo">Echo (Resonante · Teatral)</option>
+                                            <option value="am_eric">Eric (Conversacional · Cercano)</option>
+                                            <option value="am_liam">Liam (Joven · Dinámico)</option>
+                                            <option value="am_onyx">Onyx (Muy Grave · Cinematográfico)</option>
+                                            <option value="am_puck">Puck (Enérgico · Jovial)</option>
+                                            <option value="am_santa">Santa (Maduro · Profundo)</option>
+                                        </optgroup>
+                                        <optgroup label="Español">
+                                            <option value="ef_dora">Dora (Español · Femenina Clara)</option>
+                                            <option value="em_alex">Alex (Español · Masculina Estándar)</option>
+                                            <option value="em_santa">Santa (Español · Masculina Profunda)</option>
+                                        </optgroup>
+                                        <optgroup label="Inglés Británico · Femeninas">
+                                            <option value="bf_emma">Emma (Británica · Refinada / Audiolibros)</option>
+                                            <option value="bf_isabella">Isabella (Británica · Poética)</option>
+                                            <option value="bf_alice">Alice (Británica · Estilo BBC)</option>
+                                            <option value="bf_lily">Lily (Británica · Pedagógica)</option>
+                                        </optgroup>
+                                        <optgroup label="Inglés Británico · Masculinas">
+                                            <option value="bm_george">George (Británico · Documental Clásico)</option>
+                                            <option value="bm_fable">Fable (Británico · Cuentos / Narrativa)</option>
+                                            <option value="bm_lewis">Lewis (Británico · Sobrio / Académico)</option>
+                                            <option value="bm_daniel">Daniel (Británico · Conversacional)</option>
+                                        </optgroup>
+                                        <optgroup label="Portugués">
+                                            <option value="pf_dora">Dora (Portugués · Femenina)</option>
+                                            <option value="pm_alex">Alex (Portugués · Masculina)</option>
+                                            <option value="pm_santa">Santa (Portugués · Profunda)</option>
+                                        </optgroup>
+                                        <optgroup label="Italiano">
+                                            <option value="if_sara">Sara (Italiano · Femenina)</option>
+                                            <option value="im_nicola">Nicola (Italiano · Masculina)</option>
+                                        </optgroup>
+                                        <optgroup label="Francés">
+                                            <option value="ff_siwis">Siwis (Francés · Femenina)</option>
+                                        </optgroup>
+                                        <optgroup label="Japonés">
+                                            <option value="jf_alpha">Alpha (Japonés · Femenina)</option>
+                                            <option value="jf_gongitsune">Gongitsune (Japonés · Cuentos)</option>
+                                            <option value="jf_nezumi">Nezumi (Japonés · Caracterizada)</option>
+                                            <option value="jf_tebukuro">Tebukuro (Japonés · Suave)</option>
+                                            <option value="jm_kumo">Kumo (Japonés · Masculina)</option>
+                                        </optgroup>
+                                        <optgroup label="Chino Mandarín">
+                                            <option value="zf_xiaoxiao">Xiaoxiao (Chino · Femenina Clásica)</option>
+                                            <option value="zf_xiaobei">Xiaobei (Chino · Femenina Cálida)</option>
+                                            <option value="zf_xiaoni">Xiaoni (Chino · Femenina Suave)</option>
+                                            <option value="zf_xiaoyi">Xiaoyi (Chino · Femenina Expresiva)</option>
+                                            <option value="zm_yunxi">Yunxi (Chino · Masculina Natural)</option>
+                                            <option value="zm_yunjian">Yunjian (Chino · Masculina Narrativa)</option>
+                                            <option value="zm_yunxia">Yunxia (Chino · Masculina Dinámica)</option>
+                                            <option value="zm_yunyang">Yunyang (Chino · Masculina Formal)</option>
+                                        </optgroup>
+                                        <optgroup label="Hindi">
+                                            <option value="hf_alpha">Alpha (Hindi · Femenina)</option>
+                                            <option value="hf_beta">Beta (Hindi · Femenina)</option>
+                                            <option value="hm_omega">Omega (Hindi · Masculina)</option>
+                                            <option value="hm_psi">Psi (Hindi · Masculina)</option>
+                                        </optgroup>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Fila 2.5: Tercera Voz de Matiz (Voz C) -->
+                            <div style="display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; align-items: flex-end;">
+                                <div style="flex: 2; min-width: 180px;">
+                                    <label style="font-size:12px; font-weight:600; color:#2c3e50; display:block; margin-bottom:4px;" data-i18n="lbl-voz-terciaria-c">
+                                        Voz Terciaria de Matiz (C - Opcional):
+                                    </label>
+                                    <select id="sel-kokoro-blend-vozc" class="combo-config"
+                                        onchange="actualizarEtiquetasBlendKokoro(); guardarTodosAjustes(false)"
+                                        style="width:100%; padding:6px; font-size:12px; border-radius:4px; border:1px solid #ccc;">
+                                        <option value="ninguna" data-i18n="opt-ninguna-vozc" selected>Ninguna (0% - Sin Matiz C)</option>
+                                        <optgroup label="Inglés Americano · Masculinas">
+                                            <option value="am_fenrir">Fenrir (Grave · Épico / Tráiler)</option>
+                                            <option value="am_adam">Adam (Locutor de Noticias · Firme)</option>
+                                            <option value="am_michael">Michael (Corporativo · Serio)</option>
+                                            <option value="am_echo">Echo (Resonante · Teatral)</option>
+                                            <option value="am_eric">Eric (Conversacional · Cercano)</option>
+                                            <option value="am_liam">Liam (Joven · Dinámico)</option>
+                                            <option value="am_onyx">Onyx (Muy Grave · Cinematográfico)</option>
+                                            <option value="am_puck">Puck (Enérgico · Jovial)</option>
+                                            <option value="am_santa">Santa (Maduro · Profundo)</option>
+                                        </optgroup>
+                                        <optgroup label="Inglés Americano · Femeninas">
+                                            <option value="af_heart">Heart (Insignia · Ultra Natural)</option>
+                                            <option value="af_bella">Bella (Cálida · Audiolibros)</option>
+                                            <option value="af_nicole">Nicole (Suave / ASMR · Relajante)</option>
+                                            <option value="af_sarah">Sarah (Formal · Articulada)</option>
+                                            <option value="af_nova">Nova (Dinámica · Juvenil)</option>
+                                            <option value="af_sky">Sky (Fresca · Enérgica)</option>
+                                            <option value="af_alloy">Alloy (Neutra · Asistente)</option>
+                                            <option value="af_jessica">Jessica (Madura · Expresiva)</option>
+                                            <option value="af_river">River (Pausada · Profunda)</option>
+                                            <option value="af_aoede">Aoede (Melódica · Teatral)</option>
+                                            <option value="af_kore">Kore (Serena · Equilibrada)</option>
+                                            <option value="af">Default Female (Original)</option>
+                                        </optgroup>
+                                        <optgroup label="Español">
+                                            <option value="ef_dora">Dora (Español · Femenina Clara)</option>
+                                            <option value="em_alex">Alex (Español · Masculina Estándar)</option>
+                                            <option value="em_santa">Santa (Español · Masculina Profunda)</option>
+                                        </optgroup>
+                                        <optgroup label="Inglés Británico · Femeninas">
+                                            <option value="bf_emma">Emma (Británica · Refinada / Audiolibros)</option>
+                                            <option value="bf_isabella">Isabella (Británica · Poética)</option>
+                                            <option value="bf_alice">Alice (Británica · Estilo BBC)</option>
+                                            <option value="bf_lily">Lily (Británica · Pedagógica)</option>
+                                        </optgroup>
+                                        <optgroup label="Inglés Británico · Masculinas">
+                                            <option value="bm_george">George (Británico · Documental Clásico)</option>
+                                            <option value="bm_fable">Fable (Británico · Cuentos / Narrativa)</option>
+                                            <option value="bm_lewis">Lewis (Británico · Sobrio / Académico)</option>
+                                            <option value="bm_daniel">Daniel (Británico · Conversacional)</option>
+                                        </optgroup>
+                                        <optgroup label="Portugués">
+                                            <option value="pf_dora">Dora (Portugués · Femenina)</option>
+                                            <option value="pm_alex">Alex (Portugués · Masculina)</option>
+                                            <option value="pm_santa">Santa (Portugués · Profunda)</option>
+                                        </optgroup>
+                                        <optgroup label="Italiano">
+                                            <option value="if_sara">Sara (Italiano · Femenina)</option>
+                                            <option value="im_nicola">Nicola (Italiano · Masculina)</option>
+                                        </optgroup>
+                                        <optgroup label="Francés">
+                                            <option value="ff_siwis">Siwis (Francés · Femenina)</option>
+                                        </optgroup>
+                                        <optgroup label="Japonés">
+                                            <option value="jf_alpha">Alpha (Japonés · Femenina)</option>
+                                            <option value="jf_gongitsune">Gongitsune (Japonés · Cuentos)</option>
+                                            <option value="jf_nezumi">Nezumi (Japonés · Caracterizada)</option>
+                                            <option value="jf_tebukuro">Tebukuro (Japonés · Suave)</option>
+                                            <option value="jm_kumo">Kumo (Japonés · Masculina)</option>
+                                        </optgroup>
+                                        <optgroup label="Chino Mandarín">
+                                            <option value="zf_xiaoxiao">Xiaoxiao (Chino · Femenina Clásica)</option>
+                                            <option value="zf_xiaobei">Xiaobei (Chino · Femenina Cálida)</option>
+                                            <option value="zf_xiaoni">Xiaoni (Chino · Femenina Suave)</option>
+                                            <option value="zf_xiaoyi">Xiaoyi (Chino · Femenina Expresiva)</option>
+                                            <option value="zm_yunxi">Yunxi (Chino · Masculina Natural)</option>
+                                            <option value="zm_yunjian">Yunjian (Chino · Masculina Narrativa)</option>
+                                            <option value="zm_yunxia">Yunxia (Chino · Masculina Dinámica)</option>
+                                            <option value="zm_yunyang">Yunyang (Chino · Masculina Formal)</option>
+                                        </optgroup>
+                                        <optgroup label="Hindi">
+                                            <option value="hf_alpha">Alpha (Hindi · Femenina)</option>
+                                            <option value="hf_beta">Beta (Hindi · Femenina)</option>
+                                            <option value="hm_omega">Omega (Hindi · Masculina)</option>
+                                            <option value="hm_psi">Psi (Hindi · Masculina)</option>
+                                        </optgroup>
+                                    </select>
+                                </div>
+
+                                <div style="flex: 1; min-width: 130px;">
+                                    <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+                                        <span style="font-weight:600; color:#2c3e50;" data-i18n="lbl-matiz-c">Matiz C:</span>
+                                        <span id="lbl-kokoro-blend-pesoc-txt" style="font-weight:bold; color:#27ae60;">0%</span>
+                                    </div>
+                                    <input type="range" id="rng-kokoro-blend-pesoc" min="0" max="40" step="5" value="0"
+                                        oninput="actualizarEtiquetasBlendKokoro(); guardarTodosAjustes(false)"
+                                        style="width: 100%;">
+                                </div>
+                            </div>
+
+                            <!-- Fila 3: Balance / Ratio y Acento -->
+                            <div style="display: flex; gap: 15px; margin-bottom: 12px; flex-wrap: wrap; align-items: center;">
+                                <div style="flex: 2; min-width: 180px;">
+                                    <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+                                        <span style="font-weight:600; color:#2c3e50;" data-i18n="lbl-balance-mezcla">Balance de Mezcla:</span>
+                                        <span id="lbl-kokoro-blend-ratio-txt" style="font-weight:bold; color:#1e824c;">70% A / 30% B</span>
+                                    </div>
+                                    <input type="range" id="rng-kokoro-blend-ratio" min="0" max="100" step="5" value="70"
+                                        oninput="actualizarEtiquetasBlendKokoro(); guardarTodosAjustes(false)"
+                                        style="width: 100%;">
+                                </div>
+
+                                <div style="flex: 1; min-width: 130px;">
+                                    <label style="font-size:12px; font-weight:600; color:#2c3e50; display:block; margin-bottom:4px;" data-i18n="lbl-acento-fonetico">
+                                        Acento Fonético:
+                                    </label>
+                                    <select id="sel-kokoro-blend-acento" class="combo-config"
+                                        onchange="guardarTodosAjustes(false)"
+                                        style="width:100%; padding:6px; font-size:12px; border-radius:4px; border:1px solid #ccc;">
+                                        <option value="es-419" selected>Español Latino (es-419)</option>
+                                        <option value="es">Español España (es)</option>
+                                        <option value="en-us">Inglés USA (en-us)</option>
+                                        <option value="en-gb">Inglés Británico (en-gb)</option>
+                                        <option value="pt-br">Portugués Brasil (pt-br)</option>
+                                        <option value="it">Italiano (it)</option>
+                                        <option value="fr-fr">Francés (fr-fr)</option>
+                                        <option value="ja">Japonés (ja)</option>
+                                        <option value="cmn">Chino Mandarín (cmn)</option>
+                                        <option value="hi">Hindi (hi)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Desplegable: Ajustes Acústicos y Expresividad -->
+                            <details style="background: #ffffff; border: 1px solid #d2d6dc; border-radius: 6px; padding: 8px 12px; margin-bottom: 14px;">
+                                <summary style="font-size: 12px; font-weight: 600; color: #2c3e50; cursor: pointer; display: flex; align-items: center; gap: 6px; user-select: none;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px; color:#4a5568;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                                    <span data-i18n="lbl-ajustes-acusticos-expresividad">Ajustes Acústicos y Expresividad (Opcional)</span>
+                                </summary>
+                                <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;">
+                                    <!-- Perfil de Ecualización -->
+                                    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+                                        <div style="flex:1; min-width:140px;">
+                                            <label style="font-size:11px; font-weight:600; color:#34495e; display:block;" data-i18n="lbl-caracter-estudio">Carácter de Estudio (DSP):</label>
+                                            <div style="font-size:10px; color:#7f8c8d;" data-i18n="lbl-caracter-estudio-sub">Firma sonora del audio generado</div>
+                                        </div>
+                                        <select id="sel-kokoro-blend-eq" class="combo-config" onchange="guardarTodosAjustes(false)"
+                                            style="padding:5px 8px; font-size:11px; border-radius:4px; border:1px solid #ccc; min-width:180px;">
+                                            <option value="estudio" data-i18n="opt-kokoro-eq-estudio" selected>Locutor de Estudio (Cálido y Humano)</option>
+                                            <option value="cristalino" data-i18n="opt-kokoro-eq-cristalino">Cristalino (Alta Definición y Brillo)</option>
+                                            <option value="radio" data-i18n="opt-kokoro-eq-radio">Radiodifusión (Graves con Autoridad)</option>
+                                            <option value="natural" data-i18n="opt-eq-natural">Plano / Natural (Sin filtros DSP)</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Expresividad / Style Scale -->
+                                    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+                                        <div style="flex:1; min-width:140px;">
+                                            <label style="font-size:11px; font-weight:600; color:#34495e; display:block;" data-i18n="lbl-intensidad-estilo">Intensidad de Estilo (Expresividad):</label>
+                                            <div style="font-size:10px; color:#7f8c8d;" data-i18n="lbl-intensidad-estilo-sub">Varianza y modulación prosódica</div>
+                                        </div>
+                                        <select id="sel-kokoro-blend-expresividad" class="combo-config" onchange="guardarTodosAjustes(false)"
+                                            style="padding:5px 8px; font-size:11px; border-radius:4px; border:1px solid #ccc; min-width:180px;">
+                                            <option value="0.8" data-i18n="opt-exp-sobrio">Sobrio / Académico (0.8x)</option>
+                                            <option value="1.0" data-i18n="opt-exp-equilibrado" selected>Equilibrado / Natural (1.0x)</option>
+                                            <option value="1.2" data-i18n="opt-exp-teatral">Teatral / Expresivo (1.2x)</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Cadencia / Ritmo Sugerido -->
+                                    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+                                        <div style="flex:1; min-width:140px;">
+                                            <label style="font-size:11px; font-weight:600; color:#34495e; display:block;" data-i18n="lbl-cadencia-base">Cadencia Base Sugerida:</label>
+                                            <div style="font-size:10px; color:#7f8c8d;" data-i18n="lbl-cadencia-base-sub">Velocidad intrínseca de esta voz</div>
+                                        </div>
+                                        <select id="sel-kokoro-blend-cadencia" class="combo-config" onchange="guardarTodosAjustes(false)"
+                                            style="padding:5px 8px; font-size:11px; border-radius:4px; border:1px solid #ccc; min-width:180px;">
+                                            <option value="0.9" data-i18n="opt-cad-pausada">Pausada / Audiolibro (0.9x)</option>
+                                            <option value="1.0" data-i18n="opt-cad-normal" selected>Normal (1.0x)</option>
+                                            <option value="1.1" data-i18n="opt-cad-agil">Ágil / Noticias (1.1x)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </details>
+
+                            <!-- Fila 4: Acciones -->
+                            <div style="display:flex; gap:10px; margin-bottom: 14px; justify-content: flex-end;">
+                                <button type="button" id="btn-probar-kokoro-blend" onclick="probarMezclaKokoroLive()"
+                                    class="btn-secundario btn-voz-lab-probar">
+                                    <svg id="icon-probar-kokoro-blend" viewBox="0 0 24 24" fill="currentColor" style="width:14px; height:14px;"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+                                    <span data-i18n="btn-probar-muestra">Probar Muestra</span>
+                                </button>
+                                <button type="button" id="btn-guardar-kokoro-blend" onclick="guardarMezclaKokoroLive()"
+                                    class="btn-principal btn-voz-lab-guardar">
+                                    <svg id="icon-guardar-kokoro-blend" viewBox="0 0 24 24" fill="currentColor" style="width:14px; height:14px;"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+                                    <span data-i18n="btn-guardar-mezcla">Guardar Mezcla</span>
+                                </button>
+                            </div>
+
+                            <!-- Fila 5: Lista de Mezclas Creadas -->
+                            <div style="border-top: 1px dashed #b2bec3; padding-top: 10px;">
+                                <div style="font-size:12px; font-weight:600; color:#2c3e50; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+                                    <span data-i18n="lbl-mezclas-guardadas">Tus Mezclas Guardadas:</span>
+                                    <span id="lbl-total-blends-count" style="font-size:11px; color:#636e72;">(0)</span>
+                                </div>
+                                <div id="lista-mezclas-kokoro-items" style="display:flex; flex-direction:column; gap:6px; max-height:160px; overflow-y:auto; padding-right:4px;">
+                                    <div style="font-size:11px; color:#95a5a6; font-style:italic; padding:6px 0;" data-i18n="lbl-sin-mezclas-kokoro">No has creado mezclas personalizadas aún.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="control-group"
+                            style="margin-top: 25px; border-top: 1px solid #eee; padding-top: 15px;">
+                            <button class="btn-reset-sector" onclick="restablecerAudioBase()">
+                                <span data-i18n="lbl-reset-audio">🐢 RESTABLECER VALORES DE AUDIO</span>
+                            </button>
+                        </div>
+                    </div>

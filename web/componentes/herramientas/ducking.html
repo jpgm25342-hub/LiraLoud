@@ -1,0 +1,46 @@
+<div id="panel-ducking-flotante" class="panel-flotante-ovalado" style="display:none;"
+            onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.15'">
+            <div
+                style="font-weight: bold; margin-bottom: 5px; color: #2c3e50; font-size: 11px; text-align: center; text-transform: uppercase; letter-spacing: 1px; display:flex; align-items:center; justify-content:center; gap:5px;">
+
+            </div>
+
+            <div style="display:flex; justify-content:center; align-items:center; gap:15px; margin-top: 5px;">
+                <button onclick="eel.system_media_prev()()" class="btn-secundario svg-btn" title="Atrasar" data-i18n-title="ducking-atrasar">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                        <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+                    </svg>
+                </button>
+                <button onclick="toggleMediaFondoPlayPause()" class="btn-principal svg-btn-main"
+                    title="Pausa / Reproducir" data-i18n-title="ducking-play-pause" id="btn-fondo-play">
+                    <svg id="icono-fondo-play" viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
+                        <path d="M8 5v14l11-7z" />
+                    </svg>
+                </button>
+                <button onclick="eel.system_media_next()()" class="btn-secundario svg-btn" title="Adelantar" data-i18n-title="ducking-adelantar">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                        <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+                    </svg>
+                </button>
+            </div>
+            <div style="margin-top: 8px; width: 100%; display: flex; align-items: center; gap: 5px;">
+                <span id="contenedor-icono-ducking-flotante" style="color:#7f8c8d; display: flex; align-items: center;">
+                    <svg id="svg-ducking-flotante" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <!-- Bocina fija -->
+                        <path d="M3 9v6h4l5 5V4L7 9H3z" />
+                        <!-- Onda 1 (volumen bajo > 0%) -->
+                        <path id="ducking-onda-baja" d="M14.5 9.5c.7.7 1.1 1.6 1.1 2.5s-.4 1.8-1.1 2.5l1.4 1.4c1.1-1 1.7-2.4 1.7-3.9s-.6-2.9-1.7-3.9l-1.4 1.4z" />
+                        <!-- Onda 2 (volumen medio > 33%) -->
+                        <path id="ducking-onda-media" d="M16.5 7.5c1.2 1.2 1.9 2.8 1.9 4.5s-.7 3.3-1.9 4.5l1.4 1.4c1.6-1.6 2.5-3.7 2.5-5.9s-.9-4.3-2.5-5.9l-1.4 1.4z" />
+                        <!-- Onda 3 (volumen alto > 66%) -->
+                        <path id="ducking-onda-alta" d="M18.5 5.5c1.7 1.7 2.7 4 2.7 6.5s-1 4.8-2.7 6.5l1.4 1.4c2.1-2.1 3.3-4.9 3.3-7.9s-1.2-5.8-3.3-7.9l-1.4 1.4z" />
+                        <!-- X Mute (volumen 0%) -->
+                        <path id="ducking-icono-mute" d="M16.5 9.5l-1.4 1.4 2.1 2.1-2.1 2.1 1.4 1.4 2.1-2.1 2.1 2.1 1.4-1.4-2.1-2.1 2.1-2.1-1.4-1.4-2.1 2.1-2.1-2.1z" style="display:none;" />
+                    </svg>
+                </span>
+                <input type="range" id="rng-ducking-flotante" min="0" max="100" step="1" value="20"
+                    oninput="sincronizarDuckingNivel(this.value)" style="flex:1;">
+                <span id="lbl-ducking-flotante-nivel"
+                    style="font-size:10px; color:#2c3e50; font-weight:bold; min-width: 32px; width: 32px; text-align:right; display: inline-block;">20%</span>
+            </div>
+        </div>

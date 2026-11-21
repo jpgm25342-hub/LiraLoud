@@ -1,0 +1,34 @@
+<div id="modal-ocr-progreso" class="overlay-bloqueante">
+            <div
+                style="width: 480px; max-width: 90vw; background: #1e293b; color: #f8fafc; border-radius: 14px; padding: 25px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); border: 1px solid #334155; text-align: center; box-sizing: border-box;">
+                <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
+                <h3 style="margin: 0 0 6px 0; font-size: 17px; color: #38bdf8;" data-i18n="ocr-prog-titulo">Procesando documento con RapidOCR</h3>
+                <p id="ocr-progreso-texto-estado" style="font-size: 13px; color: #94a3b8; margin-bottom: 20px;" data-i18n="ocr-prog-sub">
+                    Extrayendo texto y coordenadas para sincronización de lectura...
+                </p>
+
+                <!-- Barra de Progreso -->
+                <div
+                    style="width: 100%; height: 12px; background: #0f172a; border-radius: 8px; overflow: hidden; margin-bottom: 12px; border: 1px solid #334155; position: relative;">
+                    <div id="barra-ocr-progreso-fill"
+                        style="width: 0%; height: 100%; background: linear-gradient(90deg, #0284c7, #38bdf8); transition: width 0.3s ease; box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);">
+                    </div>
+                </div>
+
+                <div
+                    style="display: flex; justify-content: space-between; font-size: 12px; color: #cbd5e1; margin-bottom: 6px; font-weight: 500;">
+                    <span id="ocr-progreso-contador" data-i18n="ocr-prog-contador-default">Página 1 de 1</span>
+                    <span id="ocr-progreso-porcentaje">0%</span>
+                </div>
+                <div id="ocr-progreso-tiempo-estimado"
+                    style="font-size: 12px; color: #38bdf8; margin-bottom: 20px; font-weight: 600; text-align: right;" data-i18n="ocr-prog-tiempo-calc">
+                    ⏱️ Calculando tiempo estimado...
+                </div>
+
+                <button type="button" onclick="cancelarBatchOCRYLeer()"
+                    style="background: #334155; color: #f8fafc; border: none; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s ease;"
+                    onmouseover="this.style.background='#475569'" onmouseout="this.style.background='#334155'" data-i18n="ocr-prog-cancelar">
+                    ⏹️ Cancelar y Empezar a Leer Ahora
+                </button>
+            </div>
+        </div>

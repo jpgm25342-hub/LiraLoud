@@ -1,9 +1,0 @@
-/* LiraLoud
- * Copyright 2026 José Pablo González Macías
- * Licensed under the Apache License, Version 2.0
- */
-
-/* --- VISOR --- */
-#visor-container { flex: 1; overflow: auto; display: flex; justify-content: center; padding: 20px; position: relative; }
-canvas { background: white; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-

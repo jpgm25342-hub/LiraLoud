@@ -188,13 +188,9 @@ function retirarPantallaCarga() {
                 pantalla.parentNode.removeChild(pantalla);
                 console.log("✅ Pantalla de carga eliminada.");
                 
-                // 👇👇👇 EL DISPARADOR DE CORTESÍA 👇👇👇
-                // Damos 300ms extra para asegurar que el DOM esté limpio
-                setTimeout(() => {
-                    console.log("📂 [AUTO-OPEN] Intentando abrir selector de PDF...");
-                    abrirBuscador(); 
-                }, 300);
-                // 👆👆👆 FIN DEL DISPARADOR 👆👆👆
+                // 👇 La pantalla de bienvenida (#lira-bienvenida) ya está visible en el DOM.
+                // El usuario elige la acción desde el grid 2×2. No se abre ningún buscador automáticamente.
+                console.log("🏠 [INIT] Pantalla de bienvenida activa.");
             }
         }, 500);
     }

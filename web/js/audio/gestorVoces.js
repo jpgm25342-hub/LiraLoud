@@ -22,34 +22,10 @@ function cargarVocesSistema() {
     let valorPrevio = selIdioma.value; 
     selIdioma.innerHTML = ""; // Limpieza nuclear de siglas anteriores
 
-    // 3. Control Ejecutivo: Función de Inserción Manual
-    const add = (iso, nombre) => {
-        let opt = document.createElement('option');
-        opt.value = iso;
-        opt.innerText = nombre;
-        selIdioma.appendChild(opt);
-    };
-
-    // --- LISTA MAESTRA DEFINITIVA ---
-    add('af', 'Afrikáans'); add('sq', 'Albanés'); add('de', 'Alemán'); add('am', 'Amhárico');
-    add('ar', 'Árabe'); add('az', 'Azerbaiyano'); add('bn', 'Bengalí'); add('my', 'Birmano');
-    add('bs', 'Bosnio'); add('bg', 'Búlgaro'); add('kn', 'Canarés'); add('ca', 'Catalán');
-    add('cs', 'Checo'); add('zh', 'Chino'); add('si', 'Cingalés'); add('ko', 'Coreano');
-    add('hr', 'Croata'); add('da', 'Danés'); add('sk', 'Eslovaco'); add('sl', 'Esloveno');
-    add('es', 'Español'); add('et', 'Estonio'); add('fi', 'Finlandés'); add('fr', 'Francés');
-    add('cy', 'Galés'); add('gl', 'Gallego'); add('ka', 'Georgiano'); add('el', 'Griego');
-    add('gu', 'Guyaratí'); add('he', 'Hebreo'); add('hi', 'Hindi'); add('nl', 'Holandés');
-    add('hu', 'Húngaro'); add('id', 'Indonesio'); add('en', 'Inglés'); add('iu', 'Inuktitut');
-    add('ga', 'Irlandés'); add('is', 'Islandés'); add('it', 'Italiano'); add('ja', 'Japonés');
-    add('jv', 'Javanés'); add('km', 'Jemer'); add('kk', 'Kazajo'); add('lo', 'Lao');
-    add('lv', 'Letón'); add('lt', 'Lituano'); add('mk', 'Macedonio'); add('ml', 'Malayalam');
-    add('ms', 'Malayo'); add('mt', 'Maltés'); add('mr', 'Maratí'); add('mn', 'Mongol');
-    add('ne', 'Nepalí'); add('nb', 'Noruego'); add('ps', 'Pastún'); add('fa', 'Persa');
-    add('pl', 'Polaco'); add('pt', 'Portugués'); add('ro', 'Rumano'); add('ru', 'Ruso');
-    add('sr', 'Serbio'); add('so', 'Somalí'); add('sw', 'Suajili'); add('sv', 'Sueco');
-    add('th', 'Tailandés'); add('ta', 'Tamil'); add('te', 'Telugu'); add('tr', 'Turco');
-    add('uk', 'Ucraniano'); add('ur', 'Urdu'); add('uz', 'Uzbeko'); add('vi', 'Vietnamita');
-    add('zu', 'Zulú');
+    // --- LISTA MAESTRA DEFINITIVA (Autónimos desde estado.js) ---
+    if (typeof window.poblarSelectIdiomas === 'function') {
+        window.poblarSelectIdiomas(selIdioma);
+    }
 
     // 4. Restauración de Homeostasis
     if (valorPrevio) selIdioma.value = valorPrevio;
@@ -131,9 +107,14 @@ function actualizarListaVocesUI() {
         let langFilter = elFiltro ? elFiltro.value : 'es';
 
         // 2A. PROCESAR PIPER (voces locales con prefijo Local-)
+        const modoPrivacidadActivo = window.modoPrivacidadEstricta === true || document.getElementById('chk-modo-privacidad')?.checked === true;
+
         safeVocesPython.forEach(v => {
             // Si es voz de nube (Edge), la procesamos separada
             if (v.tipo === 'nube' || (!v.id.startsWith('Local-') && !v.id.endsWith('.onnx'))) {
+                // En modo privacidad estricta (100% offline), no incluimos voces Edge/nube
+                if (modoPrivacidadActivo) return;
+
                 // Voz Edge/Nube: el ID ya es el ShortName (ej: es-SV-RodrigoNeural)
                 const idLower = v.id.toLowerCase();
                 if (!langFilter || idLower.includes('-' + langFilter + '-') || idLower.startsWith(langFilter.toLowerCase())) {
@@ -153,6 +134,14 @@ function actualizarListaVocesUI() {
 
         // 3. PROCESAR NAVEGADOR
         safeVocesSistema.forEach(v => {
+            // En modo privacidad estricta, descartar voces online del navegador (ej: "Microsoft ... Online (Natural)")
+            if (modoPrivacidadActivo) {
+                const nombreLower = (v.name || '').toLowerCase();
+                if (nombreLower.includes('online') || nombreLower.includes('natural')) {
+                    return;
+                }
+            }
+
             if (!langFilter || v.lang.startsWith(langFilter)) {
                 todasLasVoces.push({ id: v.name, nombre: v.name, origen: 'navegador' });
             }
@@ -167,9 +156,8 @@ function actualizarListaVocesUI() {
             if (voz) {
                 let opt = document.createElement('option');
                 opt.value = voz.id;
-                let textoLimpio = voz.nombre.replace("⭐ ", "").replace("⚡ ", ""); 
-                let prefijo = voz.origen === 'piper' ? "⚡ " : "";
-                opt.innerText = "⭐ " + prefijo + textoLimpio;
+                let textoLimpio = voz.nombre.replace(/^⭐\s*/, ""); 
+                opt.innerText = "⭐ " + textoLimpio;
                 opt.style.fontWeight = "bold";
                 opt.style.color = "#d35400"; 
                 opt.setAttribute('data-origen', voz.origen);
@@ -201,12 +189,26 @@ function actualizarListaVocesUI() {
 
         // 5. RESTAURAR SELECCIÓN
         let existe = [...sel.options].some(o => o.value === valorActual);
+        if (modoPrivacidadActivo) {
+            const vLower = (valorActual || '').toLowerCase();
+            const esOnline = vLower.includes('online') || vLower.includes('natural') || (!vLower.startsWith('local-') && !vLower.endsWith('.onnx') && !vLower.includes('kokoro'));
+            if (esOnline) {
+                existe = false; // Forzar cambio en modo privacidad
+            }
+        }
+
         if (existe) {
             sel.value = valorActual;
             if (typeof vozIntencionUsuario !== 'undefined') vozIntencionUsuario = valorActual;
         } else if (sel.options.length > 0 && !sel.options[0].disabled) {
             sel.selectedIndex = 0;
-            if (typeof vozIntencionUsuario !== 'undefined') vozIntencionUsuario = sel.options[0].value;
+            const nuevaVozSegura = sel.options[0].value;
+            if (typeof vozIntencionUsuario !== 'undefined') vozIntencionUsuario = nuevaVozSegura;
+            if (typeof vozPredeterminada !== 'undefined') vozPredeterminada = nuevaVozSegura;
+            const inpBuscador = document.getElementById('busqueda-voz-live');
+            if (inpBuscador && sel.options[0].text) {
+                inpBuscador.value = sel.options[0].text.replace(/^⭐\s*/, "");
+            }
         }
 
         // 6. SINCRONIZAR MODAL MP3 (modal-voz)
@@ -245,5 +247,77 @@ function actualizarBotonEstrella() {
 
 // Al cambiar el selector, ejecutamos toda la lógica de cambio de voz
 document.getElementById('selector-voz-live').addEventListener('change', cambiarVozLive);
+
+function _vozCoincideConIdioma(vozId, langIso) {
+    if (!vozId || !langIso) return false;
+    const norm = vozId.toLowerCase().replace(/^(edge-|local-)/, '');
+    return norm.startsWith(langIso + '-') || norm.startsWith(langIso + '_');
+}
+
+function sincronizarVozConIdiomaUI(langOverride = null) {
+    const langRaw = (langOverride || (typeof currentLanguage !== 'undefined' ? currentLanguage : '') || 'es')
+        .toLowerCase().trim().slice(0, 2);
+    if (!langRaw) return false;
+
+    const elFiltro = document.getElementById('filtro-idioma');
+    const elModalFiltro = document.getElementById('modal-filtro-idioma');
+    const inpBusquedaIdioma = document.getElementById('busqueda-idioma-live');
+
+    if (elFiltro) {
+        const optFiltro = [...elFiltro.options].find(o => (o.value || '').toLowerCase().slice(0, 2) === langRaw);
+        const targetVal = optFiltro ? optFiltro.value : '';
+        if (elFiltro.value !== targetVal) {
+            elFiltro.value = targetVal;
+        }
+        if (elModalFiltro) elModalFiltro.value = targetVal;
+        if (inpBusquedaIdioma) {
+            inpBusquedaIdioma.value = optFiltro ? (optFiltro.text || '').trim() : '';
+        }
+        if (typeof actualizarListaVocesUI === 'function') actualizarListaVocesUI();
+    }
+
+    const sel = document.getElementById('selector-voz-live');
+    if (!sel) return false;
+
+    const yaCoincide = _vozCoincideConIdioma(sel.value, langRaw);
+    const modoPrivacidadActivo = window.modoPrivacidadEstricta === true
+        || document.getElementById('chk-modo-privacidad')?.checked === true;
+    const esVozLocalZh = langRaw === 'zh' && (sel.value || '').toLowerCase().startsWith('local-');
+
+    if (!yaCoincide || (esVozLocalZh && !modoPrivacidadActivo)) {
+        const opcionesIdioma = [...sel.options].filter(o => !o.disabled && _vozCoincideConIdioma(o.value, langRaw));
+        const matchEdge = !modoPrivacidadActivo
+            ? opcionesIdioma.find(o => {
+                const vl = (o.value || '').toLowerCase();
+                return !vl.startsWith('local-') && !vl.endsWith('.onnx');
+            })
+            : null;
+        const matchOpt = matchEdge || opcionesIdioma[0];
+        if (!matchOpt) return false;
+
+        sel.value = matchOpt.value;
+        if (typeof vozIntencionUsuario !== 'undefined') vozIntencionUsuario = matchOpt.value;
+        if (typeof vozPredeterminada !== 'undefined') vozPredeterminada = matchOpt.value;
+        const selModal = document.getElementById('modal-voz');
+        if (selModal && [...selModal.options].some(o => o.value === matchOpt.value)) {
+            selModal.value = matchOpt.value;
+        }
+        if (typeof cambiarVozLive === 'function') cambiarVozLive();
+    }
+
+    const inpBusquedaVoz = document.getElementById('busqueda-voz-live');
+    if (inpBusquedaVoz && sel.selectedIndex >= 0 && sel.options[sel.selectedIndex]) {
+        inpBusquedaVoz.value = (sel.options[sel.selectedIndex].text || '').replace(/^⭐\s*/, '').trim();
+    }
+    return true;
+}
+window.sincronizarVozConIdiomaUI = sincronizarVozConIdiomaUI;
+
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('lira:idioma-cambiado', (ev) => {
+        const lang = ev?.detail?.idioma;
+        if (lang) sincronizarVozConIdiomaUI(lang);
+    });
+}
 
 // ==========================================

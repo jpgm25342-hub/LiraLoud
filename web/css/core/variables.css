@@ -1,0 +1,20 @@
+/* LiraLoud - Paleta global de variables CSS (Modo Claro / Modo Oscuro) */
+:root {
+    --bg-panel: #ffffff;
+    --bg-secundario: #f8f9fa;
+    --bg-elevado: #f1f5f9;
+    --texto-principal: #2c3e50;
+    --texto-secundario: #64748b;
+    --borde-suave: #e2e8f0;
+    --acento-primario: #6c5ce7;
+}
+
+body.ui-dark-mode {
+    --bg-panel: #161b22;
+    --bg-secundario: #0d1117;
+    --bg-elevado: #1f242c;
+    --texto-principal: #e6edf3;
+    --texto-secundario: #adbac7;
+    --borde-suave: #30363d;
+    --acento-primario: #58a6ff;
+}

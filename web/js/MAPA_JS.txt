@@ -1,0 +1,60 @@
+=============================================================================
+LIRALOUD2 - MAPA DE ARQUITECTURA JAVASCRIPT (web/js/)
+=============================================================================
+Guía rápida de carpetas, archivos y funciones principales para contexto.
+
+[web/js/]
+  - zen-mode.js (436 líneas): toggleModoZen, toggleZenVoz, toggleZenMenu, sincronizarTraduccionDesdeZen, sincronizarSelectTraduccion, cerrarOtrasFuncionesPrincipales, inicializarExclusividadZen, toggleEtiquetasZen
+
+[web/js/audio/]
+  - gestorVoces.js (275 líneas): cargarVocesSistema, filtrarVocesPorIdioma, togglePinVoz, fijarVozPredeterminada, actualizarListaVocesUI, actualizarBotonEstrella
+  - voiceLab.js (1075 líneas): actualizarEtiquetasBlendKokoro, reproducirMuestraPCM, probarMezclaKokoroLive, guardarMezclaKokoroLive, procesarArchivoMuestraAudio, convertirBlobAudioAWav, mezclarACanalMono, toggleGrabacionMuestraAudio, eliminarMezclaKokoroLive, cargarYRenderizarMezclasKokoroUI, reproducirMuestraRapidaBlend, procesarArchivoClonPocket ... (+4 más)
+
+[web/js/core/]
+  - componentes.js (29 líneas): (listeners / inicialización)
+  - dialogos.js (147 líneas): liraAlert, liraConfirm, liraPrompt
+  - estado.js (146 líneas): obtenerNombreIdioma, poblarSelectIdiomas
+  - i18n.js (1609 líneas): toggleIdiomaDrop, toggleIdioma, applyTranslations, translateDynamicText
+  - init.js (200 líneas): forzarCargaPiper, getDragAfterElement, guardarOrdenTrasDeslizamiento, actualizar_log_carga, invocarPantallaCarga, retirarPantallaCarga
+  - webview_bridge.js (134 líneas): (listeners / inicialización)
+
+[web/js/graficos/]
+  - karaoke.js (626 líneas): hablarTexto, obtenerTraduccionOptimizada, reproducirSecuencia, togglePlayPause, actualizarBotonPlayPause, toggleLectura, iniciarLectura, pausarLectura, limpiarTexto, detenerLectura, copiarTexto
+
+[web/js/ia/]
+  - liraAI.js (2221 líneas): cambiarModoSalidaIA, cambiarProveedorIA, refrescarModelosProveedorActual, actualizarBadgeEstadoIA, actualizarApiKeyProveedorActual, actualizarModeloCloudActual, abrirConsolaProveedorActual, toggleVisibilidadApiKey, probarConexionCloudIA, abrirModalIA, cerrarModalIA, actualizarGaugeTokensUI ... (+51 más)
+  - tiendaOllama.js (471 líneas): abrirTiendaOllama, cargarCatalogoHF, _renderBotonesControlOllama, asignarModeloOllamaActivo, instalarModeloOllama, _actualizarControlesTarjetaTienda, renderizarPanelDescargasOllama, pausarDescargaOllama, reanudarDescargaOllama, cancelarDescargaOllama, actualizarProgresoOllama, cargarPromptsPersonalizados ... (+9 más)
+
+[web/js/modulos/]
+  - combosLive.js (121 líneas): guardarPreferenciaIdioma, filtrarVocesPorIdiomaLive, abrirComboLive, filtrarComboLive, seleccionarComboLive
+  - diccionario.js (445 líneas): abrirDiccionario, cerrarDiccionario, obtenerDiccionarioConsolidado, mostrarMenuContextualTab, ocultarMenuContextualTab, abrirRenombrarSeccionActual, eliminarSeccionDesdeMenu, renombrarSeccion, guardarDiccionarioSinEsteLibro, renderizarSidebar, guardarOrdenSecciones, crearSeccion ... (+7 más)
+  - ducking.js (83 líneas): sincronizarDuckingNivel, actualizarIconoDuckingDinamico, aplicarVisibilidadDucking
+  - exportadorMP3.js (290 líneas): cargarVocesSistemaMp3, filtrarVocesPorIdiomaMp3, abrirComboMp3, filtrarComboMp3, seleccionarComboMp3, abrirModalDescarga, cerrarModalDescarga, actModalVel, iniciarDescargaFinal, previsualizarPagina
+  - notas.js (872 líneas): togglePanelNotaRapida, abrirPanelNotaRapida, cerrarPanelNotaRapida, guardarNotaRapida, enviarNotaRapidaAIA, toggleModalNotas, abrirModalNotas, cerrarModalNotas, obtenerNombreLibroActivo, cargarNotasDesdeBackend, actualizarDatalistClasificaciones, renderizarSidebarFiltros ... (+19 más)
+  - ocrManager.js (515 líneas): obtenerMensajesRotativosOCR, mostrarHUDScannerOCR, ocultarHUDScannerOCR, abrirModalOCRDecision, cerrarModalOCRDecision, toggleAutoLayoutClic, toggleAutoLayout, toggleAutoOCRClic, toggleAutoOCR, ignorarYEntrarAlPDF, abrirModalRangoOCR, volverADecisionOCR ... (+13 más)
+  - privacidad.js (98 líneas): toggleModoPrivacidad, notificarBloqueoPrivacidad
+  - teatro.js (407 líneas): abrirTeatro, cerrarTeatro, cargarIdiomasTeatro, filtrarVocesTeatroClon, abrirComboTeatro, filtrarComboTeatro, seleccionarComboTeatro, filtrarVocesTeatro, renderizarActores, agregarActor, eliminarObraTeatro, borrarActor ... (+4 más)
+  - tiendaVoces.js (148 líneas): abrirTiendaVoces, cerrarTiendaVoces, cambiarMotorTienda, cargarTiendaVoces, toggleAyudaTiendaVoces, filtrarTiendaVoces, recargarCatalogoVocesApp, descargarVozTiendaUI, eliminarVozTiendaUI, actualizarProgresoVozTienda
+  - traduccionUI.js (173 líneas): toggleMenuTraduccion, abrirConfiguracionTraduccion, actualizarVisibilidadBtnTraduccion, mostrarSubtituloTraduccion, actualizarKaraokeSubtitulos, cerrarSubtituloTraduccion, limpiarSubtitulosTraduccion, aplicarSubtituloEspaciado, dispararPretraduccionEntorno
+  - tutorial.js (8827 líneas): setTimeoutTutorial, limpiarTimeoutsTutorial, detenerAudioTutorial, toggleAudioTutorial, narrarPasoTutorial, obtenerAtajoAgregarLimite, teclasDelAtajo, atajoLegibleAgregarLimite, aplicarAtajoEnTexto, comboDesdeEvento, sincronizarSpotlightPaso1, activarMocksTutorialExtraccion ... (+33 más)
+  - ui.js (787 líneas): llenarTodosLosSelectores, cambiarVozLive, sincronizarSlider, sincronizarInput, obtenerLimitesVisiblesRecorte, aplicarRecorteDinamico, aplicarZoomDinamico, toggleBotonKofi, aplicarCambiosLectura, cambiarValorInput, actConfig, prepararEdicion ... (+11 más)
+
+[web/js/motorAudio/]
+  - bootstrap.js (886 líneas): guardarTodosAjustes, restablecerEstiloBase, restablecerAudioBase, restablecerAtajosBase, logCarga, actualizar_progreso_modal
+  - dspAudio.js (580 líneas): validarCambioMotorTraduccion, validarPretraduccionRed, validarProveedorIA, initAudioContext, cicloConsumoPiper, actualizarVisibilidadEqPiperPersonalizado, procesarAudioRaw, loopKaraokeAltaPrecision
+  - filtrosLectura.js (230 líneas): aplicarMascaraParentesis, obtenerEstadosFiltros, cambiarTabConfig, sincronizarVolumen, cerrarModalesAbiertos, actualizarFiltrosSnapshot
+
+[web/js/navegacion/]
+  - atajos.js (262 líneas): renderizarAtajos, abrirConfiguracion, cerrarConfiguracion, activarEscucha, formatearTecla, aplicarAtajosAlNavegador, navegarOracion, ciclarVoz, toggleDiccionarioModal, agregarTerminoRapido
+  - buscadorPDF.js (223 líneas): cerrarBuscadorPDF, ejecutarBusquedaPDF, navegarBusquedaPDF, limpiarResaltadoBusqueda, aplicarResaltadoBuscador
+  - capturaExtraccion.js (831 líneas): toggleModoRecorteExtraccion, iniciarCapaSeleccionRecorte, removerCapaSeleccionRecorte, procesarRecorteVisual, abrirModalGuardarCaptura, cerrarModalGuardarCaptura, confirmarGuardarCaptura, cargarExtraccionesCompletas, renderizarTarjetaCaptura, eliminarCaptura, abrirModalVerCaptura, cerrarModalVerCaptura ... (+6 más)
+  - cuadroTexto.js (338 líneas): activarModoCuadroTexto, iniciarCreacionCuadroTexto, crearCajaTextoFlotante, seleccionarCuadroTexto, posicionarToolbar, toggleFmtBold, toggleFmtItalic, toggleFmtUnderline, actualizarAjustesCuadroTexto, eliminarCuadroTextoActual, rgbToHex, guardarCuadroTextoActual
+  - editorTexto.js (720 líneas): toggleModoEditorTexto, renderizarBloquesEditor, calcRectCanvas, pdfRectFromCanvas, abrirEditorTexto, getFontFamilyName, createFormatBtn, rgbPdfToHex, hexToRgbPdf, dragMouse, dropMouse, cerrarEditorTexto ... (+2 más)
+  - pdfManager.js (800 líneas): abrirBuscador, abrirDocumentoDesdeRuta, tieneLimitesHActivos, guardarEstadoPaginaActual, bloquearControlesNavegacion, cargarPagina, irAPaginaDirecta, cambiarPagina, agregarCorteV, quitarCorteV, limpiarCortesV, inicializarLimitesH ... (+3 más)
+  - subrayador.js (456 líneas): obtenerCursorSubrayador, obtenerCursorBorrador, actualizarCursorSubrayador, toggleModoSubrayador, toggleModoBorrador, setSubrayadoColor, restaurarCursorCanvas, iniciarTrazoSubrayado, procesarPalabraSubrayado, refrescarLienzoSinRecarga, finalizarTrazoSubrayado, borrarSubrayadoPuntual ... (+6 más)
+  - webReader.js (259 líneas): _destruirBienvenida, _mostrarBienvenida, abrirLanzador, cerrarLanzador, _cerrarConEscape, mostrarVistaGrid, _mostrarSubmodal, _setEstado, _setBotonesBloqueados, lanzarAbrirPDF, lanzarAbrirURL, ejecutarImportarURL ... (+3 más)
+
+[web/js/visor/]
+  - canvasEventos.js (738 líneas): (listeners / inicialización)
+  - canvasRenderer.js (301 líneas): hexToRGBA, dibujar
+  - zonasExcluidas.js (215 líneas): dibujarRecuadroExclusion, obtenerInteraccionZonaExcluida, dibujarLinea

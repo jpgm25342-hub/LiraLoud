@@ -1,0 +1,282 @@
+<div id="contenedor-cuerpo-principal">
+        <!-- BARRA LATERAL IZQUIERDA (HERRAMIENTAS OLD SCHOOL) -->
+        <aside id="sidebar-izquierda" class="sidebar-izq">
+            <!-- CABECERA SIDEBAR CON BOTÓN FLECHA DE COLAPSO -->
+            <div class="sidebar-header"
+                style="display: flex; align-items: center; justify-content: space-between; width: 100%; margin-bottom: 6px; padding: 0 2px;">
+                <span class="sidebar-titulo" data-i18n="lbl-sidebar-menu"
+                    style="font-size: 11px; font-weight: bold; color: #7f8c8d; text-transform: uppercase; letter-spacing: 1px;">Menú</span>
+                <button id="btn-toggle-sidebar" class="btn-toggle-sidebar"
+                    onclick="toggleSidebarIzquierda(); guardarTodosAjustes()" title="Retraer / Expandir menú lateral" data-i18n-title="ttl-toggle-sidebar"
+                    style="background: transparent; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: #7f8c8d; transition: background 0.2s, transform 0.3s;">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round" id="icono-flecha-sidebar"
+                        style="transition: transform 0.3s ease;">
+                        <polyline points="18 15 12 9 6 15"></polyline>
+                    </svg>
+                </button>
+            </div>
+            <!-- OCR -->
+            <div class="dropdown-ocr-container" id="dropdown-ocr-container">
+                <button class="btn-secundario" id="btn-menu-ocr" onclick="toggleMenuOCR(event)" title="Opciones de OCR" data-i18n-title="ttl-opciones-ocr"
+                    style="display:flex; align-items:center; gap:6px; justify-content:center;">
+                    <svg class="svg-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                        style="width:16px; height:16px;">
+                        <g clip-path="url(#clip0_429_11130_btn)">
+                            <path d="M20 12H4" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                stroke-linejoin="round"></path>
+                            <path d="M16 3.99976H18C19.1046 3.99976 20 4.89519 20 5.99976V7.99976" stroke="currentColor"
+                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                            <path d="M8 19.9998L6 19.9998C4.89543 19.9998 4 19.1043 4 17.9998L4 15.9998"
+                                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            </path>
+                            <path d="M20 15.9998V17.9998C20 19.1043 19.1046 19.9998 18 19.9998H16" stroke="currentColor"
+                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                            <path d="M4 7.99976L4 5.99976C4 4.89519 4.89543 3.99976 6 3.99976L8 3.99976"
+                                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            </path>
+                        </g>
+                        <defs>
+                            <clipPath id="clip0_429_11130_btn">
+                                <rect width="24" height="24" fill="white"></rect>
+                            </clipPath>
+                        </defs>
+                    </svg>
+                    <span>OCR</span>
+                    <svg viewBox="0 0 10 6"
+                        style="width:8px; height:8px; fill:currentColor; margin-left:2px; transition:transform 0.2s;"
+                        id="flecha-dropdown-ocr">
+                        <path d="M0 0l5 5 5-5z"></path>
+                    </svg>
+                </button>
+                <div class="dropdown-ocr-menu" id="dropdown-ocr-menu">
+                    <button class="dropdown-ocr-item" onclick="ejecutarOpcionOCRMenu('forzar')"
+                        title="Reconocer texto de la página actual" data-i18n-title="ttl-ocr-forzar">
+                        <svg class="svg-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M8.25 15.5C8.25 15.9142 8.58579 16.25 9 16.25C9.41421 16.25 9.75 15.9142 9.75 15.5H8.25ZM11.6643 8.75249L12.1624 8.19186L12.1624 8.19186L11.6643 8.75249ZM11.25 10.425C11.25 10.8392 11.5858 11.175 12 11.175C12.4142 11.175 12.75 10.8392 12.75 10.425H11.25ZM11.7475 8.83575L12.3081 8.33756L12.3081 8.33756L11.7475 8.83575ZM6.33575 8.75249L5.83756 8.19186L5.83756 8.19186L6.33575 8.75249ZM5.25 10.425C5.25 10.8392 5.58579 11.175 6 11.175C6.41421 11.175 6.75 10.8392 6.75 10.425H5.25ZM6.25249 8.83575L5.69186 8.33756L5.69186 8.33756L6.25249 8.83575ZM7 14.75C6.58579 14.75 6.25 15.0858 6.25 15.5C6.25 15.9142 6.58579 16.25 7 16.25V14.75ZM11 16.25C11.4142 16.25 11.75 15.9142 11.75 15.5C11.75 15.0858 11.4142 14.75 11 14.75V16.25ZM7.925 9.25H9V7.75H7.925V9.25ZM9 9.25H10.075V7.75H9V9.25ZM9.75 15.5V8.5H8.25V15.5H9.75ZM10.075 9.25C10.5295 9.25 10.8007 9.25137 10.9965 9.27579C11.1739 9.29792 11.1831 9.3283 11.1661 9.31312L12.1624 8.19186C11.8612 7.92419 11.5109 7.82832 11.1822 7.78733C10.8719 7.74863 10.4905 7.75 10.075 7.75V9.25ZM12.75 10.425C12.75 10.0095 12.7514 9.62806 12.7127 9.31782C12.6717 8.98915 12.5758 8.63878 12.3081 8.33756L11.1869 9.33394C11.1717 9.31686 11.2021 9.32608 11.2242 9.50348C11.2486 9.69931 11.25 9.97047 11.25 10.425H12.75ZM11.1661 9.31312C11.1734 9.31964 11.1804 9.32659 11.1869 9.33394L12.3081 8.33756C12.2625 8.28617 12.2138 8.23752 12.1624 8.19186L11.1661 9.31312ZM7.925 7.75C7.50946 7.75 7.12806 7.74863 6.81782 7.78733C6.48914 7.82832 6.13878 7.92419 5.83756 8.19186L6.83394 9.31312C6.81686 9.3283 6.82608 9.29792 7.00348 9.27579C7.19931 9.25137 7.47047 9.25 7.925 9.25V7.75ZM6.75 10.425C6.75 9.97047 6.75137 9.69931 6.77579 9.50348C6.79792 9.32608 6.8283 9.31686 6.81312 9.33394L5.69186 8.33756C5.42419 8.63878 5.32832 8.98915 5.28733 9.31782C5.24863 9.62806 5.25 10.0095 5.25 10.425H6.75ZM5.83756 8.19186C5.78617 8.23752 5.73752 8.28617 5.69186 8.33756L6.81312 9.33394C6.81965 9.3266 6.8266 9.31965 6.83394 9.31312L5.83756 8.19186ZM7 16.25H11V14.75H7V16.25Z"
+                                fill="currentColor"></path>
+                            <path
+                                d="M22 12C22 15.7712 22 17.6569 20.8284 18.8284C19.7653 19.8915 18.1143 19.99 15 19.9991M12 4H10C6.22876 4 4.34315 4 3.17157 5.17157C2 6.34315 2 8.22876 2 12C2 15.7712 2 17.6569 3.17157 18.8284C4.34315 20 6.22876 20 10 20H12M15 4.00093C18.1143 4.01004 19.7653 4.10848 20.8284 5.17157C21.4816 5.82475 21.7706 6.69989 21.8985 8"
+                                stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+                            <path d="M15 2V22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+                        </svg>
+                        <span data-i18n="btn-ocr-forzar">Forzar OCR</span>
+                    </button>
+                    <button class="dropdown-ocr-item" onclick="ejecutarOpcionOCRMenu('rango')"
+                        title="Escanear un rango específico de páginas" data-i18n-title="ttl-ocr-rango">
+                        <svg class="svg-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+                            <line x1="4" y1="22" x2="4" y2="15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line>
+                        </svg>
+                        <span data-i18n="btn-ocr-rango">Escanear por rango</span>
+                    </button>
+                    <button class="dropdown-ocr-item" onclick="ejecutarOpcionOCRMenu('todo')"
+                        title="Escanear y reconocer todas las páginas del libro" data-i18n-title="ttl-ocr-todo">
+                        <svg class="svg-icon" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg">
+                            <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round"
+                                stroke-linejoin="round" transform="translate(4 3)">
+                                <path
+                                    d="m11.5.5h-7c-1.1045695 0-2 .8954305-2 2v9c0 1.1045695.8954305 2 2 2h7c1.1045695 0 2-.8954305 2-2v-9c0-1.1045695-.8954305-2-2-2z">
+                                </path>
+                                <path
+                                    d="m2.5 2.5c-1.1045695 0-2 .8954305-2 2v8c0 1.6568542 1.34314575 3 3 3h6c1.1045695 0 2-.8954305 2-2">
+                                </path>
+                            </g>
+                        </svg>
+                        <span data-i18n="btn-ocr-todo">Escanear todo el texto</span>
+                    </button>
+                    <div style="border-top: 1px solid #334155; margin: 4px 0;"></div>
+                    <button type="button" class="dropdown-ocr-item tool-active-underline" id="btn-toggle-auto-ocr"
+                        onclick="toggleAutoOCRClic(); if(typeof guardarAjustes === 'function') guardarAjustes(false);"
+                        title="Activar o desactivar el reconocimiento OCR automático al navegar" data-i18n-title="ttl-auto-ocr">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                        <span data-i18n="btn-auto-ocr">Auto-OCR al navegar</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ABREVIATURAS -->
+            <button class="btn-secundario" id="btn-dicc" onclick="abrirDiccionario()"
+                style="display:flex; align-items:center; gap:6px; justify-content:center;">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="svg-icon"
+                    style="width:18px; height:18px;">
+                    <path
+                        d="M10 22C7.17157 22 5.75736 22 4.87868 21.1213C4 20.2426 4 18.8284 4 16V8C4 5.17157 4 3.75736 4.87868 2.87868C5.75736 2 7.17157 2 10 2H14C16.8284 2 18.2426 2 19.1213 2.87868C20 3.75736 20 5.17157 20 8M14 22C16.8284 22 18.2426 22 19.1213 21.1213C20 20.2426 20 18.8284 20 16V12"
+                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+                    <path
+                        d="M19.8978 16H7.89778C6.96781 16 6.50282 16 6.12132 16.1022C5.08604 16.3796 4.2774 17.1883 4 18.2235"
+                        stroke="currentColor" stroke-width="1.5"></path>
+                    <path d="M7 16V9M7 2.5V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+                    <path
+                        d="M13 16V19.5309C13 19.8065 13 19.9443 12.9051 20C12.8103 20.0557 12.6729 20.0076 12.3981 19.9115L10 19.0722"
+                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+                </svg>
+                <span data-i18n="btn-dicc">Abreviaturas</span>
+            </button>
+
+            <!-- MODO TEATRO -->
+            <button class="btn-secundario" id="btn-teatro"
+                style="background: #2980b9; display:flex; align-items:center; gap:5px; justify-content:center;"
+                onclick="abrirTeatro()">
+                <svg class="svg-icon" viewBox="-64 -64 768.00 768.00" xmlns="http://www.w3.org/2000/svg" fill="#e9bb5a"
+                    stroke="#e9bb5a" stroke-width="0.0064">
+                    <g stroke-width="0" />
+                    <g stroke-linecap="round" stroke-linejoin="round" />
+                    <g>
+                        <path
+                            d="M206.86 245.15c-35.88 10.45-59.95 41.2-57.53 74.1 11.4-12.72 28.81-23.7 49.9-30.92l7.63-43.18zM95.81 295L64.08 115.49c-.29-1.62.28-2.62.24-2.65 57.76-32.06 123.12-49.01 189.01-49.01 1.61 0 3.23.17 4.85.19 13.95-13.47 31.73-22.83 51.59-26 18.89-3.02 38.05-4.55 57.18-5.32-9.99-13.95-24.48-24.23-41.77-27C301.27 1.89 277.24 0 253.32 0 176.66 0 101.02 19.42 33.2 57.06 9.03 70.48-3.92 98.48 1.05 126.58l31.73 179.51c14.23 80.52 136.33 142.08 204.45 142.08 3.59 0 6.75-.46 10.01-.8-13.52-17.08-28.94-40.48-39.5-67.58-47.61-12.98-106.06-51.62-111.93-84.79zm97.55-137.46c-.73-4.12-2.23-7.87-4.07-11.4-8.25 8.91-20.67 15.75-35.32 18.32-14.65 2.58-28.67.4-39.48-5.17-.52 3.94-.64 7.98.09 12.1 3.84 21.7 24.58 36.19 46.34 32.37 21.75-3.82 36.28-24.52 32.44-46.22zM606.8 120.9c-88.98-49.38-191.43-67.41-291.98-51.35-27.31 4.36-49.08 26.26-54.04 54.36l-31.73 179.51c-15.39 87.05 95.28 196.27 158.31 207.35 63.03 11.09 204.47-53.79 219.86-140.84l31.73-179.51c4.97-28.11-7.98-56.11-32.15-69.52zm-273.24 96.8c3.84-21.7 24.58-36.19 46.34-32.36 21.76 3.83 36.28 24.52 32.45 46.22-.73 4.12-2.23 7.87-4.07 11.4-8.25-8.91-20.67-15.75-35.32-18.32-14.65-2.58-28.67-.4-39.48 5.17-.53-3.95-.65-7.99.08-12.11zm70.47 198.76c-55.68-9.79-93.52-59.27-89.04-112.9 20.6 25.54 56.21 46.17 99.49 53.78 43.28 7.61 83.82.37 111.93-16.6-14.18 51.94-66.71 85.51-122.38 75.72zm130.3-151.34c-8.25-8.91-20.68-15.75-35.33-18.32-14.65-2.58-28.67-.4-39.48 5.17-.52-3.94-.64-7.98.09-12.1 3.84-21.7 24.58-36.19 46.34-32.37 21.75 3.83 36.28 24.52 32.45 46.22-.73 4.13-2.23 7.88-4.07 11.4z" />
+                    </g>
+                </svg> <span data-i18n="btn-teatro">Modo Teatro</span>
+            </button>
+
+            <!-- TRADUCTOR -->
+            <details id="details-traduccion-main" style="position:relative; display:block; width:100%;">
+                <summary class="btn-secundario"
+                    style="background: #e67e22; display:flex; align-items:center; gap:5px; justify-content:center; color:white; font-weight:bold; box-shadow: 0 2px 6px rgba(230,126,34,0.3); list-style:none; cursor:pointer;"
+                    title="Traducción en Tiempo Real" data-i18n-title="lbl-traduccion-titulo"
+                    onclick="setTimeout(()=>{if(this.parentNode.open){ window.safeCheck('main-chk-traduccion-activa', document.getElementById('chk-traduccion-activa').checked); window.safeUI('main-sel-traduccion-origen', document.getElementById('sel-traduccion-origen').value); window.safeUI('main-sel-traduccion-destino', document.getElementById('sel-traduccion-destino').value); window.safeUI('main-sel-traduccion-modo', document.getElementById('sel-traduccion-modo').value); }}, 10)">
+                    <svg class="svg-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        style="width:16px;height:16px;">
+                        <path d="M5 8l6 6M4 14l6-6 2-3M2 5h12M7 2h1M22 22l-5-10-5 10M14 18h6"></path>
+                    </svg>
+                    <span data-i18n="btn-traduccion">Traductor</span>
+                </summary>
+                <div class="zen-dropdown-popup"
+                    style="width: 250px; left: 0; top: calc(100% + 5px); z-index: 1000; background: white; border: 1px solid #ccc; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 6px; padding: 12px;">
+                    <h6 data-i18n="lbl-traduccion-titulo"
+                        style="margin-top:0; font-size:13px; color:#34495e; border-bottom:1px solid #eee; padding-bottom:6px; margin-bottom:10px;">
+                        Traducción en Tiempo Real</h6>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                        <label for="main-chk-traduccion-activa" data-i18n="lbl-activar-al-leer"
+                            style="font-size:12px; font-weight:600; cursor:pointer; color:#34495e;">Activar al
+                            Leer</label>
+                        <input type="checkbox" id="main-chk-traduccion-activa" class="switch-individual"
+                            onchange="window.safeCheck('chk-traduccion-activa', this.checked); document.getElementById('chk-traduccion-activa').dispatchEvent(new Event('change'));">
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <label data-i18n="lbl-idioma-origen-corto"
+                            style="font-size:11px; font-weight:bold; color:#7f8c8d; display:block; margin-bottom:2px;">Idioma
+                            Origen:</label>
+                        <select id="main-sel-traduccion-origen"
+                            style="width:100%; padding:4px; font-size:12px; border-radius:4px; border:1px solid #bdc3c7;"
+                            onchange="window.safeUI('sel-traduccion-origen', this.value); document.getElementById('sel-traduccion-origen').dispatchEvent(new Event('change'));">
+                            <option value="auto" data-i18n="opt-auto-detect">🌐 Autodetectar</option>
+                            <option value="en">Inglés (English)</option>
+                            <option value="es">Español (Spanish)</option>
+                            <option value="fr">Francés (Français)</option>
+                            <option value="de">Alemán (Deutsch)</option>
+                            <option value="it">Italiano (Italiano)</option>
+                            <option value="pt">Portugués (Português)</option>
+                            <option value="ru">Ruso (Русский)</option>
+                            <option value="zh-CN">Chino (中文)</option>
+                            <option value="ja">Japonés (日本語)</option>
+                            <option value="ko">Coreano (한국어)</option>
+                            <option value="ar">Árabe (العربية)</option>
+                            <option value="hi">Hindi (हिन्दी)</option>
+                            <option value="bn">Bengalí (বাংলা)</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <label data-i18n="lbl-idioma-destino-corto"
+                            style="font-size:11px; font-weight:bold; color:#7f8c8d; display:block; margin-bottom:2px;">Idioma
+                            Destino:</label>
+                        <select id="main-sel-traduccion-destino"
+                            style="width:100%; padding:4px; font-size:12px; border-radius:4px; border:1px solid #bdc3c7;"
+                            onchange="window.safeUI('sel-traduccion-destino', this.value); document.getElementById('sel-traduccion-destino').dispatchEvent(new Event('change'));">
+                            <option value="es">Español (Spanish)</option>
+                            <option value="en">Inglés (English)</option>
+                            <option value="fr">Francés (Français)</option>
+                            <option value="de">Alemán (Deutsch)</option>
+                            <option value="it">Italiano (Italiano)</option>
+                            <option value="pt">Portugués (Português)</option>
+                            <option value="ru">Ruso (Русский)</option>
+                            <option value="zh-CN">Chino (中文)</option>
+                            <option value="ja">Japonés (日本語)</option>
+                            <option value="ko">Coreano (한국어)</option>
+                            <option value="ar">Árabe (العربية)</option>
+                            <option value="hi">Hindi (हिन्दी)</option>
+                            <option value="bn">Bengalí (বাংলা)</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom:0;">
+                        <label data-i18n="lbl-traduccion-modo"
+                            style="font-size:11px; font-weight:bold; color:#7f8c8d; display:block; margin-bottom:2px;">Modo
+                            de Lectura:</label>
+                        <select id="main-sel-traduccion-modo"
+                            style="width:100%; padding:4px; font-size:12px; border-radius:4px; border:1px solid #bdc3c7;"
+                            onchange="window.safeUI('sel-traduccion-modo', this.value); document.getElementById('sel-traduccion-modo').dispatchEvent(new Event('change'));">
+                            <option value="solo_traduccion" data-i18n="opt-modo-solo-trad">🔊 Solo Traducción</option>
+                            <option value="subtitulos" data-i18n="opt-modo-subtitulos-corto">📺 Subtítulos Traducidos</option>
+                            <option value="aprendizaje" data-i18n="opt-modo-aprendizaje-corto">🎓 Modo Aprendizaje</option>
+                        </select>
+                    </div>
+                </div>
+            </details>
+
+            <!-- LIRA AI -->
+            <button class="btn-secundario" id="btn-ia"
+                style="background: linear-gradient(135deg, #6c5ce7 0%, #4834d4 100%); display:flex; align-items:center; gap:6px; justify-content:center; color:white; font-weight:bold; box-shadow: 0 2px 6px rgba(108,92,231,0.3);"
+                onclick="abrirModalIA()" title="Asistente de IA (Chat y Resúmenes)" data-i18n-title="ttl-asistente-ia">
+                <svg class="svg-icon svg-icon-ia" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M208,512a24.84,24.84,0,0,1-23.34-16l-39.84-103.6a16.06,16.06,0,0,0-9.19-9.19L32,343.34a25,25,0,0,1,0-46.68l103.6-39.84a16.06,16.06,0,0,0,9.19-9.19L184.66,144a25,25,0,0,1,46.68,0l39.84,103.6a16.06,16.06,0,0,0,9.19,9.19l103,39.63A25.49,25.49,0,0,1,400,320.52a24.82,24.82,0,0,1-16,22.82l-103.6,39.84a16.06,16.06,0,0,0-9.19,9.19L231.34,496A24.84,24.84,0,0,1,208,512Zm66.85-254.84h0Z">
+                    </path>
+                    <path
+                        d="M88,176a14.67,14.67,0,0,1-13.69-9.4L57.45,122.76a7.28,7.28,0,0,0-4.21-4.21L9.4,101.69a14.67,14.67,0,0,1,0-27.38L53.24,57.45a7.31,7.31,0,0,0,4.21-4.21L74.16,9.79A15,15,0,0,1,86.23.11,14.67,14.67,0,0,1,101.69,9.4l16.86,43.84a7.31,7.31,0,0,0,4.21,4.21L166.6,74.31a14.67,14.67,0,0,1,0,27.38l-43.84,16.86a7.28,7.28,0,0,0-4.21,4.21L101.69,166.6A14.67,14.67,0,0,1,88,176Z">
+                    </path>
+                    <path
+                        d="M400,256a16,16,0,0,1-14.93-10.26l-22.84-59.37a8,8,0,0,0-4.6-4.6l-59.37-22.84a16,16,0,0,1,0-29.86l59.37-22.84a8,8,0,0,0,4.6-4.6L384.9,42.68a16.45,16.45,0,0,1,13.17-10.57,16,16,0,0,1,16.86,10.15l22.84,59.37a8,8,0,0,0,4.6,4.6l59.37,22.84a16,16,0,0,1,0,29.86l-59.37,22.84a8,8,0,0,0-4.6,4.6l-22.84,59.37A16,16,0,0,1,400,256Z">
+                    </path>
+                </svg>
+                <span data-i18n="btn-ia">LiraAI</span>
+            </button>
+
+            <!-- MP3 -->
+            <button class="btn-secundario" id="btn-abrir-descarga" onclick="abrirModalDescarga()"
+                style="display:flex; align-items:center; gap:6px; justify-content:center;" title="Guardar como MP3" data-i18n-title="btn-guardar-mp3">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" class="svg-icon">
+                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
+                </svg>
+                <span>MP3</span>
+            </button>
+        </aside>
+
+        <!-- VISOR DE PDF PRINCIPAL -->
+        <div id="visor-container" style="position: relative;">
+            <div id="pdf-crop-wrapper" style="overflow: hidden; display: inline-block; position: relative;">
+                <canvas id="lienzo-pdf"></canvas>
+            </div>
+            <div id="lira-pdf-text-editor-layer"></div>
+
+            <!-- OVERLAY BLOQUEANTE PANTALLA COMPLETA PARA OCR -->
+            <div id="ocr-scanner-overlay">
+                <div class="ocr-laser-beam"></div>
+                <div class="ocr-pantalla-card">
+                    <div class="ocr-card-icono-pulsante">⚡</div>
+                    <h3 id="ocr-hud-titulo" class="ocr-card-titulo" data-i18n="lbl-ocr-hud-titulo">Procesando Página...</h3>
+                    <div class="ocr-card-header">
+                        <div class="ocr-hud-spinner"></div>
+                        <span id="ocr-hud-texto" class="ocr-card-texto-principal" data-i18n="lbl-ocr-hud-texto">🔍 Reconociendo texto con RapidOCR...</span>
+                    </div>
+                    <div class="ocr-card-barra-indeterminada">
+                        <div class="ocr-card-barra-linea"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BANNER FLOTANTE DE SUBTÍTULOS DE TRADUCCIÓN -->
+        <div id="subtitulo-traduccion-flotante" class="subtitulo-traduccion-overlay" style="display: none;">
+            <div class="subtitulo-header">
+                <span class="subtitulo-badge">🌐 <span data-i18n="lbl-subtitulo-tag">TRADUCCIÓN</span></span>
+                <span id="subtitulo-idiomas-tag" class="subtitulo-lang">AUTO ➔ ES</span>
+                <button class="btn-cerrar-subtitulo" onclick="cerrarSubtituloTraduccion()"
+                    title="Ocultar subtítulo" data-i18n-title="ttl-ocultar-subtitulo">✕</button>
+            </div>
+            <div id="subtitulo-texto-traducido" class="subtitulo-cuerpo">...</div>
+        </div>
+    </div>

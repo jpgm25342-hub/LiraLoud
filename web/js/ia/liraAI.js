@@ -391,7 +391,7 @@ async function actualizarModeloCloudActual(val) {
     if (val === '__custom_model_prompt__') {
         const modeloActual = configProveedores.modelos[prov] || '';
         const sugerencia = prov === 'gemini' ? 'gemini-2.0-flash' : (prov === 'deepseek' ? 'deepseek-reasoner' : (prov === 'groq' ? 'llama-3.3-70b-versatile' : ''));
-        const nuevoModelo = prompt(`Ingresa el nombre/ID exacto del modelo para ${PROVEEDORES_CLOUD[prov]?.nombre || prov}:\n(Ej: gemini-2.0-flash, deepseek-reasoner, llama-3.3-70b-versatile, etc.)`, modeloActual || sugerencia);
+        const nuevoModelo = await liraPrompt(`Ingresa el nombre/ID exacto del modelo para ${PROVEEDORES_CLOUD[prov]?.nombre || prov}:\n(Ej: gemini-2.0-flash, deepseek-reasoner, llama-3.3-70b-versatile, etc.)`, modeloActual || sugerencia, '🤖');
         
         const sel = document.getElementById('sel-ia-modelo-cloud');
         if (nuevoModelo && nuevoModelo.trim()) {
@@ -523,6 +523,9 @@ function cerrarModalIA() {
     if (modal) modal.style.display = 'none';
     if (window.liraAIAudioState && window.liraAIAudioState.activo) {
         window.liraDetenerLectura();
+    }
+    if (typeof window.limpiarResaltadoBusqueda === 'function') {
+        window.limpiarResaltadoBusqueda(true);
     }
     if (typeof guardarTodosAjustes === 'function') {
         guardarTodosAjustes(false);
@@ -821,6 +824,242 @@ async function indexarDocumentoActualIA() {
     }
 }
 
+// ==========================================================================
+// 📚 MÓDULO DE GESTIÓN Y EXTRACCIÓN DE FUENTES (PDF, SUBRAYADOS, APUNTES)
+// ==========================================================================
+
+function toggleOpcionesSubrayadosUI(mostrar) {
+    const box = document.getElementById('ia-sub-opciones-subrayados');
+    if (box) box.style.display = mostrar ? 'block' : 'none';
+}
+
+function toggleOpcionesNotasUI(mostrar) {
+    const box = document.getElementById('ia-sub-opciones-notas');
+    if (box) box.style.display = mostrar ? 'block' : 'none';
+}
+
+function seleccionarTodosColoresSubrayados(seleccionar = true) {
+    ['chk-ia-sub-amarillo', 'chk-ia-sub-verde', 'chk-ia-sub-cian', 'chk-ia-sub-magenta', 'chk-ia-sub-dorado', 'chk-ia-sub-rojo'].forEach(id => {
+        const chk = document.getElementById(id);
+        if (chk) chk.checked = seleccionar;
+    });
+    actualizarEstadoFuentesUI();
+    if (typeof guardarTodosAjustes === 'function') guardarTodosAjustes(false);
+}
+
+function parsearRangoPaginas(strRango) {
+    if (!strRango || !strRango.trim()) return null;
+    const paginas = new Set();
+    const partes = strRango.split(/[,;\s]+/);
+    for (const p of partes) {
+        if (!p) continue;
+        if (p.includes('-')) {
+            const [ini, fin] = p.split('-').map(n => parseInt(n.trim()));
+            if (!isNaN(ini) && !isNaN(fin)) {
+                for (let i = Math.min(ini, fin); i <= Math.max(ini, fin); i++) {
+                    paginas.add(i);
+                }
+            }
+        } else {
+            const num = parseInt(p.trim());
+            if (!isNaN(num)) paginas.add(num);
+        }
+    }
+    return paginas.size > 0 ? paginas : null;
+}
+
+function clasificarColorHex(hex) {
+    if (!hex) return 'amarillo';
+    hex = hex.toLowerCase().trim();
+    if (hex === '#ffff00' || hex === '#ffff33' || hex === '#ffeaa7' || hex === '#ffd32a') return 'amarillo';
+    if (hex === '#00ff00' || hex === '#55efc4' || hex === '#2ed573' || hex === '#27ae60') return 'verde';
+    if (hex === '#00ffff' || hex === '#74b9ff' || hex === '#1e90ff' || hex === '#0984e3' || hex === '#00ced1') return 'cian';
+    if (hex === '#ff00ff' || hex === '#fd79a8' || hex === '#e84393' || hex === '#ff69b4') return 'magenta';
+    if (hex === '#f1c40f' || hex === '#f39c12' || hex === '#e67e22' || hex === '#d4ac0d') return 'dorado';
+    if (hex === '#e74c3c' || hex === '#ff0000' || hex === '#ff7675' || hex === '#ff4757' || hex === '#c0392b') return 'rojo';
+
+    if (hex.startsWith('#') && hex.length === 7) {
+        const r = parseInt(hex.substring(1, 3), 16);
+        const g = parseInt(hex.substring(3, 5), 16);
+        const b = parseInt(hex.substring(5, 7), 16);
+
+        // Paleta oficial de 6 colores de marcatextos de LiraLoud
+        const paleta = [
+            { name: 'amarillo', r: 255, g: 255, b: 0 },
+            { name: 'verde',    r: 0,   g: 255, b: 0 },
+            { name: 'cian',     r: 0,   g: 255, b: 255 },
+            { name: 'magenta',  r: 255, g: 0,   b: 255 },
+            { name: 'dorado',   r: 241, g: 196, b: 15 },
+            { name: 'rojo',     r: 231, g: 76,  b: 60 }
+        ];
+
+        let minD = Infinity;
+        let mejor = 'amarillo';
+        for (const p of paleta) {
+            const d = (r - p.r) ** 2 + (g - p.g) ** 2 + (b - p.b) ** 2;
+            if (d < minD) {
+                minD = d;
+                mejor = p.name;
+            }
+        }
+        return mejor;
+    }
+    return 'amarillo';
+}
+
+function obtenerConfigFuentesIA() {
+    const pdfActivo = document.getElementById('chk-ia-fuente-pdf')?.checked ?? true;
+    const subrayadosActivo = document.getElementById('chk-ia-fuente-subrayados')?.checked ?? false;
+    const notasActivo = document.getElementById('chk-ia-fuente-notas')?.checked ?? false;
+
+    // Alcance (Solo este libro vs Todos los libros)
+    const subAlcance = document.getElementById('sel-ia-sub-alcance')?.value || 'libro_actual';
+    const notasAlcance = document.getElementById('sel-ia-notas-alcance')?.value || 'libro_actual';
+
+    // Los 6 colores de marcatextos
+    const colores = {
+        amarillo: document.getElementById('chk-ia-sub-amarillo')?.checked ?? true,
+        verde: document.getElementById('chk-ia-sub-verde')?.checked ?? true,
+        cian: document.getElementById('chk-ia-sub-cian')?.checked ?? true,
+        magenta: document.getElementById('chk-ia-sub-magenta')?.checked ?? true,
+        dorado: document.getElementById('chk-ia-sub-dorado')?.checked ?? true,
+        rojo: document.getElementById('chk-ia-sub-rojo')?.checked ?? true
+    };
+
+    const paginasSubrayados = parsearRangoPaginas(document.getElementById('txt-ia-sub-paginas')?.value || '');
+    const paginasNotas = parsearRangoPaginas(document.getElementById('txt-ia-notas-paginas')?.value || '');
+    const clasifNotas = (document.getElementById('txt-ia-notas-clasif')?.value || '').trim();
+
+    return {
+        pdf: pdfActivo,
+        subrayados: subrayadosActivo,
+        notas: notasActivo,
+        subAlcance,
+        notasAlcance,
+        coloresSubrayados: colores,
+        paginasSubrayados,
+        paginasNotas,
+        clasifNotas
+    };
+}
+
+function actualizarEstadoFuentesUI() {
+    const config = obtenerConfigFuentesIA();
+    const bannerTexto = document.getElementById('ia-fuentes-resumen-texto');
+    const badgeChat = document.getElementById('ia-badge-fuentes-activas');
+
+    const partes = [];
+    if (config.pdf) partes.push("PDF");
+    if (config.subrayados) {
+        const alc = config.subAlcance === 'todos_libros' ? ' (Todos libros)' : '';
+        partes.push(`Subrayados${alc}`);
+    }
+    if (config.notas) {
+        const alc = config.notasAlcance === 'todos_libros' ? ' (Todos libros)' : '';
+        partes.push(`Apuntes${alc}`);
+    }
+
+    let textoResumen = partes.length > 0 ? partes.join(" + ") : "Ninguna (Se usará PDF)";
+    if (!config.pdf && (config.subrayados || config.notas)) {
+        textoResumen += " (Sin PDF)";
+    }
+
+    if (bannerTexto) bannerTexto.innerText = textoResumen;
+    if (badgeChat) {
+        badgeChat.innerHTML = `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:2px;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> Fuentes: ${textoResumen}`;
+        badgeChat.style.background = !config.pdf ? '#fef3c7' : '#e0e7ff';
+        badgeChat.style.color = !config.pdf ? '#92400e' : '#3730a3';
+        badgeChat.style.borderColor = !config.pdf ? '#fde68a' : '#c7d2fe';
+    }
+}
+
+async function construirContextoFuentesParaIA() {
+    const config = obtenerConfigFuentesIA();
+    let bloquesContexto = [];
+    const ignorarPdf = (!config.pdf) && (config.subrayados || config.notas);
+
+    // 1. Extraer Subrayados si está activo
+    if (config.subrayados && typeof eel !== 'undefined') {
+        try {
+            let resSubs = null;
+            if (config.subAlcance === 'todos_libros' && eel.obtener_todos_subrayados_biblioteca) {
+                resSubs = await eel.obtener_todos_subrayados_biblioteca()();
+            } else if (eel.obtener_todos_subrayados && typeof rutaPDFActual !== 'undefined' && rutaPDFActual) {
+                resSubs = await eel.obtener_todos_subrayados(rutaPDFActual)();
+            }
+
+            if (resSubs && resSubs.success && Array.isArray(resSubs.subrayados)) {
+                let listaFiltrada = resSubs.subrayados;
+
+                // Filtrar por página si se especificó rango (solo aplica si es un libro específico o por número de página global)
+                if (config.paginasSubrayados) {
+                    listaFiltrada = listaFiltrada.filter(s => config.paginasSubrayados.has((s.pagina ?? 0) + 1));
+                }
+
+                // Filtrar por color de la paleta
+                listaFiltrada = listaFiltrada.filter(s => {
+                    const tipoColor = clasificarColorHex(s.color);
+                    return config.coloresSubrayados[tipoColor] !== false;
+                });
+
+                if (listaFiltrada.length > 0) {
+                    const textoSubs = listaFiltrada.map((s, idx) => {
+                        const pagNum = (s.pagina ?? 0) + 1;
+                        const infoLibro = s.libro ? ` | Libro: ${s.libro}` : '';
+                        return `[Subrayado ${idx + 1}${infoLibro} | Pág. ${pagNum}]: "${s.texto}"`;
+                    }).join("\n\n");
+                    const etiquetaAlcance = config.subAlcance === 'todos_libros' ? 'TODOS LOS LIBROS' : 'ESTE LIBRO';
+                    bloquesContexto.push(`=== 🖍️ TEXTOS SUBRAYADOS POR EL USUARIO (${etiquetaAlcance}: ${listaFiltrada.length} resaltados) ===\n${textoSubs}`);
+                }
+            }
+        } catch (e) {
+            console.warn("⚠️ [LiraAI Fuentes] Error obteniendo subrayados:", e);
+        }
+    }
+
+    // 2. Extraer Apuntes y Notas si está activo
+    if (config.notas && typeof eel !== 'undefined' && eel.notas_listar) {
+        try {
+            const libroFiltro = config.notasAlcance === 'todos_libros' ? null : (typeof obtenerNombreLibroActivo === 'function' ? obtenerNombreLibroActivo() : null);
+            const resNotas = await eel.notas_listar(window.rutaNotasPersonalizada || "", libroFiltro)();
+            if (resNotas && resNotas.exito && Array.isArray(resNotas.notas)) {
+                let listaNotas = resNotas.notas;
+
+                // Filtrar por página si se especificó rango
+                if (config.paginasNotas) {
+                    listaNotas = listaNotas.filter(n => config.paginasNotas.has(parseInt(n.pagina || 1)));
+                }
+
+                // Filtrar por clasificación si se especificó
+                if (config.clasifNotas && config.clasifNotas !== "Todas" && config.clasifNotas !== "TODAS") {
+                    const qClasif = config.clasifNotas.toLowerCase().trim();
+                    listaNotas = listaNotas.filter(n => (n.clasificacion || '').toLowerCase().includes(qClasif));
+                }
+
+                if (listaNotas.length > 0) {
+                    const textoNotas = listaNotas.map((n, idx) => {
+                        const pagNum = n.pagina || 1;
+                        const titulo = n.titulo || `Nota ${idx + 1}`;
+                        const area = n.clasificacion ? ` | Área: ${n.clasificacion}` : '';
+                        const infoLibro = n.libro ? ` | Libro: ${n.libro}` : '';
+                        return `--- NOTA: "${titulo}" (Pág. ${pagNum}${infoLibro}${area}) ---\n${n.contenido || ''}`;
+                    }).join("\n\n");
+                    const etiquetaAlcance = config.notasAlcance === 'todos_libros' ? 'TODOS LOS LIBROS' : 'ESTE LIBRO';
+                    bloquesContexto.push(`=== 📝 APUNTES Y NOTAS DEL USUARIO (${etiquetaAlcance}: ${listaNotas.length} notas) ===\n${textoNotas}`);
+                }
+            }
+        } catch (e) {
+            console.warn("⚠️ [LiraAI Fuentes] Error obteniendo notas:", e);
+        }
+    }
+
+    const textoContextoFinal = bloquesContexto.join("\n\n");
+    return {
+        contextoExtra: textoContextoFinal,
+        ignorarPdf: ignorarPdf
+    };
+}
+
 // --- CHAT CON EL DOCUMENTO ---
 async function enviarMensajeChatIA(preguntaDirecta = null) {
     const input = document.getElementById('ia-chat-input');
@@ -848,7 +1087,10 @@ async function enviarMensajeChatIA(preguntaDirecta = null) {
         if (typeof eel !== 'undefined' && eel.rag_preguntar) {
             let docId = (typeof rutaPDFActual !== 'undefined' && rutaPDFActual) ? rutaPDFActual.split('\\').pop().split('/').pop() : null;
             const modoActual = window.modoSalidaIA || document.getElementById('sel-ia-modo-salida')?.value || 'trazabilidad';
-            const res = await eel.rag_preguntar(pregunta, docId, 10, modoActual)();
+            
+            // Construir fuentes seleccionadas por el usuario
+            const fuentesCtx = await construirContextoFuentesParaIA();
+            const res = await eel.rag_preguntar(pregunta, docId, 10, modoActual, fuentesCtx.contextoExtra, fuentesCtx.ignorarPdf)();
             removerMensajeChat(loadingId);
 
             if (res && res.exito) {
@@ -903,8 +1145,7 @@ function agregarMensajeAIChat(textoMarkdown, fuentes = []) {
         const fuentesItems = fuentes.map((f, i) => {
             const numPag = f.pagina || f.pagina_inicio || 1;
             const tagPag = f.pags_tag || `Pág. ${numPag}`;
-            const snippetPuro = (f.texto || '').replace(/\s+/g, ' ').trim();
-            const snippetEscapado = escaparAttr(snippetPuro.slice(0, 150));
+            const snipKey = _registrarSnippetCitaIA(f.texto_puro || f.texto || '');
             const relev = Math.max(0, Math.round((1 - (f.distancia || 0)) * 100));
 
             return `
@@ -916,7 +1157,7 @@ function agregarMensajeAIChat(textoMarkdown, fuentes = []) {
                 <div style="color:#2f3542; font-size:11.5px; line-height:1.4; margin-bottom:6px;">
                     ${escaparHTML(f.texto || '')}
                 </div>
-                <button class="ia-btn-ir-fuente" onclick="liraNavegarYResaltarFuente(${numPag}, '${snippetEscapado}')">
+                <button class="ia-btn-ir-fuente" onclick="liraNavegarYResaltarFuente(${numPag}, '${snipKey}')">
                     🎯 Saltar a ${tagPag} y resaltar en PDF
                 </button>
             </div>
@@ -948,6 +1189,9 @@ function agregarMensajeAIChat(textoMarkdown, fuentes = []) {
                 </button>
                 <button class="ia-btn-accion-msg" onclick="liraCopiarTextoMensaje('${msgId}')" title="Copiar texto al portapapeles">
                     <span class="ia-btn-icon">📋</span> <span>Copiar</span>
+                </button>
+                <button class="ia-btn-accion-msg" onclick="liraImportarMensajeANotas('${msgId}')" title="Guardar respuesta como nota del documento">
+                    <span class="ia-btn-icon"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg></span> <span>A Notas</span>
                 </button>
             </div>
         </div>
@@ -988,22 +1232,42 @@ function toggleFuentesIA(id) {
     }
 }
 
+function _registrarSnippetCitaIA(texto) {
+    window._liraSnippetsMap = window._liraSnippetsMap || {};
+    window._liraSnippetSeq = (window._liraSnippetSeq || 0) + 1;
+    const key = 'lira_snip_' + window._liraSnippetSeq;
+    window._liraSnippetsMap[key] = String(texto || '');
+    return key;
+}
+
 // --- NAVEGACIÓN Y RESALTADO INTERACTIVO DE FUENTES EN EL PDF ---
-window.liraNavegarYResaltarFuente = async function (pagina, textoSnippet) {
+window.liraNavegarYResaltarFuente = async function (pagina, textoSnippet, btnEl = null) {
     if (!pagina || isNaN(pagina)) {
         console.warn("⚠️ [LiraAI] Página inválida:", pagina);
         return;
     }
     const numPag = parseInt(pagina);
+    const pagObjetivo = numPag - 1;
+    const docObjetivo = (typeof rutaPDFActual !== 'undefined') ? rutaPDFActual : '';
+    let snippetReal = (textoSnippet && window._liraSnippetsMap && Object.prototype.hasOwnProperty.call(window._liraSnippetsMap, textoSnippet))
+        ? window._liraSnippetsMap[textoSnippet]
+        : (textoSnippet || '');
+    if (!snippetReal && btnEl && typeof btnEl.closest === 'function') {
+        const blk = btnEl.closest('li, p, div');
+        if (blk && blk.innerText) {
+            snippetReal = blk.innerText;
+        }
+    }
+
     console.log(`🎯 [LiraAI] Navegando a página ${numPag} y resaltando fragmento...`);
 
     // 1. Mostrar feedback visual inmediato (Toast)
     mostrarToastLira(`🎯 Saltando a Página ${numPag} del PDF...`);
 
-    // 2. Si no estamos en esa página, cambiar y esperar la carga completa del lienzo
-    if (typeof paginaActual !== 'undefined' && paginaActual !== (numPag - 1)) {
+    // 2. Si no estamos en esa página, cambiar (cargarPagina limpia resaltados previos)
+    if (typeof paginaActual !== 'undefined' && paginaActual !== pagObjetivo) {
         if (typeof cargarPagina === 'function') {
-            await cargarPagina(numPag - 1);
+            await cargarPagina(pagObjetivo);
         } else {
             const inputPag = document.getElementById('input-pagina-actual');
             if (inputPag) inputPag.value = numPag;
@@ -1011,17 +1275,29 @@ window.liraNavegarYResaltarFuente = async function (pagina, textoSnippet) {
         }
         // Breve pausa para asegurar sincronización del canvas
         await new Promise(r => setTimeout(r, 120));
+    } else if (typeof window.limpiarResaltadoBusqueda === 'function') {
+        // Limpiar resaltado previo antes de pintar el nuevo en la misma página
+        window.limpiarResaltadoBusqueda(true);
     }
 
-    // 3. Obtener coordenadas de todas las líneas del chunk desde PyMuPDF
+    // 3. Obtener coordenadas exactas de las líneas del chunk desde PyMuPDF
     try {
         if (typeof eel !== 'undefined' && eel.rag_buscar_coordenadas_fuente) {
-            const res = await eel.rag_buscar_coordenadas_fuente(numPag, textoSnippet || '')();
+            const res = await eel.rag_buscar_coordenadas_fuente(numPag, snippetReal)();
+
+            // Evitar dibujar si el usuario ya cambió de página, cerró LiraAI o abrió otro PDF durante la consulta
+            const modalIA = document.getElementById('modal-ia');
+            const iaCerrado = modalIA && modalIA.style.display === 'none';
+            if (iaCerrado || (typeof paginaActual !== 'undefined' && paginaActual !== pagObjetivo) || (typeof rutaPDFActual !== 'undefined' && rutaPDFActual !== docObjetivo)) {
+                return;
+            }
+
             console.log("🔍 [LiraAI] Coordenadas recibidas:", res);
             if (res && res.exito && (res.rects || res.coords)) {
                 const rectsToUse = res.rects || [res.coords];
                 window.resaltadoBusqueda = rectsToUse;
                 window.resaltadoBBox = res.bbox || null;
+                window.resaltadoPagina = pagObjetivo;
                 if (typeof resaltadoBusqueda !== 'undefined') {
                     resaltadoBusqueda = rectsToUse;
                 }
@@ -1033,9 +1309,11 @@ window.liraNavegarYResaltarFuente = async function (pagina, textoSnippet) {
 
                 // 4. Auto-Scroll suave del visor PDF hacia la posición resaltada
                 setTimeout(() => {
+                    if ((typeof paginaActual !== 'undefined' && paginaActual !== pagObjetivo)) return;
                     const factorZoom = (typeof datosPagina !== 'undefined' && datosPagina?.factor_zoom) ? datosPagina.factor_zoom : 1.0;
+                    const cssZoom = (typeof nivelZoomPDF === 'number') ? nivelZoomPDF : 1.0;
                     const targetY = res.bbox ? res.bbox[1] : (res.rects ? res.rects[0][1] : res.coords[1]);
-                    const yPos = targetY * factorZoom;
+                    const yPos = targetY * factorZoom * cssZoom;
                     const visor = document.getElementById('visor-container') || document.querySelector('.contenedor-visor') || document.getElementById('contenedor-canvas');
                     if (visor) {
                         visor.scrollTo({ top: Math.max(0, yPos - 120), behavior: 'smooth' });
@@ -1095,7 +1373,8 @@ async function ejecutarSolicitudIA(tipo, promptCustom = null) {
     try {
         if (typeof eel !== 'undefined' && eel.rag_ejecutar_solicitud) {
             const modoActual = window.modoSalidaIA || document.getElementById('sel-ia-modo-salida')?.value || 'trazabilidad';
-            const res = await eel.rag_ejecutar_solicitud(tipo, null, promptCustom, modoActual)();
+            const fuentesCtx = await construirContextoFuentesParaIA();
+            const res = await eel.rag_ejecutar_solicitud(tipo, null, promptCustom, modoActual, fuentesCtx.contextoExtra, fuentesCtx.ignorarPdf)();
             if (res && res.exito) {
                 const txt = res.respuesta || res.resumen || '';
                 cuerpoResultado.innerHTML = formatearMarkdown(txt, res.fuentes || []);
@@ -1631,7 +1910,7 @@ window.liraCopiarTextoMensaje = function (msgId) {
     navigator.clipboard.writeText(txtACopiar).then(() => {
         mostrarToastLira("📋 Respuesta copiada al portapapeles.");
     }).catch(() => {
-        alert("⚠️ No se pudo copiar automáticamente.");
+        liraAlert("No se pudo copiar automáticamente.", '⚠️');
     });
 };
 
@@ -1643,7 +1922,7 @@ function copiarResultadoIA() {
     navigator.clipboard.writeText(texto).then(() => {
         mostrarToastLira("📋 Copiado al portapapeles con éxito.");
     }).catch(() => {
-        alert("⚠️ No se pudo copiar automáticamente.");
+        liraAlert("No se pudo copiar automáticamente.", '⚠️');
     });
 }
 
@@ -1695,15 +1974,19 @@ function formatearMarkdown(texto, fuentes = []) {
     if (!texto) return '';
     let html = escaparHTML(texto);
 
-    // Mapa de fragmentos por página para enlazar botones de citas
+    // Mapa de fragmentos por página para enlazar botones de citas con el texto completo del chunk
     const fuentesPorPagina = {};
     const fuentesPorIdx = {};
     if (Array.isArray(fuentes)) {
         fuentes.forEach((f, i) => {
-            const p = f.pagina || f.pagina_inicio || 1;
-            const snip = (f.texto || '').replace(/\s+/g, ' ').trim();
-            if (!fuentesPorPagina[p]) fuentesPorPagina[p] = snip;
-            fuentesPorIdx[i + 1] = { pagina: p, texto: snip };
+            const pIni = parseInt(f.pagina_inicio || f.pagina || 1);
+            const pFin = parseInt(f.pagina_fin || pIni);
+            const snip = (f.texto_puro || f.texto || '').replace(/\s+/g, ' ').trim();
+            for (let p = pIni; p <= pFin; p++) {
+                if (!fuentesPorPagina[p]) fuentesPorPagina[p] = [];
+                if (snip) fuentesPorPagina[p].push(snip);
+            }
+            fuentesPorIdx[i + 1] = { pagina: pIni, texto: snip };
         });
     }
 
@@ -1716,21 +1999,30 @@ function formatearMarkdown(texto, fuentes = []) {
     html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
-    // Citas de Páginas Interactivas: [Pág. X], [Página X], [Págs. X-Y]
-    html = html.replace(/\[(?:P&aacute;g\.|P&aacute;gina|P&aacute;gs\.|P&Aacute;G\.|P&Aacute;GINA|P&Aacute;GS\.|Pag\.|Pagina|Pags\.|Pág\.|Página|Págs\.)\s*(\d+)(?:-(\d+))?\]/gi, (match, p1, p2) => {
-        const pag = parseInt(p1);
-        const label = p2 ? `📄 Págs. ${p1}-${p2}` : `📄 Pág. ${p1}`;
-        const snip = fuentesPorPagina[pag] ? escaparAttr(fuentesPorPagina[pag].slice(0, 160)) : '';
-        return `<button class="ia-cite-badge" onclick="liraNavegarYResaltarFuente(${pag}, '${snip}')" title="Saltar a página ${p1} y resaltar fragmento en el PDF">${label}</button>`;
+    // Citas de Páginas Interactivas: soporta [Pág. X], [Págs. X-Y] y listas múltiples como [Pág. 5, 16] o [Pág. 2, 9-13]
+    html = html.replace(/\[(?:P&aacute;g\.|P&aacute;gina|P&aacute;gs\.|P&Aacute;G\.|P&Aacute;GINA|P&Aacute;GS\.|Pag\.|Pagina|Pags\.|Pág\.|Página|Págs\.)\s*([0-9,\s\-]+)\]/gi, (match, listaRaw) => {
+        const partes = String(listaRaw).split(',').map(s => s.trim()).filter(Boolean);
+        if (!partes.length) return match;
+        return partes.map(parte => {
+            const mRango = parte.match(/^(\d+)(?:\s*-\s*(\d+))?$/);
+            if (!mRango) return parte;
+            const p1 = mRango[1];
+            const p2 = mRango[2];
+            const pag = parseInt(p1);
+            const label = p2 ? `📄 Págs. ${p1}-${p2}` : `📄 Pág. ${p1}`;
+            const textosPag = fuentesPorPagina[pag];
+            const snipKey = (textosPag && textosPag.length) ? _registrarSnippetCitaIA(textosPag.join('\n')) : '';
+            return `<button class="ia-cite-badge" onclick="liraNavegarYResaltarFuente(${pag}, '${snipKey}', this)" title="Saltar a página ${p1} y resaltar fragmento en el PDF">${label}</button>`;
+        }).join(' ');
     });
 
-    // Citas de Fragmentos: [Fragmento X]
-    html = html.replace(/\[(?:Fragmento|Secci&oacute;n)\s*(\d+)\]/gi, (match, p1) => {
+    // Citas de Fragmentos: [Fragmento X] o [Fragmento X | Pág. Y]
+    html = html.replace(/\[(?:Fragmento|Secci&oacute;n|Sección)\s*(\d+)(?:\s*\|\s*[^\]]*)?\]/gi, (match, p1) => {
         const idx = parseInt(p1);
         const fData = fuentesPorIdx[idx];
         if (fData) {
-            const snip = escaparAttr(fData.texto.slice(0, 160));
-            return `<button class="ia-cite-badge" onclick="liraNavegarYResaltarFuente(${fData.pagina}, '${snip}')" title="Saltar a fragmento ${idx} en Pág. ${fData.pagina}">📑 Ref. ${idx} (Pág. ${fData.pagina})</button>`;
+            const snipKey = _registrarSnippetCitaIA(fData.texto);
+            return `<button class="ia-cite-badge" onclick="liraNavegarYResaltarFuente(${fData.pagina}, '${snipKey}', this)" title="Saltar a fragmento ${idx} en Pág. ${fData.pagina}">📑 Ref. ${idx} (Pág. ${fData.pagina})</button>`;
         }
         return `<span style="display:inline-flex; align-items:center; background:#eef2ff; color:#4338ca; border-radius:4px; padding:0 5px; font-size:11px; font-weight:600;">[Ref. ${p1}]</span>`;
     });
@@ -1866,4 +2158,64 @@ if (document.readyState === 'loading') {
 }
 
 
+
+
+
+// --- TIENDA DE MODELOS OLLAMA (HUGGING FACE GGUF EN VIVO) ---
+let _ollamaInstaladosCache = [];
+
+function actualizarVisibilidadAccionesOllama() {
+    const sel = document.getElementById('sel-ia-proveedor');
+    const box = document.getElementById('ollama-acciones-locales');
+    if (box && sel) {
+        box.style.display = (sel.value === 'ollama') ? 'flex' : 'none';
+    }
+}
+document.addEventListener('DOMContentLoaded', () => {
+    const sel = document.getElementById('sel-ia-proveedor');
+    if (sel) {
+        sel.addEventListener('change', actualizarVisibilidadAccionesOllama);
+        actualizarVisibilidadAccionesOllama();
+    }
+});
+
+async function conectarOIniciarOllama() {
+    const btn = document.getElementById('btn-conectar-ollama');
+    if (btn) { btn.disabled = true; btn.textContent = 'Conectando...'; }
+    try {
+        if (typeof eel !== 'undefined' && typeof eel.iniciar_ollama_local === 'function') {
+            const res = await eel.iniciar_ollama_local()();
+            if (!res.instalado) {
+                if (typeof liraAlert === 'function') {
+                    liraAlert('Ollama no instalado', res.mensaje || 'Descarga Ollama desde ollama.com para usar modelos locales.', '⚠️');
+                } else if (typeof mostrarToastLira === 'function') {
+                    mostrarToastLira(res.mensaje);
+                }
+                return;
+            }
+            if (typeof mostrarToastLira === 'function' && res.mensaje) mostrarToastLira(res.mensaje);
+        }
+        if (typeof verificarEstadoIA === 'function') await verificarEstadoIA();
+    } catch (e) {
+        if (typeof mostrarToastLira === 'function') mostrarToastLira('Error al conectar con Ollama');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Conectar / Iniciar Ollama'; }
+    }
+}
+
+async function iniciarOllamaDesdeUI() {
+    const btn = document.getElementById('btn-iniciar-ollama');
+    if (btn) { btn.disabled = true; btn.textContent = 'Iniciando...'; }
+    try {
+        const res = await eel.iniciar_ollama_local()();
+        if (typeof mostrarToastLira === 'function') mostrarToastLira(res.mensaje || 'Listo');
+        if (!res.instalado && typeof liraAlert === 'function') {
+            liraAlert('Ollama no detectado', res.mensaje, '⚠️');
+        }
+    } catch (e) {
+        if (typeof mostrarToastLira === 'function') mostrarToastLira('Error al iniciar Ollama');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '▶ Iniciar Ollama'; }
+    }
+}
 

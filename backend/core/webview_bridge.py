@@ -1,0 +1,92 @@
+# LiraLoud
+# Copyright 2026 José Pablo González Macías
+# Licensed under the Apache License, Version 2.0
+
+"""
+Puente Nativo de Comunicación Bidireccional con pywebview (Reemplazo de Eel).
+Permite registrar todas las funciones de Python con `@eel.expose` (o `@puente_webview.expose`),
+las agrupa automáticamente en el objeto `js_api` de pywebview, y permite invocar funciones
+de JavaScript desde Python (`eel.nombre_funcion_js(arg1, arg2)`).
+"""
+
+import json
+import logging
+
+logger = logging.getLogger("LiraLoud")
+
+class _ContenedorApiJS:
+    """Objeto dinámico que se inyecta como `js_api` en `webview.create_window`."""
+    pass
+
+
+class PuenteWebview:
+    def __init__(self):
+        self._funciones_expuestas = {}
+        self.api_container = _ContenedorApiJS()
+        self.ventana = None
+        self.carpeta_web = "web"
+
+    def init(self, carpeta_web="web"):
+        """Mantiene compatibilidad con eel.init('web')."""
+        self.carpeta_web = carpeta_web
+
+    def expose(self, func_or_name=None):
+        """
+        Registra una función de Python para ser invocada desde JavaScript via window.pywebview.api.
+        Soporta tanto @eel.expose como eel.expose(funcion).
+        """
+        def _decorador(fn):
+            nombre = fn.__name__
+            self._funciones_expuestas[nombre] = fn
+            setattr(self.api_container, nombre, fn)
+            return fn
+
+        if callable(func_or_name):
+            return _decorador(func_or_name)
+        return _decorador
+
+    def vincular_ventana(self, ventana):
+        """Asocia la instancia activa de la ventana de pywebview."""
+        self.ventana = ventana
+
+    def evaluar_js_seguro(self, nombre_fn: str, *args):
+        """
+        Ejecuta una función global en JavaScript de forma asíncrona/segura desde Python.
+        Equivalente a cuando Python llamaba `eel.mi_funcion_js(arg1, arg2)()`.
+        """
+        if not self.ventana:
+            return None
+        try:
+            args_json = ", ".join(json.dumps(a, ensure_ascii=False) for a in args)
+            codigo_js = (
+                f"if (typeof window.{nombre_fn} === 'function') {{ "
+                f"window.{nombre_fn}({args_json}); "
+                f"}} else if (typeof {nombre_fn} === 'function') {{ "
+                f"{nombre_fn}({args_json}); "
+                f"}}"
+            )
+            self.ventana.evaluate_js(codigo_js)
+        except Exception as e:
+            logger.debug(f"[PuenteWebview] No se pudo evaluar JS '{nombre_fn}': {e}")
+        return None
+
+    def __getattr__(self, nombre: str):
+        """
+        Cuando Python invoca `eel.actualizar_log_carga("...")` o `eel.notificar_inicio_ocr_pagina(num)()`,
+        devuelve un invocador compatible con o sin doble paréntesis `()()`.
+        """
+        if nombre.startswith("_"):
+            raise AttributeError(nombre)
+
+        def _invocador(*args, **kwargs):
+            self.evaluar_js_seguro(nombre, *args)
+            # Retornamos una función dummy por si el código hace doble llamada `eel.fn(x)()`
+            return lambda *a, **kw: None
+
+        return _invocador
+
+
+# Instancia global única compartida por app_principal.pyw y todos los módulos de backend/
+eel = PuenteWebview()
+puente_webview = eel
+

@@ -1,0 +1,119 @@
+<div id="modal-tienda-voces" class="overlay-bloqueante" style="display:none; z-index:110000;">
+            <div class="modal-content" style="max-width:560px; width:92%;">
+                <div class="modal-header" style="display:flex; flex-direction:column; gap:10px;">
+                    <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                        <h2 style="margin:0; font-size:18px;" data-i18n="lbl-tienda-voces-titulo">Tienda de Voces (Hugging Face)</h2>
+                        <button onclick="cerrarTiendaVoces()" class="btn-cerrar-x" style="color:#333;">✕</button>
+                    </div>
+                    <div class="tabs-config-header">
+                        <button id="tab-tienda-buscar-btn" class="tab-btn active" onclick="cambiarTabTienda('buscar', this)"
+                            style="display:flex; align-items:center; justify-content:center; gap:5px;">
+                            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:15px; height:15px; flex-shrink:0;">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <span data-i18n="tab-tienda-buscar">Buscar voces</span>
+                        </button>
+                        <button id="tab-tienda-descargadas-btn" class="tab-btn" onclick="cambiarTabTienda('descargadas', this)"
+                            style="display:flex; align-items:center; justify-content:center; gap:5px;">
+                            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:15px; height:15px; flex-shrink:0;">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                            </svg>
+                            <span data-i18n="tab-tienda-descargadas">Descargadas</span>
+                            <span id="badge-tienda-descargadas" style="font-size:11px; opacity:0.85;">(0)</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <div style="display:flex; gap:8px; margin-bottom:8px; align-items:center;">
+                        <input type="text" id="buscar-voz-tienda" placeholder="Buscar por nombre, autor o idioma (ej. es_MX, es_ES, en_US)..." data-i18n-placeholder="ph-buscar-voz-tienda" oninput="filtrarTiendaVoces()" style="flex:1; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px;">
+                        <button type="button" id="btn-token-hf-tienda" class="btn-tienda-token" onclick="togglePanelTokenHF()" title="Token de Hugging Face (para voces con acceso restringido)" data-i18n-title="ttl-token-hf-tienda">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" style="display:block; width:16px; height:16px; flex-shrink:0;">
+                                <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+                            </svg>
+                        </button>
+                        <button type="button" id="btn-ayuda-tienda-voces" class="btn-tienda-ayuda" onclick="toggleAyudaTiendaVoces()" title="¿Cómo buscar voces en tu idioma?" data-i18n-title="ttl-ayuda-tienda-voces">?</button>
+                    </div>
+                    <div id="aviso-token-hf-activo" style="display:none; margin-bottom:8px; padding:6px 10px; background:#dcfce7; border:1px solid #86efac; border-radius:6px; font-size:12px; color:#166534; font-weight:600; align-items:center; gap:6px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" style="display:block; width:14px; height:14px; flex-shrink:0;">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        <span id="txt-aviso-token-hf-activo" data-i18n="lbl-token-hf-sesion-activa">Tienes un token de Hugging Face guardado</span>
+                    </div>
+                    <div id="panel-token-hf-tienda" class="panel-tienda-token" style="display:none;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:4px;">
+                            <b data-i18n="lbl-token-hf-titulo">Token de acceso de Hugging Face (opcional)</b>
+                            <span id="estado-token-hf-tienda" class="badge-token-estado" data-i18n="lbl-token-hf-sin-token">Sin token</span>
+                        </div>
+                        <div data-i18n="lbl-token-hf-desc" style="margin-bottom:8px;">Algunas voces de la comunidad requieren aceptar sus términos en Hugging Face. Pega tu token de lectura (<code>hf_...</code>) aquí para descargarlas tras obtener acceso.</div>
+                        <div style="display:flex; gap:6px; align-items:center;">
+                            <input type="password" id="input-token-hf-tienda" placeholder="Pega tu token hf_..." data-i18n-placeholder="ph-token-hf-tienda" style="flex:1; padding:6px 9px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px;">
+                            <button type="button" class="btn-tienda-descargar" onclick="guardarTokenHFTienda()" data-i18n="btn-guardar-token-hf">Guardar</button>
+                            <button type="button" class="btn-tienda-eliminar" onclick="quitarTokenHFTienda()" data-i18n="btn-quitar-token-hf">Quitar</button>
+                        </div>
+                    </div>
+                    <div id="ayuda-tienda-voces" style="display:none; margin-bottom:10px; padding:10px 12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; font-size:12px; color:#1e3a8a; line-height:1.5; max-height:190px; overflow-y:auto;">
+                        <b data-i18n="lbl-ayuda-tienda-voces-titulo">💡 ¿Cómo buscar voces por idioma (formato Rhasspy / Piper)?</b><br>
+                        <span data-i18n="lbl-ayuda-tienda-voces-desc">Los modelos usan una abreviatura de 2 letras al inicio (<code>idioma = abreviatura</code>) o combinada con país (ej. <code>es_MX</code>, <code>es_ES</code>, <code>en_US</code>). Escribe cualquiera en el buscador:</span><br>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(135px, 1fr)); gap:4px 10px; margin-top:6px;">
+                            <span>• Español = <code>es</code></span>
+                            <span>• English = <code>en</code></span>
+                            <span>• Français = <code>fr</code></span>
+                            <span>• Português = <code>pt</code></span>
+                            <span>• Italiano = <code>it</code></span>
+                            <span>• Deutsch = <code>de</code></span>
+                            <span>• Català = <code>ca</code></span>
+                            <span>• Euskara = <code>eu</code></span>
+                            <span>• Русский = <code>ru</code></span>
+                            <span>• 中文 = <code>zh</code></span>
+                            <span>• 日本語 = <code>ja</code></span>
+                            <span>• 한국어 = <code>ko</code></span>
+                            <span>• العربية = <code>ar</code></span>
+                            <span>• Nederlands = <code>nl</code></span>
+                            <span>• Polski = <code>pl</code></span>
+                            <span>• Svenska = <code>sv</code></span>
+                            <span>• Norsk = <code>no</code></span>
+                            <span>• Dansk = <code>da</code></span>
+                            <span>• Suomi = <code>fi</code></span>
+                            <span>• Ελληνικά = <code>el</code></span>
+                            <span>• Čeština = <code>cs</code></span>
+                            <span>• Magyar = <code>hu</code></span>
+                            <span>• Română = <code>ro</code></span>
+                            <span>• Türkçe = <code>tr</code></span>
+                            <span>• Українська = <code>uk</code></span>
+                            <span>• हिन्दी = <code>hi</code></span>
+                            <span>• עברית = <code>he</code></span>
+                            <span>• فارسی = <code>fa</code></span>
+                            <span>• Tiếng Việt = <code>vi</code></span>
+                            <span>• Bahasa Indonesia = <code>id</code></span>
+                            <span>• ไทย = <code>th</code></span>
+                            <span>• Български = <code>bg</code></span>
+                            <span>• Српски = <code>sr</code></span>
+                            <span>• Slovenčina = <code>sk</code></span>
+                            <span>• Slovenščina = <code>sl</code></span>
+                            <span>• Shqip = <code>sq</code></span>
+                            <span>• Eesti = <code>et</code></span>
+                            <span>• Latviešu = <code>lv</code></span>
+                            <span>• Lietuvių = <code>lt</code></span>
+                            <span>• Íslenska = <code>is</code></span>
+                            <span>• Cymraeg = <code>cy</code></span>
+                            <span>• Lëtzebuergesch = <code>lb</code></span>
+                            <span>• ქართული = <code>ka</code></span>
+                            <span>• Հայերեն = <code>hy</code></span>
+                            <span>• Қазақша = <code>kk</code></span>
+                            <span>• Kurdî = <code>ku</code></span>
+                            <span>• বাংলা = <code>bn</code></span>
+                            <span>• മലയാളം = <code>ml</code></span>
+                            <span>• मराठी = <code>mr</code></span>
+                            <span>• नेपाली = <code>ne</code></span>
+                            <span>• తెలుగు = <code>te</code></span>
+                            <span>• اردو = <code>ur</code></span>
+                            <span>• Kiswahili = <code>sw</code></span>
+                        </div>
+                    </div>
+                    <div id="lista-tienda-voces" style="display:flex; flex-direction:column; gap:8px; max-height:380px; overflow-y:auto;"></div>
+                </div>
+            </div>
+        </div>

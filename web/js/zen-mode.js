@@ -148,21 +148,31 @@ function toggleModoZen(isActive) {
 }
 
 function toggleZenVoz() {
+    const dEdicionBar = document.getElementById('zen-details-edicion-bar');
+    if (dEdicionBar) dEdicionBar.open = false;
+
     const pMenu = document.getElementById('zen-panel-menu');
-    pMenu.classList.remove('zen-active');
-    pMenu.style.display = 'none';
+    if (pMenu) {
+        pMenu.classList.remove('zen-active');
+        pMenu.style.display = 'none';
+    }
 
     const pVoz = document.getElementById('zen-panel-voz');
-    if(pVoz.style.display === 'none') {
-        pVoz.style.display = 'block';
-        pVoz.classList.add('zen-active');
-    } else {
-        pVoz.style.display = 'none';
-        pVoz.classList.remove('zen-active');
+    if (pVoz) {
+        if(pVoz.style.display === 'none') {
+            pVoz.style.display = 'block';
+            pVoz.classList.add('zen-active');
+        } else {
+            pVoz.style.display = 'none';
+            pVoz.classList.remove('zen-active');
+        }
     }
 }
 
 function toggleZenMenu(forceClose = false) {
+    const dEdicionBar = document.getElementById('zen-details-edicion-bar');
+    if (dEdicionBar) dEdicionBar.open = false;
+
     const pVoz = document.getElementById('zen-panel-voz');
     if (pVoz) {
         pVoz.classList.remove('zen-active');
@@ -282,6 +292,26 @@ function cerrarOtrasFuncionesPrincipales(excepto = '') {
         const dLim = document.getElementById('zen-details-limites');
         if (dLim && dLim.open) dLim.open = false;
     }
+
+    // 9. Cuaderno de Notas y Nota Rápida
+    if (excepto !== 'notas' && excepto !== 'nota_rapida') {
+        const modalNotas = document.getElementById('modal-notas');
+        if (modalNotas && (modalNotas.style.display === 'flex' || modalNotas.style.display === 'block')) {
+            if (typeof cerrarModalNotas === 'function') {
+                cerrarModalNotas();
+            } else {
+                modalNotas.style.display = 'none';
+            }
+        }
+        const panelNotaRapida = document.getElementById('panel-nota-rapida');
+        if (panelNotaRapida && (panelNotaRapida.style.display === 'flex' || panelNotaRapida.style.display === 'block')) {
+            if (typeof cerrarPanelNotaRapida === 'function') {
+                cerrarPanelNotaRapida();
+            } else {
+                panelNotaRapida.style.display = 'none';
+            }
+        }
+    }
 }
 window.cerrarOtrasFuncionesPrincipales = cerrarOtrasFuncionesPrincipales;
 
@@ -290,25 +320,17 @@ function inicializarExclusividadZen() {
     const pMenu = document.getElementById('zen-panel-menu');
     if (!pMenu) return;
 
-    const detailsMap = {
-        'zen-details-ocr': 'ocr',
-        'zen-details-traduccion': 'traduccion',
-        'zen-details-filtros': 'filtros',
-        'zen-details-limites': 'limites'
-    };
-
-    const allDetails = pMenu.querySelectorAll('details');
-    allDetails.forEach(details => {
-        // Al abrir una función desplegable, cerrar automáticamente todas las demás funciones y modales
-        details.addEventListener('toggle', function () {
+    const detailsList = pMenu.querySelectorAll('details');
+    detailsList.forEach(detail => {
+        detail.addEventListener('toggle', function () {
             if (this.open) {
-                const tipo = detailsMap[this.id] || '';
+                const tipo = this.id.replace('zen-details-', '');
                 cerrarOtrasFuncionesPrincipales(tipo);
             }
         });
     });
 
-    // Al hacer clic en un botón de acción simple (MP3, Teatro, Abreviaturas, IA), cerrar las demás funciones
+    // Al hacer clic en un botón de acción simple (MP3, Teatro, Abreviaturas, IA, Notas), cerrar las demás funciones
     const btnMP3 = pMenu.querySelector('button[onclick*="abrirModalDescarga"]');
     if (btnMP3) {
         btnMP3.addEventListener('click', function () {
@@ -316,16 +338,16 @@ function inicializarExclusividadZen() {
         });
     }
 
-    const btnTeatro = pMenu.querySelector('button[onclick*="abrirTeatro"]');
+    const btnTeatro = pMenu.querySelector('button[onclick*="iniciarTeatro"]');
     if (btnTeatro) {
         btnTeatro.addEventListener('click', function () {
             cerrarOtrasFuncionesPrincipales('teatro');
         });
     }
 
-    const btnDiccionario = pMenu.querySelector('button[onclick*="abrirDiccionario"]');
-    if (btnDiccionario) {
-        btnDiccionario.addEventListener('click', function () {
+    const btnDicc = pMenu.querySelector('button[onclick*="toggleDiccionario"]');
+    if (btnDicc) {
+        btnDicc.addEventListener('click', function () {
             cerrarOtrasFuncionesPrincipales('diccionario');
         });
     }
@@ -334,6 +356,13 @@ function inicializarExclusividadZen() {
     if (btnIA) {
         btnIA.addEventListener('click', function () {
             cerrarOtrasFuncionesPrincipales('ia');
+        });
+    }
+
+    const btnNotas = pMenu.querySelector('button[onclick*="toggleModalNotas"]');
+    if (btnNotas) {
+        btnNotas.addEventListener('click', function () {
+            cerrarOtrasFuncionesPrincipales('notas');
         });
     }
 }
@@ -347,6 +376,11 @@ if (document.readyState === 'loading') {
 // Cerrar paneles Zen al hacer clic fuera de ellos
 document.addEventListener('click', function(event) {
     if (!document.body.classList.contains('modo-minimalista')) return;
+
+    const dEdicionBar = document.getElementById('zen-details-edicion-bar');
+    if (dEdicionBar && dEdicionBar.open && !dEdicionBar.contains(event.target)) {
+        dEdicionBar.open = false;
+    }
 
     const pVoz = document.getElementById('zen-panel-voz');
     const pMenu = document.getElementById('zen-panel-menu');
@@ -387,4 +421,16 @@ document.addEventListener('click', function(event) {
         }
     }
 });
+
+function toggleEtiquetasZen(mostrar) {
+    const pMenu = document.getElementById('zen-panel-menu');
+    if (pMenu) {
+        if (mostrar) {
+            pMenu.classList.remove('zen-sin-etiquetas');
+        } else {
+            pMenu.classList.add('zen-sin-etiquetas');
+        }
+    }
+}
+
 

@@ -1,0 +1,170 @@
+================================================================================
+                        DOCUMENTACIÓN TÉCNICA: LIRALOUD
+            Estudio de Lectura Neuronal, PDF, OCR e Inteligencia Artificial
+================================================================================
+
+1. VISIÓN GENERAL DE LA ARQUITECTURA
+--------------------------------------------------------------------------------
+LiraLoud es una aplicación de escritorio híbrida (Python + WebView2 Nativo) que
+combina lectura fluida texto-a-voz (TTS) con sincronización karaoke palabra por
+palabra, edición avanzada de PDF, OCR inteligente (RapidOCR + DocLayout-YOLO),
+traducción neuronal y un asistente de investigación RAG (ChromaDB + Ollama /
+Gemini / Groq / OpenAI / DeepSeek).
+
+- Lanzador Puro (`app_principal.pyw`, ~140 líneas):
+  Inicializa la captura de logs, configura la identidad del proceso en Windows,
+  registra los módulos RPC en `puente_webview`, arranca los workers de audio y
+  el servidor de la extensión de navegador (`127.0.0.1:54321`), y levanta la
+  ventana nativa `pywebview` con motor Edge WebView2 (`gui="edgechromium"`).
+
+- Puente RPC (`backend/core/webview_bridge.py` <-> `web/js/core/webview_bridge.js`):
+  Reemplaza por completo a Eel/Gevent por el canal nativo C++/WebView2
+  (`window.pywebview.api`) con latencia < 1ms. Conserva la sintaxis `@eel.expose`
+  en Python y `await eel.nombre_funcion(...)()` en JavaScript para mantener 100%
+  de compatibilidad sin bloqueos de sockets.
+
+- Estado Global Centralizado (`backend/core/estado_global.py` -> `estado_app`):
+  Única fuente de verdad en memoria RAM para todos los módulos del backend.
+  Ningún módulo debe crear variables globales sueltas para el documento PDF
+  (`estado_app.doc`) ni para los snapshots de la página activa.
+
+
+2. ESTRUCTURA ORGANIZADA DEL BACKEND (`backend/`)
+--------------------------------------------------------------------------------
+El directorio `backend/` está organizado en 5 subpaquetes de dominio sin
+archivos sueltos en la raíz:
+
+A) `backend/core/` — Núcleo, Estado, Puente, Logs y Persistencia
+   - `estado_global.py`   : Clase `EstadoApp` e instancia `estado_app` (documento
+                            PyMuPDF activo, snapshots de oraciones/palabras/cortes,
+                            colas de audio, cachés de voces en RAM y locks).
+   - `webview_bridge.py`  : Clase `PuenteWebview` (`eel` / `puente_webview`).
+                            Agrupa los `@eel.expose` en `puente_webview.api_container`
+                            y despacha llamadas Python -> JS vía `evaluate_js`.
+   - `logger_config.py`   : Captura global de `stdout`, `stderr` y excepciones en
+                            `app.log` con rotación automática.
+   - `gestor_archivos.py` : Lectura/escritura atómica de todos los archivos JSON
+                            de configuración (`ajustes_lectura.json`,
+                            `biblioteca.json`, `abreviaturas.json`, `favoritos.json`,
+                            `atajos.json`, `teatro.json`, `kokoro_blends.json`,
+                            `libros_reglas.json`, `traducciones_cache.json`).
+   - `utils.py`           : Helpers puros (`safe_async_run`, `normalizar_texto`,
+                            `resolver_nombre_voz_unico`, `crear_regex_inmune_acentos`,
+                            `abrir_archivo_legal`).
+
+B) `backend/audio/` — Motores TTS, Streaming, Catálogo de Voces y Multimedia
+   - `motor_audio.py`     : Cocina híbrida (`cocinar_ahora_pro`), workers de
+                            horneado anticipado (`worker_horno`), reproductor en
+                            streaming PCM (`run_local_logic_v21`), pre-renderizado
+                            de páginas y exportación dedicada MP3/WAV.
+   - `gestor_voces_rpc.py`: Endpoints RPC de catálogo de voces, modo privacidad
+                            100% offline, gestión de favoritos en RAM, tienda de
+                            voces Hugging Face, laboratorio de mezclas/muestras
+                            Kokoro-82M y clonación zero-shot con Pocket-TTS.
+   - `kokoro_engine.py`   : Motor neuronal ONNX Kokoro-82M con timestamps nativos
+                            por palabra (`pred_dur`), ecualizador y mezclas `.bin`.
+   - `pocket_engine.py`   : Motor de clonación de voz zero-shot Pocket-TTS (Kyutai).
+   - `voice_catalogue.py` : Descarga y gestión de modelos locales desde Hugging Face.
+   - `exportador_audio.py`: Exportación de rangos de páginas a audiolibros MP3/WAV.
+   - `media_control.py`   : Integración con Windows SMTC (pausa inteligente de
+                            reproductores externos) y Audio Ducking con `pycaw`.
+
+C) `backend/documento/` — Motor PDF/Word, Edición, Layout, OCR y Texto
+   - `gestor_documento_rpc.py`: Endpoints RPC de apertura/selección de documentos
+                            PDF/Word, renderizado de páginas (`obtener_pagina_data`,
+                            `obtener_vista_rapida_pagina`, `obtener_miniatura_pagina`),
+                            edición PDF y subrayados, autodetector de layout y
+                            control de OCR individual o por lotes.
+   - `edicion_pdf.py`     : Operaciones directas con PyMuPDF (`fitz`) para
+                            subrayados (`Highlight`), cuadros de texto (`FreeText`),
+                            edición de bloques de texto y guardado incremental/full.
+   - `procesador_texto.py`: Segmentación de palabras en oraciones, organización
+                            por columnas/límites, aduana de filtros y reemplazos
+                            (`aplicar_reemplazos`), sincronización N:1 y hot-swap
+                            de filtros en vivo (`reaplicar_filtros_desde_snapshot`).
+   - `buscador_pdf.py`    : Búsqueda avanzada insensible a acentos en todo el PDF.
+   - `ocr_engine.py`      : Motor RapidOCR ONNX con caché persistente por documento
+                            y página en `lira_db/ocr_cache/`.
+   - `layout_engine.py`   : Detección de estructura de página (columnas, cabeceras,
+                            pies, tablas, figuras) con DocLayout-YOLO ONNX.
+   - `docx_engine.py`     : Conversión automática de documentos `.docx`/`.doc` a PDF.
+
+D) `backend/ia/` — Inteligencia Artificial, RAG, Traducción y Tienda Ollama
+   - `rag_module.py`      : Motor `LiraRAG` con ChromaDB persistente (`lira_db/`),
+                            indexación íntegra del documento, búsqueda semántica,
+                            citas trazables a coordenadas del PDF y streaming de
+                            respuestas.
+   - `traductor.py`       : Traductor híbrido (Google/DeepTranslator online +
+                            Argos Translate 100% offline) con caché en disco.
+   - `ollama_store.py`    : Buscador y descargador de modelos GGUF / Ollama con
+                            detección de hardware (VRAM/RAM).
+   - `llm_providers/`     : Adaptadores modulares para Ollama local, Google Gemini,
+                            Groq, OpenAI y DeepSeek (`provider_factory.py`).
+
+E) `backend/estudio/` — Servicios RPC, Notas, Extracciones y Captura Web/Pantalla
+   - `servicios_rpc.py`   : Endpoints RPC de control multimedia, logs del frontend,
+                            búsqueda avanzada, traducción, tienda Ollama y RAG.
+   - `gestor_notas.py`    : Gestión de cuadernos de notas, categorías y exportación
+                            a PDF/Word/Markdown.
+   - `gestor_extracciones.py`: Almacenamiento de recortes e imágenes extraídas.
+   - `captura_pantalla.py`: Selector de área en pantalla con OCR instantáneo.
+   - `web_reader.py`      : Importación de artículos web (URL o texto) a PDF limpio.
+   - `playwright_worker.py`: Subproceso aislado para renderizar páginas web con JS.
+   - `servidor_extension.py`: Servidor HTTP local (`127.0.0.1:54321`) que recibe
+                            artículos desde la extensión Chrome/Edge de LiraLoud.
+
+
+3. ESTRUCTURA DEL FRONTEND (`web/`)
+--------------------------------------------------------------------------------
+- `web/index.html`        : Interfaz principal dividida en bloques semánticos.
+- `web/css/`              : Hojas de estilo modulares (`base.css`, `layout.css`,
+                            `components.css`, `modals.css`, `animations.css`).
+- `web/js/core/`          : `webview_bridge.js` (puente RPC), `bootstrap.js`,
+                            `estado.js`, `init.js`, ` telemetria.js`.
+- `web/js/audio/`         : `motorPiper.js` (reproductor PCM WebAudio y persistencia
+                            `guardarTodosAjustes()`), `gestorVoces.js`, `kokoroLab.js`,
+                            `voiceStore.js`, `audioStudio.js`.
+- `web/js/navegacion/`    : `pdfManager.js`, `atajos.js`, `buscador.js`,
+                            `edicionPdf.js`, `subrayador.js`, `capturaExtraccion.js`,
+                            `webReader.js`.
+- `web/js/graficos/`      : `karaoke.js` (resaltado sincronizado en canvas),
+                            `lienzo.js` (cortes verticales, márgenes y exclusiones).
+- `web/js/modulos/`       : `ui.js`, `liraAi.js`, `notasEstudio.js`,
+                            `diccionario.js`, `teatro.js`, `traduccion.js`.
+
+
+4. GUÍA PARA FUTUROS AGENTES Y ACTUALIZACIONES
+--------------------------------------------------------------------------------
+REGLA 1: Uso obligatorio de `estado_app` (`backend/core/estado_global.py`)
+- NUNCA declares `global doc`, `global pagina_actual_global` ni snapshots locales
+  en los módulos de `backend/`.
+- Lee y escribe siempre en `estado_app.doc`, `estado_app.pagina_actual_global`,
+  `estado_app.snapshot_oraciones_raw`, `estado_app.snapshot_palabras_raw`,
+  `estado_app.voces_cargadas`, etc.
+
+REGLA 2: Cómo exponer un nuevo endpoint Python -> JavaScript (`@eel.expose`)
+1. importa `from backend.core.webview_bridge import eel`.
+2. Decora la función con `@eel.expose` en el módulo de dominio correspondiente:
+   - Operaciones PDF / OCR / Layout  -> `backend/documento/gestor_documento_rpc.py`
+   - Voces / Kokoro / Pocket / Tienda-> `backend/audio/gestor_voces_rpc.py`
+   - Streaming / Exportación audio   -> `backend/audio/motor_audio.py`
+   - IA / RAG / Traducción / Sistema -> `backend/estudio/servicios_rpc.py`
+   - Persistencia JSON               -> `backend/core/gestor_archivos.py`
+3. Si creas un módulo nuevo con funciones `@eel.expose`, impórtalo en la sección 4
+   de `app_principal.pyw` ANTES de `webview.create_window(...)`.
+
+REGLA 3: Persistencia de un nuevo botón, checkbox o slider en la UI
+Sigue siempre los 3 pasos definidos en `.agents/AGENTS.md`:
+1. En `web/index.html`: asigna un `id` único y añade `guardarTodosAjustes()` en su
+   evento `onchange` / `oninput`.
+2. En `web/js/audio/motorPiper.js` (`guardarTodosAjustes()`): incluye la propiedad
+   en el objeto `config` que se envía a `eel.guardar_ajustes_lectura(config)`.
+3. En `web/js/audio/motorPiper.js` (inicialización Fase 7): restaura el valor con
+   `safeCheck` o `safeUI` y llama programáticamente a la función lógica.
+
+REGLA 4: Cálculo de rutas en módulos dentro de `backend/<subpaquete>/`
+- Usa preferentemente `estado_app.base_dir` (que ya resuelve automáticamente tanto
+  modo script como modo ejecutable congelado PyInstaller `sys.frozen`).
+- Si calculas la raíz del proyecto con `__file__` desde `backend/<subpaquete>/*.py`,
+  recuerda subir 3 niveles (`os.path.dirname` tres veces).
+================================================================================
