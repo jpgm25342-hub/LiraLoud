@@ -50,6 +50,8 @@ DIR_OCR_CACHE = os.path.join(BASE_PROYECTO, "lira_db", "ocr_cache")
 
 os.makedirs(DIR_OCR_CACHE, exist_ok=True)
 
+COORD_VERSION = 2
+
 
 
 _rapid_ocr_instance = None
@@ -104,15 +106,22 @@ def _generar_clave_cache(doc_path: str, num_pagina: int) -> str:
 
 
 def esta_en_cache_ocr(doc_path: str, num_pagina: int) -> bool:
-    """Comprueba si una página ya cuenta con reconocimiento OCR guardado."""
+    """Comprueba si una página ya cuenta con reconocimiento OCR guardado con coord_version vigente."""
     if not doc_path:
         return False
     cache_file = os.path.join(DIR_OCR_CACHE, _generar_clave_cache(doc_path, num_pagina))
-    return os.path.exists(cache_file)
+    if not os.path.exists(cache_file):
+        return False
+    try:
+        with open(cache_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return isinstance(data, dict) and data.get("coord_version") == COORD_VERSION and isinstance(data.get("palabras"), list)
+    except Exception:
+        return False
 
 
 def obtener_palabras_cache_ocr(doc_path: str, num_pagina: int) -> Optional[List[Tuple[float, float, float, float, str, int, int, int]]]:
-    """Obtiene las palabras guardadas en la caché OCR para una página si existen."""
+    """Obtiene las palabras guardadas en la caché OCR para una página si tienen coord_version vigente."""
     if not doc_path:
         return None
     cache_file = os.path.join(DIR_OCR_CACHE, _generar_clave_cache(doc_path, num_pagina))
@@ -121,20 +130,22 @@ def obtener_palabras_cache_ocr(doc_path: str, num_pagina: int) -> Optional[List[
     try:
         with open(cache_file, "r", encoding="utf-8") as f:
             cached_data = json.load(f)
-            return [tuple(item) for item in cached_data]
+        if not isinstance(cached_data, dict) or cached_data.get("coord_version") != COORD_VERSION:
+            return None
+        return [tuple(item) for item in cached_data.get("palabras", [])]
     except Exception as e:
         logger.warning(f"⚠️ [OCREngine] Error leyendo caché OCR para página {num_pagina}: {e}")
         return None
 
 
 def guardar_palabras_cache_ocr(doc_path: str, num_pagina: int, palabras: List[Tuple]) -> bool:
-    """Guarda una lista de palabras en la caché OCR de una página."""
+    """Guarda una lista de palabras en la caché OCR de una página con coord_version."""
     if not doc_path or not palabras:
         return False
     cache_file = os.path.join(DIR_OCR_CACHE, _generar_clave_cache(doc_path, num_pagina))
     try:
         with open(cache_file, "w", encoding="utf-8") as f:
-            json.dump(palabras, f, ensure_ascii=False)
+            json.dump({"coord_version": COORD_VERSION, "palabras": palabras}, f, ensure_ascii=False)
         return True
     except Exception as e:
         logger.warning(f"⚠️ [OCREngine] Error guardando caché OCR para página {num_pagina}: {e}")
@@ -332,25 +343,12 @@ def procesar_ocr_pagina(
 
 
 
-    # 1. Verificar si ya está en caché
-
-    if not forzar and cache_file and os.path.exists(cache_file):
-
-        try:
-
-            with open(cache_file, "r", encoding="utf-8") as f:
-
-                cached_data = json.load(f)
-
-                palabras_cached = [tuple(item) for item in cached_data]
-
-                logger.info(f"⚡ [OCREngine] Página {num_pagina} recuperada desde caché OCR ({len(palabras_cached)} palabras).")
-
-                return palabras_cached
-
-        except Exception as e:
-
-            logger.warning(f"⚠️ [OCREngine] Error leyendo caché OCR: {e}")
+    # 1. Verificar si ya está en caché con coord_version vigente
+    if not forzar and doc_path:
+        palabras_cached = obtener_palabras_cache_ocr(doc_path, num_pagina)
+        if palabras_cached is not None:
+            logger.info(f"⚡ [OCREngine] Página {num_pagina} recuperada desde caché OCR ({len(palabras_cached)} palabras).")
+            return palabras_cached
 
 
 
@@ -398,31 +396,22 @@ def procesar_ocr_pagina(
 
             orig_h, orig_w = img.shape[:2]
 
-            # Downscaling inteligente: límite máximo de 1200px para detección ultra-rápida (3x-4x speedup)
-
-            MAX_DIM = 1200
-
+            # Downscaling inteligente: límite máximo de 1800px para preservar espaciado y precisión
+            MAX_DIM = 1800
             if max(orig_w, orig_h) > MAX_DIM:
-
                 ratio = MAX_DIM / float(max(orig_w, orig_h))
-
                 opt_w = max(32, int(orig_w * ratio))
-
                 opt_h = max(32, int(orig_h * ratio))
-
                 img_opt = cv2.resize(img, (opt_w, opt_h), interpolation=cv2.INTER_AREA)
-
             else:
-
                 img_opt = img
-
                 opt_w, opt_h = orig_w, orig_h
 
-
-
             with _ocr_lock:
-
-                ocr_result, _ = engine(img_opt)
+                try:
+                    ocr_result, _ = engine(img_opt, return_word_box=True)
+                except TypeError:
+                    ocr_result, _ = engine(img_opt)
 
 
 
@@ -448,123 +437,120 @@ def procesar_ocr_pagina(
 
 
 
+        def _peso_char(c: str) -> float:
+            if c.isspace():
+                return 0.35
+            if c in "iIljtfr.,;:!|'\"`":
+                return 0.45
+            if c in "mwMW@":
+                return 1.45
+            return 1.0
+
         for line_idx, item in enumerate(ocr_result_ordenado):
-
-            box = item[0]  # [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]
-
+            box = item[0]
             texto_linea = str(item[1]).strip()
-
             if not texto_linea:
-
                 continue
-
-
-
-            # Obtener rectángulo de la línea en píxeles optimizados
 
             xs = [pt[0] for pt in box]
-
             ys = [pt[1] for pt in box]
+            x_min_pt = min(xs) * scale_x
+            x_max_pt = max(xs) * scale_x
+            y_min_pt = min(ys) * scale_y
+            y_max_pt = max(ys) * scale_y
 
-            x_min_px = min(xs)
+            char_boxes = item[3] if len(item) > 3 and isinstance(item[3], list) else None
+            char_list = item[4] if len(item) > 4 and isinstance(item[4], list) else None
 
-            x_max_px = max(xs)
-
-            y_min_px = min(ys)
-
-            y_max_px = max(ys)
-
-
-
-            # Convertir a puntos del PDF original
-
-            x_min_pt = x_min_px * scale_x
-
-            x_max_pt = x_max_px * scale_x
-
-            y_min_pt = y_min_px * scale_y
-
-            y_max_pt = y_max_px * scale_y
-
-
-
-            palabras_linea = texto_linea.split()
-
-            if not palabras_linea:
-
+            # Priorizar cajas nativas por carácter de RapidOCR (return_word_box=True)
+            if char_boxes and char_list and len(char_boxes) == len(char_list):
+                word_idx = 0
+                cur_chars = []
+                cur_boxes = []
+                for ch, cbox in zip(char_list, char_boxes):
+                    if str(ch).isspace():
+                        if cur_chars:
+                            w_txt = "".join(cur_chars)
+                            cxs = [pt[0] for b in cur_boxes for pt in b]
+                            cys = [pt[1] for b in cur_boxes for pt in b]
+                            wx0 = max(0.0, min(cxs) * scale_x - 0.4)
+                            wy0 = min(cys) * scale_y
+                            wx1 = max(cxs) * scale_x + 0.4
+                            wy1 = max(cys) * scale_y
+                            h_w = max(1.0, wy1 - wy0)
+                            wy0 = max(0.0, wy0 - h_w * 0.065)
+                            wy1 = max(wy0 + 1.0, wy1 - h_w * 0.075)
+                            palabras_finales.append((
+                                round(wx0, 2),
+                                round(wy0, 2),
+                                round(wx1, 2),
+                                round(wy1, 2),
+                                w_txt,
+                                line_idx,
+                                line_idx,
+                                word_idx,
+                            ))
+                            word_idx += 1
+                            cur_chars, cur_boxes = [], []
+                    else:
+                        cur_chars.append(str(ch))
+                        cur_boxes.append(cbox)
+                if cur_chars:
+                    w_txt = "".join(cur_chars)
+                    cxs = [pt[0] for b in cur_boxes for pt in b]
+                    cys = [pt[1] for b in cur_boxes for pt in b]
+                    wx0 = max(0.0, min(cxs) * scale_x - 0.4)
+                    wy0 = min(cys) * scale_y
+                    wx1 = max(cxs) * scale_x + 0.4
+                    wy1 = max(cys) * scale_y
+                    h_w = max(1.0, wy1 - wy0)
+                    wy0 = max(0.0, wy0 - h_w * 0.065)
+                    wy1 = max(wy0 + 1.0, wy1 - h_w * 0.075)
+                    palabras_finales.append((
+                        round(wx0, 2),
+                        round(wy0, 2),
+                        round(wx1, 2),
+                        round(wy1, 2),
+                        w_txt,
+                        line_idx,
+                        line_idx,
+                        word_idx,
+                    ))
                 continue
 
+            # Fallback ponderado sin deriva acumulada
+            palabras_linea = texto_linea.split()
+            if not palabras_linea:
+                continue
 
-
-            total_chars = sum(len(w) for w in palabras_linea)
-
+            pesos_palabras = [sum(_peso_char(c) for c in w) for w in palabras_linea]
+            peso_espacio = 0.35
+            peso_total = sum(pesos_palabras) + peso_espacio * max(0, len(palabras_linea) - 1)
             ancho_total_linea_pt = max(10.0, x_max_pt - x_min_pt)
-
             curr_x = x_min_pt
 
-
-
-            for word_idx, w in enumerate(palabras_linea):
-
-                # Estimación proporcional del ancho de cada palabra
-
-                frac = len(w) / max(1, total_chars)
-
-                ancho_w_pt = ancho_total_linea_pt * frac
-
+            for word_idx, (w, pw) in enumerate(zip(palabras_linea, pesos_palabras)):
+                ancho_w_pt = ancho_total_linea_pt * (pw / max(1e-6, peso_total))
                 w_x0 = curr_x
-
                 w_x1 = min(x_max_pt, curr_x + ancho_w_pt)
-
-                w_y0 = y_min_pt
-
-                w_y1 = y_max_pt
-
-
-
-                curr_x = w_x1 + (ancho_total_linea_pt * 0.05 / max(1, len(palabras_linea)))
-
-
+                curr_x = w_x1 + ancho_total_linea_pt * (peso_espacio / max(1e-6, peso_total))
 
                 palabras_finales.append((
-
                     round(w_x0, 2),
-
-                    round(w_y0, 2),
-
+                    round(y_min_pt, 2),
                     round(w_x1, 2),
-
-                    round(w_y1, 2),
-
+                    round(y_max_pt, 2),
                     w,
-
                     line_idx,
-
                     line_idx,
-
-                    word_idx
-
+                    word_idx,
                 ))
-
-
 
         logger.info(f"✅ [OCREngine] OCR completado en página {num_pagina}: {len(palabras_finales)} palabras detectadas.")
 
-
-
-        # Guardar en caché
-
-        if cache_file and palabras_finales:
-
-            try:
-
-                with open(cache_file, "w", encoding="utf-8") as f:
-
-                    json.dump(palabras_finales, f, ensure_ascii=False)
-
-            except Exception as e:
-
-                logger.warning(f"⚠️ [OCREngine] No se pudo guardar caché OCR: {e}")
+        # Guardar en caché con coord_version vigente
+        if doc_path and palabras_finales:
+            guardar_palabras_cache_ocr(doc_path, num_pagina, palabras_finales)
 
 
 
