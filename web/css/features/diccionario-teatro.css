@@ -1,0 +1,810 @@
+/* ==========================================================================
+   MODO OSCURO SOBRIO (PALETA DE GRISES): DICCIONARIO, TEATRO Y EXPORTACIÓN MP3
+   ========================================================================== */
+
+/* 1. DICCIONARIO (ABREVIATURAS) */
+body.ui-dark-mode .header-dicc {
+    background: #21262d !important;
+    border-bottom: 1px solid #30363d !important;
+    color: #f0f6fc !important;
+}
+
+body.ui-dark-mode .tab-item.active {
+    background: #30363d !important;
+    color: #ffffff !important;
+    border: 1px solid #484f58 !important;
+    box-shadow: none !important;
+}
+
+body.ui-dark-mode .btn-guardar-termino {
+    background: #21262d !important;
+    color: #f0f6fc !important;
+    border: 1px solid #484f58 !important;
+    box-shadow: none !important;
+}
+
+body.ui-dark-mode .btn-guardar-termino:hover {
+    background: #30363d !important;
+    border-color: #8b949e !important;
+}
+
+body.ui-dark-mode .btn-add-seccion {
+    background: #21262d !important;
+    color: #f0f6fc !important;
+    border: 1px solid #30363d !important;
+}
+
+body.ui-dark-mode .btn-add-seccion:hover {
+    background: #30363d !important;
+}
+
+body.ui-dark-mode .col-sigla {
+    color: #e6edf3 !important;
+    font-weight: 700;
+}
+
+body.ui-dark-mode .btn-editar-term {
+    color: #8b949e !important;
+}
+
+body.ui-dark-mode .btn-editar-term:hover {
+    background: #30363d !important;
+    color: #ffffff !important;
+}
+
+body.ui-dark-mode .modo-captura-badge {
+    background: rgba(48, 54, 61, 0.5);
+    border-color: #30363d;
+    color: #c9d1d9;
+}
+
+/* 2. TEATRO */
+body.ui-dark-mode .header-teatro {
+    background: #21262d !important;
+    border-bottom: 1px solid #30363d !important;
+    color: #f0f6fc !important;
+}
+
+body.ui-dark-mode #lista-obras-teatro .tab-item.active {
+    background: #30363d !important;
+    color: #ffffff !important;
+    border: 1px solid #484f58 !important;
+    box-shadow: none !important;
+}
+
+body.ui-dark-mode .btn-guardar-actor {
+    background: #21262d !important;
+    color: #f0f6fc !important;
+    border: 1px solid #484f58 !important;
+    box-shadow: none !important;
+}
+
+body.ui-dark-mode .btn-guardar-actor:hover {
+    background: #30363d !important;
+    border-color: #8b949e !important;
+}
+
+body.ui-dark-mode .teatro-input-group,
+body.ui-dark-mode .seccion-input-group {
+    background: #161b22;
+    border-color: #30363d;
+}
+
+body.ui-dark-mode .btn-add-obra {
+    background: #21262d !important;
+    color: #f0f6fc !important;
+    border: 1px solid #30363d !important;
+}
+
+body.ui-dark-mode .btn-add-obra:hover {
+    background: #30363d !important;
+}
+
+body.ui-dark-mode .btn-cerrar-x {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: #e6edf3 !important;
+}
+
+body.ui-dark-mode .btn-cerrar-x:hover {
+    background: rgba(255, 255, 255, 0.22) !important;
+    color: #ffffff !important;
+    transform: scale(1.08);
+}
+
+/* 3. EXPORTACIÓN MP3 (#modal-descarga) */
+body.ui-dark-mode #panel-descarga {
+    background: #161b22 !important;
+    color: #e6edf3 !important;
+    border: 1px solid #30363d !important;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.6) !important;
+}
+
+body.ui-dark-mode #panel-descarga h3 {
+    color: #58a6ff !important;
+    border-bottom-color: #8b949e !important;
+}
+
+body.ui-dark-mode #panel-descarga label {
+    color: #8b949e !important;
+}
+
+body.ui-dark-mode #panel-descarga div[style*="background: #f8f9fa"],
+body.ui-dark-mode #panel-descarga div[style*="background:#f8f9fa"] {
+    background: #21262d !important;
+    border-color: #30363d !important;
+}
+
+body.ui-dark-mode #panel-descarga div[style*="background: #f0f0f0"],
+body.ui-dark-mode #panel-descarga div[style*="background:#f0f0f0"] {
+    background: #21262d !important;
+    border-color: #30363d !important;
+}
+
+body.ui-dark-mode #panel-descarga input[type="text"],
+body.ui-dark-mode #panel-descarga input[type="number"],
+body.ui-dark-mode #panel-descarga select {
+    background: #0d1117 !important;
+    color: #e6edf3 !important;
+    border-color: #30363d !important;
+}
+
+body.ui-dark-mode #btn-cancelar-exportacion {
+    background: #374151 !important;
+    color: #e5e7eb !important;
+}
+
+body.ui-dark-mode #btn-cancelar-exportacion:hover {
+    background: #4b5563 !important;
+}
+
+body.ui-dark-mode #btn-iniciar-descarga {
+    background: linear-gradient(135deg, #238636, #2ea043) !important;
+    color: #ffffff !important;
+    box-shadow: 0 3px 10px rgba(35, 134, 54, 0.35) !important;
+}
+
+body.ui-dark-mode #btn-iniciar-descarga:hover {
+    background: linear-gradient(135deg, #2ea043, #3fb950) !important;
+}
+
+body.ui-dark-mode #txt-preview-mp3 {
+    color: #8b949e !important;
+}
+
+body.ui-dark-mode #panel-descarga div[style*="background: #ddd"],
+body.ui-dark-mode #panel-descarga div[style*="background:#ddd"] {
+    background: #21262d !important;
+    border-color: #30363d !important;
+}
+
+body.ui-dark-mode #barra-progreso {
+    background: #2ea043;
+    box-shadow: 0 0 8px rgba(46, 160, 67, 0.4);
+}
+
+body.ui-dark-mode .btn-add-seccion:hover {
+    background-color: #238636 !important;
+    border-color: #2ea043 !important;
+    box-shadow: 0 4px 10px rgba(35, 134, 54, 0.4);
+}
+
+/* --- MODAL DESCARGA --- */
+#panel-descarga {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 400px;
+    text-align: center;
+}
+
+.opcion-modal {
+    margin: 10px 0;
+    text-align: left;
+}
+
+.opcion-modal label {
+    font-weight: bold;
+    font-size: 12px;
+    display: block;
+}
+
+.opcion-modal select,
+.opcion-modal input {
+    width: 100%;
+    padding: 5px;
+    box-sizing: border-box;
+}
+
+#barra-contenedor {
+    height: 10px;
+    background: #ccc;
+    margin-top: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+    display: none;
+}
+
+#barra-progreso {
+    height: 100%;
+    width: 0%;
+    background: #27ae60;
+}
+
+/* --- GRUPOS DE CALIBRACIÓN --- */
+.grupo-calibracion {
+    background: #fff;
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+}
+
+.grupo-calibracion h4 {
+    margin: 0 0 10px 0;
+    color: #2c3e50;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+}
+
+.control-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.ayuda-text {
+    font-size: 11px;
+    color: #7f8c8d;
+    margin: 5px 0 0 0;
+    font-style: italic;
+}
+
+/* Clase para resaltar números en el test */
+.numero-test-activo {
+    background-color: #f1c40f !important;
+    color: #000 !important;
+    transform: scale(1.2);
+    border-color: #d35400 !important;
+    box-shadow: 0 0 10px #f1c40f;
+    transition: all 0.05s ease;
+}
+
+/* EFECTO KARAOKE PARA BOTONES DE TEST */
+.btn-numero-test.numero-test-activo {
+    background-color: #f1c40f !important;
+    /* Amarillo fuerte */
+    color: #000 !important;
+    border-color: #d35400 !important;
+    box-shadow: 0 0 15px #f1c40f !important;
+    transform: scale(1.15);
+    transition: all 0.05s ease;
+    z-index: 10;
+}
+
+/* La lista debe tener una transición suave */
+#tabla-terminos {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* La fila que se mueve se vuelve fantasma */
+.fila-termino.dragging {
+    opacity: 0.4;
+    background: #e1f5fe;
+    border: 2px dashed #03a9f4;
+}
+
+/* Animación opcional para cuando los elementos cambian de sitio */
+.fila-termino {
+    transition: transform 0.2s ease, background-color 0.2s ease;
+    background: white;
+    /* Asegura que no sean transparentes al moverse */
+}
+
+/* Feedback visual al pasar el mouse */
+.fila-termino:hover {
+    background-color: #f8f9fa;
+    border-color: #bdc3c7;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+/* Cambiar el cursor a una mano cerrada al arrastrar */
+.fila-termino:active {
+    cursor: grabbing;
+}
+
+/* Indicador de que la zona es soltable */
+#tabla-terminos {
+    min-height: 50px;
+    /* Evita que el contenedor colapse si está vacío */
+    transition: all 0.3s ease;
+}
+
+#panel-teatro {
+    pointer-events: auto;
+    /* Asegura que el panel interno reciba clics */
+    position: relative;
+    /* ... resto de tus estilos ... */
+}
+
+.btn-editar-term:hover {
+    transform: scale(1.2);
+    filter: brightness(1.2);
+    transition: all 0.2s ease;
+}
+
+.add-termino-box {
+    transition: border-color 0.3s ease;
+}
+
+.btn-editar-term {
+    transition: transform 0.2s, color 0.2s;
+}
+
+.btn-editar-term:hover {
+    transform: scale(1.3);
+    color: #e67e22 !important;
+}
+
+/* Efecto de "fila activa" al pasar el mouse por el texto */
+.fila-termino div[onclick]:hover span.col-sigla {
+    color: #3498db !important;
+}
+
+/* Feedback visual para el cierre de pestañas/bloques */
+.btn-cerrar-bloque {
+    transition: color 0.2s ease, transform 0.2s ease;
+    display: inline-block;
+    line-height: 1;
+}
+
+.btn-cerrar-bloque:hover {
+    color: #e74c3c !important;
+    /* Rojo de alerta técnica */
+    transform: scale(1.25);
+}
+
+/* Si prefieres el símbolo de casilla con X (☒), puedes cambiar el carácter 
+   en el JS y usar este ajuste de tamaño: */
+.btn-cerrar-bloque {
+    font-family: Arial, sans-serif;
+}
+
+/* Estilo para el botón de borrado (Tache) */
+.btn-borrar-term {
+    transition: color 0.2s, transform 0.2s;
+    user-select: none;
+}
+
+.btn-borrar-term:hover {
+    color: #e74c3c !important;
+    /* Rojo vibrante al pasar el mouse */
+    transform: scale(1.2);
+}
+
+
+/* Color para el Tache en Modo Teatro (Azul) */
+#modal-teatro .btn-cerrar-bloque:hover,
+#modal-teatro .btn-borrar-term:hover {
+    color: #2980b9 !important;
+    /* Azul intenso al borrar en teatro */
+}
+
+
+/* Pestañas de Obra: Azul Profundo Estilo Piano */
+.tab-item-teatro {
+    padding: 8px 16px;
+    cursor: pointer;
+    border-radius: 8px 8px 0 0;
+    font-size: 12px;
+    font-weight: bold;
+    background: #d4e6f1;
+    /* Azul claro para las inactivas */
+    color: #2980b9;
+    transition: all 0.3s ease;
+    border: 1px solid #aed6f1;
+    border-bottom: none;
+}
+
+.tab-item-teatro.active {
+    background: #1a5276 !important;
+    /* EL AZUL OSCURO QUE BUSCAS */
+    color: white !important;
+    transform: translateY(-2px);
+    /* Efecto de elevación */
+}
+
+/* Fila de Actor con Click & Drop */
+.fila-actor {
+    border-left: 4px solid #1a5276;
+    background: #ffffff;
+    cursor: grab;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.fila-actor.dragging {
+    opacity: 0.5;
+    transform: scale(0.98);
+    background: #ebf5fb !important;
+    border: 2px dashed #1a5276 !important;
+}
+
+/* --- ANIMACIÓN BOTÓN NUEVA SECCIÓN --- */
+
+/* Contenedor del input para alineación */
+.seccion-input-group {
+    display: flex;
+    gap: 5px;
+    padding: 8px;
+    background: #fdfefe;
+    border-bottom: 1px solid #ebedef;
+}
+
+/* El botón "+" específico */
+.btn-add-seccion {
+    background-color: #ecf0f1;
+    /* Gris neutro inicial */
+    color: #95a5a6;
+    border: 1px solid #d5dbdb;
+    border-radius: 4px;
+    width: 35px;
+    height: 32px;
+    font-weight: bold;
+    font-size: 18px;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    /* Rebote elástico */
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Efecto al acercar el ratón (Hover) */
+.btn-add-seccion:hover {
+    background-color: #27ae60 !important;
+    /* VERDE ESMERALDA  */
+    color: white !important;
+    border-color: #2ecc71 !important;
+    transform: scale(1.1);
+    /* Crece ligeramente */
+    box-shadow: 0 4px 10px rgba(39, 174, 96, 0.3);
+    /* Brillo verde */
+}
+
+/* --- BOTONES DE PAGINACIÓN (Flechas - Versión Minimalista) --- */
+.btn-nav {
+    background-color: #f1f2f6;
+    /* Color base neutro original */
+    color: #2c3e50;
+    border: 1px solid #dfe6e9;
+    border-radius: 4px;
+    padding: 2px 10px;
+    transition: all 0.2s ease-in-out;
+    /* Transición suave */
+    font-weight: bold;
+}
+
+/* Tesis: Iluminación discreta en lugar de cambio de color azulado */
+.btn-nav:hover {
+    background-color: #ffffff !important;
+    /* Solo se aclara a blanco puro */
+    border-color: #bdc3c7 !important;
+    /* El borde se define un poco más */
+    color: #34495e !important;
+    /* El texto se oscurece ligeramente */
+    transform: scale(1.05);
+    /* Crecimiento casi imperceptible */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Confirmación táctil al hacer clic */
+.btn-nav:active {
+    background-color: #ebeded !important;
+    transform: scale(0.95);
+}
+
+/* Ajuste Modo Teatro (Azul): Iluminación suave */
+/* Seleccionamos específicamente el botón de Teatro de la barra principal */
+#btn-teatro:not(.zen-icon-btn) {
+    background-color: none !important;
+    /* Tu Azul original */
+    transition: all 0.2s ease-in-out;
+}
+
+#btn-teatro:not(.zen-icon-btn):hover {
+    /* Se aclara el azul original discretamente */
+    background-color: #5499c7 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(41, 128, 185, 0.3);
+}
+
+/* Ajuste MP3 (Verde): Brillo discreto */
+#btn-abrir-descarga {
+    background-color: #27ae60;
+    transition: all 0.2s ease-in-out;
+}
+
+#btn-abrir-descarga:hover {
+    /* Verde esmeralda más claro */
+    background-color: #52be80 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(39, 174, 96, 0.3);
+}
+
+/* --- ILUMINACIÓN DISCRETA: SELECTOR DE IDIOMA --- */
+#busqueda-idioma-live,
+#busqueda-voz-live {
+    transition: all 0.2s ease-in-out;
+}
+
+#busqueda-idioma-live:hover,
+#busqueda-voz-live:hover {
+    /* El borde vira a un azul técnico y el fondo se aclara sutilmente */
+    background-color: #f7fbfe !important;
+    box-shadow: 0 0 4px rgba(52, 152, 219, 0.15);
+}
+
+
+
+body.ui-dark-mode #busqueda-idioma-live:hover,
+body.ui-dark-mode #busqueda-voz-live:hover {
+    background-color: #767676 !important;
+    box-shadow: 0 0 4px rgba(52, 152, 219, 0.15);
+}
+
+/* Color de fondo por defecto para las opciones del selector */
+select option {
+    background-color: #ffffff;
+    color: #000000;
+}
+
+/* Efecto hover en navegadores compatibles cuando despliegas el menú */
+select option:hover,
+select option:focus,
+select option:checked {
+    background-color: #767676 !important;
+    color: #ffffff !important;
+}
+
+/* Versión específica para cuando tu aplicación está en Modo Oscuro */
+body.ui-dark-mode select option {
+    background-color: #21262D;
+    color: #E6EDF3;
+}
+
+body.ui-dark-mode select option:hover,
+body.ui-dark-mode select option:focus,
+body.ui-dark-mode select option:checked {
+    background-color: #767676 !important;
+    color: #ffffff !important;
+}
+
+
+
+/* --- ESTRELLA DE FAVORITOS (DIALÉCTICA DE AMARILLOS) --- */
+#btn-pin-voz {
+    transition: all 0.2s ease;
+    color: #ccc;
+    /* Gris base cuando no es favorito */
+    cursor: pointer;
+    background: transparent;
+}
+
+/* Hover: Amarillo clarito (indica posibilidad de agregar) */
+#btn-pin-voz:hover {
+    color: #f9e79f !important;
+    /* Amarillo muy suave */
+    transform: scale(1.2);
+    background-color: transparent !important;
+    /* Eliminamos el fondo gris */
+}
+
+/* Cuando ya es favorito (Estrella llena/clase activa desde JS) */
+/* Nota: Asegúrate que tu JS aplique el color #f1c40f al marcar favorito */
+#btn-pin-voz.favorito-activo {
+    color: #f1c40f !important;
+    /* Amarillo Fuerte */
+}
+
+/* Hover sobre una estrella que ya es favorita: Brillo extra */
+#btn-pin-voz.favorito-activo:hover {
+    color: #f4d03f !important;
+    filter: drop-shadow(0 0 2px rgba(241, 196, 15, 0.5));
+}
+
+/* --- INTERACCIÓN DE FLECHA EN SELECTORES --- */
+.combo-contenedor {
+    position: relative;
+    display: inline-block;
+}
+
+/* La flechita (span en tu HTML) */
+.combo-contenedor span {
+    transition: all 0.3s ease;
+    color: #bdc3c7;
+}
+
+/* Tesis: Al acercar el ratón al contenedor, la flecha se activa */
+.combo-contenedor:hover span {
+    color: #3498db !important;
+    /* Azul técnico */
+    transform: translateY(2px);
+    /* Pequeño brinco hacia abajo */
+}
+
+/* Si el selector está abierto (puedes disparar esto con una clase desde JS) */
+.combo-contenedor.open span {
+    transform: rotate(180deg);
+    /* Se invierte al abrir */
+}
+
+/* --- ANIMACIONES EXCLUSIVAS MODO TEATRO (AZUL) --- */
+
+/* Pestañas de Obra en Teatro */
+#modal-teatro .tab-item {
+    background-color: #e5e8e8;
+    transition: all 0.2s ease;
+}
+
+/* Hover Azul Bajito (Tu petición) */
+#modal-teatro .tab-item:hover:not(.active) {
+    background-color: #ebf5fb !important;
+    /* Azul bajito */
+    color: #2980b9 !important;
+    /* Texto azul técnico */
+    transform: translateY(-2px);
+}
+
+/* Pestaña de Obra Activa (Azul Oscuro) */
+#modal-teatro .tab-item.active {
+    background-color: #1a5276 !important;
+    color: white !important;
+}
+
+/* Filas de Actores (Iluminación Azul) */
+#modal-teatro .fila-termino {
+    transition: all 0.2s ease;
+    border-left: 4px solid transparent;
+}
+
+#modal-teatro .fila-termino:hover {
+    background-color: #f4f9fd !important;
+    /* Fondo azul sutil */
+    border-left-color: #3498db !important;
+    /* Borde azul brillante */
+    transform: translateX(4px);
+}
+
+/* --- ANIMACIÓN BOTÓN AGREGAR CUENTO (MODO TEATRO) --- */
+
+/* Selector específico para el botón "+" del panel de teatro */
+#panel-teatro .btn-mini {
+    background-color: #3498db;
+    /* Azul base del teatro */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Transición suave */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Tesis: Iluminación al acercar el ratón (Hover) */
+#panel-teatro .btn-mini:hover {
+    background-color: #5dade2 !important;
+    /* Azul más clarito/brillante */
+    transform: scale(1.1);
+    /* Ligero crecimiento para confirmar foco */
+    box-shadow: 0 0 8px rgba(52, 152, 219, 0.4);
+    /* Aura de activación */
+}
+
+/* Antítesis: Efecto de presión al hacer clic */
+#panel-teatro .btn-mini:active {
+    background-color: #2e86de !important;
+    /* Azul más profundo */
+    transform: scale(0.95);
+}
+
+/* --- ILUMINACIÓN EXCLUSIVA: GUARDAR PERSONAJE --- */
+
+/* Forzamos el color azul sobre la clase genérica cuando esté en el teatro */
+#modal-teatro .btn-secundario {
+    background-color: #2980b9 !important;
+    /* Azul original del botón Teatro */
+    transition: all 0.2s ease-in-out;
+}
+
+/* Tesis: Iluminación azul clara al acercar el ratón */
+#modal-teatro .btn-secundario:hover {
+    background-color: #5499c7 !important;
+    /* Azul más clarito/brillante */
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(41, 128, 185, 0.3);
+}
+
+/* Antítesis: Confirmación de pulsación */
+#modal-teatro .btn-secundario:active {
+    background-color: #21618c !important;
+    /* Azul más oscuro profundo */
+    transform: scale(0.98);
+}
+
+/* --- ANIMACIÓN DISCRETA: BOTONES MP3 --- */
+
+/* Botón Cancelar (Rojo Discreto) */
+#panel-descarga button[onclick*="cerrarModalDescarga"] {
+    background-color: #95a5a6;
+    /* Gris base */
+    transition: all 0.2s ease-in-out;
+}
+
+#panel-descarga button[onclick*="cerrarModalDescarga"]:hover {
+    background-color: #e74c3c !important;
+    /* Rojo alerta sutil */
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(231, 76, 60, 0.2);
+}
+
+/* Botón Generar Estudio (Verde Discreto) */
+#panel-descarga button[onclick*="iniciarDescargaFinal"] {
+    background-color: #27ae60;
+    /* Verde base */
+    transition: all 0.2s ease-in-out;
+}
+
+#panel-descarga button[onclick*="iniciarDescargaFinal"]:hover {
+    background-color: #52be80 !important;
+    /* Verde esmeralda claro */
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+}
+
+/* Confirmación de pulsación física */
+#panel-descarga button:active {
+    transform: scale(0.96);
+}
+
+/* --- ESTABILIZACIÓN DEL ELENCO (MODO TEATRO) --- */
+
+/* Contenedor principal: Bloqueo de eje X */
+#tabla-actores {
+    overflow-y: auto !important;
+    /* Solo desplazamiento vertical */
+    overflow-x: hidden !important;
+    /* Prohibido desplazamiento horizontal */
+    width: 100%;
+    box-sizing: border-box;
+    /* Los bordes no suman al ancho */
+    padding-right: 5px;
+    /* Espacio para la barra vertical */
+}
+
+/* Fila de Actor: Ajuste de ancho y animación */
+#modal-teatro .fila-actor {
+    width: 100%;
+    /* Forzamos que se ajuste al padre */
+    box-sizing: border-box;
+    /* Vital: los bordes azules crecen hacia ADENTRO */
+    margin-bottom: 4px;
+    transition: background-color 0.2s, transform 0.2s;
+    border-left: 4px solid transparent;
+}
+
+/* Tesis: Al seleccionar o acercar, el desplazamiento lateral es mínimo */
+#modal-teatro .fila-actor:hover {
+    background-color: #f4f9fd !important;
+    border-left-color: #3498db !important;
+    /* Limitamos el translateX para que no empuje el borde derecho */
+    transform: translateX(2px);
+}
+
+/* --- ANIMACIONES DRAG & DROP: ABREVIATURAS --- */
+
+/* --- OVERLAY BLOQUEANTE PANTALLA COMPLETA OCR --- */

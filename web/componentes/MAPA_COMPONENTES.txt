@@ -1,0 +1,50 @@
+=============================================================================
+LIRALOUD2 - MAPA DE COMPONENTES HTML (web/componentes/)
+=============================================================================
+Cómo funciona:
+  1. web/index.html contiene #pantalla-carga inline (para evitar flasheo al abrir)
+     y placeholders <div data-componente="componentes/..."></div>.
+  2. web/js/core/componentes.js se ejecuta de forma SÍNCRONA antes de estado.js
+     e inyecta todos los fragmentos (incluidos los anidados como config-tabs/).
+
+[web/componentes/herramientas/]
+  - buscador.html (26 líneas): #panel-busqueda, #busqueda-contador, #input-busqueda-pdf, #resultados-busqueda
+  - captura-guardar.html (42 líneas): #modal-guardar-captura, #lbl-captura-pagina, #preview-recorte-img, #input-titulo-captura, #btn-cancelar-captura, #btn-confirmar-captura
+  - captura-ver.html (24 líneas): #modal-ver-captura, #lightbox-titulo-captura, #lightbox-pag-captura, #lightbox-btn-copiar, #lightbox-img-captura
+  - ducking.html (46 líneas): #panel-ducking-flotante, #btn-fondo-play, #icono-fondo-play, #contenedor-icono-ducking-flotante, #svg-ducking-flotante, #ducking-onda-baja, #ducking-onda-media, #ducking-onda-alta ... (+3 IDs)
+  - menus-contextuales.html (27 líneas): #menu-contextual, #opcion-leer, #opcion-copiar, #opcion-buscar, #opcion-agregar-dicc, #menu-contextual-tab
+  - nota-rapida.html (84 líneas): #panel-nota-rapida, #nota-rapida-lbl-pag, #btn-nota-rapida-cuaderno, #nota-rapida-titulo-input, #nota-rapida-clasif-input, #dl-clasificaciones-rapida, #nota-rapida-pagina, #btn-fmt-bold-rapida ... (+8 IDs)
+  - ocr-decision.html (76 líneas): #modal-ocr-decision, #chk-ocr-recordar-decision
+  - ocr-progreso.html (34 líneas): #modal-ocr-progreso, #ocr-progreso-texto-estado, #barra-ocr-progreso-fill, #ocr-progreso-contador, #ocr-progreso-porcentaje, #ocr-progreso-tiempo-estimado
+  - ocr-rango.html (69 líneas): #modal-ocr-rango, #ocr-rango-input-desde, #ocr-rango-img-desde, #ocr-rango-tag-desde, #ocr-rango-input-hasta, #ocr-rango-img-hasta, #ocr-rango-tag-hasta, #ocr-rango-resumen
+  - segmentacion-manual.html (9 líneas): #barra-segmentacion-manual-main, #rng-sensibilidad-salto-main, #lbl-sensibilidad-main
+  - subrayador.html (73 líneas): #modal-subrayados, #panel-subrayados, #filter-color, #filter-page, #count-ext-todas, #count-ext-textos, #count-ext-capturas, #extracted-texts
+  - toolbar-formato.html (31 líneas): #toolbar-formato-texto, #fmt-fuente, #fmt-tamano, #fmt-color, #btn-fmt-bold, #btn-fmt-italic, #btn-fmt-underline
+  - tour-guia.html (1 líneas): #tour-guia-overlay
+
+[web/componentes/layout/]
+  - barra-superior.html (644 líneas): #banner-container, #btn-pdf, #input-pagina-actual, #total-paginas-texto, #box-limites-toolbar, #btn-agregar-corte-v, #btn-auto-layout, #group-highlight ... (+56 IDs)
+  - cuerpo-principal.html (282 líneas): #contenedor-cuerpo-principal, #sidebar-izquierda, #btn-toggle-sidebar, #icono-flecha-sidebar, #dropdown-ocr-container, #btn-menu-ocr, #clip0_429_11130_btn, #flecha-dropdown-ocr ... (+21 IDs)
+  - pantalla-bienvenida.html (147 líneas): #lira-bienvenida, #SVGRepo_bgCarrier, #SVGRepo_tracerCarrier, #SVGRepo_iconCarrier
+
+[web/componentes/minimalista/]
+  - panel-menu.html (329 líneas): #zen-panel-menu, #btn-zen-descarga-mp3, #btn-zen-teatro, #btn-zen-dicc, #zen-details-ocr, #btn-zen-summary-ocr, #zen-btn-toggle-auto-ocr, #zen-details-traduccion ... (+16 IDs)
+  - panel-voz.html (22 líneas): #zen-panel-voz, #zen-voz-select-container, #zen-velocidad-container, #zen-pausa-container, #zen-tono-container
+
+[web/componentes/modales/]
+  - configuracion-avanzada.html (148 líneas): #modalConfig, #tab-idioma-btn
+  - descarga-mp3.html (103 líneas): #modal-descarga, #panel-descarga, #busqueda-idioma-mp3, #modal-filtro-idioma, #busqueda-voz-mp3, #modal-voz, #modal-pag-ini, #modal-pag-fin ... (+12 IDs)
+  - diccionario.html (52 líneas): #modal-diccionario, #panel-diccionario, #lista-secciones, #input-nueva-seccion, #input-sigla, #input-significado, #buscador-terminos, #tabla-terminos
+  - lanzador.html (168 líneas): #lira-lanzador-overlay, #lanzador-vista-grid, #modal-lanzador-card-pdf, #SVGRepo_bgCarrier, #SVGRepo_tracerCarrier, #SVGRepo_iconCarrier, #lira-url-submodal, #lira-url-input ... (+6 IDs)
+  - lira-ai.html (667 líneas): #modal-ia, #panel-ia, #chk-ia-leer-bloque, #ia-status-badge, #ia-status-dot, #ia-status-texto, #btn-tab-chat, #btn-tab-solicitudes ... (+73 IDs)
+  - notas.html (148 líneas): #modal-notas, #panel-notas, #notas-header-libro-badge, #notas-ruta-carpeta-lbl, #notas-clasif-lista, #notas-cards-container, #nota-editor-titulo, #nota-editor-clasif ... (+11 IDs)
+  - teatro.html (53 líneas): #modal-teatro, #panel-teatro, #lista-obras-teatro, #input-nueva-obra, #input-personaje, #select-idioma-teatro, #select-voz-teatro, #buscador-actores ... (+2 IDs)
+  - tienda-ollama.html (15 líneas): #modal-tienda-ollama, #tienda-ollama-hw, #txt-hf-buscar, #tienda-ollama-lista
+  - tienda-voces.html (74 líneas): #modal-tienda-voces, #buscar-voz-tienda, #ayuda-tienda-voces, #lista-tienda-voces
+
+[web/componentes/modales/config-tabs/]
+  - tab-atajos.html (9 líneas): #tab-atajos, #listaAtajos
+  - tab-audio.html (945 líneas): #tab-karaoke, #rng-volumen-master, #num-volumen-master, #sec-eq-piper, #sel-eq-piper-perfil, #panel-eq-piper-personalizado, #lbl-eq-piper-graves-val, #rng-eq-piper-graves ... (+58 IDs)
+  - tab-estilo.html (642 líneas): #tab-estilo, #btn-tema-config, #chk-modo-zen, #chk-etiquetas-zen, #chk-hide-filtros, #chk-hide-dicc, #chk-hide-teatro, #chk-hide-mp3 ... (+32 IDs)
+  - tab-idioma.html (64 líneas): #tab-idioma
+  - tab-rendimiento.html (155 líneas): #tab-rendimiento, #sec-privacidad-estricta, #chk-modo-privacidad, #chk-alto-rendimiento, #chk-pretraducir-paginas, #chk-buffer-extendido, #chk-precarga-ram, #num-precarga-hojas

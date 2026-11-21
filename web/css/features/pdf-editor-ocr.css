@@ -1,0 +1,298 @@
+/* ==========================================================================
+   EDITOR PDF IN-PLACE (Estilo Acrobat Reader)
+   ========================================================================== */
+
+.bbox-overlay {
+    position: absolute;
+    border: 1px dashed rgba(52, 152, 219, 0.6);
+    background-color: rgba(52, 152, 219, 0.05);
+    cursor: pointer;
+    box-sizing: border-box;
+}
+.bbox-overlay:hover {
+    background-color: rgba(46, 204, 113, 0.2);
+    border-color: #2ecc71;
+    z-index: 5;
+}
+
+.editor-wrapper {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    border: 2px solid #2980b9;
+    background: #161b22;
+    z-index: 100;
+    box-sizing: border-box;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+    resize: both;
+    overflow: hidden;
+    border-radius: 4px;
+}
+
+.editor-wrapper .barra-superior {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #21262d;
+    border-bottom: 1px solid #30363d;
+    height: 28px;
+    padding: 0 6px;
+    flex-shrink: 0;
+}
+
+.editor-wrapper .drag-handle {
+    flex-grow: 1;
+    height: 100%;
+    cursor: grab;
+}
+.editor-wrapper .drag-handle:active {
+    cursor: grabbing;
+}
+
+.editor-wrapper .btn-guardar {
+    background: #238636;
+    color: white;
+    border: 1px solid rgba(240, 246, 252, 0.1);
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.editor-wrapper .btn-guardar:hover {
+    background: #2ea043;
+}
+
+.editor-textarea {
+    border: none;
+    outline: none;
+    width: 100%;
+    flex-grow: 1;
+    font-family: Arial, sans-serif;
+    padding: 8px;
+    box-sizing: border-box;
+    color: #f0f6fc;
+    resize: none;
+    background: #161b22;
+    line-height: 1.4;
+}
+
+#lira-pdf-text-editor-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 15;
+}
+
+#lira-pdf-text-editor-layer.activo {
+    pointer-events: auto;
+}
+
+#visor-container.modo-cuadro-texto-activo,
+#visor-container.modo-cuadro-texto-activo #lienzo-pdf {
+    cursor: url("data:image/svg+xml;utf8,<svg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'><path fill-rule='evenodd' clip-rule='evenodd' d='M8.25 9C8.25 8.58579 8.58579 8.25 9 8.25H15C15.4142 8.25 15.75 8.58579 15.75 9C15.75 9.41421 15.4142 9.75 15 9.75H12.75V15C12.75 15.4142 12.4142 15.75 12 15.75C11.5858 15.75 11.25 15.4142 11.25 15V9.75H9C8.58579 9.75 8.25 9.41421 8.25 9Z' fill='%232980b9'></path><path fill-rule='evenodd' clip-rule='evenodd' d='M5.85986 3.26307C5.56645 2.5232 4.84432 2 4 2C2.89543 2 2 2.89543 2 4C2 4.84433 2.5232 5.56645 3.26307 5.85986C3.25449 5.90526 3.25 5.9521 3.25 6L3.25 18C3.25 18.0479 3.25449 18.0947 3.26307 18.1401C2.5232 18.4335 2 19.1557 2 20C2 21.1046 2.89543 22 4 22C4.84433 22 5.56645 21.4768 5.85986 20.7369C5.90526 20.7455 5.9521 20.75 6 20.75H18C18.0479 20.75 18.0947 20.7455 18.1401 20.7369C18.4335 21.4768 19.1557 22 20 22C21.1046 22 22 21.1046 22 20C22 19.1557 21.4768 18.4335 20.7369 18.1401C20.7455 18.0947 20.75 18.0479 20.75 18L20.75 6C20.75 5.9521 20.7455 5.90526 20.7369 5.85986C21.4768 5.56645 22 4.84433 22 4C22 2.89543 21.1046 2 20 2C19.1557 2 18.4335 2.5232 18.1401 3.26307C18.0947 3.25449 18.0479 3.25 18 3.25H6C5.9521 3.25 5.90526 3.25449 5.85986 3.26307ZM4.73693 5.85986C4.74551 5.90526 4.75 5.9521 4.75 6L4.75 18C4.75 18.0479 4.74551 18.0947 4.73693 18.1401C5.24875 18.3431 5.65689 18.7512 5.85986 19.2631C5.90526 19.2545 5.9521 19.25 6 19.25H18C18.0479 19.25 18.0947 19.2545 18.1401 19.2631C18.3431 18.7512 18.7512 18.3431 19.2631 18.1401C19.2545 18.0947 19.25 18.0479 19.25 18V6C19.25 5.9521 19.2545 5.90526 19.2631 5.85986C18.7512 5.65689 18.3431 5.24875 18.1401 4.73693C18.0947 4.74551 18.0479 4.75 18 4.75H6C5.9521 4.75 5.90526 4.74551 5.85986 4.73693C5.65689 5.24875 5.24875 5.65689 4.73693 5.85986Z' fill='%232980b9'/></svg>") 12 12, crosshair !important;
+}
+
+/* ==========================================================================
+   EDITOR DE TEXTO - Toolbar y controles
+   ========================================================================== */
+.editor-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.editor-toolbar select,
+.editor-toolbar input[type="number"] {
+    background: #161b22;
+    border: 1px solid #3d444d;
+    border-radius: 3px;
+    color: #e6edf3;
+    padding: 2px 6px;
+    font-size: 11px;
+    height: 24px;
+}
+
+.editor-toolbar select:focus,
+.editor-toolbar input[type="number"]:focus {
+    outline: none;
+    border-color: #58a6ff;
+}
+
+.editor-toolbar input[type="color"] {
+    width: 28px;
+    height: 24px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    padding: 0;
+    background: none;
+}
+
+.editor-toolbar input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.editor-toolbar input[type="color"]::-webkit-color-swatch {
+    border: 1px solid #3d444d;
+    border-radius: 2px;
+}
+
+.editor-format-btn {
+    transition: all 0.15s ease;
+}
+.editor-format-btn:hover {
+    background: #3d444d !important;
+    border-color: #58a6ff !important;
+}
+.editor-format-btn.activo {
+    background: #238636 !important;
+    border-color: #2ea043 !important;
+    color: #fff !important;
+}
+
+.editor-format-btn.color-apply.activo {
+    border-color: #58a6ff !important;
+    box-shadow: 0 0 0 2px #58a6ff55;
+}
+
+.btn-cancelar:hover {
+    background: #f85149 !important;
+    border-color: #ff7b72 !important;
+}
+
+.editor-tooltip {
+    font-size: 10px;
+    color: #8b949e;
+    padding: 2px 6px;
+    background: #161b22;
+    border-top: 1px solid #30363d;
+    flex-shrink: 0;
+}
+
+/* ==========================================================================
+   EDITOR DE TEXTO - ContentEditable con preview en tiempo real
+   ========================================================================== */
+.editor-contenteditable {
+    flex: 1;
+    padding: 10px;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: 1.5;
+    color: inherit;
+    background: var(--editor-bg, #161b22);
+    overflow: auto;
+    outline: none;
+    white-space: pre-wrap;
+    word-break: break-word;
+    min-height: 120px;
+}
+
+.editor-contenteditable:focus {
+    background: var(--editor-bg-focus, #1c2128);
+}
+
+.editor-contenteditable[contenteditable="true"] {
+    caret-color: #58a6ff;
+}
+
+.editor-contenteditable b,
+.editor-contenteditable strong { font-weight: 700; }
+.editor-contenteditable i,
+.editor-contenteditable em { font-style: italic; }
+.editor-contenteditable u { text-decoration: underline; }
+
+/* ==========================================================================
+   EDITOR DE TEXTO - Tema claro/oscuro (variables CSS)
+   ========================================================================== */
+:root {
+    --editor-bg: #161b22;
+    --editor-bg-focus: #1c2128;
+    --editor-color: #f0f6fc;
+    --editor-tooltip-bg: #161b22;
+    --editor-tooltip-color: #8b949e;
+}
+
+body.ui-dark-mode {
+    --editor-bg: #161b22;
+    --editor-bg-focus: #1c2128;
+    --editor-color: #f0f6fc;
+    --editor-tooltip-bg: #161b22;
+    --editor-tooltip-color: #8b949e;
+}
+
+body:not(.ui-dark-mode) {
+    --editor-bg: #ffffff;
+    --editor-bg-focus: #f3f4f6;
+    --editor-color: #1f2937;
+    --editor-tooltip-bg: #f3f4f6;
+    --editor-tooltip-color: #4b5563;
+}
+
+.editor-contenteditable {
+    color: var(--editor-color);
+}
+
+.editor-tooltip {
+    background: var(--editor-tooltip-bg);
+    color: var(--editor-tooltip-color);
+}
+
+/* Responsive */
+@media (max-width: 400px) {
+    .editor-wrapper {
+        min-width: 300px !important;
+    }
+    .editor-toolbar {
+        gap: 2px;
+    }
+    .editor-toolbar select,
+    .editor-toolbar input[type="number"] {
+        padding: 2px 4px;
+        font-size: 10px;
+    }
+    .editor-format-btn {
+        width: 24px;
+        height: 22px;
+        font-size: 10px;
+    }
+}
+
+/* ==========================================================================
+   EDITOR DE TEXTO - Iconos de herramientas (tool-svg)
+   ========================================================================== */
+.tool-svg {
+    stroke: currentColor;
+    fill: currentColor;
+}
+
+body:not(.ui-dark-mode) .tool-svg {
+    stroke: #1C274C;
+    fill: #1C274C;
+}
+
+
+#lira-pdf-text-editor-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 15;
+}
+
+#lira-pdf-text-editor-layer.activo {
+    pointer-events: auto;
+}
+
+#visor-container.modo-cuadro-texto-activo,
+#visor-container.modo-cuadro-texto-activo #lienzo-pdf {
+    cursor: url("data:image/svg+xml;utf8,<svg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'><path fill-rule='evenodd' clip-rule='evenodd' d='M8.25 9C8.25 8.58579 8.58579 8.25 9 8.25H15C15.4142 8.25 15.75 8.58579 15.75 9C15.75 9.41421 15.4142 9.75 15 9.75H12.75V15C12.75 15.4142 12.4142 15.75 12 15.75C11.5858 15.75 11.25 15.4142 11.25 15V9.75H9C8.58579 9.75 8.25 9.41421 8.25 9Z' fill='%232980b9'></path><path fill-rule='evenodd' clip-rule='evenodd' d='M5.85986 3.26307C5.56645 2.5232 4.84432 2 4 2C2.89543 2 2 2.89543 2 4C2 4.84433 2.5232 5.56645 3.26307 5.85986C3.25449 5.90526 3.25 5.9521 3.25 6L3.25 18C3.25 18.0479 3.25449 18.0947 3.26307 18.1401C2.5232 18.4335 2 19.1557 2 20C2 21.1046 2.89543 22 4 22C4.84433 22 5.56645 21.4768 5.85986 20.7369C5.90526 20.7455 5.9521 20.75 6 20.75H18C18.0479 20.75 18.0947 20.7455 18.1401 20.7369C18.4335 21.4768 19.1557 22 20 22C21.1046 22 22 21.1046 22 20C22 19.1557 21.4768 18.4335 20.7369 18.1401C20.7455 18.0947 20.75 18.0479 20.75 18L20.75 6C20.75 5.9521 20.7455 5.90526 20.7369 5.85986C21.4768 5.56645 22 4.84433 22 4C22 2.89543 21.1046 2 20 2C19.1557 2 18.4335 2.5232 18.1401 3.26307C18.0947 3.25449 18.0479 3.25 18 3.25H6C5.9521 3.25 5.90526 3.25449 5.85986 3.26307ZM4.73693 5.85986C4.74551 5.90526 4.75 5.9521 4.75 6L4.75 18C4.75 18.0479 4.74551 18.0947 4.73693 18.1401C5.24875 18.3431 5.65689 18.7512 5.85986 19.2631C5.90526 19.2545 5.9521 19.25 6 19.25H18C18.0479 19.25 18.0947 19.2545 18.1401 19.2631C18.3431 18.7512 18.7512 18.3431 19.2631 18.1401C19.2545 18.0947 19.25 18.0479 19.25 18V6C19.25 5.9521 19.2545 5.90526 19.2631 5.85986C18.7512 5.65689 18.3431 5.24875 18.1401 4.73693C18.0947 4.74551 18.0479 4.75 18 4.75H6C5.9521 4.75 5.90526 4.74551 5.85986 4.73693C5.65689 5.24875 5.24875 5.65689 4.73693 5.85986Z' fill='%232980b9'/></svg>") 12 12, crosshair !important;
+}
+

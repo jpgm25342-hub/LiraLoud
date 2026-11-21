@@ -1,0 +1,36 @@
+=============================================================================
+LIRALOUD2 - MAPA DE ARQUITECTURA CSS (web/css/)
+=============================================================================
+Regla de cascada en web/index.html (de arriba hacia abajo):
+  1. core/variables.css (paleta :root y body.ui-dark-mode)
+  2. core/ (base.css, layout.css, animations.css)
+  3. ui/   (controls.css, toolbar-sidebar.css, menus-overlays.css, zen-mode.css)
+  4. features/ (modals, lanzador, tutorial, pdf-editor-ocr, config-modal,
+                diccionario-teatro, ia-panel, notas)
+  5. core/theme-dark.css (siempre AL FINAL para overrides de modo oscuro)
+
+[web/css/]
+  - index.css (7 líneas): .svg-icon
+
+[web/css/core/]
+  - animations.css (84 líneas): #panel-diccionario, #tabla-terminos, #pantalla-carga, .spinner-carga, .log-cargando, .log-exito, .log-error, .log-info
+  - base.css (835 líneas): .btn-reset-sector, #banner-container, .fila-top, .fila-ajustes, .fila-filtros, .idioma-opcion, .modal-content, .modal-header ... (+29 selectores)
+  - layout.css (10 líneas): #visor-container, #pdf-crop-wrapper
+  - theme-dark.css (161 líneas): (variables / reglas base)
+  - variables.css (20 líneas): (variables / reglas base)
+
+[web/css/features/]
+  - config-modal.css (307 líneas): #ocr-scanner-overlay, .ocr-laser-beam, .ocr-pantalla-card, .ocr-card-icono-pulsante, .ocr-card-titulo, .ocr-card-header, .ocr-card-texto-principal, .ocr-card-barra-indeterminada ... (+11 selectores)
+  - diccionario-teatro.css (810 líneas): #panel-descarga, .opcion-modal, #barra-contenedor, #barra-progreso, .grupo-calibracion, .control-row, .ayuda-text, .numero-test-activo ... (+21 selectores)
+  - ia-panel.css (1332 líneas): #modal-ia, #panel-ia, .header-ia, .header-ia-titulo, .svg-icon-ia, #btn-ia, .header-ia-acciones, .ia-status-badge ... (+64 selectores)
+  - lanzador.css (427 líneas): #lira-bienvenida, .lira-bienvenida-logo, .lanzador-grid, .lanzador-card, .lanzador-modal-inner, .lanzador-card-icono, .lanzador-card-sub, #lira-lanzador-overlay ... (+12 selectores)
+  - modals.css (1117 líneas): .overlay-bloqueante, #pantalla-carga, #modalConfig, #modal-descarga, .overlay-diccionario, .modal-content, .modal-header, .modal-body ... (+57 selectores)
+  - notas.css (1086 líneas): #modal-notas, #panel-notas, .notas-header, .notas-header-titulo, .notas-header-acciones, .notas-btn-sec, .notas-btn-close, .notas-body ... (+44 selectores)
+  - pdf-editor-ocr.css (288 líneas): .bbox-overlay, .editor-wrapper, .editor-textarea, #lira-pdf-text-editor-layer, .editor-toolbar, .editor-format-btn, .btn-cancelar, .editor-tooltip ... (+2 selectores)
+  - tutorial.css (1265 líneas): #tour-guia-overlay, .tour-card, .tour-card-header, .tour-step-badge, .tour-card-title, .tour-card-body, .tour-card-footer, .tour-btn ... (+110 selectores)
+
+[web/css/ui/]
+  - controls.css (563 líneas): .btn-principal, #btn-dicc, #btn-abrir-descarga, .dropdown-ocr-container, #btn-menu-ocr, .dropdown-ocr-menu, .dropdown-ocr-item, .btn-engranaje ... (+11 selectores)
+  - menus-overlays.css (656 líneas): #contenedor-cuerpo-principal, .sidebar-izq, #ic_fluent_erase_24_regular, .caja-texto-flotante, #toolbar-formato-texto, .fmt-select, .fmt-input-num, .fmt-input-color ... (+26 selectores)
+  - toolbar-sidebar.css (590 líneas): .tabs-config-header, .tab-btn, .tab-content, .svg-btn, .svg-btn-main, .combo-contenedor, .btn-reproductor, .btn-dorado ... (+17 selectores)
+  - zen-mode.css (680 líneas): .zen-panel, .btn-zen-only, .custom-nav-btn, .zen-grid-menu, .zen-grid-item, .zen-btn-label, #zen-panel-menu, .zen-icon-btn ... (+4 selectores)

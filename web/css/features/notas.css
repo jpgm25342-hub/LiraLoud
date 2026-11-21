@@ -1,0 +1,1086 @@
+/* ==========================================================================
+   LIRALOUD - SISTEMA DE NOTAS (MARKDOWN / OBSIDIAN / IA)
+   ========================================================================== */
+
+/* 1. MODAL GENERAL: GESTOR DE TODAS LAS NOTAS (3 COLUMNAS) */
+#modal-notas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 999999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 20px;
+    pointer-events: auto;
+}
+
+#panel-notas {
+    background: #ffffff;
+    width: 95vw;
+    max-width: 1200px;
+    height: 88vh;
+    max-height: 850px;
+    border-radius: 14px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    transition: background 0.25s ease, border-color 0.25s ease;
+    box-sizing: border-box;
+    pointer-events: auto;
+}
+
+body.ui-dark-mode #panel-notas {
+    background: #161b22;
+    border-color: #30363d;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7);
+}
+
+/* Header del Gestor General de Notas */
+.notas-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    flex-shrink: 0;
+}
+
+body.ui-dark-mode .notas-header {
+    background: #0d1117;
+    border-color: #30363d;
+}
+
+.notas-header-titulo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+body.ui-dark-mode .notas-header-titulo {
+    color: #f0f6fc;
+}
+
+.notas-header-acciones {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.notas-btn-sec {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.notas-btn-sec:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+    color: #0f172a;
+}
+
+body.ui-dark-mode .notas-btn-sec {
+    background: #21262d;
+    border-color: #30363d;
+    color: #c9d1d9;
+}
+
+body.ui-dark-mode .notas-btn-sec:hover {
+    background: #30363d;
+    border-color: #8b949e;
+    color: #ffffff;
+}
+
+.notas-btn-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #64748b;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.notas-btn-close:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+body.ui-dark-mode .notas-btn-close {
+    color: #8b949e;
+}
+
+body.ui-dark-mode .notas-btn-close:hover {
+    background: rgba(248, 81, 73, 0.2);
+    color: #f85149;
+}
+
+/* Cuerpo Principal: 3 Columnas (Sidebar Filtros, Lista de Notas, Editor) */
+.notas-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    background: #ffffff;
+}
+
+body.ui-dark-mode .notas-body {
+    background: #161b22;
+}
+
+/* COLUMNA 1: SIDEBAR DE FILTROS */
+.notas-sidebar {
+    width: 240px;
+    background: #f8fafc;
+    border-right: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    padding: 14px;
+    gap: 14px;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+body.ui-dark-mode .notas-sidebar {
+    background: #0d1117;
+    border-color: #30363d;
+}
+
+.notas-scope-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.notas-scope-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #475569;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.15s ease;
+}
+
+.notas-scope-btn:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+.notas-scope-btn.activo {
+    background: #e0f2fe;
+    border-color: #7dd3fc;
+    color: #0284c7;
+    font-weight: 600;
+}
+
+body.ui-dark-mode .notas-scope-btn {
+    color: #8b949e;
+}
+
+body.ui-dark-mode .notas-scope-btn:hover {
+    background: #21262d;
+    color: #f0f6fc;
+}
+
+body.ui-dark-mode .notas-scope-btn.activo {
+    background: rgba(56, 189, 248, 0.15);
+    border-color: #38bdf8;
+    color: #38bdf8;
+}
+
+.notas-seccion-titulo {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #94a3b8;
+    margin-top: 6px;
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+body.ui-dark-mode .notas-seccion-titulo {
+    color: #6e7681;
+}
+
+.notas-clasif-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.notas-clasif-item {
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 12px;
+    color: #475569;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+    transition: all 0.15s ease;
+}
+
+.notas-clasif-item:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+.notas-clasif-item.activo {
+    background: #e0e7ff;
+    color: #4338ca;
+    font-weight: 600;
+}
+
+body.ui-dark-mode .notas-clasif-item {
+    color: #8b949e;
+}
+
+body.ui-dark-mode .notas-clasif-item:hover {
+    background: #21262d;
+    color: #f0f6fc;
+}
+
+body.ui-dark-mode .notas-clasif-item.activo {
+    background: rgba(99, 102, 241, 0.2);
+    color: #a5b4fc;
+}
+
+.notas-badge {
+    background: rgba(0, 0, 0, 0.08);
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    color: inherit;
+}
+
+body.ui-dark-mode .notas-badge {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* COLUMNA 2: LISTA DE NOTAS */
+.notas-list-col {
+    width: 320px;
+    border-right: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    flex-shrink: 0;
+    box-sizing: border-box;
+}
+
+body.ui-dark-mode .notas-list-col {
+    background: #161b22;
+    border-color: #30363d;
+}
+
+.notas-search-bar {
+    padding: 12px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    background: #f8fafc;
+}
+
+body.ui-dark-mode .notas-search-bar {
+    background: #0d1117;
+    border-color: #30363d;
+}
+
+.notas-search-input {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    outline: none;
+    background: #ffffff;
+    color: #1e293b;
+    transition: all 0.2s ease;
+}
+
+.notas-search-input:focus {
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+}
+
+body.ui-dark-mode .notas-search-input {
+    background: #21262d;
+    border-color: #30363d;
+    color: #f0f6fc;
+}
+
+body.ui-dark-mode .notas-search-input:focus {
+    border-color: #58a6ff;
+    box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.25);
+}
+
+.notas-btn-crear {
+    background: #0284c7;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s ease;
+}
+
+.notas-btn-crear:hover {
+    background: #0369a1;
+    transform: translateY(-1px);
+}
+
+body.ui-dark-mode .notas-btn-crear {
+    background: #238636;
+}
+
+body.ui-dark-mode .notas-btn-crear:hover {
+    background: #2ea043;
+}
+
+.notas-cards-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.nota-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.nota-card:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+}
+
+.nota-card.activa {
+    background: #e0f2fe;
+    border-color: #38bdf8;
+    box-shadow: 0 2px 8px rgba(56, 189, 248, 0.2);
+}
+
+body.ui-dark-mode .nota-card {
+    background: #21262d;
+    border-color: #30363d;
+}
+
+body.ui-dark-mode .nota-card:hover {
+    background: #30363d;
+    border-color: #8b949e;
+}
+
+body.ui-dark-mode .nota-card.activa {
+    background: rgba(56, 189, 248, 0.12);
+    border-color: #38bdf8;
+    box-shadow: 0 2px 10px rgba(56, 189, 248, 0.25);
+}
+
+.nota-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.nota-card-titulo {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+body.ui-dark-mode .nota-card-titulo {
+    color: #f0f6fc;
+}
+
+.nota-card-snippet {
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+body.ui-dark-mode .nota-card-snippet {
+    color: #8b949e;
+}
+
+.nota-card-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 10px;
+    color: #94a3b8;
+}
+
+body.ui-dark-mode .nota-card-meta {
+    color: #6e7681;
+}
+
+.nota-pill {
+    background: #e2e8f0;
+    color: #475569;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+body.ui-dark-mode .nota-pill {
+    background: #30363d;
+    color: #c9d1d9;
+}
+
+/* COLUMNA 3: EDITOR DE NOTA */
+.notas-editor-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    box-sizing: border-box;
+    pointer-events: auto;
+}
+
+body.ui-dark-mode .notas-editor-col {
+    background: #0d1117;
+}
+
+.notas-editor-top {
+    padding: 12px 18px 6px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+body.ui-dark-mode .notas-editor-top {
+    border-color: #30363d;
+}
+
+.notas-editor-titulo-input {
+    width: 100%;
+    font-size: 18px;
+    font-weight: 700;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: #0f172a;
+    box-sizing: border-box;
+    cursor: text;
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+body.ui-dark-mode .notas-editor-titulo-input {
+    color: #f0f6fc;
+}
+
+.notas-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 12px;
+}
+
+.notas-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #64748b;
+}
+
+body.ui-dark-mode .notas-meta-item {
+    color: #8b949e;
+}
+
+.notas-meta-input {
+    padding: 3px 6px;
+    font-size: 11px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #1e293b;
+    outline: none;
+    cursor: text;
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+body.ui-dark-mode .notas-meta-input {
+    background: #21262d;
+    border-color: #30363d;
+    color: #f0f6fc;
+}
+
+/* Barra de Herramientas de Formato del Editor */
+.notas-format-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 16px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    flex-wrap: wrap;
+}
+
+body.ui-dark-mode .notas-format-toolbar {
+    background: #161b22;
+    border-color: #30363d;
+}
+
+.notas-fmt-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+    transition: all 0.15s ease;
+}
+
+.notas-fmt-btn:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+.notas-fmt-btn.activo {
+    background: #0284c7 !important;
+    border-color: #0369a1 !important;
+    color: #ffffff !important;
+    box-shadow: 0 1px 4px rgba(2, 132, 199, 0.35);
+}
+
+body.ui-dark-mode .notas-fmt-btn {
+    color: #c9d1d9;
+}
+
+body.ui-dark-mode .notas-fmt-btn:hover {
+    background: #30363d;
+    color: #ffffff;
+}
+
+body.ui-dark-mode .notas-fmt-btn.activo {
+    background: #38bdf8 !important;
+    border-color: #7dd3fc !important;
+    color: #0d1117 !important;
+    box-shadow: 0 1px 6px rgba(56, 189, 248, 0.4);
+}
+
+.notas-fmt-sep {
+    width: 1px;
+    height: 18px;
+    background: #cbd5e1;
+    margin: 0 4px;
+}
+
+body.ui-dark-mode .notas-fmt-sep {
+    background: #30363d;
+}
+
+.notas-btn-ia {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: auto;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+    position: relative;
+}
+
+.notas-btn-ia:hover {
+    filter: brightness(1.15);
+    transform: translateY(-1px);
+}
+
+/* Menú Emergente de Acciones de IA para Notas */
+.menu-ia-nota-popup {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    width: 250px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+    display: none;
+    flex-direction: column;
+    padding: 6px;
+    gap: 3px;
+    z-index: 1000000;
+    animation: fadeInNotaMenu 0.15s ease-out;
+}
+
+@keyframes fadeInNotaMenu {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+body.ui-dark-mode .menu-ia-nota-popup {
+    background: #161b22;
+    border-color: #30363d;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+
+.menu-ia-nota-item {
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #1e293b;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-align: left;
+    transition: all 0.15s ease;
+}
+
+.menu-ia-nota-item:hover {
+    background: #f1f5f9;
+    color: #6366f1;
+}
+
+body.ui-dark-mode .menu-ia-nota-item {
+    color: #f0f6fc;
+}
+
+body.ui-dark-mode .menu-ia-nota-item:hover {
+    background: #21262d;
+    color: #a5b4fc;
+}
+
+/* Botón de Dictado por Voz (Micrófono) */
+.notas-btn-mic {
+    background: transparent;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.notas-btn-mic svg {
+    transition: transform 0.2s ease, fill 0.15s ease;
+}
+
+.notas-btn-mic:hover {
+    background: #f1f5f9;
+    border-color: #0284c7;
+    color: #0284c7;
+}
+
+.notas-btn-mic:hover svg {
+    transform: scale(1.15);
+}
+
+body.ui-dark-mode .notas-btn-mic {
+    background: #21262d;
+    border-color: #30363d;
+    color: #c9d1d9;
+}
+
+body.ui-dark-mode .notas-btn-mic:hover {
+    background: #30363d;
+    border-color: #38bdf8;
+    color: #38bdf8;
+}
+
+/* Estado Grabando / Escuchando (Pulsación Roja) */
+.notas-btn-mic.grabando {
+    background: #ef4444 !important;
+    border-color: #dc2626 !important;
+    color: #ffffff !important;
+    animation: pulseMic 1.2s infinite ease-in-out;
+}
+
+.notas-btn-mic.grabando svg {
+    fill: #ffffff !important;
+    animation: micWave 0.8s infinite alternate ease-in-out;
+}
+
+body.ui-dark-mode .notas-btn-mic.grabando {
+    background: #da3633 !important;
+    border-color: #f85149 !important;
+    color: #ffffff !important;
+}
+
+@keyframes pulseMic {
+    0% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 0 0 7px rgba(239, 68, 68, 0);
+        transform: scale(1.05);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+        transform: scale(1);
+    }
+}
+
+@keyframes micWave {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.2); }
+}
+
+
+
+/* Área Editable de Texto */
+.notas-content-editable {
+    flex: 1;
+    padding: 16px 20px;
+    overflow-y: auto;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #1e293b;
+    outline: none;
+    background: transparent;
+    box-sizing: border-box;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    cursor: text !important;
+    pointer-events: auto !important;
+}
+
+.notas-content-editable[placeholder]:empty:before {
+    content: attr(placeholder);
+    color: #94a3b8;
+}
+
+body.ui-dark-mode .notas-content-editable {
+    color: #f0f6fc;
+}
+
+body.ui-dark-mode .notas-content-editable[placeholder]:empty:before {
+    color: #6e7681;
+}
+
+/* Footer del Editor (Guardar, Eliminar) */
+.notas-editor-footer {
+    padding: 10px 18px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f8fafc;
+}
+
+body.ui-dark-mode .notas-editor-footer {
+    background: #0d1117;
+    border-color: #30363d;
+}
+
+.notas-btn-delete {
+    background: transparent;
+    border: 1px solid #fca5a5;
+    color: #ef4444;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.notas-btn-delete:hover {
+    background: #ef4444;
+    color: #ffffff;
+}
+
+body.ui-dark-mode .notas-btn-delete {
+    border-color: rgba(248, 81, 73, 0.4);
+    color: #f85149;
+}
+
+body.ui-dark-mode .notas-btn-delete:hover {
+    background: #da3633;
+    color: #ffffff;
+}
+
+.notas-btn-save {
+    background: #0284c7;
+    border: none;
+    color: #ffffff;
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.notas-btn-save:hover {
+    background: #0369a1;
+    transform: translateY(-1px);
+}
+
+body.ui-dark-mode .notas-btn-save {
+    background: #238636;
+}
+
+body.ui-dark-mode .notas-btn-save:hover {
+    background: #2ea043;
+}
+
+
+/* ==========================================================================
+   2. PANEL FLOTANTE / COMPACTO: CREAR NOTA RÁPIDA (SIN TAPAR EL VISOR)
+   ========================================================================== */
+#panel-nota-rapida {
+    position: fixed;
+    right: 24px;
+    top: 75px;
+    width: 380px;
+    height: 530px;
+    max-height: calc(100vh - 100px);
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.25);
+    border: 1px solid #cbd5e1;
+    display: none;
+    flex-direction: column;
+    z-index: 999998;
+    overflow: hidden;
+    box-sizing: border-box;
+    pointer-events: auto !important;
+    animation: fadeInNotaRapida 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInNotaRapida {
+    from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+body.ui-dark-mode #panel-nota-rapida {
+    background: #161b22;
+    border-color: #30363d;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.65);
+}
+
+.nota-rapida-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    cursor: default;
+}
+
+body.ui-dark-mode .nota-rapida-header {
+    background: #0d1117;
+    border-color: #30363d;
+}
+
+.nota-rapida-titulo {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+body.ui-dark-mode .nota-rapida-titulo {
+    color: #f0f6fc;
+}
+
+.nota-rapida-controles {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.nota-rapida-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: 10px 14px;
+    gap: 8px;
+    background: #ffffff;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+body.ui-dark-mode .nota-rapida-body {
+    background: #161b22;
+}
+
+.nota-rapida-input-titulo {
+    width: 100%;
+    font-size: 14px;
+    font-weight: 700;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 10px;
+    outline: none;
+    background: #f8fafc;
+    color: #0f172a;
+    box-sizing: border-box;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    cursor: text !important;
+}
+
+.nota-rapida-input-titulo:focus {
+    border-color: #0284c7;
+    background: #ffffff;
+}
+
+body.ui-dark-mode .nota-rapida-input-titulo {
+    background: #0d1117;
+    border-color: #30363d;
+    color: #f0f6fc;
+}
+
+body.ui-dark-mode .nota-rapida-input-titulo:focus {
+    border-color: #58a6ff;
+}
+
+.nota-rapida-row-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+}
+
+.nota-rapida-editor {
+    flex: 1;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #1e293b;
+    outline: none;
+    overflow-y: auto;
+    background: #ffffff;
+    box-sizing: border-box;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    cursor: text !important;
+    pointer-events: auto !important;
+}
+
+.nota-rapida-editor[placeholder]:empty:before {
+    content: attr(placeholder);
+    color: #94a3b8;
+}
+
+body.ui-dark-mode .nota-rapida-editor {
+    background: #0d1117;
+    border-color: #30363d;
+    color: #f0f6fc;
+}
+
+body.ui-dark-mode .nota-rapida-editor[placeholder]:empty:before {
+    color: #6e7681;
+}
+
+.nota-rapida-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+}
+
+body.ui-dark-mode .nota-rapida-footer {
+    background: #0d1117;
+    border-color: #30363d;
+}

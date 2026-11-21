@@ -1,55 +1,41 @@
 # Estructura del Proyecto LiraLoud
 
-Este documento describe la nueva arquitectura modular del proyecto. Hemos abandonado los archivos monolíticos para adoptar un enfoque basado en componentes lógicos, lo cual facilita enormemente la depuración, escalabilidad y mantenimiento del código por cualquier desarrollador.
+Este documento describe la arquitectura modular de **LiraLoud**, diseñada para mantener una separación limpia de responsabilidades tanto en el backend de Python como en el frontend web sobre **pywebview (Edge WebView2)**.
 
 ---
 
 ## 📁 Estructura de Directorios
 
-### 🐍 Backend (Python)
-El servidor ahora tiene una arquitectura híbrida que maximiza la limpieza sin comprometer la estabilidad asíncrona de `Eel`.
-
-- **`app_principal.pyw`**: Archivo maestro. Mantiene exclusivamente la lógica asíncrona de audio (motores Piper y Edge), rutinas de alto rendimiento, y el renderizado del PDF, al estar fuertemente atados al estado de la memoria global.
-- **/backend/**: Módulos independientes y seguros.
-  - `gestor_archivos.py`: Centraliza la persistencia. Encargado de leer/escribir los `.json` (diccionario, ajustes, favoritos).
-  - `utils.py`: Herramientas puras y sanitización (limpieza de texto, filtros anti-acentos).
-
-### 🌐 Frontend (HTML y CSS)
-Ubicados en la carpeta `/web/`.
-
-- `index.html`: Punto de entrada unificado. Ahora cuenta con **etiquetas estructurales** (`<!-- ======= -->`) que dividen lógicamente el código en secciones visuales (Banner, Visor, Modales, etc.).
-- `/web/css/`: El monolito `style.css` fue atomizado en módulos especializados:
-  - `base.css`: Estilos estructurales y configuración básica.
-  - `layout.css`: Contenedores principales (banner, visor).
-  - `components.css`: Inputs, botones globales, y menús contextuales.
-  - `modals.css`: Modales interactivos (Configuración, Teatro, Descarga, Diccionario).
-  - `animations.css`: Transiciones y animaciones clave (Drag & Drop, pantalla de carga).
-
-### ⚙️ Lógica de Negocio (JavaScript)
-Ubicados en la carpeta `/web/js/`. El archivo original `script.js` fue diseccionado manteniendo el scope global inalterado para preservar la integridad de las funciones originales:
-
-- **/core/**
-  - `estado.js`: Contiene todas las variables globales y de sesión.
-  - `init.js`: Rutas de inicialización, promesas de carga (`forzarCargaPiper`) y hooks del DOM.
-
-- **/navegacion/**
-  - `pdfManager.js`: Controlador de la paginación, zoom, carga del canvas y búfer extendido.
-  - `atajos.js`: Manejadores del teclado para la experiencia fluida del usuario.
-
-- **/audio/**
-  - `motorPiper.js`: Núcleo de reproducción de texto a voz, sincronización con Eel y rutinas "Gapless DJ".
-  - `gestorVoces.js`: Manejo de selectores de voces, idiomas y lista de favoritos en vivo.
-
-- **/graficos/**
-  - `karaoke.js`: Motor de renderizado en canvas para el seguimiento de lectura (resaltado, cálculo de progreso).
-  - `lienzo.js` (Opcional, integrado según sección visual).
-
-- **/modulos/**
-  - `ui.js`: Controladores para interactividad de modales avanzados (Teatro, Diccionario, Exportación MP3) y reordenamientos visuales drag-and-drop.
+### 🐍 Backend (`app_principal.pyw` y `/backend/`)
+- **`app_principal.pyw` (~140 líneas)**: Lanzador puro. Configura logs, identidad de proceso Win32, certificados SSL y variables de entorno de WebView2, importa todos los módulos RPC de `backend/` para registrarlos en el puente nativo y arranca la ventana principal de `pywebview`.
+- **`/backend/core/`**: Núcleo e infraestructura transversal.
+  - `estado_global.py`: Contenedor singleton `estado_app` (documento PDF activo, snapshots de página, colas de audio, locks y cachés en RAM).
+  - `webview_bridge.py`: Puente bidireccional `eel` / `puente_webview` sobre `window.pywebview.api`.
+  - `logger_config.py`: Sistema de logging persistente en `app.log`.
+  - `gestor_archivos.py`: Lectura y escritura de todos los archivos `.json` de configuración y biblioteca.
+  - `utils.py`: Funciones utilitarias puras (`safe_async_run`, `normalizar_texto`, `crear_regex_inmune_acentos`).
+- **`/backend/audio/`**: Motores de síntesis de voz, streaming y multimedia.
+  - `motor_audio.py`: Síntesis híbrida (Kokoro-82M, Pocket-TTS, Piper ONNX, Windows OneCore y Edge TTS), workers de horneado anticipado y streaming PCM.
+  - `gestor_voces_rpc.py`: Endpoints RPC de catálogo de voces, tienda Hugging Face, laboratorio de mezclas/muestras Kokoro y clonación Pocket-TTS.
+  - `kokoro_engine.py`, `pocket_engine.py`, `voice_catalogue.py`, `exportador_audio.py`, `media_control.py`.
+- **`/backend/documento/`**: Procesamiento de PDF/Word, edición, layout y OCR.
+  - `gestor_documento_rpc.py`: Endpoints RPC de carga de PDF/Word, renderizado de páginas, edición/subrayados, DocLayout-YOLO y RapidOCR.
+  - `edicion_pdf.py`, `procesador_texto.py`, `buscador_pdf.py`, `ocr_engine.py`, `layout_engine.py`, `docx_engine.py`.
+- **`/backend/ia/`**: Inteligencia Artificial, RAG y Traducción.
+  - `rag_module.py`: Motor RAG con ChromaDB y citas trazables a coordenadas del PDF.
+  - `traductor.py`: Traducción neuronal híbrida (online + Argos Translate offline).
+  - `ollama_store.py` y `llm_providers/` (Ollama, Gemini, Groq, OpenAI, DeepSeek).
+- **`/backend/estudio/`**: Servicios RPC generales, notas, extracciones y captura web/pantalla.
+  - `servicios_rpc.py`: Endpoints RPC de SMTC, audio ducking, logs, búsqueda, traducción, tienda Ollama y LiraAI (RAG).
+  - `gestor_notas.py`, `gestor_extracciones.py`, `captura_pantalla.py`, `web_reader.py`, `playwright_worker.py`, `servidor_extension.py`.
 
 ---
 
-## 🚀 Cómo Modificar el Proyecto
-- **Si necesitas añadir un nuevo botón**: Añade el HTML en `index.html`, crea la clase en `css/components.css` y asigna su lógica en `js/modulos/ui.js` o `js/navegacion/atajos.js`.
-- **Si hay un error en el audio**: Depura exclusivamente en `js/audio/motorPiper.js`. Las variables de estado las encontrarás en `js/core/estado.js`.
-- **Si hay un error en el backend**: Todo el puente asíncrono hacia Python está en `app_principal.pyw`.
+### 🌐 Frontend (`/web/`)
+- `web/index.html`: Punto de entrada de la interfaz con secciones demarcadas.
+- `/web/css/`: Estilos modulares (`base.css`, `layout.css`, `components.css`, `modals.css`, `animations.css`).
+- `/web/js/core/`: `webview_bridge.js`, `bootstrap.js`, `estado.js`, `init.js`.
+- `/web/js/audio/`: `motorPiper.js`, `gestorVoces.js`, `kokoroLab.js`, `voiceStore.js`, `audioStudio.js`.
+- `/web/js/navegacion/`: `pdfManager.js`, `atajos.js`, `buscador.js`, `edicionPdf.js`, `subrayador.js`, `capturaExtraccion.js`, `webReader.js`.
+- `/web/js/graficos/`: `karaoke.js`, `lienzo.js`.
+- `/web/js/modulos/`: `ui.js`, `liraAi.js`, `notasEstudio.js`, `diccionario.js`, `teatro.js`, `traduccion.js`.

@@ -1,0 +1,31 @@
+<div id="toolbar-formato-texto" class="oculto">
+            <select id="fmt-fuente" class="fmt-select" title="Tipografía" data-i18n-title="fmt-tipografia"
+                onchange="if(cuadroTextoActivoUI) cuadroTextoActivoUI.style.fontFamily = this.value; if(window.actualizarAjustesCuadroTexto) actualizarAjustesCuadroTexto();">
+                <option value="Arial, sans-serif">Arial</option>
+                <option value="Times New Roman, serif">Times New Roman</option>
+                <option value="Courier New, monospace">Courier New</option>
+                <option value="Georgia, serif">Georgia</option>
+            </select>
+            <input type="number" id="fmt-tamano" class="fmt-input-num" title="Tamaño" data-i18n-title="fmt-tamano" value="16" min="8" max="72"
+                onchange="if(cuadroTextoActivoUI) cuadroTextoActivoUI.style.fontSize = this.value + 'px'; if(window.actualizarAjustesCuadroTexto) actualizarAjustesCuadroTexto();">
+            <input type="color" id="fmt-color" class="fmt-input-color" title="Color" data-i18n-title="fmt-color" value="#000000"
+                onchange="if(cuadroTextoActivoUI) cuadroTextoActivoUI.style.color = this.value; if(window.actualizarAjustesCuadroTexto) actualizarAjustesCuadroTexto();">
+            <div class="fmt-separator"></div>
+            <button class="fmt-btn" id="btn-fmt-bold" onclick="toggleFmtBold()" title="Negrita (B)" data-i18n-title="fmt-negrita"><b>B</b></button>
+            <button class="fmt-btn" id="btn-fmt-italic" onclick="toggleFmtItalic()"
+                title="Cursiva (I)" data-i18n-title="fmt-cursiva"><i>I</i></button>
+            <button class="fmt-btn" id="btn-fmt-underline" onclick="toggleFmtUnderline()"
+                title="Subrayado (U)" data-i18n-title="fmt-subrayado"><u>U</u></button>
+            <div class="fmt-separator"></div>
+            <button class="fmt-action-btn" onclick="eliminarCuadroTextoActual()" title="Eliminar cuadro de texto" data-i18n-title="fmt-eliminar-cuadro">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                    <path
+                        d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z" />
+                </svg>
+            </button>
+            <button class="fmt-action-btn fmt-save-btn" onclick="guardarCuadroTextoActual()" title="Aplicar (Guardar)" data-i18n-title="fmt-guardar-cuadro">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                    <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" />
+                </svg>
+            </button>
+        </div>

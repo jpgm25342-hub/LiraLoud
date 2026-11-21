@@ -1,0 +1,53 @@
+<div id="modal-teatro" class="overlay-diccionario" style="display:none;">
+            <div id="panel-teatro">
+                <div class="header-teatro">
+                    <span style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:18px;">🎭</span> <span data-i18n="lbl-casting-voces">Cásting de
+                            Voces</span>
+                    </span>
+                    <button class="btn-cerrar-x" onclick="cerrarTeatro()">✕</button>
+                </div>
+
+                <div id="lista-obras-teatro"></div>
+
+                <div class="cuerpo-teatro">
+                    <div class="teatro-input-group">
+                        <input type="text" id="input-nueva-obra" placeholder="Nombre del nuevo cuento u obra..."
+                            data-i18n-ph="ph-nuevo-cuento">
+                        <button class="btn-add-obra" onclick="crearObraTeatro()">+</button>
+                    </div>
+
+                    <div class="add-termino-box teatro-box">
+                        <div style="display: flex; gap: 8px; flex-direction: column;">
+                            <div class="modo-captura-badge" style="color: #2b6cb0; background: rgba(43, 108, 176, 0.08); border-color: rgba(43, 108, 176, 0.2); margin-bottom: 4px;">
+                                <span class="modo-captura-dot" style="background: #2b6cb0; box-shadow: 0 0 6px rgba(43, 108, 176, 0.6);"></span>
+                                <span data-i18n="lbl-modo-captura-teatro"><b>Modo Captura:</b> Haz clic en el personaje en el texto para copiarlo.</span>
+                            </div>
+                            <input type="text" id="input-personaje" placeholder="Nombre (ej: Sergio:)"
+                                data-i18n-ph="ph-nombre-personaje">
+                            <div style="display: flex; gap: 8px;">
+                                <select id="select-idioma-teatro" onchange="filtrarVocesTeatroClon()"
+                                    style="flex: 1;"></select>
+                                <select id="select-voz-teatro" style="flex: 2;"></select>
+                            </div>
+                        </div>
+                        <button class="btn-guardar-actor" onclick="agregarActor()"
+                            data-i18n="btn-guardar-personaje">Guardar
+                            Personaje</button>
+                    </div>
+
+                    <input type="text" id="buscador-actores" placeholder="Buscar personaje..."
+                        data-i18n-ph="ph-buscar-personaje" onkeyup="renderizarActores()">
+                    <div class="lista-terminos-scroll" id="tabla-actores"></div>
+                </div>
+
+                <div class="footer-teatro">
+                    <label
+                        style="font-size: 13px; font-weight: 700; color: #0984e3; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="chk-teatro-global" class="switch-individual">
+                        <span data-i18n="lbl-activar-teatro">ACTIVAR MODO TEATRO</span>
+                    </label>
+                    <button onclick="cerrarTeatro()" class="btn-listo-teatro" data-i18n="btn-listo">Listo</button>
+                </div>
+            </div>
+        </div>

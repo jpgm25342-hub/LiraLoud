@@ -6,6 +6,9 @@
 // 6. ATAJOS
 // ==========================================
 
+// Flag global para desactivar atajos cuando se está editando texto en el PDF
+window.textoEditandoActivo = false;
+
 const atajosIcons = {
     'play_pause': `<svg class="svg-icon" viewBox="-0.5 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg" transform="rotate(180)"><path d="M20.0195 21.3199C22.5695 20.4399 23.0195 15.7199 23.0195 12.4099C23.0195 9.09992 22.5895 4.41001 20.0195 3.51001C17.3095 2.58001 9.01953 8.65991 9.01953 12.4099C9.01953 16.1599 17.3095 22.2499 20.0195 21.3199Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 18.92C1 20.3008 2.11929 21.42 3.5 21.42C4.88071 21.42 6 20.3008 6 18.92L6 5.92004C6 4.53933 4.88071 3.42004 3.5 3.42004C2.11929 3.42004 1 4.53933 1 5.92004L1 18.92Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
     'speed_up': `<svg class="svg-icon" viewBox="0 0 512 512" fill="currentColor"><path d="M472.345,355.081c-8.729-64.995-64.55-115.272-131.883-115.272h-114.33c1.894-4.349,3.618-8.803,5.121-13.363 c1.979-5.967,2.973-12.199,2.973-18.526c0-4.793-0.571-9.596-1.693-14.347c13.712-9.078,27.72-20.653,40.935-33.857 c20.155-20.166,36.396-42.057,45.717-61.641c13.955-29.318,8.221-44.13,0.963-51.399c-7.269-7.258-22.092-13.003-51.409,0.952 c-3.036,1.439-6.137,3.068-9.268,4.846c-0.159-24.356-7.332-40.067-20.928-45.008c-28.969-10.485-63.482,37.422-82.611,90.186 c-5.269,14.527-9.332,29.307-11.935,43.242c-59.154,7.142-107.506,45.527-126.138,101.877c-1.979,5.967-2.973,12.199-2.973,18.526 c0,26.916,17.521,51.991,42.353,62.73c-6.147,15.5-9.258,31.889-9.258,48.87c0,20.187,4.518,39.845,13.162,57.758H37.666 C16.897,430.656,0,447.552,0,468.321c0,20.758,16.897,37.655,37.666,37.655l302.797,0.011c35.539,0,68.952-13.839,94.111-38.978 c6.888-6.898,12.919-14.41,18.05-22.42c4.317,1.312,8.824,2.021,13.384,2.021c25.361,0,45.992-20.631,45.992-45.982 C512,377.416,494.712,358.181,472.345,355.081z M175.823,104.868c20.642-56.932,48.246-80.135,55.493-77.511 c3.365,1.217,8.993,12.495,6.263,39.496c-10.252,7.65-20.568,16.6-30.471,26.504c-15.087,15.077-27.89,31.011-37.391,46.447 c-1.016-0.063-3.618-0.127-3.915-0.127C168.194,128.388,171.58,116.559,175.823,104.868z M438.552,426.878 c-5.036,9.12-11.384,17.595-18.949,25.17c-21.15,21.139-49.251,32.778-79.14,32.778H224.164v-0.011 c-9.099,0-16.505-7.396-16.505-16.495c0-9.11,7.406-16.505,16.505-16.505h47.886c5.84,0,10.58-4.74,10.58-10.58v-17.923 c0-29.529,24.017-53.547,53.547-53.547h13.987c5.84,0,10.58-4.74,10.58-10.58c0-5.851-4.74-10.58-10.58-10.58h-13.987 c-41.2,0-74.707,33.508-74.707,74.707v7.343h-37.306c-20.769,0-37.666,16.897-37.666,37.666c0,5.914,1.375,11.511,3.82,16.495 H37.666c-9.099,0-16.505-7.396-16.505-16.495c0-9.11,7.406-16.505,16.505-16.505h41.718c2.031,0,4.084-0.582,5.904-1.809 c4.846-3.259,6.126-9.84,2.867-14.685c-12.442-18.463-19.013-40.057-19.013-62.424c0-17.754,4.031-34.735,11.987-50.457 c2.645-5.206,0.55-11.575-4.655-14.22c-0.815-0.402-1.651-0.688-2.497-0.878c-10.633-2.359-20.113-8.591-26.937-16.876 c-6.824-8.284-10.993-18.621-10.993-29.17c0-4.063,0.635-8.073,1.904-11.892c8.76-26.482,25.202-48.786,47.548-64.497 c22.42-15.743,49.611-24.07,78.654-24.07c0.751,0,6.941,0.275,9.3,0.698c4.55,0.804,8.93-1.428,11.067-5.237l0.011,0.011 c8.697-15.426,22.028-32.471,37.539-47.992c10.284-10.284,20.959-19.404,31.413-26.906c0.222-0.148,0.434-0.296,0.635-0.455 c8.147-5.809,16.156-10.623,23.721-14.22c16.124-7.671,25.192-7.258,27.339-5.1c2.158,2.158,2.582,11.215-5.1,27.35 c-8.316,17.457-23.076,37.264-41.57,55.758c-13.754,13.754-28.345,25.541-42.3,34.164l0.095,0.159 c-4.222,1.608-6.814,5.629-6.814,9.893c0,1.248,0.222,2.518,0.688,3.756c1.915,5.036,2.888,10.146,2.888,15.204 c0,4.063-0.645,8.073-1.904,11.892c-2.941,8.909-6.771,17.383-11.384,25.213c-2.963,5.036-1.28,11.522,3.756,14.484 c1.682,0.995,3.534,1.46,5.354,1.46h131.576c61.715,0,111.918,50.214,111.918,111.929 C452.38,399.084,438.711,426.54,438.552,426.878z M466.008,425.45c-1.047,0-2.095-0.074-3.132-0.201 c6.475-15.13,10.094-31.445,10.601-48.31c10.051,3.185,17.362,12.591,17.362,23.689C490.839,414.32,479.698,425.45,466.008,425.45 z"/><circle cx="102.311" cy="223.497" r="12.823"/><path d="M340.457,276.841c-5.842,0-10.58,4.738-10.58,10.58c0,5.842,4.738,10.58,10.58,10.58 c41.297,0,74.895,33.598,74.895,74.894c0,5.842,4.738,10.58,10.58,10.58s10.58-4.738,10.58-10.58 C436.512,319.931,393.423,276.841,340.457,276.841z"/></svg>`,
@@ -26,7 +29,12 @@ const atajosIcons = {
 </svg>`,
     'add_limit': `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 12H20M12 4V20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
     'prev_page': `<svg class="svg-icon" viewBox="-0.5 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.52 4.13998C11.25 4.35998 11.72 5.96 11.9 7.91C17.21 7.91 22 13.4802 22 20.0802C19.8 14.0802 15 12.45 11.86 12.45C11.65 14.21 11.2 15.6202 10.52 15.8202C8.41996 16.4302 2 12.4401 2 9.98006C2 7.52006 8.40996 3.52998 10.52 4.13998Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-    'cycle_voice': `<svg class="svg-icon" viewBox="0 0 32.00 32.00" fill="none" xmlns="http://www.w3.org/2000/svg"><style type="text/css"> .st0{fill:none;stroke:currentColor;stroke-width:0.6776;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;} .st1{fill:none;stroke:currentColor;stroke-width:0.576;stroke-linejoin:round;stroke-miterlimit:10;} </style><path class="st0" d="M21,4c-2.2,0-4,1.8-4,4v6v4l6-3h3c2.2,0,4-1.8,4-4V8c0-2.2-1.8-4-4-4H21z"/><line class="st0" x1="21" y1="8" x2="24" y2="8"/><line class="st0" x1="21" y1="11" x2="22" y2="11"/><path class="st0" d="M17,8.8c-0.6-0.4-1.3-0.7-2-0.8c-1.6-0.2-3,0.5-3.9,1.7C10.4,9.5,9.8,9.6,9,10.2c-0.8,0.6-1.3,1.6-1.3,2.6 l0,0.8v1.2v1c0,1.8,0.9,3.5,2.4,4.4l0,0c0,1.8-1.3,3.4-3,3.8C5,24.7,3.4,26.3,3,28.5C3,28.7,3.2,29,3.4,29h18.1 c0.3,0,0.5-0.3,0.4-0.5c-0.4-2.1-2-3.8-4.1-4.4c-1.7-0.4-3-2-3-3.8"/></svg>`
+    'cycle_voice': `<svg class="svg-icon" viewBox="0 0 32.00 32.00" fill="none" xmlns="http://www.w3.org/2000/svg"><style type="text/css"> .st0{fill:none;stroke:currentColor;stroke-width:1.6776;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:10;} .st1{fill:none;stroke:currentColor;stroke-width:0.576;stroke-linejoin:round;stroke-miterlimit:10;} </style><path class="st0" d="M21,4c-2.2,0-4,1.8-4,4v6v4l6-3h3c2.2,0,4-1.8,4-4V8c0-2.2-1.8-4-4-4H21z"/><line class="st0" x1="21" y1="8" x2="24" y2="8"/><line class="st0" x1="21" y1="11" x2="22" y2="11"/><path class="st0" d="M17,8.8c-0.6-0.4-1.3-0.7-2-0.8c-1.6-0.2-3,0.5-3.9,1.7C10.4,9.5,9.8,9.6,9,10.2c-0.8,0.6-1.3,1.6-1.3,2.6 l0,0.8v1.2v1c0,1.8,0.9,3.5,2.4,4.4l0,0c0,1.8-1.3,3.4-3,3.8C5,24.7,3.4,26.3,3,28.5C3,28.7,3.2,29,3.4,29h18.1 c0.3,0,0.5-0.3,0.4-0.5c-0.4-2.1-2-3.8-4.1-4.4c-1.7-0.4-3-2-3-3.8"/></svg>`,
+    'toggle_highlighter': `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M15.24 2.82C15.93 2.13 17.06 2.13 17.75 2.82L21.18 6.25C21.87 6.94 21.87 8.07 21.18 8.76L9.61 20.33C9.37 20.57 9.06 20.73 8.72 20.79L3.5 21.75C3.06 21.83 2.65 21.52 2.58 21.08C2.56 20.98 2.56 20.87 2.6 20.77L3.92 15.65C4.01 15.31 4.2 15.01 4.46 14.77L15.24 2.82Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    'toggle_eraser': `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18.85 7.82L16.18 5.15C15.4 4.37 14.13 4.37 13.35 5.15L3.48 15.02C2.7 15.8 2.7 17.07 3.48 17.85L6.15 20.52C6.93 21.3 8.2 21.3 8.98 20.52L18.85 10.65C19.63 9.87 19.63 8.6 18.85 7.82Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M14.5 9.5L9.5 14.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 20H22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    'crear_nota': `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 4H4C3.44772 4 3 4.44772 3 5V20C3 20.5523 3.44772 21 4 21H19C19.5523 21 20 20.5523 20 20V13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.5 2.5C19.3284 1.67157 20.6716 1.67157 21.5 2.5C22.3284 3.32843 22.3284 4.67157 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    'toggle_notas': `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 3H17C18.1046 3 19 3.89543 19 5V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 7H15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M9 11H15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M9 15H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M5 6H3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M5 10H3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M5 14H3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M5 18H3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+    'capturar_recorte': `<svg class="svg-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 8V6C4 4.89543 4.89543 4 6 4H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16 4H18C19.1046 4 20 4.89543 20 6V8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 16V18C20 19.1046 19.1046 20 18 20H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 20H6C4.89543 20 4 19.1046 4 18V16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8"/></svg>`
 };
 
 function renderizarAtajos() {
@@ -45,27 +53,75 @@ function renderizarAtajos() {
 
 function abrirConfiguracion() {
     renderizarAtajos();
+    document.body.classList.add('modal-config-abierto');
     document.getElementById('modalConfig').style.display = 'flex';
 }
 function cerrarConfiguracion() { 
+    if (typeof window._cancelarCapturaAtajo === 'function') window._cancelarCapturaAtajo();
+    document.body.classList.remove('modal-config-abierto');
     document.getElementById('modalConfig').style.display = 'none'; 
     if (typeof guardarTodosAjustes === 'function') {
         guardarTodosAjustes(false);
     }
 }
 function activarEscucha(boton, accion) {
-    boton.innerText = "PRESIONA TECLA..."; boton.classList.add("escuchando");
-    function capturar(e) {
-        e.preventDefault(); e.stopPropagation();
-        let teclas = []; if (e.ctrlKey) teclas.push("control"); if (e.altKey) teclas.push("alt"); if (e.shiftKey) teclas.push("shift");
-        if (e.key !== "Control" && e.key !== "Alt" && e.key !== "Shift") teclas.push(e.key.toLowerCase());
-        let nuevoAtajo = teclas.join("+");
-        misAtajos[accion] = nuevoAtajo;
-        boton.innerText = formatearTecla(nuevoAtajo); boton.classList.remove("escuchando");
-        eel.guardar_atajos_en_python(misAtajos); aplicarAtajosAlNavegador();
-        document.removeEventListener('keydown', capturar);
-    }
-    document.addEventListener('keydown', capturar, { once: true });
+    if (typeof window._cancelarCapturaAtajo === 'function') {
+        window._cancelarCapturaAtajo();
+    }
+    const textoOriginal = formatearTecla(misAtajos[accion]);
+    boton.innerText = (typeof window.t === 'function') ? window.t('key-press', 'PRESIONA TECLA...') : "PRESIONA TECLA...";
+    boton.classList.add("escuchando");
+
+    function limpiar() {
+        document.removeEventListener('keydown', capturar, true);
+        document.removeEventListener('mousedown', cancelarPorClick, true);
+        window.removeEventListener('blur', cancelar);
+        if (window._cancelarCapturaAtajo === cancelar) window._cancelarCapturaAtajo = null;
+    }
+
+    function cancelar() {
+        limpiar();
+        boton.innerText = textoOriginal;
+        boton.classList.remove("escuchando");
+    }
+
+    function cancelarPorClick(ev) {
+        if (ev.target !== boton) {
+            cancelar();
+        }
+    }
+
+    function capturar(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        let teclas = [];
+        if (e.ctrlKey) teclas.push("control");
+        if (e.altKey) teclas.push("alt");
+        if (e.shiftKey) teclas.push("shift");
+
+        const esModificador = (e.key === "Control" || e.key === "Alt" || e.key === "Shift" || e.key === "Meta");
+        if (esModificador) {
+            const txtPresiona = (typeof window.t === 'function') ? window.t('key-press', 'PRESIONA TECLA...') : "PRESIONA TECLA...";
+            boton.innerText = teclas.length ? (formatearTecla(teclas.join("+")) + " + ...") : txtPresiona;
+            return;
+        }
+
+        teclas.push(e.key.toLowerCase());
+        let nuevoAtajo = teclas.join("+");
+        misAtajos[accion] = nuevoAtajo;
+        limpiar();
+        boton.innerText = formatearTecla(nuevoAtajo);
+        boton.classList.remove("escuchando");
+        eel.guardar_atajos_en_python(misAtajos);
+        aplicarAtajosAlNavegador();
+    }
+
+    window._cancelarCapturaAtajo = cancelar;
+    document.addEventListener('keydown', capturar, true);
+    setTimeout(() => {
+        document.addEventListener('mousedown', cancelarPorClick, true);
+        window.addEventListener('blur', cancelar);
+    }, 0);
 }
 function formatearTecla(combo) { 
     if (!combo) return translateDynamicText("key-unassigned") !== "key-unassigned" ? translateDynamicText("key-unassigned") : "SIN ASIGNAR"; 
@@ -79,8 +135,19 @@ function formatearTecla(combo) {
 }
 function aplicarAtajosAlNavegador() {
     document.onkeydown = function(e) {
-        // 1. Manejo de inputs y Escape
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        // 0. Desactivar atajos si se está editando texto en el PDF (cuadro libre, FreeText, etc.)
+        if (window.textoEditandoActivo) {
+            return;
+        }
+
+        // 1. Manejo de inputs, textareas, elementos contenteditable y Escape
+        const isEditable = e.target.tagName === 'INPUT' || 
+                           e.target.tagName === 'TEXTAREA' || 
+                           e.target.isContentEditable || 
+                           e.target.getAttribute('contenteditable') === 'true' || 
+                           (typeof e.target.closest === 'function' && e.target.closest('[contenteditable="true"]'));
+                           
+        if (isEditable) {
             if (e.key === "Escape") {
                 cerrarModalesAbiertos();
                 e.target.blur(); 
@@ -110,8 +177,22 @@ function aplicarAtajosAlNavegador() {
         // UNIFICACIÓN: Ahora sí generamos el string final para comparar
         let pulsado = combo.join("+");
 
+        // 🛡️ ESCUDO DE PROCESAMIENTO: Si una página o el OCR se están procesando, ignorar atajos que cambien de página o inicien lectura
+        if (typeof bloqueoCambioPagina !== 'undefined' && bloqueoCambioPagina) {
+            if (pulsado === misAtajos.play_pause || pulsado === misAtajos.prev_page || pulsado === misAtajos.next_page || pulsado === misAtajos.prev_sentence || pulsado === misAtajos.next_sentence) {
+                e.preventDefault();
+                return;
+            }
+        }
+
         // 4. VERIFICACIÓN DE ATAJOS REGISTRADOS
-        if (pulsado === misAtajos.play_pause) { e.preventDefault(); toggleLectura(); }
+        if (pulsado === misAtajos.play_pause) {
+            e.preventDefault();
+            if (typeof window.tutorialBloquearEspacio !== 'undefined' && window.tutorialBloquearEspacio) {
+                return;
+            }
+            toggleLectura();
+        }
         if (pulsado === misAtajos.add_limit) { e.preventDefault(); agregarCorteV(); }
         if (pulsado === misAtajos.add_abbr) { e.preventDefault(); agregarTerminoRapido(); } 
         if (pulsado === misAtajos.open_pdf) { e.preventDefault(); abrirBuscador(); }
@@ -123,13 +204,35 @@ function aplicarAtajosAlNavegador() {
         if (pulsado === misAtajos.prev_sentence) { e.preventDefault(); navegarOracion(-1); }
         if (pulsado === misAtajos.next_sentence) { e.preventDefault(); navegarOracion(1); }
         if (pulsado === misAtajos.cycle_voice) { e.preventDefault(); ciclarVoz(); }
+        if (pulsado === misAtajos.toggle_highlighter) {
+            e.preventDefault();
+            if (typeof toggleModoSubrayador === 'function') toggleModoSubrayador();
+            if (typeof guardarTodosAjustes === 'function') guardarTodosAjustes();
+        }
+        if (pulsado === misAtajos.toggle_eraser) {
+            e.preventDefault();
+            if (typeof toggleModoBorrador === 'function') toggleModoBorrador();
+            if (typeof guardarTodosAjustes === 'function') guardarTodosAjustes();
+        }
+        if (pulsado === misAtajos.crear_nota) {
+            e.preventDefault();
+            if (typeof togglePanelNotaRapida === 'function') togglePanelNotaRapida();
+        }
+        if (pulsado === misAtajos.toggle_notas) {
+            e.preventDefault();
+            if (typeof toggleModalNotas === 'function') toggleModalNotas();
+        }
+        if (pulsado === misAtajos.capturar_recorte) {
+            e.preventDefault();
+            if (typeof toggleModoRecorteExtraccion === 'function') toggleModoRecorteExtraccion();
+        }
     };
 }
 function navegarOracion(delta) {
-    if (!datosPagina || !datosPagina.oraciones) return;
-    if (indiceOracion === -1) { if (delta > 0) reproducirSecuencia(0); else reproducirSecuencia(datosPagina.oraciones.length - 1); return; }
-    let nuevoIndice = indiceOracion + delta;
-    if (nuevoIndice >= 0 && nuevoIndice < datosPagina.oraciones.length) { 
+    if (!datosPagina || !datosPagina.oraciones) return;
+    if (indiceOracion === -1) { if (delta > 0) reproducirSecuencia(0); else reproducirSecuencia(datosPagina.oraciones.length - 1); return; }
+    let nuevoIndice = indiceOracion + delta;
+    if (nuevoIndice >= 0 && nuevoIndice < datosPagina.oraciones.length) { 
         
         // 1. FRENO DE MANO: Apagamos bandera de lectura y forzamos detención (Imitando Pausa/Stop)
         leyendo = false;
@@ -142,17 +245,16 @@ function navegarOracion(delta) {
     }
 }
 function ciclarVoz() {
-    let sel = document.getElementById('selector-voz-live'); 
-	if (sel.options.length < 2) return; 
+    let sel = document.getElementById('selector-voz-live'); 
+	if (sel.options.length < 2) return; 
 	
-    let nuevoIndex = sel.selectedIndex + 1; 
-	if (nuevoIndex >= sel.options.length) nuevoIndex = 0; 
-    if (sel.options[nuevoIndex].disabled) { nuevoIndex++; if (nuevoIndex >= sel.options.length) nuevoIndex = 0; }
-    sel.selectedIndex = nuevoIndex; cambiarVozLive(); 
-    let btn = document.getElementById('texto-lectura');
+    let nuevoIndex = sel.selectedIndex + 1; 
+	if (nuevoIndex >= sel.options.length) nuevoIndex = 0; 
+    if (sel.options[nuevoIndex].disabled) { nuevoIndex++; if (nuevoIndex >= sel.options.length) nuevoIndex = 0; }
+    sel.selectedIndex = nuevoIndex; cambiarVozLive(); 
+    let btn = document.getElementById('texto-lectura');
 	let original = btn.innerHTML; 
-	let nombreVoz = sel.options[nuevoIndex].text.split('(')[0];
-    btn.innerHTML = `<img src="assets/imagenes/configuracion avanzada/teclado/change_vo.svg" class="svg-icon"> ${nombreVoz}`; 
+    btn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="display:inline-block;vertical-align:middle;margin-right:4px;"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg> ${nombreVoz}`; 
 	setTimeout(() => { if(!leyendo) btn.innerHTML = original; }, 1500);
 }
 function toggleDiccionarioModal() { let panel = document.getElementById('modal-diccionario'); if (panel.style.display === 'flex') cerrarDiccionario(); else abrirDiccionario(); }

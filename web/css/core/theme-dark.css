@@ -1,0 +1,161 @@
+/* --- MODO OSCURO PUNTUAL: POCKET AI, KOKORO AI Y BOTÓN RESET (PALETA NEUTRA) --- */
+body.ui-dark-mode #lista-clones-pocket-items > div,
+body.ui-dark-mode #lista-mezclas-kokoro-items > div {
+    background: #1f242c !important;
+    border-color: #30363d !important;
+    color: #e6edf3 !important;
+}
+
+body.ui-dark-mode #modalConfig div[style*="background: #eaf2f8"],
+body.ui-dark-mode #modalConfig div[style*="background: #e8f8f0"] {
+    background: #1f242c !important;
+    border-color: #30363d !important;
+    color: #e6edf3 !important;
+}
+
+body.ui-dark-mode #modalConfig div[style*="background: #eaf2f8"] *,
+body.ui-dark-mode #modalConfig div[style*="background: #e8f8f0"] * {
+    color: #adbac7 !important;
+}
+
+body.ui-dark-mode #modalConfig details {
+    background: #1f242c !important;
+    border-color: #30363d !important;
+    color: #e6edf3 !important;
+}
+
+body.ui-dark-mode #modalConfig details > summary {
+    color: #e6edf3 !important;
+}
+
+body.ui-dark-mode #modalConfig .btn-reset-sector,
+body.ui-dark-mode #modalConfig .btn-voz-item-test,
+body.ui-dark-mode #modalConfig .btn-voz-item-delete {
+    background: #21262d !important;
+    border-color: #30363d !important;
+    color: #e6edf3 !important;
+}
+
+body.ui-dark-mode #modalConfig .btn-voz-item-test svg,
+body.ui-dark-mode #modalConfig .btn-voz-item-delete svg {
+    color: #e6edf3 !important;
+}
+
+body.ui-dark-mode #modalConfig .btn-reset-sector:hover,
+body.ui-dark-mode #modalConfig .btn-voz-item-test:hover,
+body.ui-dark-mode #modalConfig .btn-voz-item-delete:hover {
+    background: #30363d !important;
+    border-color: #484f58 !important;
+    color: #ffffff !important;
+}
+
+body.ui-dark-mode #modalConfig svg[style*="color: #2980b9"] {
+    color: #adbac7 !important;
+}
+
+body.ui-dark-mode #modalConfig svg[viewBox="0 0 512 512"] {
+    filter: grayscale(1) brightness(1.3);
+}
+
+/* --- MODO OSCURO PUNTUAL: BINDER, TIENDA DE VOCES Y TIENDA OLLAMA --- */
+body.ui-dark-mode #modalConfig .btn-binder {
+    background: #21262d !important;
+    border-color: #30363d !important;
+    color: #e6edf3 !important;
+}
+
+body.ui-dark-mode #modalConfig .btn-binder:hover {
+    background: #30363d !important;
+    border-color: #484f58 !important;
+    color: #ffffff !important;
+}
+
+body.ui-dark-mode .btn-tienda-voces {
+    background: #21262d !important;
+    border-color: #30363d !important;
+    color: #e6edf3 !important;
+}
+
+body.ui-dark-mode .btn-tienda-voces:hover {
+    background: #30363d !important;
+    border-color: #484f58 !important;
+    color: #ffffff !important;
+}
+
+body.ui-dark-mode #modal-tienda-voces button[onclick*="toggleAyudaTiendaVoces"] {
+    background: #21262d !important;
+    border-color: #30363d !important;
+    color: #e6edf3 !important;
+}
+
+body.ui-dark-mode #ayuda-tienda-voces {
+    background: #1f242c !important;
+    border-color: #30363d !important;
+    color: #adbac7 !important;
+}
+
+body.ui-dark-mode #ayuda-tienda-voces b {
+    color: #e6edf3 !important;
+}
+
+body.ui-dark-mode #ayuda-tienda-voces code {
+    background: #2d333b !important;
+    color: #e6edf3 !important;
+    padding: 1px 4px;
+    border-radius: 4px;
+}
+
+body.ui-dark-mode #lista-tienda-voces > div {
+    background: #1f242c !important;
+    border-color: #30363d !important;
+}
+
+body.ui-dark-mode #lista-tienda-voces > div div {
+    color: #e6edf3 !important;
+}
+
+body.ui-dark-mode #lista-tienda-voces > div div + div {
+    color: #adbac7 !important;
+}
+
+body.ui-dark-mode #lista-tienda-voces button {
+    background: #21262d !important;
+    border: 1px solid #30363d !important;
+    color: #e6edf3 !important;
+}
+
+body.ui-dark-mode #lista-tienda-voces button:hover {
+    background: #30363d !important;
+    border-color: #484f58 !important;
+}
+
+body.ui-dark-mode #tienda-ollama-hw {
+    background: #1f242c !important;
+    border-color: #30363d !important;
+    color: #e6edf3 !important;
+}
+
+body.ui-dark-mode #tienda-ollama-lista > div {
+    background: #1f242c !important;
+    border-color: #30363d !important;
+    color: #e6edf3 !important;
+}
+
+body.ui-dark-mode #tienda-ollama-lista > div * {
+    color: #adbac7 !important;
+}
+
+body.ui-dark-mode #tienda-ollama-lista > div div[style*="font-weight:700"] {
+    color: #e6edf3 !important;
+}
+
+body.ui-dark-mode #tienda-ollama-lista button {
+    background: #21262d !important;
+    border: 1px solid #30363d !important;
+    color: #e6edf3 !important;
+}
+
+body.ui-dark-mode #tienda-ollama-lista button:hover {
+    background: #30363d !important;
+    border-color: #484f58 !important;
+}

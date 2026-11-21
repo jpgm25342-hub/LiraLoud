@@ -1,0 +1,148 @@
+<div id="modalConfig" class="overlay-bloqueante">
+            <div class="modal-content">
+                <div class="modal-header" style="display:flex; flex-direction:column; gap:10px;">
+                    <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                        <h2 style="margin:0; font-size:18px;" data-i18n="lbl-config-titulo">Configuración Avanzada</h2>
+                        <button onclick="cerrarConfiguracion()" class="btn-cerrar-x" style="color:#333;">✕</button>
+                    </div>
+                    <div class="tabs-config-header">
+                        <button class="tab-btn active" onclick="cambiarTabConfig(event, 'tab-atajos')"
+                            style="display:flex; align-items:center; justify-content:center; gap:5px;">
+                            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path opacity="0.5"
+                                    d="M16 5H8C5.17157 5 3.75736 5 2.87868 5.87868C2 6.75736 2 8.17157 2 11V13C2 15.8284 2 17.2426 2.87868 18.1213C3.75736 19 5.17157 19 8 19H16C18.8284 19 20.2426 19 21.1213 18.1213C22 17.2426 22 15.8284 22 13V11C22 8.17157 22 6.75736 21.1213 5.87868C20.2426 5 18.8284 5 16 5Z"
+                                    fill="currentColor" />
+                                <path
+                                    d="M6 10C6.55228 10 7 9.55228 7 9C7 8.44772 6.55228 8 6 8C5.44772 8 5 8.44772 5 9C5 9.55228 5.44772 10 6 10Z"
+                                    fill="currentColor" />
+                                <path
+                                    d="M6 13C6.55228 13 7 12.5523 7 12C7 11.4477 6.55228 11 6 11C5.44772 11 5 11.4477 5 12C5 12.5523 5.44772 13 6 13Z"
+                                    fill="currentColor" />
+                                <path
+                                    d="M9 13C9.55228 13 10 12.5523 10 12C10 11.4477 9.55228 11 9 11C8.44772 11 8 11.4477 8 12C8 12.5523 8.44772 13 9 13Z"
+                                    fill="currentColor" />
+                                <path
+                                    d="M9 10C9.55228 10 10 9.55228 10 9C10 8.44772 9.55228 8 9 8C8.44772 8 8 8.44772 8 9C8 9.55228 8.44772 10 9 10Z"
+                                    fill="currentColor" />
+                                <path
+                                    d="M12 10C12.5523 10 13 9.55228 13 9C13 8.44772 12.5523 8 12 8C11.4477 8 11 8.44772 11 9C11 9.55228 11.4477 10 12 10Z"
+                                    fill="currentColor" />
+                                <path
+                                    d="M12 13C12.5523 13 13 12.5523 13 12C13 11.4477 12.5523 11 12 11C11.4477 11 11 11.4477 11 12C11 12.5523 11.4477 13 12 13Z"
+                                    fill="currentColor" />
+                                <path
+                                    d="M15 10C15.5523 10 16 9.55228 16 9C16 8.44772 15.5523 8 15 8C14.4477 8 14 8.44772 14 9C14 9.55228 14.4477 10 15 10Z"
+                                    fill="currentColor" />
+                                <path
+                                    d="M15 13C15.5523 13 16 12.5523 16 12C16 11.4477 15.5523 11 15 11C14.4477 11 14 11.4477 14 12C14 12.5523 14.4477 13 15 13Z"
+                                    fill="currentColor" />
+                                <path
+                                    d="M18 10C18.5523 10 19 9.55228 19 9C19 8.44772 18.5523 8 18 8C17.4477 8 17 8.44772 17 9C17 9.55228 17.4477 10 18 10Z"
+                                    fill="currentColor" />
+                                <path
+                                    d="M18 13C18.5523 13 19 12.5523 19 12C19 11.4477 18.5523 11 18 11C17.4477 11 17 11.4477 17 12C17 12.5523 17.4477 13 18 13Z"
+                                    fill="currentColor" />
+                                <path
+                                    d="M17.75 16C17.75 16.4142 17.4142 16.75 17 16.75H7C6.58579 16.75 6.25 16.4142 6.25 16C6.25 15.5858 6.58579 15.25 7 15.25H17C17.4142 15.25 17.75 15.5858 17.75 16Z"
+                                    fill="currentColor" />
+                            </svg> <span data-i18n="tab-teclado">Teclado</span>
+                        </button>
+                        <button class="tab-btn" onclick="cambiarTabConfig(event, 'tab-karaoke')"
+                            style="display:flex; align-items:center; justify-content:center; gap:5px;">
+                            <svg class="svg-icon" viewBox="0 0 64 64" enable-background="new 0 0 64 64"
+                                xml:space="preserve">
+                                <g>
+                                    <g>
+                                        <path class="svg-main" fill="#394240"
+                                            d="M32,44c6.629,0,12-5.371,12-12V12c0-6.629-5.371-12-12-12S20,5.371,20,12v20C20,38.629,25.371,44,32,44z M28,12c0-2.211,1.789-4,4-4s4,1.789,4,4v20c0,2.211-1.789,4-4,4s-4-1.789-4-4V12z" />
+                                        <path class="svg-main" fill="#394240"
+                                            d="M52,28c-2.211,0-4,1.789-4,4c0,8.836-7.164,16-16,16s-16-7.164-16-16c0-2.211-1.789-4-4-4s-4,1.789-4,4 c0,11.887,8.656,21.73,20,23.641V60c0,2.211,1.789,4,4,4s4-1.789,4-4v-4.359C47.344,53.73,56,43.887,56,32 C56,29.789,54.211,28,52,28z" />
+                                    </g>
+                                    <path class="svg-sec" fill="#45AAB8"
+                                        d="M28,12c0-2.211,1.789-4,4-4s4,1.789,4,4v20c0,2.211-1.789,4-4,4s-4-1.789-4-4V12z" />
+                                </g>
+                            </svg> <span data-i18n="tab-audio">Audio</span>
+                        </button>
+                        <button class="tab-btn" onclick="cambiarTabConfig(event, 'tab-estilo')"
+                            style="display:flex; align-items:center; justify-content:center; gap:5px;">
+                            <svg class="svg-icon" viewBox="0 0 64 64" enable-background="new 0 0 64 64"
+                                xml:space="preserve">
+                                <g>
+                                    <path class="svg-ter" fill="#F9EBB2"
+                                        d="M8,8h48v32.688l-9.113-9.113c-1.562-1.559-4.094-1.559-5.656,0L16.805,56H8V8z" />
+                                    <polygon class="svg-sec" fill="#B4CCB9"
+                                        points="28.117,56 44.059,40.059 56,52 56,56" />
+                                    <g>
+                                        <path class="svg-main" fill="#394240"
+                                            d="M60,0H4C1.789,0,0,1.789,0,4v56c0,2.211,1.789,4,4,4h56c2.211,0,4-1.789,4-4V4C64,1.789,62.211,0,60,0z M56,56H28.117l15.941-15.941L56,52V56z M56,40.688l-9.113-9.113c-1.562-1.559-4.094-1.559-5.656,0L16.805,56H8V8h48V40.688z" />
+                                        <circle class="svg-main" fill="#394240" cx="24" cy="24" r="8" />
+                                    </g>
+                                </g>
+                            </svg> <span data-i18n="tab-estilo">Estilo</span>
+                        </button>
+                        <button class="tab-btn" onclick="cambiarTabConfig(event, 'tab-rendimiento')"
+                            style="display:flex; align-items:center; justify-content:center; gap:5px;">
+                            <svg class="svg-icon" viewBox="0 0 64 64" enable-background="new 0 0 64 64"
+                                xml:space="preserve">
+                                <g>
+                                    <path class="svg-main" fill="#394240"
+                                        d="M60,16c-2.211,0-4,1.789-4,4c0,6.625-5.371,12-12,12s-12-5.375-12-12S37.371,8,44,8c2.211,0,4-1.789,4-4 s-1.789-4-4-4C32.953,0,24,8.953,24,20c0,0.945,0.152,1.844,0.277,2.754L3.516,43.516c-4.688,4.688-4.688,12.289,0,16.969 c4.68,4.688,12.281,4.688,16.969,0l20.762-20.762C42.156,39.848,43.055,40,44,40c11.047,0,20-8.953,20-20 C64,17.789,62.211,16,60,16z M14.828,54.828c-1.562,1.562-4.094,1.562-5.656,0s-1.562-4.094,0-5.656l18.152-18.156 c1.488,2.25,3.41,4.172,5.656,5.656L14.828,54.828z" />
+                                    <path class="svg-sec" fill="#45AAB8"
+                                        d="M14.828,54.828c-1.562,1.562-4.094,1.562-5.656,0s-1.562-4.094,0-5.656l18.152-18.156 c1.488,2.25,3.41,4.172,5.656,5.656L14.828,54.828z" />
+                                </g>
+                            </svg> <span data-i18n="tab-rendimiento">Avanzado</span>
+                        </button>
+                        <button class="tab-btn" id="tab-idioma-btn" onclick="cambiarTabConfig(event, 'tab-idioma')"
+                            style="display:flex; align-items:center; justify-content:center; gap:5px;">
+                            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path fill-rule="evenodd" clip-rule="evenodd"
+                                    d="M14 7H21C22.6569 7 24 8.34315 24 10V21C24 22.6569 22.6569 24 21 24H13C11.3431 24 10 22.6569 10 21V17H3C1.34315 17 0 15.6569 0 14V3C0 1.34315 1.34315 0 3 0H11C12.6569 0 14 1.34315 14 3V7ZM14 9V11H16C16 10.4477 16.4477 10 17 10C17.5523 10 18 10.4477 18 11H18.9794C18.9924 10.9997 19.0054 10.9997 19.0185 11H20C20.5523 11 21 11.4477 21 12C21 12.5523 20.5523 13 20 13H19.7985C19.4241 14.4757 18.8531 15.8257 18.0876 17.0466C18.7882 17.8313 19.6099 18.538 20.5548 19.1679C21.0143 19.4743 21.1385 20.0952 20.8322 20.5547C20.5258 21.0142 19.9049 21.1384 19.4454 20.8321C18.4832 20.1906 17.6268 19.4745 16.8773 18.6846C16.2131 19.4542 15.4538 20.1597 14.6 20.8C14.1582 21.1314 13.5314 21.0418 13.2 20.6C12.8686 20.1582 12.9582 19.5314 13.4 19.2C14.2377 18.5717 14.9675 17.8745 15.5904 17.1065C15.2236 16.5795 14.8952 16.0263 14.6057 15.4472C14.3587 14.9532 14.5589 14.3526 15.0529 14.1056C15.5469 13.8586 16.1476 14.0588 16.3945 14.5528C16.5199 14.8035 16.6538 15.0485 16.7962 15.2878C17.1768 14.5736 17.4863 13.8113 17.7253 13H14V14C14 15.3062 13.1652 16.4175 12 16.8293V21C12 21.5523 12.4477 22 13 22H21C21.5523 22 22 21.5523 22 21V10C22 9.44771 21.5523 9 21 9H14ZM6.22076 9.5L7 7.16228L7.77924 9.5H6.22076ZM5.55409 11.5H8.44591L9.05132 13.3162C9.22596 13.8402 9.79228 14.1233 10.3162 13.9487C10.8402 13.774 11.1233 13.2077 10.9487 12.6838L7.94868 3.68377C7.64478 2.77208 6.35522 2.77208 6.05132 3.68377L3.05132 12.6838C2.87667 13.2077 3.15983 13.774 3.68377 13.9487C4.20772 14.1233 4.77404 13.8402 4.94868 13.3162L5.55409 11.5Z"
+                                    fill="currentColor" />
+                            </svg> <span data-i18n="tab-idioma">Idioma</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="modal-body">
+                    <div data-componente="componentes/modales/config-tabs/tab-atajos.html"></div>
+
+
+
+                    <div data-componente="componentes/modales/config-tabs/tab-audio.html"></div>
+                    <div data-componente="componentes/modales/config-tabs/tab-estilo.html"></div>
+
+
+
+                    <div data-componente="componentes/modales/config-tabs/tab-rendimiento.html"></div>
+
+
+                    <div data-componente="componentes/modales/config-tabs/tab-idioma.html"></div>
+
+
+
+
+
+                </div>
+
+
+                <div class="modal-footer"
+                    style="padding:15px; background:#f9f9f9; display: flex; justify-content: space-between; align-items: center; border-top:1px solid #ddd;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <a href="javascript:void(0);" onclick="abrirLegalExterno('CREDITS.txt')"
+                            style="color: #3498db; font-size: 12px; font-family: sans-serif; text-decoration: underline; cursor: pointer;">
+                            <span data-i18n="lbl-credits">📜 Credits & Legal Notice</span>
+                        </a>
+                        <span style="color: #ccc;">|</span>
+                        <a href="javascript:void(0);" onclick="cerrarConfiguracion(); abrirTutorial(0);"
+                            style="color: #3498db; font-size: 12px; font-family: sans-serif; text-decoration: underline; cursor: pointer; display: flex; align-items: center; gap: 4px;"
+                            title="Volver a abrir el tutorial de bienvenida y calibración" data-i18n-title="ttl-reabrir-tutorial">
+                            <span>🎓</span> <span data-i18n="btn-tutorial-open">Tutorial y Calibración</span>
+                        </a>
+                    </div>
+                    <button onclick="cerrarConfiguracion()" class="btn-principal" style="background:#27ae60;"
+                        data-i18n="btn-listo">Listo</button>
+                </div>
+
+
+            </div>
+        </div>

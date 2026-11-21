@@ -1,0 +1,15 @@
+<div id="modal-tienda-ollama" class="overlay-bloqueante" style="display:none; z-index:120000 !important;">
+            <div class="modal-content" style="max-width:620px; width:92%;">
+                <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center;">
+                    <h2 style="margin:0; font-size:18px;" data-i18n="lbl-tienda-ollama-titulo">Tienda de Modelos IA (Ollama / Hugging Face)</h2>
+                    <button onclick="document.getElementById('modal-tienda-ollama').style.display='none'" class="btn-cerrar-x" style="color:#333;">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div id="tienda-ollama-hw" style="padding:8px 10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; font-size:12px; margin-bottom:10px;" data-i18n="lbl-verificando-ollama">Verificando Ollama y RAM...</div>
+                    <div style="display:flex; gap:8px; margin-bottom:10px;">
+                        <input type="text" id="txt-hf-buscar" placeholder="Buscar modelo GGUF (ej. qwen, llama, gemma)..." data-i18n-placeholder="ph-buscar-modelo-gguf" oninput="if(typeof cargarCatalogoHF==='function') cargarCatalogoHF()" style="flex:1; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px;">
+                    </div>
+                    <div id="tienda-ollama-lista" style="display:flex; flex-direction:column; gap:8px; max-height:380px; overflow-y:auto;"></div>
+                </div>
+            </div>
+        </div>

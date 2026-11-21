@@ -1,0 +1,148 @@
+<div id="modal-notas" style="display: none;" onclick="if(event.target===this) cerrarModalNotas()">
+            <div id="panel-notas" onclick="event.stopPropagation()">
+                <!-- Header -->
+                <div class="notas-header">
+                    <div class="notas-header-titulo">
+                        <svg class="svg-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:22px;height:22px;color:#0284c7;">
+                            <path d="M7 3H17C18.1046 3 19 3.89543 19 5V19C19 20.1046 18.1046 21 17 21H7C5.89543 21 5 20.1046 5 19V5C5 3.89543 5.89543 3 7 3Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M9 7H15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            <path d="M9 11H15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            <path d="M9 15H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            <path d="M5 6H3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            <path d="M5 10H3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            <path d="M5 14H3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            <path d="M5 18H3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                        <span data-i18n="lbl-cuaderno-notas-titulo">Cuaderno de Notas y Apuntes</span>
+                        <span id="notas-header-libro-badge" class="nota-pill" style="font-size:11px;" data-i18n="lbl-notas-libro-badge">📖 Libro</span>
+                    </div>
+                    <div class="notas-header-acciones">
+                        <button class="notas-btn-sec" onclick="abrirCarpetaNotasExplorador()" title="Abrir carpeta en el Explorador de archivos" data-i18n-title="ttl-abrir-carpeta-notas">
+                            📁 <span id="notas-ruta-carpeta-lbl" style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" data-i18n="btn-abrir-carpeta-notas">Abrir Carpeta</span>
+                        </button>
+                        <button class="notas-btn-sec" onclick="cambiarCarpetaNotasDialogo()" title="Elegir carpeta personalizada (Vault de Obsidian)" data-i18n-title="ttl-cambiar-carpeta-notas" data-i18n="btn-cambiar-carpeta-notas">
+                            ⚙️ Cambiar Carpeta
+                        </button>
+                        <button class="notas-btn-close" onclick="cerrarModalNotas()" title="Cerrar (Esc)" data-i18n-title="ttl-cerrar-esc">✕</button>
+                    </div>
+                </div>
+
+                <!-- Cuerpo -->
+                <div class="notas-body">
+                    <!-- Columna 1: Sidebar de Filtros y Clasificaciones -->
+                    <div class="notas-sidebar">
+                        <div class="notas-seccion-titulo" data-i18n="lbl-notas-visualizacion">Visualización</div>
+                        <div class="notas-scope-group">
+                            <button class="notas-scope-btn activo" data-modo="pagina_actual" onclick="filtrarNotasPorModo('pagina_actual')">
+                                <span data-i18n="btn-notas-pag-actual">📌 Pág. Actual</span>
+                            </button>
+                            <button class="notas-scope-btn" data-modo="todo_libro" onclick="filtrarNotasPorModo('todo_libro')">
+                                <span data-i18n="btn-notas-este-libro">📖 Este Libro</span>
+                            </button>
+                            <button class="notas-scope-btn" data-modo="global" onclick="filtrarNotasPorModo('global')">
+                                <span data-i18n="btn-notas-todas">🌐 Todas las Notas</span>
+                            </button>
+                        </div>
+
+                        <div class="notas-seccion-titulo" style="margin-top:12px;">
+                            <span data-i18n="lbl-notas-clasificaciones">Clasificaciones</span>
+                        </div>
+                        <div class="notas-clasif-lista" id="notas-clasif-lista">
+                            <!-- Se puebla dinámicamente con clasificaciones -->
+                        </div>
+                    </div>
+
+                    <!-- Columna 2: Lista de Notas -->
+                    <div class="notas-list-col">
+                        <div class="notas-search-bar">
+                            <input type="text" class="notas-search-input" placeholder="🔍 Buscar notas..." data-i18n-placeholder="ph-buscar-notas" oninput="onBuscarNotasInput(this.value)">
+                            <button class="notas-btn-crear" onclick="crearNuevaNota()" title="Crear nueva nota" data-i18n-title="ttl-crear-nueva-nota" data-i18n="btn-nueva-nota">+ Nueva</button>
+                        </div>
+                        <div class="notas-cards-container" id="notas-cards-container">
+                            <!-- Se puebla dinámicamente con tarjetas de notas -->
+                        </div>
+                    </div>
+
+                    <!-- Columna 3: Editor de Nota -->
+                    <div class="notas-editor-col">
+                        <div class="notas-editor-top">
+                            <input type="text" id="nota-editor-titulo" class="notas-editor-titulo-input" placeholder="Título de la nota..." data-i18n-placeholder="ph-titulo-nota" oninput="if(window.notaSeleccionadaActual) window.notaSeleccionadaActual.titulo = this.value">
+                            <div class="notas-meta-row">
+                                <div class="notas-meta-item">
+                                    <span data-i18n="lbl-nota-area">🏷️ Área:</span>
+                                    <input type="text" id="nota-editor-clasif" list="dl-clasificaciones" class="notas-meta-input" placeholder="Clasificación..." data-i18n-placeholder="ph-clasificacion-nota" value="General" style="width:130px;">
+                                    <datalist id="dl-clasificaciones"></datalist>
+                                </div>
+                                <div class="notas-meta-item">
+                                    <span data-i18n="lbl-nota-pag">📄 Pág:</span>
+                                    <input type="number" id="nota-editor-pagina" class="notas-meta-input" value="1" min="1" style="width:50px;">
+                                </div>
+                                <div class="notas-meta-item">
+                                    <span data-i18n="lbl-nota-libro">📖 Libro:</span>
+                                    <span id="nota-editor-libro" style="font-weight:600;">General</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Barra de herramientas de formato -->
+                        <div class="notas-format-toolbar" style="position:relative;">
+                            <button class="notas-fmt-btn" id="btn-fmt-bold-general" onclick="aplicarFormatoNota('bold')" title="Negrita (B)" data-i18n-title="ttl-negrita"><b>B</b></button>
+                            <button class="notas-fmt-btn" id="btn-fmt-italic-general" onclick="aplicarFormatoNota('italic')" title="Cursiva (I)" data-i18n-title="ttl-cursiva"><i>I</i></button>
+                            <button class="notas-fmt-btn" id="btn-fmt-underline-general" onclick="aplicarFormatoNota('underline')" title="Subrayado (U)" data-i18n-title="ttl-subrayado"><u>U</u></button>
+                            <button class="notas-fmt-btn" id="btn-fmt-strike-general" onclick="aplicarFormatoNota('strikeThrough')" title="Tachado" data-i18n-title="ttl-tachado"><s>S</s></button>
+                            <div class="notas-fmt-sep"></div>
+                            <button class="notas-fmt-btn" onclick="aplicarFormatoNota('heading', '<h1>')" title="Encabezado 1" data-i18n-title="ttl-h1">H1</button>
+                            <button class="notas-fmt-btn" onclick="aplicarFormatoNota('heading', '<h2>')" title="Encabezado 2" data-i18n-title="ttl-h2">H2</button>
+                            <button class="notas-fmt-btn" onclick="aplicarFormatoNota('heading', '<h3>')" title="Encabezado 3" data-i18n-title="ttl-h3">H3</button>
+                            <div class="notas-fmt-sep"></div>
+                            <button class="notas-fmt-btn" onclick="aplicarFormatoNota('insertUnorderedList')" title="Lista con viñetas" data-i18n-title="ttl-lista-vinetas">•</button>
+                            <button class="notas-fmt-btn" onclick="aplicarFormatoNota('insertOrderedList')" title="Lista numerada" data-i18n-title="ttl-lista-numerada">1.</button>
+                            <div class="notas-fmt-sep"></div>
+                            <button class="notas-fmt-btn" onclick="aplicarFormatoNota('highlight', '#fff3cd')" title="Resaltado Amarillo" data-i18n-title="ttl-resaltado-amarillo" style="background:#fff3cd; color:#856404;">A</button>
+                            <button class="notas-fmt-btn" onclick="aplicarFormatoNota('highlight', '#d4edda')" title="Resaltado Verde" data-i18n-title="ttl-resaltado-verde" style="background:#d4edda; color:#155724;">A</button>
+                            <button class="notas-fmt-btn" onclick="aplicarFormatoNota('highlight', '#d1ecf1')" title="Resaltado Azul" data-i18n-title="ttl-resaltado-azul" style="background:#d1ecf1; color:#0c5460;">A</button>
+                            <div class="notas-fmt-sep"></div>
+
+                            <!-- Botón Dictado Micrófono -->
+                            <button class="notas-btn-mic" id="btn-dictar-nota-general" onclick="toggleDictadoVoz('nota-editor-content', 'btn-dictar-nota-general')" title="Dictar por Voz (Micrófono)" data-i18n-title="ttl-dictar-voz">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                                    <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                                </svg>
+                                <span class="btn-mic-txt" data-i18n="btn-dictar">Dictar</span>
+                            </button>
+
+                            <!-- Botón IA con menú desplegable -->
+                            <div style="position:relative; margin-left:auto;">
+                                <button class="notas-btn-ia" id="btn-ia-nota-general" onclick="toggleMenuIANota('general')" title="Opciones de Inteligencia Artificial para esta nota" data-i18n-title="ttl-ia-nota" data-i18n="btn-ia-nota">
+                                    ✨ IA
+                                </button>
+                                <div id="menu-ia-nota-general" class="menu-ia-nota-popup">
+                                    <button class="menu-ia-nota-item" onclick="ejecutarAccionIANota('mejorar', 'nota-editor-content', 'nota-editor-titulo')">
+                                        <span>✍️</span> <span data-i18n="btn-ia-mejorar">Mejorar redacción</span>
+                                    </button>
+                                    <button class="menu-ia-nota-item" onclick="ejecutarAccionIANota('ortografia', 'nota-editor-content', 'nota-editor-titulo')">
+                                        <span>🔤</span> <span data-i18n="btn-ia-ortografia">Corregir ortografía</span>
+                                    </button>
+                                    <button class="menu-ia-nota-item" onclick="ejecutarAccionIANota('expandir', 'nota-editor-content', 'nota-editor-titulo')">
+                                        <span>💡</span> <span data-i18n="btn-ia-expandir">Explicar conceptos</span>
+                                    </button>
+                                    <button class="menu-ia-nota-item" onclick="ejecutarAccionIANota('custom', 'nota-editor-content', 'nota-editor-titulo')">
+                                        <span>🎯</span> <span data-i18n="btn-ia-custom">Petición personalizada...</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Área de contenido editable -->
+                        <div id="nota-editor-content" class="notas-content-editable" contenteditable="true" placeholder="Escribe tus apuntes aquí... (compatible con Markdown y Obsidian)" data-i18n-placeholder="ph-contenido-nota-md"></div>
+
+                        <!-- Footer con Guardar / Eliminar -->
+                        <div class="notas-editor-footer">
+                            <button class="notas-btn-delete" onclick="eliminarNotaActual()" title="Eliminar esta nota" data-i18n-title="ttl-eliminar-nota" data-i18n="btn-eliminar-nota">Eliminar Nota</button>
+                            <button class="notas-btn-save" onclick="guardarNotaActual()" title="Guardar cambios en archivo Markdown" data-i18n-title="ttl-guardar-nota-md" data-i18n="btn-guardar-nota">Guardar Nota</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>

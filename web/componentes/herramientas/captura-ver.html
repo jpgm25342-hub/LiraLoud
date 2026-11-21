@@ -1,0 +1,24 @@
+<div id="modal-ver-captura" class="overlay-bloqueante" style="display:none; z-index:100001; align-items:center; justify-content:center; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px); pointer-events:auto !important;"
+            onclick="if(event.target === this) cerrarModalVerCaptura()">
+            <div style="background:#ffffff; max-width:90vw; max-height:90vh; border-radius:12px; box-shadow:0 15px 40px rgba(0,0,0,0.5); overflow:hidden; display:flex; flex-direction:column; animation:fadeIn 0.2s ease; pointer-events:auto !important;" onclick="event.stopPropagation()">
+                <div style="padding:12px 18px; background:#2c3e50; color:#ffffff; display:flex; justify-content:space-between; align-items:center; gap:15px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                            <circle cx="12" cy="13" r="4"></circle>
+                        </svg>
+                        <span id="lightbox-titulo-captura" style="font-weight:600; font-size:13px;" data-i18n="cap-ver-titulo">Título de captura</span>
+                        <span id="lightbox-pag-captura" style="font-size:11px; background:rgba(255,255,255,0.2); padding:2px 7px; border-radius:10px;" data-i18n="ocr-rango-pag1">Pág. 1</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <button type="button" id="lightbox-btn-copiar" style="background:#34495e; color:#ffffff; border:1px solid rgba(255,255,255,0.3); padding:4px 10px; border-radius:4px; font-size:11px; cursor:pointer;" data-i18n="cap-btn-copiar-img">
+                            📋 Copiar Imagen
+                        </button>
+                        <button type="button" onclick="cerrarModalVerCaptura()" style="background:none; border:none; color:#ffffff; font-size:16px; cursor:pointer; padding:0 4px;" title="Cerrar" data-i18n-title="btn-cerrar">✕</button>
+                    </div>
+                </div>
+                <div style="padding:15px; overflow:auto; display:flex; justify-content:center; align-items:center; background:#1e272e;">
+                    <img id="lightbox-img-captura" style="max-width:85vw; max-height:75vh; object-fit:contain; border-radius:4px; box-shadow:0 4px 20px rgba(0,0,0,0.4);" alt="Captura ampliada">
+                </div>
+            </div>
+        </div>

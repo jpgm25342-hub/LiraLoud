@@ -1,0 +1,1810 @@
+/* LiraLoud
+ * Copyright 2026 José Pablo González Macías
+ * Licensed under the Apache License, Version 2.0
+ */
+
+// ============================================================================
+// TUTORIAL — DATOS MULTILENGUAJE Y HELPERS DE ATAJOS
+// ============================================================================
+
+function obtenerAtajoAgregarLimite() {
+    try {
+        if (typeof misAtajos !== 'undefined' && misAtajos && misAtajos.add_limit) return misAtajos.add_limit;
+    } catch (e) {}
+    return 'control+ ';
+}
+
+// Convierte "control+alt+ " en [{mod}, ..., tecla]
+function teclasDelAtajo(combo) {
+    combo = combo || obtenerAtajoAgregarLimite();
+    const nombres = { control: 'Ctrl', alt: 'Alt', shift: 'Shift' };
+    const teclas = [];
+    let resto = combo;
+    let hubo = true;
+    while (hubo) {
+        hubo = false;
+        for (const m of ['control', 'alt', 'shift']) {
+            if (resto.startsWith(m + '+')) {
+                teclas.push(nombres[m]);
+                resto = resto.slice(m.length + 1);
+                hubo = true;
+            }
+        }
+    }
+    const especiales = {
+        ' ': getTourText('key-space', 'Espacio'),
+        'arrowup': '↑', 'arrowdown': '↓', 'arrowleft': '←', 'arrowright': '→',
+        'enter': 'Enter', 'escape': 'Esc', 'tab': 'Tab', 'backspace': '⌫', 'delete': 'Supr'
+    };
+    if (resto !== '') {
+        const k = resto.toLowerCase();
+        teclas.push(especiales[k] !== undefined ? especiales[k] : (resto.length === 1 ? resto.toUpperCase() : resto));
+    }
+    return teclas;
+}
+
+function atajoLegibleAgregarLimite() {
+    return teclasDelAtajo().join(' + ');
+}
+
+// Sustituye en un texto traducido los atajos fijos (Ctrl/Alt + Espacio) por el configurado
+function aplicarAtajoEnTexto(txt) {
+    const atajo = atajoLegibleAgregarLimite();
+    let out = txt.replace(/<b>[^<]*(?:Ctrl|Control)[^<]*<\/b>\s*\([^<]*<b>[^<]*<\/b>\)/i, `<b>${atajo}</b>`);
+    out = out.replace(/\((?:Ctrl|Control)[^)]*\)/i, `(${atajo})`);
+    return out;
+}
+
+function comboDesdeEvento(e) {
+    const combo = [];
+    if (e.ctrlKey) combo.push('control');
+    if (e.altKey) combo.push('alt');
+    if (e.shiftKey) combo.push('shift');
+    if (e.key !== 'Control' && e.key !== 'Alt' && e.key !== 'Shift') {
+        const keyNorm = (e.code === 'Space' || e.key === ' ' || e.key === '\u00a0') ? ' ' : e.key.toLowerCase();
+        combo.push(keyNorm);
+    }
+    return combo.join('+');
+}
+
+// Sincroniza dinámicamente el brillo en el Paso 1: si se abre el lanzador, 
+// el brillo pasa exclusivamente a la tarjeta 'Abrir PDF' dentro del modal.
+// Si se cierra sin abrir nada, el brillo regresa al botón 'PDF' de la barra.
+
+const CALIBRACION_POR_IDIOMA = {
+    "es": {
+        "tituloDoc": "DOCUMENTO DE PRUEBA Y CALIBRACIÓN - LIRALOUD",
+        "subtituloDoc": "LiraLoud • Lector y Asistente de Lectura Inteligente",
+        "texto": "¡Bienvenido a LiraLoud! Este es tu documento interactivo de calibración. Haz clic en cualquier palabra para iniciar la lectura sincronizada con karaoke.",
+        "palabraInicio": "¡Bienvenido",
+        "badgeInicio": "🖱️ Clic izquierdo para leer",
+        "palabraSalto": "interactivo",
+        "badgeSalto": "🖱️ Clic derecho en 'interactivo'",
+        "instruccionSalto": "Ahora, para empezar la lectura desde una palabra en específico en vez de hacerlo desde el inicio del párrafo, da <b>clic derecho</b> sobre la palabra y luego pulsa en <b>'Leer'</b>.",
+        "saltoExito": "✨ <b>¡Excelente! Has aprendido a leer desde un punto fijo.</b> Observa cómo continúa la lectura desde esa palabra."
+    },
+    "en": {
+        "tituloDoc": "TEST AND CALIBRATION DOCUMENT - LIRALOUD",
+        "subtituloDoc": "LiraLoud • Intelligent Reading Assistant & TTS Reader",
+        "texto": "Welcome to LiraLoud! This is your interactive calibration document. Click on any word to start synchronized reading with karaoke.",
+        "palabraInicio": "Welcome",
+        "badgeInicio": "🖱️ Left-click to read",
+        "palabraSalto": "interactive",
+        "badgeSalto": "🖱️ Right-click on 'interactive'",
+        "instruccionSalto": "👉 <b>Step 3.2 (Fixed point):</b> <b>Right-click</b> on the word <b>'interactive'</b> indicated by the mouse to open the context menu. Then click on <b>'Read'</b> (highlighted in blue) to learn how to read from a fixed point.",
+        "saltoExito": "✨ <b>Excellent! You learned to read from a fixed point.</b> Watch how reading continues from that word."
+    },
+    "fr": {
+        "tituloDoc": "DOCUMENT D'ESSAI ET DE CALIBRATION - LIRALOUD",
+        "subtituloDoc": "LiraLoud • Assistant de lecture intelligent et synthèse vocale",
+        "texto": "Bienvenue sur LiraLoud ! Ceci est votre document interactif de calibration. Cliquez sur n'importe quel mot pour lancer la lecture synchronisée avec karaoké.",
+        "palabraInicio": "Bienvenue",
+        "badgeInicio": "🖱️ Clic gauche pour lire",
+        "palabraSalto": "interactif",
+        "badgeSalto": "🖱️ Clic droit sur 'interactif'",
+        "instruccionSalto": "👉 <b>Étape 3.2 (Point fixe) :</b> Faites un <b>clic droit</b> sur le mot <b>'interactif'</b> pour ouvrir le menu, puis cliquez sur <b>'Lire'</b> (encadré en bleu) pour apprendre à lire à partir d'un point fixe.",
+        "saltoExito": "✨ <b>Exactement ! Vous avez appris à lire à partir d'un point fixe.</b>"
+    },
+    "de": {
+        "tituloDoc": "TEST- UND KALIBRIERUNGSDOKUMENT - LIRALOUD",
+        "subtituloDoc": "LiraLoud • Intelligenter Leseassistent und Vorleser",
+        "texto": "Willkommen bei LiraLoud! Dies ist Ihr interaktives Kalibrierungsdokument. Klicken Sie auf ein beliebiges Wort, um das synchrone Lesen mit Karaoke zu starten.",
+        "palabraInicio": "Willkommen",
+        "badgeInicio": "🖱️ Linksklick zum Lesen",
+        "palabraSalto": "interaktives",
+        "badgeSalto": "🖱️ Rechtsklick auf 'interaktives'",
+        "instruccionSalto": "👉 <b>Schritt 3.2 (Fester Punkt):</b> <b>Rechtsklick</b> auf das Wort <b>'interaktives'</b> für das Kontextmenü, dann auf <b>'Lesen'</b> (blau umrandet) klicken, um ab einem festen Punkt zu lesen.",
+        "saltoExito": "✨ <b>Genau! Sie haben gelernt, ab einem festen Punkt zu lesen.</b>"
+    },
+    "pt": {
+        "tituloDoc": "DOCUMENTO DE TESTE E CALIBRAÇÃO - LIRALOUD",
+        "subtituloDoc": "LiraLoud • Assistente de Leitura Inteligente",
+        "texto": "Bem-vindo ao LiraLoud! Este é o seu documento interativo de calibração. Clique em qualquer palavra para iniciar a leitura sincronizada com karaokê.",
+        "palabraInicio": "Bem-vindo",
+        "badgeInicio": "🖱️ Clique com o botão esquerdo para ler",
+        "palabraSalto": "interativo",
+        "badgeSalto": "🖱️ Clique com o botão direito em 'interativo'",
+        "instruccionSalto": "👉 <b>Passo 3.2 (Ponto fixo):</b> Clique com o <b>botão direito</b> na palavra <b>'interativo'</b> para abrir o menu contextual e selecione <b>'Ler'</b> (destacado em azul) para aprender a ler a partir de um ponto fixo.",
+        "saltoExito": "✨ <b>Exato! Você aprendeu a ler a partir de um ponto fixo.</b>"
+    },
+    "it": {
+        "tituloDoc": "DOCUMENTO DI PROVA E CALIBRAZIONE - LIRALOUD",
+        "subtituloDoc": "LiraLoud • Assistente di lettura intelligente",
+        "texto": "Benvenuto su LiraLoud! Questo è il tuo documento interattivo di calibrazione. Fai clic su qualsiasi parola per avviare la lettura sincronizada con karaoke.",
+        "palabraInicio": "Benvenuto",
+        "badgeInicio": "🖱️ Clic sinistro per leggere",
+        "palabraSalto": "interattivo",
+        "badgeSalto": "🖱️ Clic destro su 'interattivo'",
+        "instruccionSalto": "👉 <b>Passo 3.2 (Punto fisso):</b> Fai <b>clic destro</b> sulla parola <b>'interattivo'</b> per aprire il menu, poi premi su <b>'Leggi'</b> (evidenziato in blu) per imparare a leggere da un punto fisso.",
+        "saltoExito": "✨ <b>Esatto! Hai imparato a leggere da un punto fisso.</b>"
+    },
+    "zh": {
+        "tituloDoc": "测试与校准文档 - LIRALOUD",
+        "subtituloDoc": "LiraLoud • 智能阅读器与朗读助手",
+        "texto": "欢迎使用 LiraLoud！这是您的交互式校准文档。点击任意词语即可开始同步卡拉OK式朗读。",
+        "palabraInicio": "欢迎",
+        "badgeInicio": "🖱️ 左键点击开始朗读",
+        "palabraSalto": "交互式",
+        "badgeSalto": "🖱️ 右键点击“交互式”",
+        "instruccionSalto": "现在，若要从特定词语开始朗读，而不是从段落开头开始，请在该词语上<b>右键点击</b>，然后点击<b>“朗读”</b>。",
+        "saltoExito": "✨ <b>太棒了！您已学会从指定位置开始朗读。</b>请观察朗读如何从该词语继续。"
+    },
+    "ru": {
+        "tituloDoc": "ТЕСТОВЫЙ И КАЛИБРОВОЧНЫЙ ДОКУМЕНТ - LIRALOUD",
+        "subtituloDoc": "LiraLoud • Умный ридер и ассистент для чтения",
+        "texto": "Добро пожаловать в LiraLoud! Это ваш интерактивный калибровочный документ. Нажмите на любое слово, чтобы начать синхронизированное чтение с караоке-подсветкой.",
+        "palabraInicio": "Добро",
+        "badgeInicio": "🖱️ Левый клик для чтения",
+        "palabraSalto": "интерактивный",
+        "badgeSalto": "🖱️ Правый клик по «интерактивный»",
+        "instruccionSalto": "Теперь, чтобы начать чтение с конкретного слова, а не с начала абзаца, нажмите <b>правой кнопкой мыши</b> по слову и выберите <b>«Читать»</b>.",
+        "saltoExito": "✨ <b>Отлично! Вы научились запускать чтение с выбранной точки.</b> Посмотрите, как чтение продолжается прямо с этого слова."
+    },
+    "ar": {
+        "tituloDoc": "مستند الاختبار والمعايرة - LIRALOUD",
+        "subtituloDoc": "LiraLoud • قارئ ومساعد قراءة ذكي",
+        "texto": "مرحبًا بك في LiraLoud! هذا هو مستند المعايرة التفاعلي الخاص بك. انقر على أي كلمة لبدء القراءة المتزامنة مع الكاريوكي.",
+        "palabraInicio": "مرحبًا",
+        "badgeInicio": "🖱️ انقر بزر الماوس الأيسر للقراءة",
+        "palabraSalto": "التفاعلي",
+        "badgeSalto": "🖱️ انقر بزر الماوس الأيمن على 'التفاعلي'",
+        "instruccionSalto": "الآن، لبدء القراءة من كلمة محددة بدلًا من بداية الفقرة، انقر <b>بزر الماوس الأيمن</b> على الكلمة ثم اضغط على <b>'قراءة'</b>.",
+        "saltoExito": "✨ <b>ممتاز! لقد تعلّمت القراءة من نقطة محددة.</b> لاحظ كيف تستمر القراءة من تلك الكلمة."
+    },
+    "hi": {
+        "tituloDoc": "परीक्षण और कैलिब्रेशन दस्तावेज़ - LIRALOUD",
+        "subtituloDoc": "LiraLoud • स्मार्ट रीडर और पठन सहायक",
+        "texto": "LiraLoud में आपका स्वागत है! यह आपका इंटरैक्टिव कैलिब्रेशन दस्तावेज़ है। कराओके के साथ सिंक्रनाइज़्ड पठन शुरू करने के लिए किसी भी शब्द पर क्लिक करें।",
+        "palabraInicio": "स्वागत",
+        "badgeInicio": "🖱️ पढ़ने के लिए बायाँ क्लिक करें",
+        "palabraSalto": "इंटरैक्टिव",
+        "badgeSalto": "🖱️ 'इंटरैक्टिव' पर दायाँ क्लिक करें",
+        "instruccionSalto": "अब, पैराग्राफ की शुरुआत के बजाय किसी विशिष्ट शब्द से पढ़ना शुरू करने के लिए शब्द पर <b>दायाँ क्लिक</b> करें और फिर <b>'पढ़ें'</b> पर क्लिक करें।",
+        "saltoExito": "✨ <b>शानदार! आपने किसी निश्चित बिंदु से पढ़ना सीख लिया है।</b> देखें कि पठन उसी शब्द से कैसे जारी रहता है।"
+    },
+    "bn": {
+        "tituloDoc": "পরীক্ষা ও ক্যালিব্রেশন নথি - LIRALOUD",
+        "subtituloDoc": "LiraLoud • বুদ্ধিমান রিডার এবং পঠন সহায়ক",
+        "texto": "LiraLoud-এ স্বাগতম! এটি আপনার ইন্টারেক্টিভ ক্যালিব্রেশন নথি। কারাওকে সিঙ্ক্রোনাইজড পড়া শুরু করতে যেকোনো শব্দে ক্লিক করুন।",
+        "palabraInicio": "স্বাগতম!",
+        "badgeInicio": "🖱️ পড়তে বাম ক্লিক করুন",
+        "palabraSalto": "ইন্টারেক্টিভ",
+        "badgeSalto": "🖱️ 'ইন্টারেক্টিভ'-এ ডান ক্লিক করুন",
+        "instruccionSalto": "এখন, অনুচ্ছেদের শুরু থেকে না পড়ে কোনো নির্দিষ্ট শব্দ থেকে পড়া শুরু করতে, শব্দটির ওপর <b>ডান ক্লিক</b> করুন এবং তারপর <b>'পড়ুন'</b>-এ চাপুন।",
+        "saltoExito": "✨ <b>দারুণ! আপনি নির্দিষ্ট কোনো বিন্দু থেকে পড়তে শিখেছেন।</b> দেখুন কীভাবে সেই শব্দ থেকে পড়া চলতে থাকে।"
+    }
+};
+
+const DEMO_PASO4_POR_IDIOMA = {
+    "es": {
+        "tituloDoc": "REVISTA CIENTÍFICA • EDICIÓN ESPECIAL • LIRALOUD",
+        "encabezado": "REVISTA CIENTÍFICA • VOLUMEN 12 • LIRALOUD",
+        "col1Titulo": "Columna 1: Inicio",
+        "col1Texto": "Esta es la primera columna. Al colocar un corte vertical divisorio, LiraLoud leerá todo este bloque de arriba a abajo, respetando la maquetación original sin saltar renglones.",
+        "col2Titulo": "Columna 2: Desarrollo",
+        "col2Texto": "Esta es la segunda columna central. Al terminar la columna 1, la voz pasará fluidamente aquí para continuar la lectura sin mezclar líneas contiguas.",
+        "col3Titulo": "Columna 3: Conclusión",
+        "col3Texto": "Esta es la tercera columna donde finaliza el artículo. Observa abajo el cuadro publicitario que puedes excluir de la lectura.",
+        "anuncioTitulo": "PUBLICIDAD / NOTA A OMITIR",
+        "anuncioTexto": "Haz clic y arrastra con Alt presionado para excluir este cuadro de la lectura.",
+        "pieTexto": "— Página 42 — LiraLoud Reader —"
+    },
+    "en": {
+        "tituloDoc": "SCIENTIFIC JOURNAL • SPECIAL EDITION • LIRALOUD",
+        "encabezado": "SCIENTIFIC JOURNAL • VOLUME 12 • LIRALOUD",
+        "col1Titulo": "Column 1: Beginning",
+        "col1Texto": "This is the first column. By placing a vertical dividing cut, LiraLoud reads this entire block from top to bottom, respecting the layout without jumping sideways.",
+        "col2Titulo": "Column 2: Development",
+        "col2Texto": "This is the second center column. When column 1 finishes, reading transitions smoothly right here without mixing adjacent text lines.",
+        "col3Titulo": "Column 3: Conclusion",
+        "col3Texto": "This is the third column where the article concludes. Notice the ad box below which can be excluded from reading.",
+        "anuncioTitulo": "AD / NOTE TO EXCLUDE",
+        "anuncioTexto": "Click and drag while holding Alt to exclude this box from being read.",
+        "pieTexto": "— Page 42 — LiraLoud Reader —"
+    },
+    "fr": {
+        "tituloDoc": "REVUE SCIENTIFIQUE • ÉDITION SPÉCIALE • LIRALOUD",
+        "encabezado": "REVUE SCIENTIFIQUE • VOLUME 12 • LIRALOUD",
+        "col1Titulo": "Colonne 1 : Début",
+        "col1Texto": "Ceci est la première colonne. En plaçant une découpe verticale, LiraLoud lira tout ce bloc de haut en bas sans mélanger les lignes.",
+        "col2Titulo": "Colonne 2 : Suite",
+        "col2Texto": "Ceci est la deuxième colonne centrale. Lorsque la colonne 1 se termine, la voix continue naturellement ici sans interruption.",
+        "col3Titulo": "Colonne 3 : Conclusion",
+        "col3Texto": "Ceci est la troisième colonne finale. Remarquez l'encadré publicitaire ci-dessous que vous pouvez exclure de la lecture.",
+        "anuncioTitulo": "PUBLICITÉ / NOTE À IGNORER",
+        "anuncioTexto": "Glissez avec Alt enfoncé pour exclure cette zone de la lecture.",
+        "pieTexto": "— Page 42 — LiraLoud Reader —"
+    },
+    "de": {
+        "tituloDoc": "WISSENSCHAFTLICHES JOURNAL • SONDERAUSGABE • LIRALOUD",
+        "encabezado": "WISSENSCHAFTLICHES JOURNAL • BAND 12 • LIRALOUD",
+        "col1Titulo": "Spalte 1: Beginn",
+        "col1Texto": "Dies ist die erste Spalte. Durch einen vertikalen Schnitt liest LiraLoud diesen gesamten Block von oben nach unten ohne Fehler.",
+        "col2Titulo": "Spalte 2: Weiterführung",
+        "col2Texto": "Dies ist die mittlere Spalte. Nach Abschluss von Spalte 1 wechselt die Stimme fließend hierher, ohne Zeilen zu verwechseln.",
+        "col3Titulo": "Spalte 3: Fazit",
+        "col3Texto": "Dies ist die dritte Spalte zum Abschluss. Beachten Sie das Werbefeld unten, das von der Lesung ausgeschlossen werden kann.",
+        "anuncioTitulo": "WERBUNG / ZU ÜBERSPRINGENDE NOTIZ",
+        "anuncioTexto": "Ziehen Sie mit gedrückter Alt-Taste, um diesen Kasten auszuschließen.",
+        "pieTexto": "— Seite 42 — LiraLoud Reader —"
+    },
+    "pt": {
+        "tituloDoc": "REVISTA CIENTÍFICA • EDIÇÃO ESPECIAL • LIRALOUD",
+        "encabezado": "REVISTA CIENTÍFICA • VOLUME 12 • LIRALOUD",
+        "col1Titulo": "Coluna 1: Início",
+        "col1Texto": "Esta é a primeira coluna. Ao colocar um corte vertical divisório, o LiraLoud lerá todo este bloco de cima a baixo com precisão.",
+        "col2Titulo": "Coluna 2: Continuação",
+        "col2Texto": "Esta é a segunda coluna central. Quando a coluna 1 terminar, a voz continuará fluentemente aqui sem misturar linhas vizinhas.",
+        "col3Titulo": "Coluna 3: Conclusão",
+        "col3Texto": "Esta é a terceira coluna final. Observe abaixo a caixa de anúncio que você pode excluir da leitura com Alt + clique.",
+        "anuncioTitulo": "PUBLICIDADE / NOTA A IGNORAR",
+        "anuncioTexto": "Arraste com a tecla Alt pressionada para excluir esta área da leitura.",
+        "pieTexto": "— Página 42 — LiraLoud Reader —"
+    },
+    "it": {
+        "tituloDoc": "RIVISTA SCIENTIFICA • EDIZIONE SPECIALE • LIRALOUD",
+        "encabezado": "RIVISTA SCIENTIFICA • VOLUME 12 • LIRALOUD",
+        "col1Titulo": "Colonna 1: Inizio",
+        "col1Texto": "Questa è la prima colonna. Posizionando un taglio verticale, LiraLoud leggerà l'intero blocco dall'alto in basso con precisione.",
+        "col2Titulo": "Colonna 2: Sviluppo",
+        "col2Texto": "Questa è la seconda colonna centrale. Terminata la colonna 1, la voce passerà fluidamente qui senza confondere i righi.",
+        "col3Titulo": "Colonna 3: Conclusione",
+        "col3Texto": "Questa è la terza colonna finale. Nota in basso il riquadro dell'annuncio che puoi escludere dalla lettura.",
+        "anuncioTitulo": "ANNUNCIO / NOTA DA ESCLUDERE",
+        "anuncioTexto": "Trascina con il tasto Alt premuto per escludere questa casella dalla lettura.",
+        "pieTexto": "— Pagina 42 — LiraLoud Reader —"
+    },
+    "zh": {
+        "tituloDoc": "科学期刊 • 特别版 • LIRALOUD",
+        "encabezado": "科学期刊 • 第 12 卷 • LIRALOUD",
+        "col1Titulo": "第 1 栏：导言",
+        "col1Texto": "这是第一栏。放置垂直分割线后，LiraLoud 会自上而下朗读整个区块，保持原始排版而不跨栏跳行。",
+        "col2Titulo": "第 2 栏：正文",
+        "col2Texto": "这是中间的第二栏。读完第 1 栏后，语音会流畅地过渡到这里继续朗读，不会混淆相邻栏的文本行。",
+        "col3Titulo": "第 3 栏：结语",
+        "col3Texto": "这是文章结尾的第三栏。请看下方的广告框，您可以将其从朗读范围中排除。",
+        "anuncioTitulo": "广告 / 需跳过的注释",
+        "anuncioTexto": "按住 Alt 键并点击拖拽，即可将此区域从朗读中排除。",
+        "pieTexto": "— 第 42 页 — LiraLoud Reader —"
+    },
+    "ru": {
+        "tituloDoc": "НАУЧНЫЙ ЖУРНАЛ • СПЕЦВЫПУСК • LIRALOUD",
+        "encabezado": "НАУЧНЫЙ ЖУРНАЛ • ТОМ 12 • LIRALOUD",
+        "col1Titulo": "Колонка 1: Введение",
+        "col1Texto": "Это первая колонка. Если установить вертикальный разделитель, LiraLoud прочитает весь этот блок сверху вниз, сохраняя исходную вёрстку без перескока через строки.",
+        "col2Titulo": "Колонка 2: Основная часть",
+        "col2Texto": "Это вторая, центральная колонка. По завершении первой колонки голос плавно перейдёт сюда, продолжая чтение без смешивания соседних строк.",
+        "col3Titulo": "Колонка 3: Заключение",
+        "col3Texto": "Это третья колонка, где статья завершается. Обратите внимание на рекламный блок ниже — его можно исключить из чтения.",
+        "anuncioTitulo": "РЕКЛАМА / БЛОК ДЛЯ ПРОПУСКА",
+        "anuncioTexto": "Нажмите и перетащите рамку с зажатой клавишей Alt, чтобы исключить этот блок из чтения.",
+        "pieTexto": "— Страница 42 — LiraLoud Reader —"
+    },
+    "ar": {
+        "tituloDoc": "مجلة علمية • إصدار خاص • LIRALOUD",
+        "encabezado": "مجلة علمية • المجلد 12 • LIRALOUD",
+        "col1Titulo": "العمود 1: البداية",
+        "col1Texto": "هذا هو العمود الأول. عند وضع فاصل عمودي، سيقرأ LiraLoud هذه الكتلة بالكامل من الأعلى إلى الأسفل، مع احترام التنسيق الأصلي دون القفز بين السطور.",
+        "col2Titulo": "العمود 2: العرض",
+        "col2Texto": "هذا هو العمود الثاني الأوسط. عند الانتهاء من العمود 1، سينتقل الصوت بسلاسة إلى هنا لمواصلة القراءة دون خلط السطور المتجاورة.",
+        "col3Titulo": "العمود 3: الخاتمة",
+        "col3Texto": "هذا هو العمود الثالث حيث ينتهي المقال. لاحظ في الأسفل مربع الإعلان الذي يمكنك استبعاده من القراءة.",
+        "anuncioTitulo": "إعلان / ملاحظة للاستبعاد",
+        "anuncioTexto": "انقر واسحب مع الضغط على Alt لاستبعاد هذا المربع من القراءة.",
+        "pieTexto": "— صفحة 42 — قارئ LiraLoud —"
+    },
+    "hi": {
+        "tituloDoc": "वैज्ञानिक पत्रिका • विशेष संस्करण • LIRALOUD",
+        "encabezado": "वैज्ञानिक पत्रिका • अंक 12 • LIRALOUD",
+        "col1Titulo": "स्तंभ 1: प्रारंभ",
+        "col1Texto": "यह पहला स्तंभ है। ऊर्ध्वाधर विभाजक रेखा लगाने पर, LiraLoud इस पूरे ब्लॉक को ऊपर से नीचे तक पढ़ेगा और मूल लेआउट का पालन करते हुए पंक्तियाँ नहीं छोड़ेगा।",
+        "col2Titulo": "स्तंभ 2: मुख्य भाग",
+        "col2Texto": "यह दूसरा केंद्रीय स्तंभ है। स्तंभ 1 समाप्त होने पर, आवाज़ बिना आस-पास की पंक्तियों को मिलाए सहजता से यहाँ पढ़ना जारी रखेगी।",
+        "col3Titulo": "स्तंभ 3: निष्कर्ष",
+        "col3Texto": "यह तीसरा स्तंभ है जहाँ लेख समाप्त होता है। नीचे विज्ञापन बॉक्स देखें जिसे आप पठन से बाहर कर सकते हैं।",
+        "anuncioTitulo": "विज्ञापन / छोड़ने योग्य नोट",
+        "anuncioTexto": "इस बॉक्स को पठन से बाहर करने के लिए Alt दबाए रखते हुए क्लिक करें और खींचें।",
+        "pieTexto": "— पृष्ठ 42 — LiraLoud Reader —"
+    },
+    "bn": {
+        "tituloDoc": "বিজ্ঞান সাময়িকী • বিশেষ সংখ্যা • LIRALOUD",
+        "encabezado": "বিজ্ঞান সাময়িকী • খণ্ড ১২ • LIRALOUD",
+        "col1Titulo": "কলাম ১: সূচনা",
+        "col1Texto": "এটি প্রথম কলাম। একটি উল্লম্ব বিভাজক রেখা বসালে LiraLoud লাইন এলোমেলো না করে মূল বিন্যাস মেনে পুরো ব্লকটি ওপর থেকে নিচে পড়বে।",
+        "col2Titulo": "কলাম ২: বিস্তারিত",
+        "col2Texto": "এটি মাঝের দ্বিতীয় কলাম। কলাম ১ শেষ হলে ভয়েস স্বচ্ছন্দ্যে এখানে চলে আসবে এবং পাশের লাইনের সাথে না মিশিয়ে পড়া চালিয়ে যাবে।",
+        "col3Titulo": "কলাম ৩: উপসংহার",
+        "col3Texto": "এটি তৃতীয় কলাম যেখানে নিবন্ধটি শেষ হয়। নিচে বিজ্ঞাপনের বক্সটি দেখুন, যা আপনি পড়া থেকে বাদ দিতে পারেন।",
+        "anuncioTitulo": "বিজ্ঞাপন / বাদ দেওয়ার নোট",
+        "anuncioTexto": "এই বক্সটি পড়া থেকে বাদ দিতে Alt চেপে ধরে ক্লিক করে টেনে আনুন।",
+        "pieTexto": "— পৃষ্ঠা ৪২ — LiraLoud Reader —"
+    }
+};
+
+const DEMO_ABREVIATURAS_POR_IDIOMA = {
+    "es": {
+        "tituloDoc": "DOCUMENTO DE SIGLAS Y ABREVIATURAS - LIRALOUD",
+        "subtituloDoc": "Cooperación Internacional para la Salud y la Paz",
+        "texto": "La OMS y la ONU son organizaciones internacionales que cooperan por la salud y la paz mundial.",
+        "siglaEjemplo": "ONU",
+        "significadoEjemplo": "Organización de las Naciones Unidas",
+        "siglaExtra": "OMS",
+        "significadoExtra": "Organización Mundial de la Salud",
+        "textoExpandido": "La Organización Mundial de la Salud y la Organización de las Naciones Unidas son organizaciones internacionales que cooperan por la salud y la paz mundial."
+    },
+    "en": {
+        "tituloDoc": "ABBREVIATIONS & ACRONYMS DEMO - LIRALOUD",
+        "subtituloDoc": "International Cooperation for Health and Peace",
+        "texto": "The WHO and the UN are international organizations that cooperate for global health and peace.",
+        "siglaEjemplo": "UN",
+        "significadoEjemplo": "United Nations",
+        "siglaExtra": "WHO",
+        "significadoExtra": "World Health Organization",
+        "textoExpandido": "The World Health Organization and the United Nations are international organizations that cooperate for global health and peace."
+    },
+    "fr": {
+        "tituloDoc": "DOCUMENT D'ABRÉVIATIONS ET SIGLES - LIRALOUD",
+        "subtituloDoc": "Coopération Internationale pour la Santé et la Paix",
+        "texto": "L'OMS et l'ONU sont des organisations internationales qui coopèrent pour la santé et la paix mondiale.",
+        "siglaEjemplo": "ONU",
+        "significadoEjemplo": "Organisation des Nations Unies",
+        "siglaExtra": "OMS",
+        "significadoExtra": "Organisation Mondiale de la Santé",
+        "textoExpandido": "L'Organisation Mondiale de la Santé et l'Organisation des Nations Unies sont des organisations internationales qui coopèrent pour la santé et la paix mondiale."
+    },
+    "de": {
+        "tituloDoc": "ABKÜRZUNGEN UND AKRONYME DEMO - LIRALOUD",
+        "subtituloDoc": "Internationale Zusammenarbeit für Gesundheit und Frieden",
+        "texto": "Die WHO und die UNO sind internationale Organisationen, die für weltweite Gesundheit und Frieden zusammenarbeiten.",
+        "siglaEjemplo": "UNO",
+        "significadoEjemplo": "Vereinten Nationen",
+        "siglaExtra": "WHO",
+        "significadoExtra": "Weltgesundheitsorganisation",
+        "textoExpandido": "Die Weltgesundheitsorganisation und die Vereinten Nationen sind internationale Organisationen, die für weltweite Gesundheit und Frieden zusammenarbeiten."
+    },
+    "pt": {
+        "tituloDoc": "DOCUMENTO DE SIGLAS E ABREVIATURAS - LIRALOUD",
+        "subtituloDoc": "Cooperação Internacional para a Saúde e a Paz",
+        "texto": "A OMS e a ONU são organizações internacionais que cooperam pela saúde e pela paz mundial.",
+        "siglaEjemplo": "ONU",
+        "significadoEjemplo": "Organização das Nações Unidas",
+        "siglaExtra": "OMS",
+        "significadoExtra": "Organização Mundial da Saúde",
+        "textoExpandido": "A Organização Mundial da Saúde e a Organização das Nações Unidas são organizações internacionais que cooperam pela saúde e pela paz mundial."
+    },
+    "it": {
+        "tituloDoc": "DOCUMENTO DI SIGLE E ABBREVIAZIONI - LIRALOUD",
+        "subtituloDoc": "Cooperazione Internazionale per la Salute e la Pace",
+        "texto": "L'OMS e l'ONU sono organizzazioni internazionali che cooperano per la salute e la pace mondiale.",
+        "siglaEjemplo": "ONU",
+        "significadoEjemplo": "Organizzazione delle Nazioni Unite",
+        "siglaExtra": "OMS",
+        "significadoExtra": "Organizzazione Mondiale della Sanità",
+        "textoExpandido": "L'Organizzazione Mondiale della Sanità e l'Organizzazione delle Nazioni Unite sono organizzazioni internazionali che cooperano per la salute e la pace mondiale."
+    },
+    "ru": {
+        "tituloDoc": "ДЕМОНСТРАЦИЯ АББРЕВИАТУР - LIRALOUD",
+        "subtituloDoc": "Международное сотрудничество ради здоровья и мира",
+        "texto": "ВОЗ и ООН — международные организации, сотрудничающие ради здоровья и мира во всем мире.",
+        "siglaEjemplo": "ООН",
+        "significadoEjemplo": "Организация Объединенных Наций",
+        "siglaExtra": "ВОЗ",
+        "significadoExtra": "Всемирная организация здравоохранения",
+        "textoExpandido": "Всемирная организация здравоохранения и Организация Объединенных Наций — международные организации, сотрудничающие ради здоровья и мира во всем мире."
+    },
+    "zh": {
+        "tituloDoc": "缩写词与简称演示 - LIRALOUD",
+        "subtituloDoc": "促进健康与和平的国际合作",
+        "texto": "世卫组织 和 联合国 是致力于全球健康与和平的国际组织。",
+        "siglaEjemplo": "联合国",
+        "significadoEjemplo": "联合国组织",
+        "siglaExtra": "世卫组织",
+        "significadoExtra": "世界卫生组织",
+        "textoExpandido": "世界卫生组织 和 联合国组织 是致力于全球健康与和平的国际组织。"
+    },
+    "ja": {
+        "tituloDoc": "略語と頭字語のデモ - LIRALOUD",
+        "subtituloDoc": "健康と平和のための国際協力",
+        "texto": "WHO と 国連 は世界の健康と平和のために協力する国際機関です。",
+        "siglaEjemplo": "国連",
+        "significadoEjemplo": "国際連合",
+        "siglaExtra": "WHO",
+        "significadoExtra": "世界保健機関",
+        "textoExpandido": "世界保健機関 と 国際連合 は世界の健康と平和のために協力する国際機関です。"
+    },
+    "ar": {
+        "tituloDoc": "مستند الاختصارات والرموز - LIRALOUD",
+        "subtituloDoc": "التعاون الدولي من أجل الصحة والسلام",
+        "texto": "تُعدّ WHO و UN منظمتين دوليتين تتعاونان من أجل الصحة والسلام العالميين.",
+        "siglaEjemplo": "UN",
+        "significadoEjemplo": "الأمم المتحدة",
+        "siglaExtra": "WHO",
+        "significadoExtra": "منظمة الصحة العالمية",
+        "textoExpandido": "تُعدّ منظمة الصحة العالمية والأمم المتحدة منظمتين دوليتين تتعاونان من أجل الصحة والسلام العالميين."
+    },
+    "hi": {
+        "tituloDoc": "संक्षिप्ताक्षर और संक्षेप दस्तावेज़ - LIRALOUD",
+        "subtituloDoc": "स्वास्थ्य और शांति के लिए अंतरराष्ट्रीय सहयोग",
+        "texto": "WHO और UN अंतरराष्ट्रीय संगठन हैं जो विश्व स्वास्थ्य और शांति के लिए सहयोग करते हैं।",
+        "siglaEjemplo": "UN",
+        "significadoEjemplo": "संयुक्त राष्ट्र",
+        "siglaExtra": "WHO",
+        "significadoExtra": "विश्व स्वास्थ्य संगठन",
+        "textoExpandido": "विश्व स्वास्थ्य संगठन और संयुक्त राष्ट्र अंतरराष्ट्रीय संगठन हैं जो विश्व स्वास्थ्य और शांति के लिए सहयोग करते हैं।"
+    },
+    "bn": {
+        "tituloDoc": "সংক্ষিপ্ত রূপ ও আদ্যক্ষর নথি - LIRALOUD",
+        "subtituloDoc": "স্বাস্থ্য ও শান্তির জন্য আন্তর্জাতিক সহযোগিতা",
+        "texto": "WHO এবং UN হলো আন্তর্জাতিক সংস্থা যারা বিশ্ব স্বাস্থ্য ও শান্তির জন্য একসাথে কাজ করে।",
+        "siglaEjemplo": "UN",
+        "significadoEjemplo": "জাতিসংঘ",
+        "siglaExtra": "WHO",
+        "significadoExtra": "বিশ্ব স্বাস্থ্য সংস্থা",
+        "textoExpandido": "বিশ্ব স্বাস্থ্য সংস্থা এবং জাতিসংঘ হলো আন্তর্জাতিক সংস্থা যারা বিশ্ব স্বাস্থ্য ও শান্তির জন্য একসাথে কাজ করে।"
+    }
+};
+
+const DEMO_TEATRO_POR_IDIOMA = {
+    "es": {
+        "tituloDoc": "GUIÓN TEATRAL Y DIÁLOGOS - LIRALOUD",
+        "subtituloDoc": "Escena 1: Lectura Multi-Voz con Cásting de Personajes",
+        "actorPreRegistrado": "Narrador:",
+        "actorEjemploSinDosPuntos": "Alejandro",
+        "actorEjemplo": "Alejandro:",
+        "lineas": [
+            "Narrador: La biblioteca estaba en silencio cuando se abrió la puerta.",
+            "Alejandro: ¡Al fin encontré el manuscrito que estábamos buscando!"
+        ]
+    },
+    "en": {
+        "tituloDoc": "THEATER SCRIPT & DIALOGUE DEMO - LIRALOUD",
+        "subtituloDoc": "Scene 1: Multi-Voice Reading with Character Casting",
+        "actorPreRegistrado": "Narrator:",
+        "actorEjemploSinDosPuntos": "Elena",
+        "actorEjemplo": "Elena:",
+        "lineas": [
+            "Narrator: The library was completely silent when the door opened.",
+            "Elena: I finally found the ancient manuscript we were looking for!"
+        ]
+    },
+    "fr": {
+        "tituloDoc": "SCÉNARIO THÉÂTRAL ET DIALOGUES - LIRALOUD",
+        "subtituloDoc": "Scène 1 : Lecture Multi-Voix avec Distribution des Rôles",
+        "actorPreRegistrado": "Narrateur:",
+        "actorEjemploSinDosPuntos": "Elena",
+        "actorEjemplo": "Elena:",
+        "lineas": [
+            "Narrateur: La bibliothèque était silencieuse quand la porte s'ouvrit.",
+            "Elena: J'ai enfin trouvé le manuscrit que nous cherchions !"
+        ]
+    },
+    "de": {
+        "tituloDoc": "THEATERSKRIPT UND DIALOGE - LIRALOUD",
+        "subtituloDoc": "Szene 1: Mehrstimmiges Lesen mit Rollenverteilung",
+        "actorPreRegistrado": "Erzähler:",
+        "actorEjemploSinDosPuntos": "Elena",
+        "actorEjemplo": "Elena:",
+        "lineas": [
+            "Erzähler: Die Bibliothek war völlig still, als sich die Tür öffnete.",
+            "Elena: Endlich habe ich das Manuskript gefunden, das wir gesucht haben!"
+        ]
+    },
+    "pt": {
+        "tituloDoc": "ROTEIRO TEATRAL E DIÁLOGOS - LIRALOUD",
+        "subtituloDoc": "Cena 1: Leitura Multi-Voz com Elenco de Personagens",
+        "actorPreRegistrado": "Narrador:",
+        "actorEjemploSinDosPuntos": "Elena",
+        "actorEjemplo": "Elena:",
+        "lineas": [
+            "Narrador: A biblioteca estava em silêncio quando a porta se abriu.",
+            "Elena: Finalmente encontrei o manuscrito que estávamos procurando!"
+        ]
+    },
+    "it": {
+        "tituloDoc": "COPIONE TEATRALE E DIALOGHI - LIRALOUD",
+        "subtituloDoc": "Scena 1: Lettura Multi-Voce con Casting dei Personaggi",
+        "actorPreRegistrado": "Narratore:",
+        "actorEjemploSinDosPuntos": "Elena",
+        "actorEjemplo": "Elena:",
+        "lineas": [
+            "Narratore: La biblioteca era in silenzio quando si aprì la porta.",
+            "Elena: Finalmente ho trovato il manoscritto che stavamo cercando!"
+        ]
+    },
+    "zh": {
+        "tituloDoc": "戏剧剧本与对话 - LIRALOUD",
+        "subtituloDoc": "第 1 幕：角色配音多语音朗读",
+        "actorPreRegistrado": "旁白：",
+        "actorEjemploSinDosPuntos": "亚历山大",
+        "actorEjemplo": "亚历山大：",
+        "lineas": [
+            "旁白：当门打开时，图书馆里一片寂静。",
+            "亚历山大：我终于找到我们一直在寻找的手稿了！"
+        ]
+    },
+    "ru": {
+        "tituloDoc": "ТЕАТРАЛЬНЫЙ СЦЕНАРИЙ И ДИАЛОГИ - LIRALOUD",
+        "subtituloDoc": "Сцена 1: Многоголосое чтение с распределением ролей",
+        "actorPreRegistrado": "Рассказчик:",
+        "actorEjemploSinDosPuntos": "Александр",
+        "actorEjemplo": "Александр:",
+        "lineas": [
+            "Рассказчик: В библиотеке царила тишина, когда открылась дверь.",
+            "Александр: Наконец-то я нашёл рукопись, которую мы искали!"
+        ]
+    },
+    "ar": {
+        "tituloDoc": "نص مسرحي وحوارات - LIRALOUD",
+        "subtituloDoc": "المشهد 1: قراءة متعددة الأصوات مع توزيع أدوار الشخصيات",
+        "actorPreRegistrado": "الراوي:",
+        "actorEjemploSinDosPuntos": "أليخاندرو",
+        "actorEjemplo": "أليخاندرو:",
+        "lineas": [
+            "الراوي: كانت المكتبة غارقة في الصمت عندما فُتح الباب.",
+            "أليخاندرو: لقد وجدتُ أخيرًا المخطوطة التي كنا نبحث عنها!"
+        ]
+    },
+    "hi": {
+        "tituloDoc": "नाट्य स्क्रिप्ट और संवाद - LIRALOUD",
+        "subtituloDoc": "दृश्य 1: पात्र कास्टिंग के साथ बहु-आवाज़ पठन",
+        "actorPreRegistrado": "कथावाचक:",
+        "actorEjemploSinDosPuntos": "अलेक्ज़ेंडर",
+        "actorEjemplo": "अलेक्ज़ेंडर:",
+        "lineas": [
+            "कथावाचक: जब दरवाज़ा खुला तो पुस्तकालय में सन्नाटा छाया हुआ था।",
+            "अलेक्ज़ेंडर: आखिरकार मुझे वह पांडुलिपि मिल गई जिसकी हम तलाश कर रहे थे!"
+        ]
+    },
+    "bn": {
+        "tituloDoc": "নাটকের পাণ্ডুলিপি ও সংলাপ - LIRALOUD",
+        "subtituloDoc": "দৃশ্য ১: চরিত্রের কাস্টিংসহ মাল্টি-ভয়েস পঠন",
+        "actorPreRegistrado": "বর্ণনাকারী:",
+        "actorEjemploSinDosPuntos": "আলেকজান্ডার",
+        "actorEjemplo": "আলেকজান্ডার:",
+        "lineas": [
+            "বর্ণনাকারী: দরজা খোলার সময় গ্রন্থাগারটি নীরব ছিল।",
+            "আলেকজান্ডার: অবশেষে আমি সেই পাণ্ডুলিপিটি খুঁজে পেয়েছি যা আমরা খুঁজছিলাম!"
+        ]
+    }
+};
+
+const DEMO_IA_POR_IDIOMA = {
+    "es": {
+        "chatTitulo": "✨ Paso 7.1: Chat con PDF y Trazabilidad",
+        "chatInstruccion": "En la sección de <b>Chat con PDF</b> puedes conversar sobre tu documento y pedir explicaciones o resúmenes.<br><br>Dentro del mismo apartado, en la parte superior verás que está remarcado un selector que dice <b>'Trazabilidad'</b>: esta opción te permite tener respuestas más apegadas al texto, y si das clic verás la opción de <b>'Prosa'</b>, la cual te permitirá obtener respuestas mejor redactadas.",
+        "chatDetalle": "💡 <i>Al terminar la explicación pasarás automáticamente al siguiente apartado, o puedes pulsar <b>'Siguiente ➔'</b>.</i>",
+        "solicitudesTitulo": "📋 Paso 7.2: Solicitudes Rápidas",
+        "solicitudesInstruccion": "En el apartado de <b>'Solicitudes'</b> encontrarás comandos rápidos de un solo clic para resumir, extraer puntos clave o crear cuestionarios, para no tener que escribir varias veces la misma solicitud.<br><br>También en este apartado podrás crear tus propias solicitudes personalizadas.",
+        "solicitudesDetalle": "💡 <i>Al terminar la explicación pasarás automáticamente a las Fuentes, o puedes pulsar <b>'Siguiente ➔'</b>.</i>",
+        "fuentesTitulo": "📚 Paso 7.3: Fuentes de Información",
+        "fuentesInstruccion": "El apartado de <b>'Fuentes'</b> sirve para que puedas escoger de dónde tomará la información la IA: del documento completo, de tus subrayados o de tus apuntes.<br><br>Puedes combinar entre activar y desactivar las opciones según lo necesites.",
+        "fuentesDetalle": "💡 <i>Al terminar la explicación pasarás automáticamente a los Modelos, o puedes pulsar <b>'Siguiente ➔'</b>.</i>",
+        "modelosTitulo": "🧠 Paso 7.4: Modelos de IA",
+        "modelosInstruccion": "LiraLoud no cuenta con un servicio propio de inteligencia artificial de pago; sin embargo, puedes usar modelos locales gratuitos en tu equipo o bien servicios en la nube.<br><br>Para utilizar los servicios en la nube solo debes colocar tu <b>API Key</b>, la cual puedes obtener accediendo al sitio oficial de cada modelo desde el enlace <b>'Obtener API Key gratis'</b>.",
+        "modelosDetalle": "👉 <b>¡Listo el recorrido de IA!</b> Haz clic en la <b>'✕'</b> (iluminada en azul) o en <b>'Siguiente ➔'</b> para continuar."
+    },
+    "en": {
+        "chatTitulo": "✨ Step 7.2: Chat with PDF & Traceability",
+        "chatInstruccion": "👉 <b>This is Chat with PDF:</b> it lets you ask specific questions about your document.<br><br>• <b>1:1 Traceability:</b> keeps answers closely anchored to the text.<br>• <b>Prose:</b> gives you better-written, fluent answers.",
+        "chatDetalle": "💡 <i>Guided tour: when narration finishes it automatically advances to the next section. You can also click <b>'Next ➔'</b> anytime.</i>",
+        "solicitudesTitulo": "📋 Step 7.3: Prompts & Templates",
+        "solicitudesInstruccion": "👉 <b>Prompts Tab:</b> automates the most frequent requests and saves you from writing long prompts for common points.<br><br>• <b>Create Templates:</b> you can also build your own templates so you don't have to retype the same request.",
+        "solicitudesDetalle": "💡 <i>When narration ends you will move to Sources. You can also click <b>'Next ➔'</b>.</i>",
+        "fuentesTitulo": "📚 Step 7.4: Information Sources",
+        "fuentesInstruccion": "👉 <b>Control information sources:</b> depending on what you have enabled, it pulls data from:<br><br>• 📄 <b>Document:</b> sends info directly from the entire PDF.<br>• 🖍️ <b>Highlights:</b> sends only what you marked with the highlighter.<br>• 📝 <b>Notes:</b> only what you wrote in your notes for this PDF.",
+        "fuentesDetalle": "💡 <i>When narration ends you will move to Models. You can also click <b>'Next ➔'</b>.</i>",
+        "modelosTitulo": "🧠 Step 7.5: AI Models & Services",
+        "modelosInstruccion": "👉 <b>Total AI freedom:</b> LiraLoud does not run a proprietary paid AI service; it leverages existing services or local models so you can choose the one you feel most comfortable with.<br><br>• 💻 <b>Local Models:</b> run directly on your computer without internet.<br>• 🌐 <b>Cloud Services:</b> just add your API Key. You can get it directly from the provider's website by clicking <b>'Get free API Key'</b>.",
+        "modelosDetalle": "👉 <b>AI tour complete!</b> Click the <b>'✕'</b> (highlighted in blue) or <b>'Next ➔'</b> to close Lira AI and continue."
+    },
+    "fr": {
+        "chatTitulo": "✨ Étape 7.2 : Chat avec PDF et Traçabilité",
+        "chatInstruccion": "👉 <b>Voici le Chat avec PDF :</b> il vous permet de poser des questions précises sur votre document.<br><br>• <b>Traçabilité 1:1 :</b> permet aux réponses de coller fidèlement au texte.<br>• <b>Prose :</b> vous offre des réponses mieux rédigées.",
+        "chatDetalle": "💡 <i>Visite guidée : la narration terminée, vous passerez au point suivant. Ou cliquez sur <b>'Suivant ➔'</b>.</i>",
+        "solicitudesTitulo": "📋 Étape 7.3 : Demandes et Modèles",
+        "solicitudesInstruccion": "👉 <b>Onglet Demandes :</b> automatise les requêtes les plus fréquentes pour éviter de rédiger de longs prompts.<br><br>• <b>Créer des modèles :</b> vous pouvez aussi créer vos propres modèles.",
+        "solicitudesDetalle": "💡 <i>La narration terminée, vous passerez aux Sources. Ou cliquez sur <b>'Suivant ➔'</b>.</i>",
+        "fuentesTitulo": "📚 Étape 7.4 : Sources d'information",
+        "fuentesInstruccion": "👉 <b>Contrôlez les sources :</b> selon ce qui est activé :<br><br>• 📄 <b>Document :</b> transmet directement tout le PDF.<br>• 🖍️ <b>Surlignages :</b> transmet uniquement ce qui est surligné.<br>• 📝 <b>Notes :</b> seulement vos notes de ce PDF.",
+        "fuentesDetalle": "💡 <i>La narration terminée, vous passerez aux Modèles. Ou cliquez sur <b>'Suivant ➔'</b>.</i>",
+        "modelosTitulo": "🧠 Étape 7.5 : Modèles et Services d'IA",
+        "modelosInstruccion": "👉 <b>Liberté totale d'IA :</b> LiraLoud utilise des services cloud ou des modèles locaux selon votre choix.<br><br>• 💻 <b>Modèles locaux :</b> sans connexion internet sur votre PC.<br>• 🌐 <b>Services Cloud :</b> ajoutez votre clé API via 'Obtenir une clé API gratuite'.",
+        "modelosDetalle": "👉 <b>Visite terminée !</b> Cliquez sur <b>'✕'</b> ou <b>'Suivant ➔'</b> pour fermer Lira AI."
+    },
+    "pt": {
+        "chatTitulo": "✨ Passo 7.2: Chat com PDF e Rastreabilidade",
+        "chatInstruccion": "👉 <b>Este é o Chat com PDF:</b> permite fazer perguntas pontuais sobre o seu documento.<br><br>• <b>Rastreabilidade 1:1:</b> permite que as respostas sigam fielmente o texto.<br>• <b>Prosa:</b> oferece respostas mais bem redigidas.",
+        "chatDetalle": "💡 <i>Tour guiado: ao terminar a explicação você passará ao próximo item. Ou clique em <b>'Próximo ➔'</b>.</i>",
+        "solicitudesTitulo": "📋 Passo 7.3: Solicitações e Modelos",
+        "solicitudesInstruccion": "👉 <b>Aba de Solicitações:</b> automatiza as tarefas mais frequentes para evitar escrever prompts longos.<br><br>• <b>Criar Modelos:</b> você também pode criar seus próprios modelos de solicitação.",
+        "solicitudesDetalle": "💡 <i>Ao terminar a explicação você passará às Fontes. Ou clique em <b>'Próximo ➔'</b>.</i>",
+        "fuentesTitulo": "📚 Passo 7.4: Fontes de Informação",
+        "fuentesInstruccion": "👉 <b>Controle as fontes:</b> conforme o que estiver ativado :<br><br>• 📄 <b>Documento :</b> envia a informação direta de todo o PDF.<br>• 🖍️ <b>Destaques :</b> envia apenas o que marcou com o marca-texto.<br>• 📝 <b>Anotações :</b> apenas o que escreveu nas notas deste PDF.",
+        "fuentesDetalle": "💡 <i>Ao terminar a explicação você passará aos Modelos. Ou clique em <b>'Próximo ➔'</b>.</i>",
+        "modelosTitulo": "🧠 Passo 7.5: Modelos e Serviços de IA",
+        "modelosInstruccion": "👉 <b>Liberdade total de IA:</b> LiraLoud aproveita serviços existentes ou modelos locais à sua escolha.<br><br>• 💻 <b>Modelos Locais:</b> rodam direto no computador sem internet.<br>• 🌐 <b>Servicios na Nuvem:</b> insira sua chave API obtendo-a grátis no site do provedor.",
+        "modelosDetalle": "👉 <b>Tour concluído!</b> Clique em <b>'✕'</b> ou <b>'Próximo ➔'</b> para fechar o Lira AI."
+    },
+    "de": {
+        "chatTitulo": "✨ Schritt 7.2: Chat mit PDF und Nachverfolgbarkeit",
+        "chatInstruccion": "👉 <b>Das ist der Chat mit PDF:</b> beantwortet gezielte Fragen zu Ihrem Dokument.<br><br>• <b>1:1 Nachverfolgbarkeit:</b> Antworten bleiben eng am Originaltext.<br>• <b>Fließtext:</b> liefert sprachlich besser formulierte Antworten.",
+        "chatDetalle": "💡 <i>Geführte Tour: Nach der Erklärung geht es automatisch weiter. Oder klicken Sie auf <b>'Weiter ➔'</b>.</i>",
+        "solicitudesTitulo": "📋 Schritt 7.3: Prompts und Vorlagen",
+        "solicitudesInstruccion": "👉 <b>Prompts-Registerkarte:</b> automatisiert häufige Anfragen, ohne lange Prompts schreiben zu müssen.<br><br>• <b>Eigene Vorlagen:</b> erstellen Sie wiederverwendbare Vorlagen.",
+        "solicitudesDetalle": "💡 <i>Danach geht es zu den Quellen. Oder klicken Sie auf <b>'Weiter ➔'</b>.</i>",
+        "fuentesTitulo": "📚 Schritt 7.4: Informationsquellen",
+        "fuentesInstruccion": "👉 <b>Quellen steuern:</b> je nachdem, was aktiv ist :<br><br>• 📄 <b>Dokument:</b> nutzt direkt das gesamte PDF.<br>• 🖍️ <b>Markierungen:</b> nutzt nur Textmarker-Passagen.<br>• 📝 <b>Notizen:</b> nur Notizen zu diesem PDF.",
+        "fuentesDetalle": "💡 <i>Danach geht es zu den Modellen. Oder klicken Sie auf <b>'Weiter ➔'</b>.</i>",
+        "modelosTitulo": "🧠 Schritt 7.5: KI-Modelle und Dienste",
+        "modelosInstruccion": "👉 <b>Volle KI-Freiheit:</b> LiraLoud nutzt bestehende Cloud-Dienste oder lokale Modelle.<br><br>• 💻 <b>Lokale Modelle:</b> laufen offline direkt auf Ihrem PC.<br>• 🌐 <b>Cloud-Dienste:</b> tragen Sie Ihren API-Key ein ('Kostenlosen API-Key erhalten').",
+        "modelosDetalle": "👉 <b>Tour beendet!</b> Klicken Sie auf <b>'✕'</b> oder <b>'Weiter ➔'</b> zum Schließen."
+    },
+    "it": {
+        "chatTitulo": "✨ Passo 7.2: Chat con PDF e Tracciabilità",
+        "chatInstruccion": "👉 <b>Questa è la Chat con PDF:</b> ti permette di fare domande puntuali sul tuo documento.<br><br>• <b>Tracciabilità 1:1:</b> fa sì che le risposte siano fedeli al testo.<br>• <b>Prosa:</b> offre risposte meglio formulate.",
+        "chatDetalle": "💡 <i>Tour guidato: terminata la spiegazione passerai al punto successivo. Oppure premi <b>'Avanti ➔'</b>.</i>",
+        "solicitudesTitulo": "📋 Passo 7.3: Richieste e Modelli",
+        "solicitudesInstruccion": "👉 <b>Scheda Richieste:</b> automatizza le richieste più frequenti senza scrivere prompt lunghi.<br><br>• <b>Crea Modelli:</b> puoi creare i tuoi modelli personalizzati.",
+        "solicitudesDetalle": "💡 <i>Terminata la spiegazione passerai alle Fonti. Oppure premi <b>'Avanti ➔'</b>.</i>",
+        "fuentesTitulo": "📚 Passo 7.4: Fonti di Informazione",
+        "fuentesInstruccion": "👉 <b>Controlla le fonti:</b> in base a cosa è attivo :<br><br>• 📄 <b>Documento:</b> invia le informazioni di tutto il PDF.<br>• 🖍️ <b>Evidenziazioni:</b> invia solo le parti evidenziate.<br>• 📝 <b>Appunti:</b> solo le note scritte per questo PDF.",
+        "fuentesDetalle": "💡 <i>Terminata la spiegazione passerai ai Modelli. Oppure premi <b>'Avanti ➔'</b>.</i>",
+        "modelosTitulo": "🧠 Passo 7.5: Modelli e Servizi di IA",
+        "modelosInstruccion": "👉 <b>Totale libertà di IA:</b> LiraLoud supporta servizi esistenti o modelli locali.<br><br>• 💻 <b>Modelli Locali:</b> funzionano sul tuo dispositivo senza internet.<br>• 🌐 <b>Servizi Cloud:</b> inserisci la tua API Key ('Ottieni API Key gratis').",
+        "modelosDetalle": "👉 <b>Tour completato!</b> Clicca su <b>'✕'</b> o su <b>'Avanti ➔'</b> per chiudere Lira AI."
+    },
+    "zh": {
+        "chatTitulo": "✨ 第 7.1 步：PDF 对话与溯源模式",
+        "chatInstruccion": "在 <b>PDF 对话</b>区域，您可以围绕文档内容进行提问，并请求解释或摘要。<br><br>在同一区域的顶部，您会看到一个高亮的选择器，上面写着<b>“溯源”</b>：该选项可让回答更贴近原文；点击它还可以看到<b>“润色”</b>选项，从而获得表述更流畅的回答。",
+        "chatDetalle": "💡 <i>说明结束后将自动进入下一部分，您也可以点击<b>“下一步 ➔”</b>。</i>",
+        "solicitudesTitulo": "📋 第 7.2 步：快捷指令",
+        "solicitudesInstruccion": "在<b>“快捷指令”</b>区域，您可以找到一键生成摘要、提取要点或创建测验题的快捷命令，无需重复输入相同的提示词。<br><br>您也可以在此创建自己的自定义指令。",
+        "solicitudesDetalle": "💡 <i>说明结束后将自动进入“信息源”，您也可以点击<b>“下一步 ➔”</b>。</i>",
+        "fuentesTitulo": "📚 第 7.3 步：信息源",
+        "fuentesInstruccion": "<b>“信息源”</b>功能用于选择 AI 获取信息的范围：完整文档、您的高亮标注或您的笔记。<br><br>您可以根据需要自由开启或关闭组合这些选项。",
+        "fuentesDetalle": "💡 <i>说明结束后将自动进入“AI 模型”，您也可以点击<b>“下一步 ➔”</b>。</i>",
+        "modelosTitulo": "🧠 第 7.4 步：AI 模型",
+        "modelosInstruccion": "LiraLoud 不提供自带的付费人工智能服务；不过，您可以在本地设备上免费运行本地模型，也可以使用云端服务。<br><br>要使用云端服务，只需填入您的 <b>API Key</b>，您可以通过每个模型旁的<b>“免费获取 API Key”</b>链接前往官方网站申请。",
+        "modelosDetalle": "👉 <b>AI 导览完成！</b>点击蓝色高亮的<b>“✕”</b>或<b>“下一步 ➔”</b>继续。"
+    },
+    "ru": {
+        "chatTitulo": "✨ Шаг 7.1: Чат с PDF и трассируемость",
+        "chatInstruccion": "В разделе <b>Чат с PDF</b> вы можете обсуждать документ и запрашивать пояснения или краткие пересказы.<br><br>В верхней части того же раздела вы увидите подсвеченный переключатель <b>«Трассируемость»</b>: этот режим даёт ответы, максимально приближённые к тексту, а при нажатии появится вариант <b>«Проза»</b>, позволяющий получать более связно сформулированные ответы.",
+        "chatDetalle": "💡 <i>После завершения пояснения вы автоматически перейдёте к следующему разделу, либо можете нажать <b>«Далее ➔»</b>.</i>",
+        "solicitudesTitulo": "📋 Шаг 7.2: Быстрые запросы",
+        "solicitudesInstruccion": "В разделе <b>«Запросы»</b> собраны быстрые команды в один клик для создания конспектов, выделения ключевых тезисов или составления тестов, чтобы не вводить один и тот же запрос заново.<br><br>Здесь же вы можете создавать собственные пользовательские запросы.",
+        "solicitudesDetalle": "💡 <i>После завершения пояснения вы автоматически перейдёте к разделу «Источники», либо можете нажать <b>«Далее ➔»</b>.</i>",
+        "fuentesTitulo": "📚 Шаг 7.3: Источники информации",
+        "fuentesInstruccion": "Раздел <b>«Источники»</b> позволяет выбрать, откуда ИИ будет брать информацию: из всего документа, из ваших выделений или из ваших заметок.<br><br>Вы можете свободно включать и отключать нужные варианты в любой комбинации.",
+        "fuentesDetalle": "💡 <i>После завершения пояснения вы автоматически перейдёте к разделу «Модели», либо можете нажать <b>«Далее ➔»</b>.</i>",
+        "modelosTitulo": "🧠 Шаг 7.4: Модели ИИ",
+        "modelosInstruccion": "У LiraLoud нет собственного платного сервиса искусственного интеллекта, однако вы можете использовать бесплатные локальные модели на своём компьютере или облачные сервисы.<br><br>Для работы с облачными сервисами достаточно указать ваш <b>API Key</b>, который можно получить на официальном сайте каждой модели по ссылке <b>«Получить API Key бесплатно»</b>.",
+        "modelosDetalle": "👉 <b>Обзор ИИ завершён!</b> Нажмите на <b>«✕»</b> (подсвечен синим) или на <b>«Далее ➔»</b>, чтобы продолжить."
+    },
+    "ar": {
+        "chatTitulo": "✨ الخطوة 7.1: الدردشة مع PDF والتتبّع المرجعي",
+        "chatInstruccion": "في قسم <b>الدردشة مع PDF</b> يمكنك التحادث حول مستندك وطلب شروحات أو ملخصات.<br><br>داخل القسم نفسه، في الجزء العلوي سترى محددًا مبرزًا مكتوبًا عليه <b>'التتبّع المرجعي'</b>: يتيح لك هذا الخيار الحصول على إجابات أكثر التزامًا بالنص، وإذا نقرت عليه فسترى خيار <b>'نثر'</b> الذي يتيح لك الحصول على إجابات أفضل صياغة.",
+        "chatDetalle": "💡 <i>عند انتهاء الشرح ستنتقل تلقائيًا إلى القسم التالي، أو يمكنك الضغط على <b>'التالي ➔'</b>.</i>",
+        "solicitudesTitulo": "📋 الخطوة 7.2: الطلبات السريعة",
+        "solicitudesInstruccion": "في قسم <b>'الطلبات'</b> ستجد أوامر سريعة بنقرة واحدة للتلخيص أو استخراج النقاط الرئيسية أو إنشاء اختبارات، حتى لا تضطر إلى كتابة الطلب نفسه عدة مرات.<br><br>كما يمكنك في هذا القسم إنشاء طلباتك المخصّصة.",
+        "solicitudesDetalle": "💡 <i>عند انتهاء الشرح ستنتقل تلقائيًا إلى المصادر، أو يمكنك الضغط على <b>'التالي ➔'</b>.</i>",
+        "fuentesTitulo": "📚 الخطوة 7.3: مصادر المعلومات",
+        "fuentesInstruccion": "يُستخدم قسم <b>'المصادر'</b> لتختار من أين سيستقي الذكاء الاصطناعي معلوماته: من المستند كاملًا، أو من تظليلاتك، أو من ملاحظاتك.<br><br>يمكنك المزج بين تفعيل الخيارات وتعطيلها حسب حاجتك.",
+        "fuentesDetalle": "💡 <i>عند انتهاء الشرح ستنتقل تلقائيًا إلى النماذج، أو يمكنك الضغط على <b>'التالي ➔'</b>.</i>",
+        "modelosTitulo": "🧠 الخطوة 7.4: نماذج الذكاء الاصطناعي",
+        "modelosInstruccion": "لا يوفّر LiraLoud خدمة ذكاء اصطناعي مدفوعة خاصة به؛ ومع ذلك، يمكنك استخدام نماذج محلية مجانية على جهازك أو خدمات سحابية.<br><br>لاستخدام الخدمات السحابية، ما عليك سوى إدخال <b>API Key</b> الخاص بك، والذي يمكنك الحصول عليه عبر زيارة الموقع الرسمي لكل نموذج من رابط <b>'الحصول على API Key مجانًا'</b>.",
+        "modelosDetalle": "👉 <b>انتهت جولة الذكاء الاصطناعي!</b> انقر على <b>'✕'</b> (المضاءة بالأزرق) أو على <b>'التالي ➔'</b> للمتابعة."
+    },
+    "hi": {
+        "chatTitulo": "✨ चरण 7.1: PDF के साथ चैट और ट्रेसबिलिटी",
+        "chatInstruccion": "<b>PDF के साथ चैट</b> अनुभाग में आप अपने दस्तावेज़ के बारे में बातचीत कर सकते हैं और स्पष्टीकरण या सारांश माँग सकते हैं।<br><br>इसी अनुभाग के ऊपर आपको <b>'ट्रेसबिलिटी'</b> नामक एक हाइलाइट किया हुआ चयनकर्ता दिखेगा: यह विकल्प आपको पाठ के अधिक करीब उत्तर देता है, और क्लिक करने पर आपको <b>'गद्य'</b> विकल्प दिखेगा, जिससे बेहतर ढंग से लिखे गए उत्तर मिलते हैं।",
+        "chatDetalle": "💡 <i>स्पष्टीकरण समाप्त होने पर आप स्वचालित रूप से अगले अनुभाग पर चले जाएँगे, या आप <b>'अगला ➔'</b> दबा सकते हैं।</i>",
+        "solicitudesTitulo": "📋 चरण 7.2: त्वरित अनुरोध",
+        "solicitudesInstruccion": "<b>'अनुरोध'</b> अनुभाग में आपको सारांश बनाने, मुख्य बिंदु निकालने या प्रश्नोत्तरी बनाने के लिए एक-क्लिक वाले त्वरित कमांड मिलेंगे, ताकि आपको बार-बार वही अनुरोध न लिखना पड़े।<br><br>इस अनुभाग में आप अपने स्वयं के कस्टम अनुरोध भी बना सकते हैं।",
+        "solicitudesDetalle": "💡 <i>स्पष्टीकरण समाप्त होने पर आप स्वचालित रूप से स्रोतों पर चले जाएँगे, या आप <b>'अगला ➔'</b> दबा सकते हैं।</i>",
+        "fuentesTitulo": "📚 चरण 7.3: जानकारी के स्रोत",
+        "fuentesInstruccion": "<b>'स्रोत'</b> अनुभाग से आप चुन सकते हैं कि AI जानकारी कहाँ से लेगा: पूरे दस्तावेज़ से, आपके हाइलाइट्स से या आपके नोट्स से।<br><br>आप अपनी आवश्यकतानुसार विकल्पों को चालू और बंद करके संयोजित कर सकते हैं।",
+        "fuentesDetalle": "💡 <i>स्पष्टीकरण समाप्त होने पर आप स्वचालित रूप से मॉडल पर चले जाएँगे, या आप <b>'अगला ➔'</b> दबा सकते हैं।</i>",
+        "modelosTitulo": "🧠 चरण 7.4: AI मॉडल",
+        "modelosInstruccion": "LiraLoud की अपनी कोई सशुल्क AI सेवा नहीं है; हालांकि, आप अपने कंप्यूटर पर निःशुल्क लोकल मॉडल या क्लाउड सेवाओं का उपयोग कर सकते हैं।<br><br>क्लाउड सेवाओं का उपयोग करने के लिए बस अपनी <b>API Key</b> दर्ज करें, जिसे आप <b>'निःशुल्क API Key प्राप्त करें'</b> लिंक से प्रत्येक मॉडल की आधिकारिक वेबसाइट पर जाकर प्राप्त कर सकते हैं।",
+        "modelosDetalle": "👉 <b>AI टूर पूरा हुआ!</b> आगे बढ़ने के लिए (नीले रंग में हाइलाइट किए गए) <b>'✕'</b> या <b>'अगला ➔'</b> पर क्लिक करें।"
+    },
+    "bn": {
+        "chatTitulo": "✨ ধাপ ৭.১: PDF-এর সাথে চ্যাট এবং ট্রেসেবিলিটি",
+        "chatInstruccion": "<b>PDF-এর সাথে চ্যাট</b> বিভাগে আপনি আপনার নথি নিয়ে কথা বলতে পারেন এবং ব্যাখ্যা বা সারসংক্ষেপ চাইতে পারেন।<br><br>একই বিভাগের ওপরে দেখবেন <b>'ট্রেসেবিলিটি'</b> লেখা একটি সিলেক্টর হাইলাইট করা আছে: এই বিকল্পটি আপনাকে পাঠ্যের সাথে আরও সামঞ্জস্যপূর্ণ উত্তর পেতে দেয়, আর ক্লিক করলে <b>'গদ্য'</b> বিকল্পটি দেখতে পাবেন, যা আপনাকে আরও সুন্দরভাবে লেখা উত্তর দেবে।",
+        "chatDetalle": "💡 <i>ব্যাখ্যা শেষ হলে আপনি স্বয়ংক্রিয়ভাবে পরবর্তী বিভাগে চলে যাবেন, অথবা <b>'পরবর্তী ➔'</b>-এ ক্লিক করতে পারেন।</i>",
+        "solicitudesTitulo": "📋 ধাপ ৭.২: দ্রুত অনুরোধ",
+        "solicitudesInstruccion": "<b>'অনুরোধ'</b> বিভাগে আপনি সারসংক্ষেপ তৈরি, মূল পয়েন্ট বের করা বা কুইজ তৈরির জন্য এক-ক্লিকের দ্রুত কমান্ড পাবেন, যাতে বারবার একই অনুরোধ লিখতে না হয়।<br><br>এছাড়াও এই বিভাগে আপনি আপনার নিজস্ব কাস্টম অনুরোধ তৈরি করতে পারবেন।",
+        "solicitudesDetalle": "💡 <i>ব্যাখ্যা শেষ হলে আপনি স্বয়ংক্রিয়ভাবে উৎসে চলে যাবেন, অথবা <b>'পরবর্তী ➔'</b>-এ ক্লিক করতে পারেন।</i>",
+        "fuentesTitulo": "📚 ধাপ ৭.৩: তথ্যের উৎস",
+        "fuentesInstruccion": "<b>'উৎস'</b> বিভাগটি আপনাকে বেছে নিতে দেয় AI কোথা থেকে তথ্য নেবে: সম্পূর্ণ নথি থেকে, আপনার হাইলাইট থেকে নাকি আপনার নোট থেকে।<br><br>আপনার প্রয়োজন অনুযায়ী বিকল্পগুলো চালু ও বন্ধ করে সমন্বয় করতে পারেন।",
+        "fuentesDetalle": "💡 <i>ব্যাখ্যা শেষ হলে আপনি স্বয়ংক্রিয়ভাবে মডেলগুলোতে চলে যাবেন, অথবা <b>'পরবর্তী ➔'</b>-এ ক্লিক করতে পারেন।</i>",
+        "modelosTitulo": "🧠 ধাপ ৭.৪: AI মডেল",
+        "modelosInstruccion": "LiraLoud-এর নিজস্ব কোনো পেইড কৃত্রিম বুদ্ধিমত্তা পরিষেবা নেই; তবে আপনি আপনার কম্পিউটারে বিনামূল্যের স্থানীয় মডেল অথবা ক্লাউড পরিষেবা ব্যবহার করতে পারেন।<br><br>ক্লাউড পরিষেবা ব্যবহার করতে আপনাকে শুধু আপনার <b>API Key</b> বসাতে হবে, যা আপনি <b>'বিনামূল্যে API Key পান'</b> লিংক থেকে প্রতিটি মডেলের অফিসিয়াল সাইটে গিয়ে পেতে পারেন।",
+        "modelosDetalle": "👉 <b>AI ট্যুর সম্পন্ন!</b> এগিয়ে যেতে <b>'✕'</b> (নীল রঙে হাইলাইট করা) অথবা <b>'পরবর্তী ➔'</b>-এ ক্লিক করুন।"
+    }
+};
+
+const DEMO_TRADUCCION_POR_IDIOMA = {
+    "es": {
+        "origen": "en",
+        "destino": "es",
+        "tituloDoc": "DOCUMENTO DE TRADUCCIÓN - LIRALOUD",
+        "subtituloDoc": "Demostración de Traducción en Vivo (Inglés ➔ Español)",
+        "textoDoc": "Reading books expands the mind and brings new ideas.",
+        "textoTraducido": "Leer libros expande la mente y trae nuevas ideas.",
+        "tituloPaso1": "🌐 Paso 8.0: Abrir Traductor",
+        "instPaso1Normal": "LiraLoud puede traducir en tiempo real los documentos que se carguen. Haz clic en el botón de <b>'Traductor'</b> iluminado en azul.",
+        "instPaso1ZenMenu": "LiraLoud puede traducir en tiempo real los documentos que se carguen. Para esto, haz clic en el <b>Menú Principal (☰)</b>.",
+        "instPaso1ZenTrad": "Ahora haz clic en el botón de <b>'Traductor'</b> iluminado en azul.",
+        "detallePaso1": "💡 <i>Permite traducir cualquier libro mientras lo escuchas con voz fluida y subtítulos en pantalla.</i>",
+        "tituloActivar": "🌐 Paso 8.1: Activar Traductor",
+        "instActivar": "Aquí puedes activar la traducción en tiempo real al leer.",
+        "detalleActivar": "💡 <i>Al activarlo, LiraLoud procesará cada oración automáticamente según tus preferencias.</i>",
+        "tituloOrigen": "🌐 Paso 8.2: Idioma de Origen",
+        "instOrigen": "El idioma de origen es el idioma que se desea traducir; puedes utilizar la función de autodetectar o bien escogerlo manualmente.",
+        "detalleOrigen": "💡 <i>La detección automática identifica el idioma del texto al instante.</i>",
+        "tituloDestino": "🌐 Paso 8.3: Idioma de Destino",
+        "instDestino": "El idioma de destino es el idioma en el que se escuchará la traducción.",
+        "detalleDestino": "💡 <i>La voz de lectura y los subtítulos se adaptarán al idioma que selecciones.</i>",
+        "tituloModos": "🌐 Paso 8.4: Modos de Lectura",
+        "instModos": "En los modos de lectura actualmente hay 3 opciones:<br>• <b>'Solo traducción':</b> lee la traducción con subtítulos.<br>• <b>'Subtítulos traducidos':</b> lee en el idioma de origen pero muestra subtítulos traducidos al idioma de destino.<br>• <b>'Modo aprendizaje':</b> repite la lectura en ambos idiomas.",
+        "detalleModos": "💡 <i>A continuación comprobaremos el modo Solo Traducción con una demostración en vivo.</i>",
+        "tituloPaso2": "🎧 Paso 8.5: Demostración de Traducción en Vivo",
+        "instPaso2": "Se ha cargado un texto en inglés. Haz clic sobre el párrafo para escuchar cómo LiraLoud lo traduce y lo lee en tu idioma al instante.",
+        "detallePaso2": "✨ <i>LiraLoud traducirá la oración en tiempo real y desplegará el subtítulo flotante en pantalla.</i>",
+        "btnDemo": "⚡ Probar traducción en vivo",
+        "badgeMouse": "🖱️ Clic para traducir al español",
+        "exito": "🎉 <b>¡Comprobado!</b> Has escuchado la traducción y visto los subtítulos flotantes en tiempo real."
+    },
+    "en": {
+        "origen": "es",
+        "destino": "en",
+        "tituloDoc": "TRANSLATION DEMO DOCUMENT - LIRALOUD",
+        "subtituloDoc": "Real-Time Translation Demo (Spanish ➔ English)",
+        "textoDoc": "Leer libros expande la mente y trae nuevas ideas.",
+        "textoTraducido": "Reading books expands the mind and brings new ideas.",
+        "tituloPaso1": "🌐 Step 8.1: Open Translator",
+        "instPaso1Normal": "👉 Click the <b>'Translator'</b> button (highlighted in blue) on the sidebar to expand its controls.",
+        "instPaso1ZenMenu": "👉 Click the <b>Zen Menu</b> (☰ highlighted in blue) in the top bar.",
+        "instPaso1ZenTrad": "👉 Now click the <b>Translator</b> icon (🌐 highlighted in blue) to reveal its settings.",
+        "detallePaso1": "💡 <i>Translate any book on the fly with natural voice and floating subtitles.</i>",
+        "tituloActivar": "🌐 Step 8.2: Enable Translator",
+        "instActivar": "👉 <b>Activate on Read:</b> This switch enables or pauses real-time translation as you read any document.",
+        "detalleActivar": "💡 <i>When enabled, LiraLoud automatically translates each sentence upon reading.</i>",
+        "tituloOrigen": "🌐 Step 8.3: Source Language",
+        "instOrigen": "👉 <b>Source Language:</b> To translate, you can use <b>auto-detect</b> or directly select the language of your document.",
+        "detalleOrigen": "💡 <i>Auto-detect identifies the language on the fly without manual configuration.</i>",
+        "tituloDestino": "🌐 Step 8.4: Target Language",
+        "instDestino": "👉 <b>Target Language:</b> This is the language into which the text will be translated.",
+        "detalleDestino": "💡 <i>Voice playback and subtitles will render in the language selected here.</i>",
+        "tituloModos": "🌐 Step 8.5: Translation Modes",
+        "instModos": "👉 <b>Reading Modes:</b> LiraLoud features 3 translation modes:<br>• <b>Translation Only:</b> Reads the translated text directly.<br>• <b>Translated Subtitles:</b> Displays floating subtitles without changing the audio language.<br>• <b>Learning Mode:</b> Reads both the original language and your language.",
+        "detalleModos": "💡 <i>Next, we will test Translation Only mode with a live demonstration.</i>",
+        "tituloPaso2": "🎧 Step 8.6: Live Translation Demonstration",
+        "instPaso2": "👉 A sentence in Spanish has been loaded: <code>Leer libros expande la mente...</code><br><br>• <b>Click on the text</b> (where the animated mouse points) or click the button below to listen to the real-time English translation with subtitles.",
+        "detallePaso2": "✨ <i>LiraLoud translates sentences in real time and displays a floating subtitle banner on screen.</i>",
+        "btnDemo": "⚡ Test live translation",
+        "badgeMouse": "🖱️ Click to translate to English",
+        "exito": "🎉 <b>Success!</b> You experienced real-time translation with voice and floating subtitles."
+    },
+    "fr": {
+        "origen": "es",
+        "destino": "fr",
+        "tituloDoc": "DOCUMENT DE TRADUCTION - LIRALOUD",
+        "subtituloDoc": "Démo de Traduction en Temps Réel (Espagnol ➔ Français)",
+        "textoDoc": "Leer libros expande la mente y trae nuevas ideas.",
+        "textoTraducido": "Lire des livres élargit l'esprit et apporte de nouvelles idées.",
+        "tituloPaso1": "🌐 Étape 8.1 : Ouvrir le Traducteur",
+        "instPaso1Normal": "👉 Cliquez sur le bouton <b>'Traducteur'</b> (en bleu) dans la barre latérale.",
+        "instPaso1ZenMenu": "👉 Cliquez sur le <b>Menu Zen</b> (☰ en bleu) dans la barre supérieure.",
+        "instPaso1ZenTrad": "👉 Cliquez sur l'icône du <b>Traducteur</b> (🌐 en bleu) pour ouvrir les réglages.",
+        "detallePaso1": "💡 <i>Traduisez n'importe quel livre : écoutez la voix traduite et voyez les sous-titres flottants.</i>",
+        "tituloActivar": "🌐 Étape 8.2 : Activer le Traducteur",
+        "instActivar": "👉 <b>Activer à la lecture :</b> Cet interrupteur permet d'activer ou de suspendre la traduction en direct pendant la lecture.",
+        "detalleActivar": "💡 <i>Une fois activé, LiraLoud traduit automatiquement chaque phrase lue.</i>",
+        "tituloOrigen": "🌐 Étape 8.3 : Langue Source",
+        "instOrigen": "👉 <b>Langue Source :</b> Vous pouvez utiliser la fonction d'<b>autodétection</b> ou sélectionner directement la langue du document.",
+        "detalleOrigen": "💡 <i>L'autodétection détecte instantanément la langue sans configuration manuelle.</i>",
+        "tituloDestino": "🌐 Étape 8.4 : Langue Cible",
+        "instDestino": "👉 <b>Langue Cible :</b> C'est la langue vers laquelle le texte sera traduit.",
+        "detalleDestino": "💡 <i>La voix de lecture et les sous-titres utiliseront cette langue.</i>",
+        "tituloModos": "🌐 Étape 8.5 : Modes de Traduction",
+        "instModos": "👉 <b>Modes de Lecture :</b> LiraLoud dispose de 3 modes :<br>• <b>Traduction Seule :</b> Lit directement la traduction du document.<br>• <b>Sous-titres Traduits :</b> Affiche les sous-titres sans changer la voix originale.<br>• <b>Mode Apprentissage :</b> Lit d'abord la langue d'origine puis la traduction.",
+        "detalleModos": "💡 <i>Nous allons maintenant tester le mode Traduction Seule avec une démo en direct.</i>",
+        "tituloPaso2": "🎧 Étape 8.6 : Démonstration de Traduction en Direct",
+        "instPaso2": "👉 Une phrase en espagnol a été chargée : <code>Leer libros expande la mente...</code><br><br>• <b>Cliquez sur le texte</b> (souris animée) pour écouter la traduction en français avec sous-titres.",
+        "detallePaso2": "✨ <i>LiraLoud traduit en direct avec bannière de sous-titres.</i>",
+        "btnDemo": "⚡ Tester la traduction en direct",
+        "badgeMouse": "🖱️ Cliquez pour traduire en français",
+        "exito": "🎉 <b>Succès !</b> Vous avez testé la traduction vocale et les sous-titres flottants."
+    },
+    "pt": {
+        "origen": "es",
+        "destino": "pt",
+        "tituloDoc": "DOCUMENTO DE TRADUÇÃO - LIRALOUD",
+        "subtituloDoc": "Demonstração de Tradução em Tempo Real (Espanhol ➔ Português)",
+        "textoDoc": "Leer libros expande la mente y trae novas ideas.",
+        "textoTraducido": "Ler livros expande a mente e traz novas ideias.",
+        "tituloPaso1": "🌐 Passo 8.1: Abrir Tradutor",
+        "instPaso1Normal": "👉 Clique no botão <b>'Tradutor'</b> (iluminado em azul) na barra lateral.",
+        "instPaso1ZenMenu": "👉 Clique no <b>Menu Zen</b> (☰ iluminado em azul) na barra superior.",
+        "instPaso1ZenTrad": "👉 Clique no ícone do <b>Tradutor</b> (🌐 iluminado em azul) para abrir as opções.",
+        "detallePaso1": "💡 <i>Traduza livros em tempo real: ouça a voz traduzida e veja legendas flutuantes na tela.</i>",
+        "tituloActivar": "🌐 Passo 8.2: Ativar Tradutor",
+        "instActivar": "👉 <b>Ativar ao Ler:</b> Este botão permite ativar ou pausar a tradução em tempo real ao ler qualquer documento.",
+        "detalleActivar": "💡 <i>Quando ativo, o LiraLoud processa cada frase automaticamente.</i>",
+        "tituloOrigen": "🌐 Passo 8.3: Idioma de Origem",
+        "instOrigen": "👉 <b>Idioma de Origem:</b> Você pode usar o <b>autodetectar</b> ou selecionar diretamente o idioma do seu documento.",
+        "detalleOrigen": "💡 <i>A detecção automática identifica o idioma na hora sem configuração manual.</i>",
+        "tituloDestino": "🌐 Passo 8.4: Idioma de Destino",
+        "instDestino": "👉 <b>Idioma de Destino:</b> Este é o idioma para o qual o texto será traduzido.",
+        "detalleDestino": "💡 <i>A voz de leitura e as legendas serão adaptadas a este idioma.</i>",
+        "tituloModos": "🌐 Passo 8.5: Modos de Tradução",
+        "instModos": "👉 <b>Modos de Leitura:</b> O LiraLoud conta com 3 modos:<br>• <b>Apenas Tradução:</b> Lê diretamente a tradução do documento.<br>• <b>Legendas Traduzidas:</b> Mostra as legendas na tela mantendo a voz original.<br>• <b>Modo Aprendizado:</b> Lê tanto no idioma original quanto no seu idioma.",
+        "detalleModos": "💡 <i>Agora vamos testar o modo Apenas Tradução em uma demonstração ao vivo.</i>",
+        "tituloPaso2": "🎧 Passo 8.6: Demonstração de Tradução ao Vivo",
+        "instPaso2": "👉 Uma frase em espanhol foi carregada : <code>Leer libros expande la mente...</code><br><br>• <b>Clique no texto</b> (onde o mouse aponta) para ouvir a tradução em português com legendas.",
+        "detallePaso2": "✨ <i>LiraLoud traduz em tempo real exibindo a legenda flutuante.</i>",
+        "btnDemo": "⚡ Testar tradução ao vivo",
+        "badgeMouse": "🖱️ Clique para traduzir para português",
+        "exito": "🎉 <b>Comprovado!</b> Você ouviu a tradução e viu as legendas flutuantes em tempo real."
+    },
+    "de": {
+        "origen": "es",
+        "destino": "de",
+        "tituloDoc": "ÜBERSETZUNGS-DOKUMENT - LIRALOUD",
+        "subtituloDoc": "Echtzeit-Übersetzungsdemo (Spanisch ➔ Deutsch)",
+        "textoDoc": "Leer libros expande la mente y trae nuevas ideas.",
+        "textoTraducido": "Bücher lesen erweitert den Geist und bringt neue Ideen.",
+        "tituloPaso1": "🌐 Schritt 8.1: Übersetzer öffnen",
+        "instPaso1Normal": "👉 Klicken Sie auf die Schaltfläche <b>'Übersetzer'</b> (blau) in der Seitenleiste.",
+        "instPaso1ZenMenu": "👉 Klicken Sie auf das <b>Zen-Menü</b> (☰ blau) in der oberen Leiste.",
+        "instPaso1ZenTrad": "👉 Klicken Sie auf das <b>Übersetzer-Symbol</b> (🌐 blau), um die Optionen zu öffnen.",
+        "detallePaso1": "💡 <i>Übersetzen Sie Bücher in Echtzeit mit flüssiger Sprache und schwebenden Untertiteln.</i>",
+        "tituloActivar": "🌐 Schritt 8.2: Übersetzer aktivieren",
+        "instActivar": "👉 <b>Beim Lesen aktivieren:</b> Schaltet die Echtzeit-Übersetzung beim Lesen ein oder aus.",
+        "detalleActivar": "💡 <i>Aktiviert übersetzt LiraLoud jeden Satz automatisch beim Vorlesen.</i>",
+        "tituloOrigen": "🌐 Schritt 8.3: Ausgangssprache",
+        "instOrigen": "👉 <b>Ausgangssprache:</b> Sie können <b>automatisch erkennen</b> wählen oder die Sprache Ihres Dokuments manuell festlegen.",
+        "detalleOrigen": "💡 <i>Die automatische Erkennung identifiziert die Sprache sofort ohne manuelle Einstellung.</i>",
+        "tituloDestino": "🌐 Schritt 8.4: Zielsprache",
+        "instDestino": "👉 <b>Zielsprache:</b> Dies ist die Sprache, in die der Text übersetzt wird.",
+        "detalleDestino": "💡 <i>Die Sprachausgabe und Untertitel erscheinen in dieser gewählten Sprache.</i>",
+        "tituloModos": "🌐 Schritt 8.5: Übersetzungsmodi",
+        "instModos": "👉 <b>Lesemodi:</b> LiraLoud bietet 3 Modi:<br>• <b>Nur Übersetzung:</b> Liest direkt die Übersetzung vor.<br>• <b>Übersetzte Untertitel:</b> Zeigt schwebende Untertitel ohne die Audiosprache zu ändern.<br>• <b>Lernmodus:</b> Liest sowohl in der Originalsprache als auch in Ihrer Sprache.",
+        "detalleModos": "💡 <i>Als Nächstes testen wir den Modus Nur Übersetzung in einer Live-Demonstration.</i>",
+        "tituloPaso2": "🎧 Schritt 8.6: Live-Übersetzungsdemonstration",
+        "instPaso2": "👉 Ein spanischer Satz wurde geladen: <code>Leer libros expande la mente...</code><br><br>• <b>Klicken Sie auf den Text</b> (Mauszeiger), um die deutsche Übersetzung mit Untertiteln anzuhören.",
+        "detallePaso2": "✨ <i>LiraLoud übersetzt in Echtzeit mit Untertitelbanner.</i>",
+        "btnDemo": "⚡ Live-Übersetzung testen",
+        "badgeMouse": "🖱️ Klicken für deutsche Übersetzung",
+        "exito": "🎉 <b>Erfolgreich!</b> Sie haben die Echtzeit-Übersetzung live erlebt."
+    },
+    "it": {
+        "origen": "es",
+        "destino": "it",
+        "tituloDoc": "DOCUMENTO DI TRADUZIONE - LIRALOUD",
+        "subtituloDoc": "Demo di Traduzione in Tempo Reale (Spagnolo ➔ Italiano)",
+        "textoDoc": "Leer libros expande la mente y trae nuevas ideas.",
+        "textoTraducido": "Leggere libri espande la mente e porta nuove idee.",
+        "tituloPaso1": "🌐 Passo 8.1: Apri Traduttore",
+        "instPaso1Normal": "👉 Clicca sul pulsante <b>'Traduttore'</b> (in blu) nella barra laterale.",
+        "instPaso1ZenMenu": "👉 Clicca sul <b>Menu Zen</b> (☰ in blu) nella barra superiore.",
+        "instPaso1ZenTrad": "👉 Clicca sull'icona del <b>Traduttore</b> (🌐 in blu) per aprire i controlli.",
+        "detallePaso1": "💡 <i>Traduci al volo qualsiasi libro con voce naturale e sottotitoli fluttuanti.</i>",
+        "tituloActivar": "🌐 Passo 8.2: Attiva Traduttore",
+        "instActivar": "👉 <b>Attiva durante la lettura:</b> Questo interruttore attiva o sospende la traduzione in tempo reale durante la lettura.",
+        "detalleActivar": "💡 <i>Quando è attivo, LiraLoud traduce automaticamente ogni frase letta.</i>",
+        "tituloOrigen": "🌐 Passo 8.3: Lingua di Origine",
+        "instOrigen": "👉 <b>Lingua di Origine:</b> Puoi usare il <b>rilevamento automatico</b> o selezionare direttamente la lingua del documento.",
+        "detalleOrigen": "💡 <i>Il rilevamento automatico riconosce istantaneamente la lingua senza configurazione manuale.</i>",
+        "tituloDestino": "🌐 Passo 8.4: Lingua di Destinazione",
+        "instDestino": "👉 <b>Lingua di Destinazione:</b> Questa è la lingua verso cui il testo verrà tradotto.",
+        "detalleDestino": "💡 <i>La voce e i sottotitoli utilizzeranno questa lingua selezionata.</i>",
+        "tituloModos": "🌐 Passo 8.5: Modalità di Traduzione",
+        "instModos": "👉 <b>Modalità di Lettura:</b> LiraLoud dispone di 3 modalità:<br>• <b>Solo Traduzione:</b> Legge direttamente la traduzione del documento.<br>• <b>Sottotitoli Tradotti:</b> Mostra i sottotitoli senza cambiare la voce originale.<br>• <b>Modalità Apprendimento:</b> Legge sia nella lingua originale che nella tua lingua.",
+        "detalleModos": "💡 <i>Ora testeremo la modalità Solo Traduzione con una dimostrazione dal vivo.</i>",
+        "tituloPaso2": "🎧 Passo 8.6: Dimostrazione di Traduzione dal Vivo",
+        "instPaso2": "👉 È stata caricata una frase in spagnolo: <code>Leer libros expande la mente...</code><br><br>• <b>Clicca sul testo</b> (dove punta il mouse animato) per ascoltare la traduzione in italiano con sottotitoli.",
+        "detallePaso2": "✨ <i>LiraLoud traduce in tempo reale e mostra il banner dei sottotitoli.</i>",
+        "btnDemo": "⚡ Prova traduzione dal vivo",
+        "badgeMouse": "🖱️ Clicca per tradurre in italiano",
+        "exito": "🎉 <b>Verificato!</b> Hai sperimentato la traduzione vocale e i sottotitoli in tempo reale."
+    },
+    "zh": {
+        "origen": "en",
+        "destino": "zh",
+        "tituloDoc": "翻译演示文档 - LIRALOUD",
+        "subtituloDoc": "实时翻译演示（英语 ➔ 简体中文）",
+        "textoDoc": "Reading books expands the mind and brings new ideas.",
+        "textoTraducido": "阅读书籍能开阔思维并带来新的想法。",
+        "tituloPaso1": "🌐 第 8.0 步：打开翻译器",
+        "instPaso1Normal": "LiraLoud 可以实时翻译已加载的文档。请点击蓝色高亮的<b>“翻译器”</b>按钮。",
+        "instPaso1ZenMenu": "LiraLoud 可以实时翻译已加载的文档。为此，请先点击<b>主菜单 (☰)</b>。",
+        "instPaso1ZenTrad": "现在点击蓝色高亮的<b>“翻译器”</b>按钮。",
+        "detallePaso1": "💡 <i>支持在收听流畅语音和查看屏幕字幕的同时翻译任意书籍。</i>",
+        "tituloActivar": "🌐 第 8.1 步：启用翻译器",
+        "instActivar": "您可以在此开启朗读时的实时翻译功能。",
+        "detalleActivar": "💡 <i>开启后，LiraLoud 将根据您的偏好自动处理每一句话。</i>",
+        "tituloOrigen": "🌐 第 8.2 步：源语言",
+        "instOrigen": "源语言是指需要被翻译的原文语言；您可以使用自动检测功能，也可以手动选择。",
+        "detalleOrigen": "💡 <i>自动检测可即时识别文本的语言。</i>",
+        "tituloDestino": "🌐 第 8.3 步：目标语言",
+        "instDestino": "目标语言是指翻译结果将要使用的朗读语言。",
+        "detalleDestino": "💡 <i>朗读语音与字幕将自动适配您所选择的语言。</i>",
+        "tituloModos": "🌐 第 8.4 步：阅读模式",
+        "instModos": "目前阅读模式共有 3 个选项：<br>• <b>“仅翻译”：</b>朗读译文并显示字幕。<br>• <b>“翻译字幕”：</b>使用源语言朗读，但显示翻译为目标语言的字幕。<br>• <b>“学习模式”：</b>使用两种语言依次重复朗读。",
+        "detalleModos": "💡 <i>接下来我们将通过实时演示来体验“仅翻译”模式。</i>",
+        "tituloPaso2": "🎧 第 8.5 步：实时翻译演示",
+        "instPaso2": "已加载一段英文文本。点击该段落，即可聆听 LiraLoud 如何即时将其翻译并用您的语言朗读。",
+        "detallePaso2": "✨ <i>LiraLoud 将实时翻译该句，并在屏幕上显示悬浮字幕。</i>",
+        "btnDemo": "⚡ 试用实时翻译",
+        "badgeMouse": "🖱️ 点击翻译为中文",
+        "exito": "🎉 <b>验证成功！</b>您已听到翻译朗读并看到实时悬浮字幕。"
+    },
+    "ru": {
+        "origen": "en",
+        "destino": "ru",
+        "tituloDoc": "ДОКУМЕНТ ДЛЯ ПЕРЕВОДА - LIRALOUD",
+        "subtituloDoc": "Демонстрация живого перевода (английский ➔ русский)",
+        "textoDoc": "Reading books expands the mind and brings new ideas.",
+        "textoTraducido": "Чтение книг расширяет кругозор и приносит новые идеи.",
+        "tituloPaso1": "🌐 Шаг 8.0: Открыть переводчик",
+        "instPaso1Normal": "LiraLoud умеет переводить загруженные документы в реальном времени. Нажмите на подсвеченную синим кнопку <b>«Переводчик»</b>.",
+        "instPaso1ZenMenu": "LiraLoud умеет переводить загруженные документы в реальном времени. Для этого откройте <b>Главное меню (☰)</b>.",
+        "instPaso1ZenTrad": "Теперь нажмите на подсвеченную синим кнопку <b>«Переводчик»</b>.",
+        "detallePaso1": "💡 <i>Позволяет переводить любую книгу прямо во время прослушивания с плавной озвучкой и субтитрами на экране.</i>",
+        "tituloActivar": "🌐 Шаг 8.1: Включить переводчик",
+        "instActivar": "Здесь можно включить перевод в реальном времени при чтении.",
+        "detalleActivar": "💡 <i>После включения LiraLoud будет автоматически обрабатывать каждое предложение согласно вашим настройкам.</i>",
+        "tituloOrigen": "🌐 Шаг 8.2: Исходный язык",
+        "instOrigen": "Исходный язык — это язык, с которого выполняется перевод; вы можете использовать автоопределение или выбрать его вручную.",
+        "detalleOrigen": "💡 <i>Автоопределение мгновенно распознаёт язык текста.</i>",
+        "tituloDestino": "🌐 Шаг 8.3: Язык перевода",
+        "instDestino": "Язык перевода — это язык, на котором будет озвучиваться перевод.",
+        "detalleDestino": "💡 <i>Голос чтения и субтитры автоматически подстроятся под выбранный язык.</i>",
+        "tituloModos": "🌐 Шаг 8.4: Режимы чтения",
+        "instModos": "Среди режимов чтения сейчас доступны 3 варианта:<br>• <b>«Только перевод»:</b> озвучивает перевод с субтитрами.<br>• <b>«Переведённые субтитры»:</b> читает на языке оригинала, но показывает субтитры на языке перевода.<br>• <b>«Режим обучения»:</b> повторяет чтение на обоих языках.",
+        "detalleModos": "💡 <i>Далее мы проверим режим «Только перевод» на живой демонстрации.</i>",
+        "tituloPaso2": "🎧 Шаг 8.5: Демонстрация живого перевода",
+        "instPaso2": "Загружен текст на английском языке. Нажмите на абзац, чтобы услышать, как LiraLoud мгновенно переводит и читает его на вашем языке.",
+        "detallePaso2": "✨ <i>LiraLoud переведёт предложение в реальном времени и выведет плавающий субтитр на экран.</i>",
+        "btnDemo": "⚡ Проверить живой перевод",
+        "badgeMouse": "🖱️ Нажмите для перевода на русский",
+        "exito": "🎉 <b>Готово!</b> Вы прослушали перевод и увидели плавающие субтитры в реальном времени."
+    },
+    "ar": {
+        "origen": "en",
+        "destino": "ar",
+        "tituloDoc": "مستند الترجمة - LIRALOUD",
+        "subtituloDoc": "عرض توضيحي للترجمة الفورية (الإنجليزية ➔ العربية)",
+        "textoDoc": "Reading books expands the mind and brings new ideas.",
+        "textoTraducido": "قراءة الكتب توسّع المدارك وتجلب أفكارًا جديدة.",
+        "tituloPaso1": "🌐 الخطوة 8.0: فتح المترجم",
+        "instPaso1Normal": "يمكن لـ LiraLoud ترجمة المستندات المحمّلة في الوقت الفعلي. انقر على زر <b>'المترجم'</b> المضاء باللون الأزرق.",
+        "instPaso1ZenMenu": "يمكن لـ LiraLoud ترجمة المستندات المحمّلة في الوقت الفعلي. للقيام بذلك، انقر على <b>القائمة الرئيسية (☰)</b>.",
+        "instPaso1ZenTrad": "الآن انقر على زر <b>'المترجم'</b> المضاء باللون الأزرق.",
+        "detallePaso1": "💡 <i>يتيح ترجمة أي كتاب أثناء الاستماع إليه بصوت سلس وترجمة نصية على الشاشة.</i>",
+        "tituloActivar": "🌐 الخطوة 8.1: تفعيل المترجم",
+        "instActivar": "هنا يمكنك تفعيل الترجمة الفورية أثناء القراءة.",
+        "detalleActivar": "💡 <i>عند تفعيله، سيعالج LiraLoud كل جملة تلقائيًا وفقًا لتفضيلاتك.</i>",
+        "tituloOrigen": "🌐 الخطوة 8.2: لغة المصدر",
+        "instOrigen": "لغة المصدر هي اللغة المراد ترجمتها؛ يمكنك استخدام ميزة الاكتشاف التلقائي أو اختيارها يدويًا.",
+        "detalleOrigen": "💡 <i>يحدد الاكتشاف التلقائي لغة النص على الفور.</i>",
+        "tituloDestino": "🌐 الخطوة 8.3: لغة الهدف",
+        "instDestino": "لغة الهدف هي اللغة التي ستُسمع بها الترجمة.",
+        "detalleDestino": "💡 <i>سيتكيّف صوت القراءة والترجمة النصية مع اللغة التي تختارها.</i>",
+        "tituloModos": "🌐 الخطوة 8.4: أوضاع القراءة",
+        "instModos": "في أوضاع القراءة توجد حاليًا 3 خيارات:<br>• <b>'الترجمة فقط':</b> يقرأ الترجمة مع عرض النص المترجم.<br>• <b>'ترجمة نصية مترجمة':</b> يقرأ بلغة المصدر لكنه يعرض ترجمة نصية بلغة الهدف.<br>• <b>'وضع التعلّم':</b> يكرر القراءة بكلتا اللغتين.",
+        "detalleModos": "💡 <i>سنختبر تاليًا وضع الترجمة فقط من خلال عرض مباشر.</i>",
+        "tituloPaso2": "🎧 الخطوة 8.5: عرض توضيحي للترجمة الفورية",
+        "instPaso2": "تم تحميل نص باللغة الإنجليزية. انقر على الفقرة لتسمع كيف يترجمها LiraLoud ويقرؤها بلغتك فورًا.",
+        "detallePaso2": "✨ <i>سيترجم LiraLoud الجملة في الوقت الفعلي ويعرض الترجمة النصية العائمة على الشاشة.</i>",
+        "btnDemo": "⚡ تجربة الترجمة الفورية",
+        "badgeMouse": "🖱️ انقر للترجمة إلى العربية",
+        "exito": "🎉 <b>تم التحقق!</b> لقد استمعت إلى الترجمة وشاهدت الترجمة النصية العائمة في الوقت الفعلي."
+    },
+    "hi": {
+        "origen": "en",
+        "destino": "hi",
+        "tituloDoc": "अनुवाद दस्तावेज़ - LIRALOUD",
+        "subtituloDoc": "लाइव अनुवाद डेमो (अंग्रेज़ी ➔ हिंदी)",
+        "textoDoc": "Reading books expands the mind and brings new ideas.",
+        "textoTraducido": "किताबें पढ़ने से मन का विस्तार होता है और नए विचार आते हैं।",
+        "tituloPaso1": "🌐 चरण 8.0: अनुवादक खोलें",
+        "instPaso1Normal": "LiraLoud लोड किए गए दस्तावेज़ों का रीयल-टाइम में अनुवाद कर सकता है। नीले रंग में हाइलाइट किए गए <b>'अनुवादक'</b> बटन पर क्लिक करें।",
+        "instPaso1ZenMenu": "LiraLoud लोड किए गए दस्तावेज़ों का रीयल-टाइम में अनुवाद कर सकता है। इसके लिए <b>मुख्य मेनू (☰)</b> पर क्लिक करें।",
+        "instPaso1ZenTrad": "अब नीले रंग में हाइलाइट किए गए <b>'अनुवादक'</b> बटन पर क्लिक करें।",
+        "detallePaso1": "💡 <i>यह आपको सहज आवाज़ और स्क्रीन पर सबटाइटल के साथ किसी भी किताब को सुनते हुए उसका अनुवाद करने देता है।</i>",
+        "tituloActivar": "🌐 चरण 8.1: अनुवादक सक्रिय करें",
+        "instActivar": "यहाँ आप पढ़ते समय रीयल-टाइम अनुवाद सक्रिय कर सकते हैं।",
+        "detalleActivar": "💡 <i>इसे सक्रिय करने पर, LiraLoud आपकी प्राथमिकताओं के अनुसार प्रत्येक वाक्य को स्वचालित रूप से प्रोसेस करेगा।</i>",
+        "tituloOrigen": "🌐 चरण 8.2: स्रोत भाषा",
+        "instOrigen": "स्रोत भाषा वह भाषा है जिसका अनुवाद किया जाना है; आप ऑटो-डिटेक्ट का उपयोग कर सकते हैं या इसे मैन्युअल रूप से चुन सकते हैं।",
+        "detalleOrigen": "💡 <i>ऑटो-डिटेक्ट तुरंत पाठ की भाषा पहचान लेता है।</i>",
+        "tituloDestino": "🌐 चरण 8.3: लक्ष्य भाषा",
+        "instDestino": "लक्ष्य भाषा वह भाषा है जिसमें अनुवाद सुनाई देगा।",
+        "detalleDestino": "💡 <i>पठन की आवाज़ और सबटाइटल आपकी चुनी हुई भाषा के अनुसार समायोजित हो जाएँगे।</i>",
+        "tituloModos": "🌐 चरण 8.4: पठन मोड",
+        "instModos": "पठन मोड में वर्तमान में 3 विकल्प हैं:<br>• <b>'केवल अनुवाद':</b> सबटाइटल के साथ अनुवाद पढ़ता है।<br>• <b>'अनुवादित सबटाइटल':</b> स्रोत भाषा में पढ़ता है लेकिन लक्ष्य भाषा में अनुवादित सबटाइटल दिखाता है।<br>• <b>'सीखने का मोड':</b> दोनों भाषाओं में पठन दोहराता है।",
+        "detalleModos": "💡 <i>आगे हम लाइव डेमो के साथ 'केवल अनुवाद' मोड की जाँच करेंगे।</i>",
+        "tituloPaso2": "🎧 चरण 8.5: लाइव अनुवाद डेमो",
+        "instPaso2": "अंग्रेज़ी में एक पाठ लोड किया गया है। यह सुनने के लिए पैराग्राफ पर क्लिक करें कि LiraLoud तुरंत इसका अनुवाद करके आपकी भाषा में कैसे पढ़ता है।",
+        "detallePaso2": "✨ <i>LiraLoud रीयल-टाइम में वाक्य का अनुवाद करेगा और स्क्रीन पर फ़्लोटिंग सबटाइटल दिखाएगा।</i>",
+        "btnDemo": "⚡ लाइव अनुवाद आज़माएँ",
+        "badgeMouse": "🖱️ हिंदी में अनुवाद करने के लिए क्लिक करें",
+        "exito": "🎉 <b>सत्यापित!</b> आपने अनुवाद सुना और रीयल-टाइम में फ़्लोटिंग सबटाइटल देखे।"
+    },
+    "bn": {
+        "origen": "en",
+        "destino": "bn",
+        "tituloDoc": "অনুবাদ নথি - LIRALOUD",
+        "subtituloDoc": "লাইভ অনুবাদ প্রদর্শনী (ইংরেজি ➔ বাংলা)",
+        "textoDoc": "Reading books expands the mind and brings new ideas.",
+        "textoTraducido": "বই পড়া মনকে প্রসারিত করে এবং নতুন ভাবনা নিয়ে আসে।",
+        "tituloPaso1": "🌐 ধাপ ৮.০: অনুবাদক খুলুন",
+        "instPaso1Normal": "LiraLoud লোড করা নথিগুলো রিয়েল-টাইমে অনুবাদ করতে পারে। নীল রঙে হাইলাইট করা <b>'অনুবাদক'</b> বোতামে ক্লিক করুন।",
+        "instPaso1ZenMenu": "LiraLoud লোড করা নথিগুলো রিয়েল-টাইমে অনুবাদ করতে পারে। এর জন্য <b>প্রধান মেনু (☰)</b>-তে ক্লিক করুন।",
+        "instPaso1ZenTrad": "এখন নীল রঙে হাইলাইট করা <b>'অনুবাদক'</b> বোতামে ক্লিক করুন।",
+        "detallePaso1": "💡 <i>পর্দায় সাবটাইটেল ও সাবলীল ভয়েসে শোনার সাথে সাথে যেকোনো বই অনুবাদ করতে দেয়।</i>",
+        "tituloActivar": "🌐 ধাপ ৮.১: অনুবাদক চালু করুন",
+        "instActivar": "এখানে আপনি পড়ার সময় রিয়েল-টাইম অনুবাদ চালু করতে পারেন।",
+        "detalleActivar": "💡 <i>এটি চালু করলে LiraLoud আপনার পছন্দ অনুযায়ী প্রতিটি বাক্য স্বয়ংক্রিয়ভাবে প্রসেস করবে।</i>",
+        "tituloOrigen": "🌐 ধাপ ৮.২: উৎস ভাষা",
+        "instOrigen": "উৎস ভাষা হলো যে ভাষাটি অনুবাদ করতে চান; আপনি স্বয়ংক্রিয় শনাক্তকরণ ব্যবহার করতে পারেন অথবা হাতে-কলমে বেছে নিতে পারেন।",
+        "detalleOrigen": "💡 <i>স্বয়ংক্রিয় শনাক্তকরণ তাৎক্ষণিকভাবে পাঠ্যের ভাষা চিনে নেয়।</i>",
+        "tituloDestino": "🌐 ধাপ ৮.৩: লক্ষ্য ভাষা",
+        "instDestino": "লক্ষ্য ভাষা হলো সেই ভাষা যে ভাষায় অনুবাদটি শোনা যাবে।",
+        "detalleDestino": "💡 <i>পড়ার ভয়েস এবং সাবটাইটেল আপনার নির্বাচিত ভাষার সাথে খাপ খাইয়ে নেবে।</i>",
+        "tituloModos": "🌐 ধাপ ৮.৪: পড়ার মোড",
+        "instModos": "পড়ার মোডে বর্তমানে ৩টি বিকল্প রয়েছে:<br>• <b>'শুধুমাত্র অনুবাদ':</b> সাবটাইটেলসহ অনুবাদ পড়ে শোনায়।<br>• <b>'অনূদিত সাবটাইটেল':</b> উৎস ভাষায় পড়ে কিন্তু লক্ষ্য ভাষায় অনূদিত সাবটাইটেল দেখায়।<br>• <b>'শেখার মোড':</b> উভয় ভাষায় পড়া পুনরাবৃত্তি করে।",
+        "detalleModos": "💡 <i>এরপর আমরা একটি লাইভ প্রদর্শনীর মাধ্যমে 'শুধুমাত্র অনুবাদ' মোড পরীক্ষা করব।</i>",
+        "tituloPaso2": "🎧 ধাপ ৮.৫: লাইভ অনুবাদ প্রদর্শনী",
+        "instPaso2": "একটি ইংরেজি পাঠ্য লোড করা হয়েছে। LiraLoud কীভাবে তাৎক্ষণিকভাবে এটি অনুবাদ করে আপনার ভাষায় পড়ে শোনায় তা শুনতে অনুচ্ছেদটির ওপর ক্লিক করুন।",
+        "detallePaso2": "✨ <i>LiraLoud রিয়েল-টাইমে বাক্যটি অনুবাদ করবে এবং পর্দায় ভাসমান সাবটাইটেল দেখাবে।</i>",
+        "btnDemo": "⚡ লাইভ অনুবাদ পরীক্ষা করুন",
+        "badgeMouse": "🖱️ বাংলায় অনুবাদ করতে ক্লিক করুন",
+        "exito": "🎉 <b>প্রমাণিত!</b> আপনি অনুবাদটি শুনেছেন এবং রিয়েল-টাইমে ভাসমান সাবটাইটেল দেখেছেন।"
+    }
+};
+
+const DEMO_EXTRACCION_POR_IDIOMA = {
+    "es": {
+        "tituloDoc": "EXTRACCIÓN Y APUNTES - LIRALOUD",
+        "subtituloDoc": "Demostración de Subrayado Inteligente, Recortes y Cuaderno",
+        "oracion1": "La inteligencia artificial transforma nuestra manera de estudiar y asimilar conocimientos complejos.",
+        "oracion2": "El aprendizaje continuo nos permite adaptarnos a los constantes cambios tecnológicos.",
+        "diagramaTitulo": "Diagrama Conceptual: Flujo de Aprendizaje",
+        "diagramaPaso1": "1. Lectura",
+        "diagramaPaso2": "2. Análisis",
+        "diagramaPaso3": "3. Retención",
+        "diagramaSub": "Esquema gráfico sincronizado con el Gestor de Extracción (Alt+C)",
+        "tituloSubrayadoAzul": "🎨 Paso 9.1: Subrayador Inteligente por Color",
+        "instSubrayadoAzul": "¡Muy bien! Ahora veamos las herramientas de estudio. Abre las herramientas de edición, selecciona el <b>Marcatextos</b> con el color <b>Azul</b> y arrastra el cursor sobre la primera oración para subrayarla.",
+        "detalleSubrayadoAzul": "💡 <i>Los subrayados por color se sincronizan directamente con el Gestor de Extracción y con Lira AI.</i>",
+        "btnSubrayarAzul": "🎨 Subrayar 1ª Oración en Azul",
+        "badgeMouseAzul": "🖱️ Elige azul y subraya la 1ª oración",
+        "exitoSubrayadoAzul": "✔ <b>¡Muy bien!</b> Primera oración resaltada en azul.",
+        "tituloSubrayadoRosa": "🎨 Paso 9.2: Subrayado en Rosa",
+        "instSubrayadoRosa": "Ahora cambia al color <b>Rosa</b> en la paleta y subraya la segunda oración del documento.",
+        "detalleSubrayadoRosa": "💡 <i>Puedes categorizar tus ideas por colores temáticos para encontrarlas rápidamente.</i>",
+        "btnSubrayarRosa": "🎨 Subrayar 2ª Oración en Rosa",
+        "badgeMouseRosa": "🖱️ Elige rosa y subraya la 2ª oración",
+        "exitoSubrayadoRosa": "✨ <b>¡Excelente!</b> Ambas oraciones han quedado resaltadas con sus colores temáticos.",
+        "tituloRecorte": "📸 Paso 9.3: Capturar Recorte (Alt+C)",
+        "instRecorte": "Además de texto, puedes guardar diagramas o imágenes. Haz clic en <b>'Capturar Recorte'</b> y arrastra un recuadro sobre el diagrama inferior.",
+        "detalleRecorte": "💡 <i>A diferencia de otros visores de PDF, LiraLoud extrae gráficos, fórmulas y esquemas en alta resolución.</i>",
+        "btnRecortar": "📸 Capturar Diagrama Ahora",
+        "badgeMouseRecorte": "🖱️ Arrastra un recuadro sobre el diagrama",
+        "exitoRecorte": "🎉 <b>¡Recorte capturado!</b> Se ha generado una captura de alta resolución con su número de página.",
+        "tituloAbrirGestor": "📂 Paso 9.4: Abrir el Gestor de Extracción",
+        "instAbrirGestor": "Ahora haz clic en el <b>'Gestor de Extracción'</b> iluminado en azul para abrir tu panel de recopilación.",
+        "detalleAbrirGestor": "💡 <i>El gestor almacena y clasifica automáticamente todos tus subrayados y capturas visuales.</i>",
+        "btnAbrirGestor": "📂 Abrir Gestor de Extracción",
+        "badgeMouseAbrirGestor": "🖱️ Clic en Gestor de Extracción",
+        "tituloGestor": "📂 Paso 9.5: Gestor de Extracción",
+        "instGestor": "Este es el <b>Gestor de Extracción</b>. Aquí verás organizados todos tus subrayados por color y los recortes visuales que has realizado en tu documento, además de que te permite visualizarlos por página o acorde a los filtros seleccionados.",
+        "detalleGestor": "💡 <b>Pestañas y Filtros:</b><br>• Filtra por <b>Todas</b>, solo <b>Subrayados</b> o solo <b>Capturas</b>.<br>• Usa el selector de <b>Color</b> o filtra por <b>Página</b> para estudiar página por página o ver todo el libro de forma <b>Global</b>.",
+        "btnGestorSiguiente": "Siguiente: Nota Rápida ➔",
+        "tituloNotaRapida": "📝 Paso 9.6: Nota Rápida (Alt + N)",
+        "instNotaRapida": "Para tomar apuntes al vuelo, tus notas quedarán vinculadas a la página actual. Haz clic en <b>'Nota Rápida'</b> o pulsa <kbd style='background:#1e293b; padding:2px 6px; border-radius:4px; border:1px solid #0284c7; color:#38bdf8; font-weight:bold;'>Alt + N</kbd>.",
+        "detalleNotaRapida": "💡 <b>Notas por Hoja y Libro:</b><br>• La Nota Rápida se asocia automáticamente a la <b>página actual</b> del libro que estás leyendo.",
+        "btnAbrirNotaRapida": "📝 Abrir Nota Rápida (Alt + N)",
+        "btnNotaRapidaSiguiente": "Siguiente: Cuaderno de Notas ➔",
+        "tituloCuaderno": "📓 Paso 9.7: Cuaderno de Notas y Apuntes",
+        "instCuaderno": "Y para revisar todos los apuntes que has hecho en el PDF, haz clic en <b>'Cuaderno de Notas'</b> o pulsa la tecla <b>N</b>.",
+        "detalleCuaderno": "💡 <b>Todos tus apuntes en un solo lugar:</b><br>• En el Cuaderno puedes consultar y organizar <b>todos los apuntes globales</b> que has hecho a lo largo de todo el PDF.",
+        "btnCuadernoContinuar": "🎉 ¡Entendido, Continuar a Configuración! ➔",
+        "demoNotaTitulo": "📝 Resumen y Reflexiones de Lectura",
+        "demoNotaContenido": "<b>Conceptos Clave:</b><br>• El subrayado por color categoriza ideas principales y secundarias.<br>• Los recortes visuales preservan esquemas sin perder calidad.<br>• Las notas sincronizadas se guardan en formato Markdown estándar.",
+        "tituloOCR": "🔍 Paso 9.8: Reconocimiento Óptico (RapidOCR) y Auto-OCR",
+        "instOCR": "LiraLoud cuenta con 4 funciones de OCR:<br>• <b>'Forzar OCR':</b> para escanear la página actual si falló algún reconocimiento.<br>• <b>'Escanear por rango':</b> para procesar páginas específicas.<br>• <b>'Escanear todo el texto':</b> para convertir el documento completo.<br>• <b>'Auto-OCR al navegar':</b> viene activo por defecto y convierte automáticamente las páginas sin texto cuando son imágenes.",
+        "detalleOCR": "💡 <i>Ideal para libros digitalizados, fotocopias y artículos donde el texto viene incrustado en imágenes.</i>",
+        "btnOCRSiguiente": "Siguiente: Exportar Audio (MP3) ➔",
+        "tituloDescarga": "🎙️ Paso 9.9: Exportar y Descargar Audio de Estudio",
+        "instDescarga": "Este es el botón de descarga, muy útil para escuchar tu lectura en otro dispositivo. Haz clic en <b>'Descargar Audio'</b> para exportar la página o el documento en formato <b>MP3</b> o <b>WAV</b>.",
+        "detalleDescarga": "💡 <i>Lleva tus lecturas a cualquier lugar para repasar en tu móvil o reproductor sin necesidad de pantalla ni conexión.</i>",
+        "btnDescargaContinuar": "🎉 Continuar a Configuración ➔"
+    },
+    "en": {
+        "tituloDoc": "EXTRACTION & NOTES - LIRALOUD",
+        "subtituloDoc": "Smart Highlighting, Visual Crops and Notes Demo",
+        "oracion1": "Artificial intelligence transforms how we study and assimilate complex knowledge.",
+        "oracion2": "Continuous learning enables us to adapt to rapid technological shifts.",
+        "diagramaTitulo": "Conceptual Diagram: Learning Workflow",
+        "diagramaPaso1": "1. Reading",
+        "diagramaPaso2": "2. Analysis",
+        "diagramaPaso3": "3. Retention",
+        "diagramaSub": "Visual chart synchronized with the Extraction Manager (Alt+C)",
+        "tituloSubrayadoAzul": "🎨 Step 9.1: Smart Color Highlighting",
+        "instSubrayadoAzul": "👉 Under editing tools, activate the <b>Highlighter</b> in <b>Blue (Cyan)</b> and highlight the first sentence in the document.",
+        "detalleSubrayadoAzul": "💡 <i>Color highlights sync automatically with the Extraction Manager and Lira AI.</i>",
+        "btnSubrayarAzul": "🎨 Highlight 1st Sentence in Blue",
+        "badgeMouseAzul": "🖱️ Choose blue and highlight the 1st sentence",
+        "exitoSubrayadoAzul": "✔ <b>Well done!</b> First sentence highlighted in blue.",
+        "tituloSubrayadoRosa": "🎨 Step 9.2: Highlighting in Pink",
+        "instSubrayadoRosa": "👉 Now open the color palette, select <b>Pink (Magenta)</b> and highlight the second sentence.",
+        "detalleSubrayadoRosa": "💡 <i>Categorize primary and secondary ideas using distinct thematic colors.</i>",
+        "btnSubrayarRosa": "🎨 Highlight 2nd Sentence in Pink",
+        "badgeMouseRosa": "🖱️ Choose pink and highlight the 2nd sentence",
+        "exitoSubrayadoRosa": "✨ <b>Great job!</b> Both sentences have been highlighted in their respective thematic colors.",
+        "tituloRecorte": "📸 Step 9.3: Visual Crop Tool (Alt+C)",
+        "instRecorte": "👉 Click the <b>Visual Crop</b> tool on the top toolbar (or press <b>Alt+C</b>) and drag a box across the conceptual diagram to capture it.",
+        "detalleRecorte": "💡 <i>Unlike standard PDF readers, LiraLoud extracts charts, mathematical formulas, and diagrams in crystal-clear high definition.</i>",
+        "btnRecortar": "📸 Capture Diagram Now",
+        "badgeMouseRecorte": "🖱️ Drag a box over the diagram",
+        "exitoRecorte": "🎉 <b>Crop captured!</b> High-resolution snapshot saved with its page number.",
+        "tituloAbrirGestor": "📂 Step 9.4: Open the Extraction Manager",
+        "instAbrirGestor": "👉 Click the <b>Extraction Manager</b> button on the top toolbar to open it and review what you just saved.",
+        "detalleAbrirGestor": "💡 <i>The manager automatically collects and indexes all your color highlights and visual crops.</i>",
+        "btnAbrirGestor": "📂 Open Extraction Manager",
+        "badgeMouseAbrirGestor": "🖱️ Click Extraction Manager",
+        "tituloGestor": "📂 Step 9.5: Extraction Manager",
+        "instGestor": "👉 Explore the <b>Extraction Manager</b> on the right: all your highlighted texts and visual crops are stored here.",
+        "detalleGestor": "💡 <b>Tabs and Filters:</b><br>• Filter by <b>All</b>, only <b>Highlights</b>, or only <b>Crops</b>.<br>• Use the <b>Color</b> picker or filter by <b>Page</b> to review page by page or browse the entire book <b>Globally</b>.<br>• Each card lets you jump to the page or forward the content to Lira AI.",
+        "btnGestorSiguiente": "Next: Quick Note ➔",
+        "tituloNotaRapida": "📝 Step 9.6: Quick Note (Alt+N)",
+        "instNotaRapida": "👉 Click the <b>Quick Note</b> button on the top toolbar or press <b>Alt+N</b>.",
+        "detalleNotaRapida": "💡 <b>Notes per Page & Book:</b><br>• Quick Notes attach instantly to the <b>current page</b> of the book you are reading.<br>• Capture thoughts immediately without hiding your reading view.",
+        "btnAbrirNotaRapida": "📝 Open Quick Note (Alt+N)",
+        "btnNotaRapidaSiguiente": "Next: Full Notebook ➔",
+        "tituloCuaderno": "📓 Step 9.7: Full Notebook & Notes Manager",
+        "instCuaderno": "👉 Click <b>📖 Notebook</b> (or press <b>N</b>) to open the full notes manager.",
+        "detalleCuaderno": "💡 <b>All your notes in one place:</b><br>• In the Notebook you can view and organize <b>all global notes</b> across your entire PDF.<br>• Compatible with Markdown & Obsidian, featuring tags, search, and AI assistance to polish or expand ideas.",
+        "btnCuadernoContinuar": "🎉 Understood, Continue to Configuration! ➔",
+        "demoNotaTitulo": "📝 Reading Summary & Thoughts",
+        "demoNotaContenido": "<b>Key Takeaways:</b><br>• Color highlights categorize primary and secondary ideas.<br>• Visual crops preserve diagrams without loss of quality.<br>• Synchronized notes are stored in standard Markdown format.",
+        "tituloOCR": "🔍 Step 9.8: Optical Recognition (RapidOCR) & Auto-OCR",
+        "instOCR": "👉 The <b>RapidOCR</b> engine converts images and scanned documents into interactive text you can read and study with voice.<br><br>• <b>Smart Auto-OCR:</b> By default, automatically converts non-text pages as you browse.<br>• <b>Flexible Options:</b> Scan by <b>Page Range</b>, the <b>Entire Book</b>, or use <b>Force OCR</b> if a page was not recognized initially.",
+        "detalleOCR": "💡 <i>Ideal for scanned books, photocopies, and documents with embedded image text.</i>",
+        "btnOCRSiguiente": "Next: Export Audio (MP3) ➔",
+        "tituloDescarga": "🎙️ Step 9.9: Export and Download Study Audio",
+        "instDescarga": "👉 In addition to listening in real time, you can <b>download high-quality audio</b> in <b>MP3</b> or <b>WAV</b> format.<br><br>💡 Export individual pages, a <b>study range</b>, or the <b>entire book</b> preserving your chosen study voice, rate, and pauses.",
+        "detalleDescarga": "💡 <i>Take your readings anywhere to review on mobile or MP3 player without screens or internet.</i>",
+        "btnDescargaContinuar": "🎉 Continue to Configuration ➔"
+    },
+    "fr": {
+        "tituloDoc": "EXTRACTION ET NOTES - LIRALOUD",
+        "subtituloDoc": "Démonstration de Surlignage Intelligent, Recadrages et Carnet",
+        "oracion1": "L'intelligence artificielle transforme notre façon d'étudier et d'assimiler des connaissances complexes.",
+        "oracion2": "L'apprentissage continu nous permet de nous adapter aux évolutions technologiques constantes.",
+        "diagramaTitulo": "Schéma Conceptuel : Flux d'Apprentissage",
+        "diagramaPaso1": "1. Lecture",
+        "diagramaPaso2": "2. Analyse",
+        "diagramaPaso3": "3. Mémorisation",
+        "diagramaSub": "Schéma synchronisé avec le Gestionnaire d'Extraction (Alt+C)",
+        "tituloSubrayadoAzul": "🎨 Étape 9.1 : Surlignage Intelligent par Couleur",
+        "instSubrayadoAzul": "👉 Dans les outils d'édition, activez le <b>Surligneur</b> en <b>Bleu (Cyan)</b> et surlignez la première phrase du document.",
+        "detalleSubrayadoAzul": "💡 <i>Les surlignages par couleur se synchronisent directement avec le Gestionnaire d'Extraction et Lira IA.</i>",
+        "btnSubrayarAzul": "🎨 Surligner la 1ère phrase en Bleu",
+        "badgeMouseAzul": "🖱️ Choisissez bleu et surlignez la 1ère phrase",
+        "exitoSubrayadoAzul": "✔ <b>Très bien !</b> Première phrase surlignée en bleu.",
+        "tituloSubrayadoRosa": "🎨 Étape 9.2 : Surlignage en Rose",
+        "instSubrayadoRosa": "👉 Ouvrez maintenant la palette, choisissez la couleur <b>Rose (Magenta)</b> et surlignez la deuxième phrase.",
+        "detalleSubrayadoRosa": "💡 <i>Classez vos idées principales et secondaires à l'aide de couleurs thématiques.</i>",
+        "btnSubrayarRosa": "🎨 Surligner la 2ème phrase en Rose",
+        "badgeMouseRosa": "🖱️ Choisissez rose et surlignez la 2ème phrase",
+        "exitoSubrayadoRosa": "✨ <b>Parfait !</b> Les deux phrases sont surlignées avec leurs couleurs thématiques.",
+        "tituloRecorte": "📸 Étape 9.3 : Outil de Capture Visuelle (Alt+C)",
+        "instRecorte": "👉 Cliquez sur l'outil de <b>Capture Visuelle</b> (ou <b>Alt+C</b>) et tracez un cadre sur le schéma conceptuel pour le capturer.",
+        "detalleRecorte": "💡 <i>À la différence d'autres lecteurs PDF, LiraLoud extrait graphiques, formules et schémas en haute définition.</i>",
+        "btnRecortar": "📸 Capturer le Schéma Maintenant",
+        "badgeMouseRecorte": "🖱️ Tracez un cadre sur le schéma",
+        "exitoRecorte": "🎉 <b>Capture enregistrée !</b> Image haute résolution sauvegardée avec son numéro de page.",
+        "tituloAbrirGestor": "📂 Étape 9.4 : Ouvrir le Gestionnaire d'Extraction",
+        "instAbrirGestor": "👉 Cliquez sur le bouton du <b>Gestionnaire d'Extraction</b> dans la barre supérieure pour explorer vos sauvegardes.",
+        "detalleAbrirGestor": "💡 <i>Le gestionnaire classe automatiquement tous vos surlignages et captures visuelles.</i>",
+        "btnAbrirGestor": "📂 Ouvrir le Gestionnaire d'Extraction",
+        "badgeMouseAbrirGestor": "🖱️ Cliquez sur Gestionnaire d'Extraction",
+        "tituloGestor": "📂 Étape 9.5 : Gestionnaire d'Extraction",
+        "instGestor": "👉 Explorez le <b>Gestionnaire d'Extraction</b> à droite : tous vos surlignages et captures y sont regroupés.",
+        "detalleGestor": "💡 <b>Onglets et Filtres :</b><br>• Filtrez par <b>Tous</b>, <b>Surlignages</b> ou <b>Captures</b>.<br>• Utilisez le filtre de <b>Couleur</b> ou par <b>Page</b> (par page ou vue <b>Globale</b>).<br>• Chaque carte permet de sauter à la page ou d'interroger Lira IA.",
+        "btnGestorSiguiente": "Suivant : Note Rapide ➔",
+        "tituloNotaRapida": "📝 Étape 9.6 : Note Rapide (Alt+N)",
+        "instNotaRapida": "👉 Cliquez sur <b>Note Rapide</b> dans la barre supérieure ou appuyez sur <b>Alt+N</b>.",
+        "detalleNotaRapida": "💡 <b>Notes par Page et par Livre :</b><br>• La Note Rapide est directement liée à la <b>page courante</b> du livre en cours.<br>• Notez vos idées sans masquer votre lecture ni perdre le fil.",
+        "btnAbrirNotaRapida": "📝 Ouvrir la Note Rapide (Alt+N)",
+        "btnNotaRapidaSiguiente": "Suivant : Carnet de Notes ➔",
+        "tituloCuaderno": "📓 Étape 9.7 : Carnet de Notes Général",
+        "instCuaderno": "👉 Cliquez sur <b>📖 Carnet</b> (ou appuyez sur <b>N</b>) pour ouvrir le gestionnaire de notes.",
+        "detalleCuaderno": "💡 <b>Toutes vos notes au même endroit :</b><br>• Consultez et organisez <b>l'ensemble des notes globales</b> rédigées sur tout le PDF.<br>• Compatible Markdown & Obsidian, avec filtres, recherche et aide de l'IA pour synthétiser vos idées.",
+        "btnCuadernoContinuar": "🎉 Compris, Continuer vers la Configuration ! ➔",
+        "demoNotaTitulo": "📝 Synthèse et Réflexions de Lecture",
+        "demoNotaContenido": "<b>Points Clés :</b><br>• Le surlignage par couleur classe idées principales et secondaires.<br>• Les captures préservent les schémas sans perte de netteté.<br>• Les notes sont sauvegardées en Markdown standard.",
+        "tituloOCR": "🔍 Étape 9.8 : Reconnaissance Optique (RapidOCR) & Auto-OCR",
+        "instOCR": "👉 Le moteur <b>RapidOCR</b> convertit les images et documents scannés en texte interactif lisible à voix haute.<br><br>• <b>Auto-OCR Intelligent :</b> Par défaut, convertit automatiquement les pages sans texte lors de la navigation.<br>• <b>Options Flexibles :</b> Numérisez par <b>Plage de pages</b>, le <b>Livre complet</b>, ou utilisez <b>Forcer l'OCR</b> si le texte n'a pas été détecté au départ.",
+        "detalleOCR": "💡 <i>Idéal pour les livres numérisés et documents avec du texte incrusté en images.</i>",
+        "btnOCRSiguiente": "Suivant : Exporter l'Audio (MP3) ➔",
+        "tituloDescarga": "🎙️ Étape 9.9 : Exporter et Télécharger l'Audio d'Étude",
+        "instDescarga": "👉 En plus de l'écoute en direct, vous pouvez <b>télécharger l'audio</b> en format <b>MP3</b> ou <b>WAV</b> de haute qualité.<br><br>💡 Exportez une page, une <b>plage d'étude</b> ou le <b>livre complet</b> en conservant voix, vitesse et pauses choisies.",
+        "detalleDescarga": "💡 <i>Étudiez partout sur mobile sans avoir besoin d'écran ni de connexion internet.</i>",
+        "btnDescargaContinuar": "🎉 Continuer vers la Configuration ➔"
+    },
+    "pt": {
+        "tituloDoc": "EXTRAÇÃO E NOTAS - LIRALOUD",
+        "subtituloDoc": "Demonstração de Marcação Inteligente, Recortes e Caderno",
+        "oracion1": "A inteligência artificial transforma nossa forma de estudar e assimilar conhecimentos complexos.",
+        "oracion2": "O aprendizado contínuo nos permite adaptar às constantes mudanças tecnológicas.",
+        "diagramaTitulo": "Diagrama Conceitual: Fluxo de Aprendizagem",
+        "diagramaPaso1": "1. Leitura",
+        "diagramaPaso2": "2. Análise",
+        "diagramaPaso3": "3. Retenção",
+        "diagramaSub": "Esquema gráfico sincronizado com o Gestor de Extração (Alt+C)",
+        "tituloSubrayadoAzul": "🎨 Passo 9.1: Marcação Inteligente por Cores",
+        "instSubrayadoAzul": "👉 Nas ferramentas de edição, ative o <b>Marcador</b> com a cor <b>Azul (Ciano)</b> e destaque a primeira frase no visor.",
+        "detalleSubrayadoAzul": "💡 <i>As marcações por cor sincronizam diretamente com o Gestor de Extração e a Lira IA.</i>",
+        "btnSubrayarAzul": "🎨 Destacar 1ª Frase em Azul",
+        "badgeMouseAzul": "🖱️ Escolha azul e destaque a 1ª frase",
+        "exitoSubrayadoAzul": "✔ <b>Muito bem!</b> Primeira frase destacada em azul.",
+        "tituloSubrayadoRosa": "🎨 Passo 9.2: Marcação em Rosa",
+        "instSubrayadoRosa": "👉 Agora abra a paleta, escolha a cor <b>Rosa (Magenta)</b> e destaque a segunda frase.",
+        "detalleSubrayadoRosa": "💡 <i>Categorize ideias principais e secundárias utilizando cores temáticas diferentes.</i>",
+        "btnSubrayarRosa": "🎨 Destacar 2ª Frase em Rosa",
+        "badgeMouseRosa": "🖱️ Escolha rosa e destaque a 2ª frase",
+        "exitoSubrayadoRosa": "✨ <b>Excelente!</b> Ambas as frases foram destacadas com suas cores temáticas.",
+        "tituloRecorte": "📸 Passo 9.3: Ferramenta de Recorte Visual (Alt+C)",
+        "instRecorte": "👉 Clique na ferramenta de <b>Recorte Visual</b> (ou <b>Alt+C</b>) e arraste uma moldura sobre o diagrama conceitual para capturá-lo.",
+        "detalleRecorte": "💡 <i>Diferente de outros leitores de PDF, o LiraLoud permite recortar gráficos, fórmulas matemáticas e esquemas em alta resolução.</i>",
+        "btnRecortar": "📸 Capturar Diagrama Agora",
+        "badgeMouseRecorte": "🖱️ Arraste uma caixa sobre o diagrama",
+        "exitoRecorte": "🎉 <b>Recorte capturado!</b> Imagem em alta resolução salva com seu número de página.",
+        "tituloAbrirGestor": "📂 Passo 9.4: Abrir o Gestor de Extração",
+        "instAbrirGestor": "👉 Clique no botão do <b>Gestor de Extração</b> na barra superior para abri-lo e conferir suas capturas.",
+        "detalleAbrirGestor": "💡 <i>O gestor reúne e organiza todas as suas marcações coloridas e recortes visuais.</i>",
+        "btnAbrirGestor": "📂 Abrir Gestor de Extração",
+        "badgeMouseAbrirGestor": "🖱️ Clique no Gestor de Extração",
+        "tituloGestor": "📂 Passo 9.5: Gestor de Extração",
+        "instGestor": "👉 Explore o <b>Gestor de Extração</b> aberto à direita: aqui ficam guardados todos os textos destacados e capturas visuais.",
+        "detalleGestor": "💡 <b>Abas e Filtros:</b><br>• Filtre por <b>Todas</b>, apenas <b>Marcações</b> ou apenas <b>Capturas</b>.<br>• Use o seletor de <b>Cor</b> ou filtre por <b>Página</b> (página atual ou vista <b>Global</b>).<br>• Cada cartão permite pular para a página ou consultar a Lira IA.",
+        "btnGestorSiguiente": "Seguinte: Nota Rápida ➔",
+        "tituloNotaRapida": "📝 Passo 9.6: Nota Rápida (Alt+N)",
+        "instNotaRapida": "👉 Clique em <b>Nota Rápida</b> na barra superior ou pressione <b>Alt+N</b>.",
+        "detalleNotaRapida": "💡 <b>Notas por Página e Livro:</b><br>• A Nota Rápida vincula-se de imediato à <b>página atual</b> do livro que você está lendo.<br>• Permite registrar pensamentos sem cobrir o texto da leitura.",
+        "btnAbrirNotaRapida": "📝 Abrir Nota Rápida (Alt+N)",
+        "btnNotaRapidaSiguiente": "Seguinte: Caderno de Notas ➔",
+        "tituloCuaderno": "📓 Passo 9.7: Caderno de Notas e Apontamentos",
+        "instCuaderno": "👉 Clique em <b>📖 Caderno</b> (ou pressione <b>N</b>) para abrir o caderno geral.",
+        "detalleCuaderno": "💡 <b>Todos os seus apontamentos em um só lugar:</b><br>• No Caderno você pode consultar e organizar <b>todas as notas globais</b> criadas ao longo do PDF.<br>• Compatível com Markdown e Obsidian, com etiquetas, busca e assistência de IA para expandir suas ideias.",
+        "btnCuadernoContinuar": "🎉 Entendido, Continuar para a Configuração! ➔",
+        "demoNotaTitulo": "📝 Resumo e Reflexiones de Leitura",
+        "demoNotaContenido": "<b>Pontos Principais:</b><br>• A marcação por cor categoriza ideias primárias e secundárias.<br>• Os recortes visuais preservam esquemas com total nitidez.<br>• As notas são salvas no formato padrão Markdown.",
+        "tituloOCR": "🔍 Passo 9.8: Reconhecimento Óptico (RapidOCR) e Auto-OCR",
+        "instOCR": "👉 O motor <b>RapidOCR</b> converte imagens e documentos escaneados em texto interativo que pode ser lido por voz.<br><br>• <b>Auto-OCR Inteligente:</b> Por padrão, converte automaticamente páginas sem texto ao navegar.<br>• <b>Opções Flexíveis:</b> Digitalize por <b>Intervalo de páginas</b>, o <b>Livro completo</b> ou use <b>Forçar OCR</b> se o texto não foi reconhecido inicialmente.",
+        "detalleOCR": "💡 <i>Ideal para livros digitalizados, cópias e documentos com texto embutido em imagens.</i>",
+        "btnOCRSiguiente": "Seguinte: Exportar Áudio (MP3) ➔",
+        "tituloDescarga": "🎙️ Passo 9.9: Exportar e Baixar Áudio de Estudo",
+        "instDescarga": "👉 Além de ouvir a leitura em tempo real, você pode <b>baixar o áudio</b> em formato <b>MP3</b> ou <b>WAV</b> de alta fidelidade.<br><br>💡 Exporte páginas individuais, um <b>intervalo de estudo</b> ou o <b>livro completo</b> mantendo a voz e ritmo configurados.",
+        "detalleDescarga": "💡 <i>Estude em qualquer lugar no celular sem precisar de telas ou internet.</i>",
+        "btnDescargaContinuar": "🎉 Continuar para a Configuração ➔"
+    },
+    "de": {
+        "tituloDoc": "EXTRAKTION & NOTIZEN - LIRALOUD",
+        "subtituloDoc": "Demonstration von Farbmarkierungen, Zuschnitten und Notizen",
+        "oracion1": "Künstliche Intelligenz verändert die Art und Weise, wie wir komplexe Inhalte lernen und verarbeiten.",
+        "oracion2": "Kontinuierliches Lernen ermöglicht es uns, uns an den ständigen technologischen Wandel anzupassen.",
+        "diagramaTitulo": "Konzeptdiagramm: Lern-Workflow",
+        "diagramaPaso1": "1. Lesen",
+        "diagramaPaso2": "2. Analyse",
+        "diagramaPaso3": "3. Behalten",
+        "diagramaSub": "Grafisches Schema synchronisiert mit dem Extraktionsmanager (Alt+C)",
+        "tituloSubrayadoAzul": "🎨 Schritt 9.1: Intelligentes Farb-Hervorheben",
+        "instSubrayadoAzul": "👉 Wählen Sie in den Bearbeitungswerkzeugen den <b>Textmarker</b> in <b>Blau (Cyan)</b> und markieren Sie den ersten Satz im Dokument.",
+        "detalleSubrayadoAzul": "💡 <i>Farbmarkierungen synchronisieren sich direkt mit dem Extraktionsmanager und Lira KI.</i>",
+        "btnSubrayarAzul": "🎨 1. Satz in Blau hervorheben",
+        "badgeMouseAzul": "🖱️ Blau wählen und 1. Satz markieren",
+        "exitoSubrayadoAzul": "✔ <b>Sehr gut!</b> Erster Satz blau hervorgehoben.",
+        "tituloSubrayadoRosa": "🎨 Schritt 9.2: Markierung in Rosa",
+        "instSubrayadoRosa": "👉 Öffnen Sie die Farbpalette, wählen Sie <b>Rosa (Magenta)</b> und markieren Sie den zweiten Satz.",
+        "detalleSubrayadoRosa": "💡 <i>Kategorisieren Sie Haupt- und Nebengedanken mit verschiedenen Themenfarben.</i>",
+        "btnSubrayarRosa": "🎨 2. Satz in Rosa hervorheben",
+        "badgeMouseRosa": "🖱️ Rosa wählen und 2. Satz markieren",
+        "exitoSubrayadoRosa": "✨ <b>Hervorragend!</b> Beide Sätze wurden in ihren jeweiligen Themenfarben markiert.",
+        "tituloRecorte": "📸 Schritt 9.3: Visuelles Zuschneidewerkzeug (Alt+C)",
+        "instRecorte": "👉 Klicken Sie in der Leiste auf <b>Visueller Zuschnitt</b> (oder <b>Alt+C</b>) und ziehen Sie einen Rahmen um das Konzeptdiagramm.",
+        "detalleRecorte": "💡 <i>Im Gegensatz zu herkömmlichen PDF-Readern extrahiert LiraLoud Diagramme und Formeln in hoher Auflösung.</i>",
+        "btnRecortar": "📸 Diagramm jetzt erfassen",
+        "badgeMouseRecorte": "🖱️ Rahmen um Diagramm ziehen",
+        "exitoRecorte": "🎉 <b>Zuschnitt gespeichert!</b> Hochauflösende Aufnahme mit Seitennummer gesichert.",
+        "tituloAbrirGestor": "📂 Schritt 9.4: Extraktionsmanager öffnen",
+        "instAbrirGestor": "👉 Klicken Sie in der oberen Leiste auf den <b>Extraktionsmanager</b>, um Ihre gespeicherten Inhalte einzusehen.",
+        "detalleAbrirGestor": "💡 <i>Der Manager bündelt automatisch all Ihre farbigen Markierungen und Zuschnitte.</i>",
+        "btnAbrirGestor": "📂 Extraktionsmanager öffnen",
+        "badgeMouseAbrirGestor": "🖱️ Klick auf Extraktionsmanager",
+        "tituloGestor": "📂 Schritt 9.5: Extraktionsmanager",
+        "instGestor": "👉 Erkunden Sie den rechts geöffneten <b>Extraktionsmanager</b>: Hier werden alle Textmarkierungen und visuellen Zuschnitte gesammelt.",
+        "detalleGestor": "💡 <b>Reiter und Filter:</b><br>• Filtern Sie nach <b>Alle</b>, nur <b>Markierungen</b> oder nur <b>Zuschnitte</b>.<br>• Nutzen Sie den <b>Farbfilter</b> oder filtern Sie nach <b>Seite</b> (seitenweise oder <b>Global</b> für das ganze Buch).<br>• Jede Karte springt direkt zur Seite oder sendet den Inhalt an Lira KI.",
+        "btnGestorSiguiente": "Weiter: Schnellnotiz ➔",
+        "tituloNotaRapida": "📝 Schritt 9.6: Schnellnotiz (Alt+N)",
+        "instNotaRapida": "👉 Klicken Sie in der Leiste auf <b>Schnellnotiz</b> oder drücken Sie <b>Alt+N</b>.",
+        "detalleNotaRapida": "💡 <b>Notizen nach Seite und Buch:</b><br>• Die Schnellnotiz ist automatisch mit der <b>aktuellen Seite</b> des Buchs verknüpft.<br>• Notieren Sie wichtige Gedanken, ohne den Textfluss zu unterbrechen.",
+        "btnAbrirNotaRapida": "📝 Schnellnotiz öffnen (Alt+N)",
+        "btnNotaRapidaSiguiente": "Weiter: Notizbuch ➔",
+        "tituloCuaderno": "📓 Schritt 9.7: Notizbuch & Notizen-Manager",
+        "instCuaderno": "👉 Klicken Sie auf <b>📖 Notizbuch</b> (oder Taste <b>N</b>), um die Notizübersicht zu öffnen.",
+        "detalleCuaderno": "💡 <b>Alle Notizen an einem Ort:</b><br>• Im Notizbuch sehen Sie <b>alle globalen Notizen</b> des gesamten PDFs auf einen Blick.<br>• Kompatibel mit Markdown & Obsidian, mit Tags, Suche und KI-Unterstützung zur Textverfeinerung.",
+        "btnCuadernoContinuar": "🎉 Verstanden, Weiter zur Konfiguration! ➔",
+        "demoNotaTitulo": "📝 Zusammenfassung & Gedanken zur Lektüre",
+        "demoNotaContenido": "<b>Kernpunkte:</b><br>• Farbige Markierungen gliedern Haupt- und Nebengedanken.<br>• Visuelle Zuschnitte bewahren Grafiken ohne Qualitätsverlust.<br>• Notizen werden im Markdown-Standard gespeichert.",
+        "tituloOCR": "🔍 Schritt 9.8: Texterkennung (RapidOCR) & Auto-OCR",
+        "instOCR": "👉 Die <b>RapidOCR</b>-Engine wandelt Bilder und gescannte Dokumente in interaktiven Text um, der mit Stimme vorgelesen werden kann.<br><br>• <b>Intelligentes Auto-OCR:</b> Konvertiert standardmäßig textlose Seiten beim Navigieren automatisch.<br>• <b>Flexible Optionen:</b> Scannen Sie nach <b>Seitenbereich</b>, das <b>gesamte Buch</b> oder nutzen Sie <b>OCR erzwingen</b>, falls eine Seite zunächst nicht erkannt wurde.",
+        "detalleOCR": "💡 <i>Ideal für digitalisierte Bücher und Dokumente mit Bildtext.</i>",
+        "btnOCRSiguiente": "Weiter: Audio-Export (MP3) ➔",
+        "tituloDescarga": "🎙️ Schritt 9.9: Lern-Audio exportieren und herunterladen",
+        "instDescarga": "👉 Neben dem Vorlesen in Echtzeit können Sie die <b>Audiodatei</b> in <b>MP3</b> oder <b>WAV</b> herunterladen.<br><br>💡 Exportieren Sie einzelne Seiten, einen <b>Lernbereich</b> oder das <b>gesamte Buch</b> mit der gewählten Stimme und Lesegeschwindigkeit.",
+        "detalleDescarga": "💡 <i>Lernen Sie unterwegs auf dem Smartphone ganz ohne Bildschirm oder Internetverbindung.</i>",
+        "btnDescargaContinuar": "🎉 Weiter zur Konfiguration ➔"
+    },
+    "it": {
+        "tituloDoc": "ESTRAZIONE E NOTE - LIRALOUD",
+        "subtituloDoc": "Dimostrazione di Evidenziazione Intelligente, Ritagli e Quaderno",
+        "oracion1": "L'intelligenza artificiale trasforma il nostro modo di studiare e assimilare conoscenze complesse.",
+        "oracion2": "L'apprendimento continuo ci consente di adattarci ai costanti cambiamenti tecnologici.",
+        "diagramaTitulo": "Diagramma Concettuale: Flusso di Apprendimento",
+        "diagramaPaso1": "1. Lettura",
+        "diagramaPaso2": "2. Analisi",
+        "diagramaPaso3": "3. Memorizzazione",
+        "diagramaSub": "Schema grafico sincronizzato con il Gestore di Estrazione (Alt+C)",
+        "tituloSubrayadoAzul": "🎨 Passo 9.1: Evidenziazione Intelligente a Colori",
+        "instSubrayadoAzul": "👉 Negli strumenti di modifica, attiva l'<b>Evidenziatore</b> in <b>Blu (Ciano)</b> ed evidenzia la prima frase nel visualizzatore.",
+        "detalleSubrayadoAzul": "💡 <i>Le evidenziazioni a colori si sincronizzano direttamente con il Gestore di Estrazione e Lira IA.</i>",
+        "btnSubrayarAzul": "🎨 Evidenzia 1ª frase in Blu",
+        "badgeMouseAzul": "🖱️ Scegli blu ed evidenzia la 1ª frase",
+        "exitoSubrayadoAzul": "✔ <b>Molto bene!</b> Prima frase evidenziata in blu.",
+        "tituloSubrayadoRosa": "🎨 Passo 9.2: Evidenziazione in Rosa",
+        "instSubrayadoRosa": "👉 Ora apri la tavolozza colori, scegli il <b>Rosa (Magenta)</b> ed evidenzia la seconda frase.",
+        "detalleSubrayadoRosa": "💡 <i>Classifica idee primarie e secondarie con colori tematici distinti.</i>",
+        "btnSubrayarRosa": "🎨 Evidenzia 2ª frase in Rosa",
+        "badgeMouseRosa": "🖱️ Scegli rosa ed evidenzia la 2ª frase",
+        "exitoSubrayadoRosa": "✨ <b>Ottimo!</b> Entrambe le frasi sono state evidenziate con i rispettivi colori tematici.",
+        "tituloRecorte": "📸 Passo 9.3: Strumento di Ritaglio Visivo (Alt+C)",
+        "instRecorte": "👉 Fai clic sullo strumento <b>Ritaglio Visivo</b> (o <b>Alt+C</b>) e trascina un riquadro sul diagramma concettuale per acquisirlo.",
+        "detalleRecorte": "💡 <i>A differenza dei comuni lettori PDF, LiraLoud ritaglia grafici, formule e diagrammi ad alta definizione.</i>",
+        "btnRecortar": "📸 Acquisisci Diagramma Ora",
+        "badgeMouseRecorte": "🖱️ Trascina un riquadro sul diagramma",
+        "exitoRecorte": "🎉 <b>Ritaglio acquisito!</b> Immagine ad alta risoluzione salvata con il numero di pagina.",
+        "tituloAbrirGestor": "📂 Passo 9.4: Aprire il Gestore di Estrazione",
+        "instAbrirGestor": "👉 Fai clic sul pulsante del <b>Gestore di Estrazione</b> nella barra superiore per visualizzare i tuoi salvataggi.",
+        "detalleAbrirGestor": "💡 <i>Il gestore raccoglie e indicizza automaticamente tutte le tue evidenziazioni e ritagli visivi.</i>",
+        "btnAbrirGestor": "📂 Apri Gestore di Estrazione",
+        "badgeMouseAbrirGestor": "🖱️ Clic sul Gestore di Estrazione",
+        "tituloGestor": "📂 Passo 9.5: Gestore di Estrazione",
+        "instGestor": "👉 Esplora il <b>Gestore di Estrazione</b> a destra: qui vengono archiviati tutti i testi evidenziati e i ritagli visivi.",
+        "detalleGestor": "💡 <b>Schede e Filtri:</b><br>• Filtra per <b>Tutti</b>, solo <b>Evidenziazioni</b> o solo <b>Ritagli</b>.<br>• Usa il selettor di <b>Colore</b> o filtra per <b>Pagina</b> (pagina corrente o vista <b>Globale</b>).<br>• Ogni scheda consente di saltare alla pagina originale o inviare il testo a Lira IA.",
+        "btnGestorSiguiente": "Avanti: Nota Rapida ➔",
+        "tituloNotaRapida": "📝 Passo 9.6: Nota Rapida (Alt+N)",
+        "instNotaRapida": "👉 Fai clic sul pulsante <b>Nota Rapida</b> nella barra (o premi <b>Alt+N</b>).",
+        "detalleNotaRapida": "💡 <b>Note per Pagina e Libro:</b><br>• La Nota Rapida è associata direttamente alla <b>pagina corrente</b> del libro in lettura.<br>• Annota considerazioni immediate senza coprire la lettura.",
+        "btnAbrirNotaRapida": "📝 Apri Nota Rapida (Alt+N)",
+        "btnNotaRapidaSiguiente": "Avanti: Quaderno Note ➔",
+        "tituloCuaderno": "📓 Passo 9.7: Quaderno Note e Appunti",
+        "instCuaderno": "👉 Fai clic su <b>📖 Quaderno</b> (o premi <b>N</b>) per aprire il quaderno generale.",
+        "detalleCuaderno": "💡 <b>Tutti i tuoi appunti in un unico posto:</b><br>• Nel Quaderno puoi visualizzare e organizzare <b>tutti gli appunti globali</b> del PDF.<br>• Compatibile con Markdown e Obsidian, con etichette, ricerca e assistenza IA per riassumere o approfondire le idee.",
+        "btnCuadernoContinuar": "🎉 Ho capito, Continua alla Configurazione! ➔",
+        "demoNotaTitulo": "📝 Sintesi e Riflessioni di Lettura",
+        "demoNotaContenido": "<b>Punti Chiave:</b><br>• L'evidenziazione a colori organizza concetti primari e secondari.<br>• I ritagli visivi preservano gli schemi senza perdita di qualità.<br>• Le note vengono salvate nel formato standard Markdown.",
+        "tituloOCR": "🔍 Passo 9.8: Riconoscimento Ottico (RapidOCR) e Auto-OCR",
+        "instOCR": "👉 Il motore <b>RapidOCR</b> converte immagini e documenti scansionati in testo interattivo che puoi leggere e ascoltare con la sintesi vocale.<br><br>• <b>Auto-OCR Intelligente:</b> Converte automaticamente le pagine prive di testo durante la navigazione.<br>• <b>Opzioni Flessibili:</b> Scansiona per <b>Intervallo di pagine</b>, l'<b>Intero libro</b> o usa <b>Forza OCR</b> se una pagina non è stata riconosciuta inizialmente.",
+        "detalleOCR": "💡 <i>Ideale per libri scansionati, fotocopie e file con testo incorporato in immagini.</i>",
+        "btnOCRSiguiente": "Avanti: Esporta Audio (MP3) ➔",
+        "tituloDescarga": "🎙️ Passo 9.9: Esportare e Scaricare Audio di Studio",
+        "instDescarga": "👉 Oltre ad ascoltare la lettura in tempo reale, puoi <b>scaricare l'audio</b> in formato <b>MP3</b> o <b>WAV</b> di alta qualità.<br><br>💡 Esporta singole pagine, un <b>intervallo di studio</b> o l'<b>intero libro</b> conservando la voce e il ritmo impostati.",
+        "detalleDescarga": "💡 <i>Porta i tuoi studi su smartphone per ascoltare ovunque senza schermi né connessione.</i>",
+        "btnDescargaContinuar": "🎉 Continua alla Configurazione ➔"
+    },
+    "zh": {
+        "tituloDoc": "提取与笔记 - LIRALOUD",
+        "subtituloDoc": "智能高亮、区域截图与笔记本演示",
+        "oracion1": "人工智能正在改变我们学习和吸收复杂知识的方式。",
+        "oracion2": "持续学习使我们能够适应不断变化的技术发展。",
+        "diagramaTitulo": "概念图：学习流程",
+        "diagramaPaso1": "1. 阅读",
+        "diagramaPaso2": "2. 分析",
+        "diagramaPaso3": "3. 记忆",
+        "diagramaSub": "与提取管理器同步的图表 (Alt+C)",
+        "tituloSubrayadoAzul": "🎨 第 9.1 步：按颜色智能高亮",
+        "instSubrayadoAzul": "非常好！现在来看看学习工具。打开编辑工具，选择<b>蓝色</b>的<b>荧光笔</b>，然后在第一句话上拖动鼠标将其高亮。",
+        "detalleSubrayadoAzul": "💡 <i>按颜色分类的高亮会直接与提取管理器和 Lira AI 同步。</i>",
+        "btnSubrayarAzul": "🎨 用蓝色高亮第 1 句",
+        "badgeMouseAzul": "🖱️ 选择蓝色并高亮第 1 句",
+        "exitoSubrayadoAzul": "✔ <b>非常好！</b>第一句话已用蓝色高亮。",
+        "tituloSubrayadoRosa": "🎨 第 9.2 步：粉色高亮",
+        "instSubrayadoRosa": "现在在调色板中切换为<b>粉色</b>，并高亮文档中的第二句话。",
+        "detalleSubrayadoRosa": "💡 <i>您可以按主题颜色对想法进行分类，以便快速查找。</i>",
+        "btnSubrayarRosa": "🎨 用粉色高亮第 2 句",
+        "badgeMouseRosa": "🖱️ 选择粉色并高亮第 2 句",
+        "exitoSubrayadoRosa": "✨ <b>太棒了！</b>两句话均已按主题颜色高亮标注。",
+        "tituloRecorte": "📸 第 9.3 步：截取区域 (Alt+C)",
+        "instRecorte": "除了文本之外，您还可以保存图表或图像。点击<b>“截取区域”</b>并在下方的图表上拖出一个选框。",
+        "detalleRecorte": "💡 <i>与其他 PDF 阅读器不同，LiraLoud 可以高分辨率提取图表、公式和示意图。</i>",
+        "btnRecortar": "📸 立即截取图表",
+        "badgeMouseRecorte": "🖱️ 在图表上拖出选框",
+        "exitoRecorte": "🎉 <b>截图成功！</b>已生成带有页码的高分辨率截图。",
+        "tituloAbrirGestor": "📂 第 9.4 步：打开提取管理器",
+        "instAbrirGestor": "现在点击蓝色高亮的<b>“提取管理器”</b>，打开您的资料收集面板。",
+        "detalleAbrirGestor": "💡 <i>管理器会自动存储并分类您所有的文本高亮和视觉截图。</i>",
+        "btnAbrirGestor": "📂 打开提取管理器",
+        "badgeMouseAbrirGestor": "🖱️ 点击提取管理器",
+        "tituloGestor": "📂 第 9.5 步：提取管理器",
+        "instGestor": "这就是<b>提取管理器</b>。在这里您可以看到按颜色整理的所有高亮以及您在文档中截取的图片，并且支持按页码或所选筛选条件查看。",
+        "detalleGestor": "💡 <b>选项卡与筛选器：</b><br>• 按<b>全部</b>、仅<b>高亮</b>或仅<b>截图</b>进行筛选。<br>• 使用<b>颜色</b>选择器，或按<b>页码</b>筛选以逐页学习，也可以切换为<b>全局</b>视图查看整本书。",
+        "btnGestorSiguiente": "下一步：快速笔记 ➔",
+        "tituloNotaRapida": "📝 第 9.6 步：快速笔记 (Alt + N)",
+        "instNotaRapida": "如需随时记笔记，您的笔记将自动关联到当前页面。点击<b>“快速笔记”</b>或按下 <kbd style='background:#1e293b; padding:2px 6px; border-radius:4px; border:1px solid #0284c7; color:#38bdf8; font-weight:bold;'>Alt + N</kbd>。",
+        "detalleNotaRapida": "💡 <b>按页与整书笔记：</b><br>• 快速笔记会自动关联到您正在阅读的书籍的<b>当前页</b>。",
+        "btnAbrirNotaRapida": "📝 打开快速笔记 (Alt + N)",
+        "btnNotaRapidaSiguiente": "下一步：笔记本 ➔",
+        "tituloCuaderno": "📓 第 9.7 步：笔记本与课堂笔记",
+        "instCuaderno": "若要查看您在该 PDF 中记下的所有笔记，请点击<b>“笔记本”</b>或按键盘上的 <b>N</b> 键。",
+        "detalleCuaderno": "💡 <b>所有笔记集中管理：</b><br>• 在笔记本中，您可以查阅并整理整份 PDF 中记录的<b>全部全局笔记</b>。",
+        "btnCuadernoContinuar": "🎉 明白了，继续前往设置！ ➔",
+        "demoNotaTitulo": "📝 阅读摘要与思考",
+        "demoNotaContenido": "<b>核心概念：</b><br>• 颜色高亮有助于区分核心观点与次要内容。<br>• 区域截图可无损保留图表与示意图。<br>• 同步笔记采用标准 Markdown 格式保存。",
+        "tituloOCR": "🔍 第 9.8 步：光学识别 (RapidOCR) 与自动 OCR",
+        "instOCR": "LiraLoud 提供 4 项 OCR 功能：<br>• <b>“强制 OCR”：</b>当某页识别失败时重新扫描当前页。<br>• <b>“按范围扫描”：</b>处理指定的页码范围。<br>• <b>“扫描全文”：</b>转换整份文档。<br>• <b>“翻页时自动 OCR”：</b>默认开启，当页面为纯图像时会自动识别其中的文字。",
+        "detalleOCR": "💡 <i>非常适合扫描版书籍、复印件以及文字嵌入在图片中的文章。</i>",
+        "btnOCRSiguiente": "下一步：导出音频 (MP3) ➔",
+        "tituloDescarga": "🎙️ 第 9.9 步：导出并下载学习音频",
+        "instDescarga": "这是下载按钮，非常适合在其他设备上收听您的阅读内容。点击<b>“下载音频”</b>即可将当前页或整份文档导出为 <b>MP3</b> 或 <b>WAV</b> 格式。",
+        "detalleDescarga": "💡 <i>随时随地带着您的读物，在手机或播放器上复习，无需屏幕也无需联网。</i>",
+        "btnDescargaContinuar": "🎉 继续前往设置 ➔"
+    },
+    "ru": {
+        "tituloDoc": "ИЗВЛЕЧЕНИЕ И ЗАМЕТКИ - LIRALOUD",
+        "subtituloDoc": "Демонстрация умного выделения, фрагментов и блокнота",
+        "oracion1": "Искусственный интеллект меняет наш подход к обучению и усвоению сложных знаний.",
+        "oracion2": "Непрерывное обучение позволяет нам адаптироваться к постоянным технологическим изменениям.",
+        "diagramaTitulo": "Концептуальная схема: процесс обучения",
+        "diagramaPaso1": "1. Чтение",
+        "diagramaPaso2": "2. Анализ",
+        "diagramaPaso3": "3. Запоминание",
+        "diagramaSub": "Графическая схема, синхронизированная с менеджером извлечения (Alt+C)",
+        "tituloSubrayadoAzul": "🎨 Шаг 9.1: Умный маркер по цветам",
+        "instSubrayadoAzul": "Отлично! Теперь посмотрим инструменты для учёбы. Откройте инструменты редактирования, выберите <b>Маркер</b> <b>синего</b> цвета и проведите курсором по первому предложению, чтобы выделить его.",
+        "detalleSubrayadoAzul": "💡 <i>Цветовые выделения напрямую синхронизируются с менеджером извлечения и Lira AI.</i>",
+        "btnSubrayarAzul": "🎨 Выделить 1-е предложение синим",
+        "badgeMouseAzul": "🖱️ Выберите синий и выделите 1-е предложение",
+        "exitoSubrayadoAzul": "✔ <b>Отлично!</b> Первое предложение выделено синим.",
+        "tituloSubrayadoRosa": "🎨 Шаг 9.2: Выделение розовым",
+        "instSubrayadoRosa": "Теперь выберите в палитре <b>розовый</b> цвет и выделите второе предложение в документе.",
+        "detalleSubrayadoRosa": "💡 <i>Вы можете распределять идеи по тематическим цветам, чтобы быстро находить нужное.</i>",
+        "btnSubrayarRosa": "🎨 Выделить 2-е предложение розовым",
+        "badgeMouseRosa": "🖱️ Выберите розовый и выделите 2-е предложение",
+        "exitoSubrayadoRosa": "✨ <b>Прекрасно!</b> Оба предложения выделены своими тематическими цветами.",
+        "tituloRecorte": "📸 Шаг 9.3: Захват фрагмента (Alt+C)",
+        "instRecorte": "Помимо текста, вы можете сохранять схемы и изображения. Нажмите <b>«Захватить фрагмент»</b> и выделите рамкой схему ниже.",
+        "detalleRecorte": "💡 <i>В отличие от других просмотрщиков PDF, LiraLoud извлекает графики, формулы и схемы в высоком разрешении.</i>",
+        "btnRecortar": "📸 Захватить схему сейчас",
+        "badgeMouseRecorte": "🖱️ Выделите рамкой схему",
+        "exitoRecorte": "🎉 <b>Фрагмент сохранён!</b> Создан снимок высокого разрешения с указанием номера страницы.",
+        "tituloAbrirGestor": "📂 Шаг 9.4: Открыть менеджер извлечения",
+        "instAbrirGestor": "Теперь нажмите на подсвеченную синим кнопку <b>«Менеджер извлечения»</b>, чтобы открыть панель собранных материалов.",
+        "detalleAbrirGestor": "💡 <i>Менеджер автоматически сохраняет и сортирует все ваши выделения и визуальные фрагменты.</i>",
+        "btnAbrirGestor": "📂 Открыть менеджер извлечения",
+        "badgeMouseAbrirGestor": "🖱️ Нажмите на «Менеджер извлечения»",
+        "tituloGestor": "📂 Шаг 9.5: Менеджер извлечения",
+        "instGestor": "Это <b>Менеджер извлечения</b>. Здесь собраны все ваши цветовые выделения и визуальные фрагменты из документа — вы можете просматривать их по страницам или согласно выбранным фильтрам.",
+        "detalleGestor": "💡 <b>Вкладки и фильтры:</b><br>• Фильтруйте по <b>Все</b>, только <b>Выделения</b> или только <b>Снимки</b>.<br>• Используйте фильтр по <b>Цвету</b> или по <b>Странице</b>, чтобы изучать материал постранично либо видеть всю книгу <b>Целиком</b>.",
+        "btnGestorSiguiente": "Далее: Быстрая заметка ➔",
+        "tituloNotaRapida": "📝 Шаг 9.6: Быстрая заметка (Alt + N)",
+        "instNotaRapida": "Чтобы делать заметки на лету, привязывая их к текущей странице, нажмите <b>«Быстрая заметка»</b> или используйте <kbd style='background:#1e293b; padding:2px 6px; border-radius:4px; border:1px solid #0284c7; color:#38bdf8; font-weight:bold;'>Alt + N</kbd>.",
+        "detalleNotaRapida": "💡 <b>Заметки по страницам и книге:</b><br>• Быстрая заметка автоматически привязывается к <b>текущей странице</b> читаемой книги.",
+        "btnAbrirNotaRapida": "📝 Открыть быструю заметку (Alt + N)",
+        "btnNotaRapidaSiguiente": "Далее: Блокнот заметок ➔",
+        "tituloCuaderno": "📓 Шаг 9.7: Блокнот и конспекты",
+        "instCuaderno": "А чтобы просмотреть все заметки, сделанные в PDF, нажмите <b>«Блокнот заметок»</b> или клавишу <b>N</b>.",
+        "detalleCuaderno": "💡 <b>Все ваши заметки в одном месте:</b><br>• В блокноте можно просматривать и систематизировать <b>все общие заметки</b>, сделанные по всему PDF.",
+        "btnCuadernoContinuar": "🎉 Понятно, перейти к настройкам! ➔",
+        "demoNotaTitulo": "📝 Конспект и размышления о прочитанном",
+        "demoNotaContenido": "<b>Ключевые идеи:</b><br>• Цветовое выделение помогает разделять основные и второстепенные мысли.<br>• Визуальные фрагменты сохраняют схемы без потери качества.<br>• Синхронизированные заметки сохраняются в стандартном формате Markdown.",
+        "tituloOCR": "🔍 Шаг 9.8: Оптическое распознавание (RapidOCR) и Auto-OCR",
+        "instOCR": "В LiraLoud есть 4 функции OCR:<br>• <b>«Принудительный OCR»:</b> сканирует текущую страницу, если распознавание не сработало.<br>• <b>«Сканировать диапазон»:</b> обрабатывает выбранные страницы.<br>• <b>«Сканировать весь текст»:</b> распознаёт весь документ целиком.<br>• <b>«Auto-OCR при навигации»:</b> включён по умолчанию и автоматически распознаёт страницы без текстового слоя, если они являются изображениями.",
+        "detalleOCR": "💡 <i>Идеально подходит для отсканированных книг, фотокопий и статей, где текст встроен в изображения.</i>",
+        "btnOCRSiguiente": "Далее: Экспорт аудио (MP3) ➔",
+        "tituloDescarga": "🎙️ Шаг 9.9: Экспорт и загрузка аудио для учёбы",
+        "instDescarga": "Эта кнопка загрузки очень удобна для прослушивания материалов на другом устройстве. Нажмите <b>«Скачать аудио»</b>, чтобы экспортировать страницу или весь документ в формате <b>MP3</b> или <b>WAV</b>.",
+        "detalleDescarga": "💡 <i>Берите материалы с собой и повторяйте их на телефоне или плеере без экрана и подключения к интернету.</i>",
+        "btnDescargaContinuar": "🎉 Перейти к настройкам ➔"
+    },
+    "ar": {
+        "tituloDoc": "الاستخراج والملاحظات - LIRALOUD",
+        "subtituloDoc": "عرض توضيحي للتظليل الذكي والقصاصات والدفتر",
+        "oracion1": "يُحدث الذكاء الاصطناعي تحولًا في طريقتنا في الدراسة واستيعاب المعارف المعقدة.",
+        "oracion2": "يتيح لنا التعلّم المستمر التكيّف مع التغيرات التكنولوجية المتواصلة.",
+        "diagramaTitulo": "مخطط مفاهيمي: مسار التعلّم",
+        "diagramaPaso1": "1. القراءة",
+        "diagramaPaso2": "2. التحليل",
+        "diagramaPaso3": "3. الحفظ والاستيعاب",
+        "diagramaSub": "مخطط رسومي متزامن مع مدير الاستخراج (Alt+C)",
+        "tituloSubrayadoAzul": "🎨 الخطوة 9.1: أداة التظليل الذكي بالألوان",
+        "instSubrayadoAzul": "ممتاز! لنستعرض الآن أدوات الدراسة. افتح أدوات التحرير، واختر <b>قلم التظليل</b> باللون <b>الأزرق</b> واسحب المؤشر فوق الجملة الأولى لتظليلها.",
+        "detalleSubrayadoAzul": "💡 <i>تتزامن التظليلات الملوّنة مباشرة مع مدير الاستخراج ومع Lira AI.</i>",
+        "btnSubrayarAzul": "🎨 تظليل الجملة الأولى بالأزرق",
+        "badgeMouseAzul": "🖱️ اختر الأزرق وظلّل الجملة الأولى",
+        "exitoSubrayadoAzul": "✔ <b>أحسنت!</b> تم تمييز الجملة الأولى باللون الأزرق.",
+        "tituloSubrayadoRosa": "🎨 الخطوة 9.2: التظليل باللون الوردي",
+        "instSubrayadoRosa": "الآن بدّل إلى اللون <b>الوردي</b> في لوحة الألوان وظلّل الجملة الثانية من المستند.",
+        "detalleSubrayadoRosa": "💡 <i>يمكنك تصنيف أفكارك حسب الألوان الموضوعية للعثور عليها بسرعة.</i>",
+        "btnSubrayarRosa": "🎨 تظليل الجملة الثانية بالوردي",
+        "badgeMouseRosa": "🖱️ اختر الوردي وظلّل الجملة الثانية",
+        "exitoSubrayadoRosa": "✨ <b>ممتاز!</b> تم تمييز كلتا الجملتين بألوانهما الموضوعية.",
+        "tituloRecorte": "📸 الخطوة 9.3: التقاط قصاصة (Alt+C)",
+        "instRecorte": "بالإضافة إلى النص، يمكنك حفظ المخططات أو الصور. انقر على <b>'التقاط قصاصة'</b> واسحب مربعًا فوق المخطط أدناه.",
+        "detalleRecorte": "💡 <i>على عكس عارضات PDF الأخرى، يستخرج LiraLoud الرسوم البيانية والمعادلات والمخططات بدقة عالية.</i>",
+        "btnRecortar": "📸 التقاط المخطط الآن",
+        "badgeMouseRecorte": "🖱️ اسحب مربعًا فوق المخطط",
+        "exitoRecorte": "🎉 <b>تم التقاط القصاصة!</b> تم إنشاء لقطة عالية الدقة مع رقم صفحتها.",
+        "tituloAbrirGestor": "📂 الخطوة 9.4: فتح مدير الاستخراج",
+        "instAbrirGestor": "الآن انقر على <b>'مدير الاستخراج'</b> المضاء باللون الأزرق لفتح لوحة التجميع الخاصة بك.",
+        "detalleAbrirGestor": "💡 <i>يحفظ المدير جميع تظليلاتك ولقطاتك المرئية ويصنّفها تلقائيًا.</i>",
+        "btnAbrirGestor": "📂 فتح مدير الاستخراج",
+        "badgeMouseAbrirGestor": "🖱️ انقر على مدير الاستخراج",
+        "tituloGestor": "📂 الخطوة 9.5: مدير الاستخراج",
+        "instGestor": "هذا هو <b>مدير الاستخراج</b>. هنا سترى جميع تظليلاتك مرتبة حسب اللون والقصاصات المرئية التي أنشأتها في مستندك، كما يتيح لك عرضها حسب الصفحة أو وفق عوامل التصفية المختارة.",
+        "detalleGestor": "💡 <b>التبويبات وعوامل التصفية:</b><br>• صفِّ حسب <b>الكل</b> أو <b>التظليلات</b> فقط أو <b>اللقطات</b> فقط.<br>• استخدم محدد <b>اللون</b> أو صفِّ حسب <b>الصفحة</b> للدراسة صفحة بصفحة أو عرض الكتاب كاملًا بشكل <b>شامل</b>.",
+        "btnGestorSiguiente": "التالي: ملاحظة سريعة ➔",
+        "tituloNotaRapida": "📝 الخطوة 9.6: ملاحظة سريعة (Alt + N)",
+        "instNotaRapida": "لتدوين الملاحظات بسرعة، ستظل ملاحظاتك مرتبطة بالصفحة الحالية. انقر على <b>'ملاحظة سريعة'</b> أو اضغط <kbd style='background:#1e293b; padding:2px 6px; border-radius:4px; border:1px solid #0284c7; color:#38bdf8; font-weight:bold;'>Alt + N</kbd>.",
+        "detalleNotaRapida": "💡 <b>ملاحظات لكل صفحة ولكل كتاب:</b><br>• ترتبط الملاحظة السريعة تلقائيًا بـ <b>الصفحة الحالية</b> من الكتاب الذي تقرؤه.",
+        "btnAbrirNotaRapida": "📝 فتح ملاحظة سريعة (Alt + N)",
+        "btnNotaRapidaSiguiente": "التالي: دفتر الملاحظات ➔",
+        "tituloCuaderno": "📓 الخطوة 9.7: دفتر الملاحظات والمدوّنات",
+        "instCuaderno": "ولمراجعة جميع الملاحظات التي دوّنتها في ملف PDF، انقر على <b>'دفتر الملاحظات'</b> أو اضغط على المفتاح <b>N</b>.",
+        "detalleCuaderno": "💡 <b>جميع ملاحظاتك في مكان واحد:</b><br>• في الدفتر يمكنك استعراض وتنظيم <b>جميع الملاحظات الشاملة</b> التي دوّنتها على امتداد ملف PDF.",
+        "btnCuadernoContinuar": "🎉 مفهوم، المتابعة إلى الإعدادات! ➔",
+        "demoNotaTitulo": "📝 ملخص وتأملات القراءة",
+        "demoNotaContenido": "<b>المفاهيم الأساسية:</b><br>• التظليل الملوّن يصنّف الأفكار الرئيسية والفرعية.<br>• القصاصات المرئية تحفظ المخططات دون فقدان الجودة.<br>• تُحفظ الملاحظات المتزامنة بتنسيق Markdown القياسي.",
+        "tituloOCR": "🔍 الخطوة 9.8: التعرّف الضوئي على النصوص (RapidOCR) و Auto-OCR",
+        "instOCR": "يتضمن LiraLoud أربع ميزات لـ OCR:<br>• <b>'فرض OCR':</b> لمسح الصفحة الحالية إذا فشل التعرّف على جزء منها.<br>• <b>'مسح نطاق صفحات':</b> لمعالجة صفحات محددة.<br>• <b>'مسح النص بالكامل':</b> لتحويل المستند كاملًا.<br>• <b>'Auto-OCR عند التصفح':</b> يكون مفعّلًا افتراضيًا ويحوّل تلقائيًا الصفحات الخالية من النص عندما تكون صورًا.",
+        "detalleOCR": "💡 <i>مثالي للكتب المرقمنة والنسخ المصورة والمقالات التي يكون النص فيها مدمجًا داخل صور.</i>",
+        "btnOCRSiguiente": "التالي: تصدير الصوت (MP3) ➔",
+        "tituloDescarga": "🎙️ الخطوة 9.9: تصدير وتنزيل صوت الدراسة",
+        "instDescarga": "هذا هو زر التنزيل، وهو مفيد جدًا للاستماع إلى قراءتك على جهاز آخر. انقر على <b>'تنزيل الصوت'</b> لتصدير الصفحة أو المستند بصيغة <b>MP3</b> أو <b>WAV</b>.",
+        "detalleDescarga": "💡 <i>اصطحب قراءاتك إلى أي مكان للمراجعة على هاتفك أو مشغّلك دون الحاجة إلى شاشة أو اتصال.</i>",
+        "btnDescargaContinuar": "🎉 المتابعة إلى الإعدادات ➔"
+    },
+    "hi": {
+        "tituloDoc": "निष्कर्षण और नोट्स - LIRALOUD",
+        "subtituloDoc": "स्मार्ट हाइलाइटर, स्निपिंग और नोटबुक डेमो",
+        "oracion1": "कृत्रिम बुद्धिमत्ता हमारे अध्ययन करने और जटिल ज्ञान को आत्मसात करने के तरीके को बदल देती है।",
+        "oracion2": "निरंतर सीखना हमें लगातार हो रहे तकनीकी बदलावों के अनुकूल होने में सक्षम बनाता है।",
+        "diagramaTitulo": "संकल्पना आरेख: सीखने का प्रवाह",
+        "diagramaPaso1": "1. पठन",
+        "diagramaPaso2": "2. विश्लेषण",
+        "diagramaPaso3": "3. स्मरण",
+        "diagramaSub": "निष्कर्षण प्रबंधक (Alt+C) के साथ सिंक्रनाइज़्ड ग्राफ़िकल स्कीमा",
+        "tituloSubrayadoAzul": "🎨 चरण 9.1: रंग-आधारित स्मार्ट हाइलाइटर",
+        "instSubrayadoAzul": "बहुत बढ़िया! अब अध्ययन उपकरण देखें। संपादन उपकरण खोलें, <b>नीले</b> रंग के साथ <b>हाइलाइटर</b> चुनें और पहले वाक्य को हाइलाइट करने के लिए उस पर कर्सर खींचें।",
+        "detalleSubrayadoAzul": "💡 <i>रंग के अनुसार हाइलाइट सीधे निष्कर्षण प्रबंधक और Lira AI के साथ सिंक्रनाइज़ होते हैं।</i>",
+        "btnSubrayarAzul": "🎨 पहला वाक्य नीले रंग में हाइलाइट करें",
+        "badgeMouseAzul": "🖱️ नीला रंग चुनें और पहला वाक्य हाइलाइट करें",
+        "exitoSubrayadoAzul": "✔ <b>बहुत बढ़िया!</b> पहला वाक्य नीले रंग में हाइलाइट हो गया।",
+        "tituloSubrayadoRosa": "🎨 चरण 9.2: गुलाबी रंग में हाइलाइट",
+        "instSubrayadoRosa": "अब पैलेट से <b>गुलाबी</b> रंग चुनें और दस्तावेज़ के दूसरे वाक्य को हाइलाइट करें।",
+        "detalleSubrayadoRosa": "💡 <i>आप अपने विचारों को थीम के अनुसार रंगों में वर्गीकृत कर सकते हैं ताकि वे जल्दी मिल सकें।</i>",
+        "btnSubrayarRosa": "🎨 दूसरा वाक्य गुलाबी रंग में हाइलाइट करें",
+        "badgeMouseRosa": "🖱️ गुलाबी रंग चुनें और दूसरा वाक्य हाइलाइट करें",
+        "exitoSubrayadoRosa": "✨ <b>शानदार!</b> दोनों वाक्य अपने थीम रंगों में हाइलाइट हो गए हैं।",
+        "tituloRecorte": "📸 चरण 9.3: स्निप कैप्चर करें (Alt+C)",
+        "instRecorte": "पाठ के अलावा, आप आरेख या चित्र भी सहेज सकते हैं। <b>'स्निप कैप्चर करें'</b> पर क्लिक करें और नीचे दिए गए आरेख पर एक बॉक्स खींचें।",
+        "detalleRecorte": "💡 <i>अन्य PDF व्यूअर के विपरीत, LiraLoud ग्राफ़, सूत्र और स्कीमा को उच्च रिज़ॉल्यूशन में निकालता है।</i>",
+        "btnRecortar": "📸 अभी आरेख कैप्चर करें",
+        "badgeMouseRecorte": "🖱️ आरेख पर एक बॉक्स खींचें",
+        "exitoRecorte": "🎉 <b>स्निप कैप्चर हो गया!</b> पृष्ठ संख्या के साथ एक उच्च-रिज़ॉल्यूशन कैप्चर तैयार हो गया है।",
+        "tituloAbrirGestor": "📂 चरण 9.4: निष्कर्षण प्रबंधक खोलें",
+        "instAbrirGestor": "अब अपना संग्रह पैनल खोलने के लिए नीले रंग में हाइलाइट किए गए <b>'निष्कर्षण प्रबंधक'</b> पर क्लिक करें।",
+        "detalleAbrirGestor": "💡 <i>प्रबंधक आपके सभी हाइलाइट्स और विज़ुअल कैप्चर को स्वचालित रूप से संग्रहीत और वर्गीकृत करता है।</i>",
+        "btnAbrirGestor": "📂 निष्कर्षण प्रबंधक खोलें",
+        "badgeMouseAbrirGestor": "🖱️ निष्कर्षण प्रबंधक पर क्लिक करें",
+        "tituloGestor": "📂 चरण 9.5: निष्कर्षण प्रबंधक",
+        "instGestor": "यह <b>निष्कर्षण प्रबंधक</b> है। यहाँ आपको अपने दस्तावेज़ में किए गए सभी रंग-आधारित हाइलाइट्स और विज़ुअल स्निप्स व्यवस्थित रूप से दिखेंगे, और आप उन्हें पृष्ठ के अनुसार या चुने गए फ़िल्टर के अनुसार देख सकते हैं।",
+        "detalleGestor": "💡 <b>टैब और फ़िल्टर:</b><br>• <b>सभी</b>, केवल <b>हाइलाइट्स</b> या केवल <b>कैप्चर</b> के अनुसार फ़िल्टर करें।<br>• पृष्ठ-दर-पृष्ठ अध्ययन करने के लिए <b>रंग</b> चयनकर्ता का उपयोग करें या <b>पृष्ठ</b> के अनुसार फ़िल्टर करें, या पूरी किताब को <b>ग्लोबल</b> रूप से देखें।",
+        "btnGestorSiguiente": "अगला: त्वरित नोट ➔",
+        "tituloNotaRapida": "📝 चरण 9.6: त्वरित नोट (Alt + N)",
+        "instNotaRapida": "तुरंत नोट्स लेने के लिए, आपके नोट्स वर्तमान पृष्ठ से जुड़े रहेंगे। <b>'त्वरित नोट'</b> पर क्लिक करें या <kbd style='background:#1e293b; padding:2px 6px; border-radius:4px; border:1px solid #0284c7; color:#38bdf8; font-weight:bold;'>Alt + N</kbd> दबाएँ।",
+        "detalleNotaRapida": "💡 <b>पृष्ठ और पुस्तक के अनुसार नोट्स:</b><br>• त्वरित नोट स्वचालित रूप से आपकी पढ़ी जा रही किताब के <b>वर्तमान पृष्ठ</b> से जुड़ जाता है।",
+        "btnAbrirNotaRapida": "📝 त्वरित नोट खोलें (Alt + N)",
+        "btnNotaRapidaSiguiente": "अगला: नोटबुक ➔",
+        "tituloCuaderno": "📓 चरण 9.7: नोटबुक और नोट्स",
+        "instCuaderno": "और PDF में किए गए सभी नोट्स देखने के लिए, <b>'नोटबुक'</b> पर क्लिक करें या <b>N</b> कुंजी दबाएँ।",
+        "detalleCuaderno": "💡 <b>आपके सभी नोट्स एक ही स्थान पर:</b><br>• नोटबुक में आप पूरे PDF में बनाए गए <b>सभी ग्लोबल नोट्स</b> देख और व्यवस्थित कर सकते हैं।",
+        "btnCuadernoContinuar": "🎉 समझ गया, सेटिंग्स पर आगे बढ़ें! ➔",
+        "demoNotaTitulo": "📝 सारांश और पठन विचार",
+        "demoNotaContenido": "<b>मुख्य अवधारणाएँ:</b><br>• रंग-आधारित हाइलाइटिंग मुख्य और सहायक विचारों को वर्गीकृत करती है।<br>• विज़ुअल स्निप्स बिना गुणवत्ता खोए स्कीमा सुरक्षित रखते हैं।<br>• सिंक्रनाइज़्ड नोट्स मानक Markdown फ़ॉर्मेट में सहेजे जाते हैं।",
+        "tituloOCR": "🔍 चरण 9.8: ऑप्टिकल रिकग्निशन (RapidOCR) और Auto-OCR",
+        "instOCR": "LiraLoud में 4 OCR सुविधाएँ हैं:<br>• <b>'OCR बाध्य करें':</b> यदि कोई पहचान विफल रही हो तो वर्तमान पृष्ठ को स्कैन करने के लिए।<br>• <b>'रेंज द्वारा स्कैन करें':</b> विशिष्ट पृष्ठों को प्रोसेस करने के लिए।<br>• <b>'पूरा पाठ स्कैन करें':</b> पूरे दस्तावेज़ को कनवर्ट करने के लिए।<br>• <b>'नेविगेट करते समय Auto-OCR':</b> यह डिफ़ॉल्ट रूप से सक्रिय रहता है और जब पृष्ठ छवि के रूप में हों तो बिना पाठ वाले पृष्ठों को स्वचालित रूप से कनवर्ट कर देता है।",
+        "detalleOCR": "💡 <i>डिजिटाइज़्ड किताबों, फोटोकॉपी और ऐसे लेखों के लिए आदर्श जहाँ पाठ छवियों में एम्बेडेड होता है।</i>",
+        "btnOCRSiguiente": "अगला: ऑडियो निर्यात करें (MP3) ➔",
+        "tituloDescarga": "🎙️ चरण 9.9: अध्ययन ऑडियो निर्यात और डाउनलोड करें",
+        "instDescarga": "यह डाउनलोड बटन है, जो किसी अन्य डिवाइस पर अपना पठन सुनने के लिए बहुत उपयोगी है। पृष्ठ या दस्तावेज़ को <b>MP3</b> या <b>WAV</b> फ़ॉर्मेट में निर्यात करने के लिए <b>'ऑडियो डाउनलोड करें'</b> पर क्लिक करें।",
+        "detalleDescarga": "💡 <i>बिना स्क्रीन या इंटरनेट के अपने मोबाइल या प्लेयर पर दोहराने के लिए अपने पठन को कहीं भी ले जाएँ।</i>",
+        "btnDescargaContinuar": "🎉 सेटिंग्स पर आगे बढ़ें ➔"
+    },
+    "bn": {
+        "tituloDoc": "উদ্ধৃতি ও নোট - LIRALOUD",
+        "subtituloDoc": "স্মার্ট হাইলাইটিং, ক্লিপিং এবং নোটবুকের প্রদর্শনী",
+        "oracion1": "কৃত্রিম বুদ্ধিমত্তা আমাদের পড়াশোনা এবং জটিল জ্ঞান আত্মস্থ করার পদ্ধতিকে বদলে দেয়।",
+        "oracion2": "নিরবচ্ছিন্ন শেখা আমাদের প্রতিনিয়ত প্রযুক্তিগত পরিবর্তনের সাথে খাপ খাইয়ে নিতে সাহায্য করে।",
+        "diagramaTitulo": "ধারণাগত চিত্র: শেখার প্রবাহ",
+        "diagramaPaso1": "১. পঠন",
+        "diagramaPaso2": "২. বিশ্লেষণ",
+        "diagramaPaso3": "৩. ধারণ",
+        "diagramaSub": "এক্সট্র্যাকশন ম্যানেজারের সাথে সিঙ্ক্রোনাইজ করা গ্রাফিক স্কিমা (Alt+C)",
+        "tituloSubrayadoAzul": "🎨 ধাপ ৯.১: রঙ অনুযায়ী স্মার্ট হাইলাইটার",
+        "instSubrayadoAzul": "খুব ভালো! এবার স্টাডি টুলগুলো দেখা যাক। এডিটিং টুলস খুলুন, <b>নীল</b> রঙসহ <b>হাইলাইটার</b> নির্বাচন করুন এবং হাইলাইট করতে প্রথম বাক্যটির ওপর কার্সার টেনে নিন।",
+        "detalleSubrayadoAzul": "💡 <i>রঙ অনুযায়ী হাইলাইটগুলো সরাসরি এক্সট্র্যাকশন ম্যানেজার এবং Lira AI-এর সাথে সিঙ্ক হয়।</i>",
+        "btnSubrayarAzul": "🎨 ১ম বাক্য নীল রঙে হাইলাইট করুন",
+        "badgeMouseAzul": "🖱️ নীল বেছে নিন এবং ১ম বাক্য হাইলাইট করুন",
+        "exitoSubrayadoAzul": "✔ <b>খুব ভালো!</b> প্রথম বাক্যটি নীল রঙে হাইলাইট করা হয়েছে।",
+        "tituloSubrayadoRosa": "🎨 ধাপ ৯.২: গোলাপি রঙে হাইলাইট",
+        "instSubrayadoRosa": "এবার প্যালেট থেকে <b>গোলাপি</b> রঙে পরিবর্তন করুন এবং নথির দ্বিতীয় বাক্যটি হাইলাইট করুন।",
+        "detalleSubrayadoRosa": "💡 <i>দ্রুত খুঁজে পেতে আপনি বিষয়ভিত্তিক রঙ অনুযায়ী আপনার ধারণাগুলো সাজাতে পারেন।</i>",
+        "btnSubrayarRosa": "🎨 ২য় বাক্য গোলাপি রঙে হাইলাইট করুন",
+        "badgeMouseRosa": "🖱️ গোলাপি বেছে নিন এবং ২য় বাক্য হাইলাইট করুন",
+        "exitoSubrayadoRosa": "✨ <b>চমৎকার!</b> দুটি বাক্যই তাদের বিষয়ভিত্তিক রঙে হাইলাইট করা হয়েছে।",
+        "tituloRecorte": "📸 ধাপ ৯.৩: ক্লিপিং ক্যাপচার করুন (Alt+C)",
+        "instRecorte": "পাঠ্যের পাশাপাশি আপনি ডায়াগ্রাম বা ছবিও সংরক্ষণ করতে পারেন। <b>'ক্লিপিং ক্যাপচার করুন'</b>-এ ক্লিক করুন এবং নিচের ডায়াগ্রামটির ওপর একটি বক্স টানুন।",
+        "detalleRecorte": "💡 <i>অন্যান্য PDF ভিউয়ারের মতো নয়, LiraLoud উচ্চ রেজোলিউশনে গ্রাফ, সূত্র এবং ডায়াগ্রাম বের করে আনে।</i>",
+        "btnRecortar": "📸 এখনই ডায়াগ্রাম ক্যাপচার করুন",
+        "badgeMouseRecorte": "🖱️ ডায়াগ্রামের ওপর একটি বক্স টানুন",
+        "exitoRecorte": "🎉 <b>ক্লিপিং ক্যাপচার হয়েছে!</b> পৃষ্ঠা নম্বরসহ একটি উচ্চ রেজোলিউশনের ক্যাপচার তৈরি হয়েছে।",
+        "tituloAbrirGestor": "📂 ধাপ ৯.৪: এক্সট্র্যাকশন ম্যানেজার খুলুন",
+        "instAbrirGestor": "এবার আপনার সংগ্রহ প্যানেল খুলতে নীল রঙে হাইলাইট করা <b>'এক্সট্র্যাকশন ম্যানেজার'</b>-এ ক্লিক করুন।",
+        "detalleAbrirGestor": "💡 <i>ম্যানেজারটি স্বয়ংক্রিয়ভাবে আপনার সব হাইলাইট এবং ভিজ্যুয়াল ক্যাপচার সংরক্ষণ ও শ্রেণিবদ্ধ করে।</i>",
+        "btnAbrirGestor": "📂 এক্সট্র্যাকশন ম্যানেজার খুলুন",
+        "badgeMouseAbrirGestor": "🖱️ এক্সট্র্যাকশন ম্যানেজারে ক্লিক করুন",
+        "tituloGestor": "📂 ধাপ ৯.৫: এক্সট্র্যাকশন ম্যানেজার",
+        "instGestor": "এটি হলো <b>এক্সট্র্যাকশন ম্যানেজার</b>। এখানে আপনি আপনার নথিতে করা রঙ অনুযায়ী সব হাইলাইট এবং ভিজ্যুয়াল ক্লিপিং সাজানো অবস্থায় দেখতে পাবেন, পাশাপাশি পৃষ্ঠা অনুযায়ী বা নির্বাচিত ফিল্টার অনুযায়ী সেগুলো দেখার সুবিধাও পাবেন।",
+        "detalleGestor": "💡 <b>ট্যাব এবং ফিল্টার:</b><br>• <b>সব</b>, শুধুমাত্র <b>হাইলাইট</b> অথবা শুধুমাত্র <b>ক্যাপচার</b> অনুযায়ী ফিল্টার করুন।<br>• পৃষ্ঠা ধরে পড়তে <b>রঙ</b> সিলেক্টর ব্যবহার করুন বা <b>পৃষ্ঠা</b> অনুযায়ী ফিল্টার করুন অথবা <b>গ্লোবাল</b>ভাবে পুরো বই দেখুন।",
+        "btnGestorSiguiente": "পরবর্তী: দ্রুত নোট ➔",
+        "tituloNotaRapida": "📝 ধাপ ৯.৬: দ্রুত নোট (Alt + N)",
+        "instNotaRapida": "তাৎক্ষণিকভাবে নোট নেওয়ার জন্য, আপনার নোটগুলো বর্তমান পৃষ্ঠার সাথে যুক্ত থাকবে। <b>'দ্রুত নোট'</b>-এ ক্লিক করুন অথবা <kbd style='background:#1e293b; padding:2px 6px; border-radius:4px; border:1px solid #0284c7; color:#38bdf8; font-weight:bold;'>Alt + N</kbd> চাপুন।",
+        "detalleNotaRapida": "💡 <b>পৃষ্ঠা ও বই অনুযায়ী নোট:</b><br>• দ্রুত নোট স্বয়ংক্রিয়ভাবে আপনার পড়া বইটির <b>বর্তমান পৃষ্ঠার</b> সাথে যুক্ত হয়।",
+        "btnAbrirNotaRapida": "📝 দ্রুত নোট খুলুন (Alt + N)",
+        "btnNotaRapidaSiguiente": "পরবর্তী: নোটবুক ➔",
+        "tituloCuaderno": "📓 ধাপ ৯.৭: নোটবুক ও নোটসমূহ",
+        "instCuaderno": "এবং PDF-এ আপনার করা সব নোট পর্যালোচনা করতে, <b>'নোটবুক'</b>-এ ক্লিক করুন অথবা <b>N</b> কী চাপুন।",
+        "detalleCuaderno": "💡 <b>আপনার সব নোট এক জায়গায়:</b><br>• নোটবুকে আপনি পুরো PDF জুড়ে করা <b>সব গ্লোবাল নোট</b> দেখতে ও গুছিয়ে রাখতে পারেন।",
+        "btnCuadernoContinuar": "🎉 বুঝতে পেরেছি, সেটিংসে এগিয়ে যান! ➔",
+        "demoNotaTitulo": "📝 পাঠের সারসংক্ষেপ ও ভাবনা",
+        "demoNotaContenido": "<b>মূল ধারণা:</b><br>• রঙ অনুযায়ী হাইলাইটিং প্রধান ও গৌণ ধারণাগুলোকে শ্রেণিবদ্ধ করে।<br>• ভিজ্যুয়াল ক্লিপিং গুণমান না হারিয়েই ডায়াগ্রাম সংরক্ষণ করে।<br>• সিঙ্ক্রোনাইজড নোটগুলো স্ট্যান্ডার্ড Markdown ফরম্যাটে সংরক্ষিত হয়।",
+        "tituloOCR": "🔍 ধাপ ৯.৮: অপটিক্যাল রিকগনিশন (RapidOCR) এবং Auto-OCR",
+        "instOCR": "LiraLoud-এ ৪টি OCR সুবিধা রয়েছে:<br>• <b>'OCR জোরপূর্বক চালান':</b> কোনো লেখা শনাক্ত না হলে বর্তমান পৃষ্ঠাটি স্ক্যান করতে।<br>• <b>'পরিসর অনুযায়ী স্ক্যান':</b> নির্দিষ্ট পৃষ্ঠাগুলো প্রসেস করতে।<br>• <b>'সম্পূর্ণ পাঠ্য স্ক্যান':</b> পুরো নথি রূপান্তর করতে।<br>• <b>'নেভিগেট করার সময় Auto-OCR':</b> এটি ডিফল্টভাবে চালু থাকে এবং ছবি হিসেবে থাকা পাঠ্যহীন পৃষ্ঠাগুলো স্বয়ংক্রিয়ভাবে রূপান্তর করে।",
+        "detalleOCR": "💡 <i>ডিজিটাইজড বই, ফটোকপি এবং যেসব নিবন্ধে পাঠ্য ছবির ভেতরে থাকে সেগুলোর জন্য আদর্শ।</i>",
+        "btnOCRSiguiente": "পরবর্তী: অডিও এক্সপোর্ট (MP3) ➔",
+        "tituloDescarga": "🎙️ ধাপ ৯.৯: স্টাডি অডিও এক্সপোর্ট ও ডাউনলোড করুন",
+        "instDescarga": "এটি ডাউনলোড বোতাম, যা অন্য ডিভাইসে আপনার পড়া শোনার জন্য খুবই উপযোগী। পৃষ্ঠা বা নথিটি <b>MP3</b> অথবা <b>WAV</b> ফরম্যাটে এক্সপোর্ট করতে <b>'অডিও ডাউনলোড করুন'</b>-এ ক্লিক করুন।",
+        "detalleDescarga": "💡 <i>স্ক্রিন বা ইন্টারনেট সংযোগ ছাড়াই আপনার মোবাইল বা প্লেয়ারে রিভিশন দেওয়ার জন্য আপনার পড়াগুলো যেকোনো জায়গায় নিয়ে যান।</i>",
+        "btnDescargaContinuar": "🎉 সেটিংসে এগিয়ে যান ➔"
+    }
+};
+
+function detectarIdiomaTutorialActivo() {
+    // 1. Idioma de la interfaz de la aplicación (currentLanguage)
+    // Si la interfaz del usuario está en inglés, francés, etc., todo el tutorial y documentos deben sincronizarse con ese idioma
+    const langUI = (typeof currentLanguage !== 'undefined' && currentLanguage) 
+        ? currentLanguage.toLowerCase().trim().slice(0, 2) 
+        : 'es';
+
+    if (langUI !== 'es' && CALIBRACION_POR_IDIOMA[langUI]) {
+        return langUI;
+    }
+
+    // 2. Si la interfaz es español, comprobar si el usuario eligió una voz de otro idioma en la barra
+    const selVoz = document.getElementById('selector-voz-live') || document.getElementById('modal-voz');
+    if (selVoz && selVoz.value) {
+        const vozLimpia = selVoz.value.toLowerCase().replace(/^(local-|edge-)/, '');
+        const match = vozLimpia.match(/^([a-z]{2})[-_]/);
+        if (match && CALIBRACION_POR_IDIOMA[match[1]]) {
+            return match[1];
+        }
+    }
+
+    // 3. Comprobar si el filtro de idioma fue cambiado a otro diferente a español
+    const elFiltro = document.getElementById('filtro-idioma') || document.getElementById('modal-filtro-idioma');
+    if (elFiltro && elFiltro.value) {
+        const iso = elFiltro.value.toLowerCase().trim().slice(0, 2);
+        if (iso !== 'es' && CALIBRACION_POR_IDIOMA[iso]) {
+            return iso;
+        }
+    }
+
+    // 4. Fallback: idioma de la interfaz si está soportado, o español
+    if (CALIBRACION_POR_IDIOMA[langUI]) {
+        return langUI;
+    }
+
+    return 'es';
+}
+
+// Helper de internacionalización dinámica para el tutorial
+function getTourText(key, defaultEs, vars = null) {
+    const langUI = (typeof currentLanguage !== 'undefined' && currentLanguage)
+        ? currentLanguage.toLowerCase().trim().slice(0, 2)
+        : 'es';
+    const langIso = (langUI !== 'es') ? langUI : detectarIdiomaTutorialActivo();
+
+    let resolved = defaultEs;
+    if (langIso === 'es') {
+        if (typeof window.t === 'function') {
+            resolved = window.t(key, defaultEs);
+        }
+    } else if (typeof window.t === 'function') {
+        const txt = window.t(key, defaultEs);
+        if (txt && txt !== key) resolved = txt;
+    } else if (typeof translateDynamicText === 'function') {
+        try {
+            const txt = translateDynamicText(key);
+            if (txt && txt !== key) resolved = txt;
+        } catch (e) {}
+    }
+
+    if (typeof resolved !== 'string') return resolved;
+
+    const abrevCfg = (typeof DEMO_ABREVIATURAS_POR_IDIOMA !== 'undefined')
+        ? (DEMO_ABREVIATURAS_POR_IDIOMA[langIso] || DEMO_ABREVIATURAS_POR_IDIOMA.es || {})
+        : {};
+    const teatroCfg = (typeof DEMO_TEATRO_POR_IDIOMA !== 'undefined')
+        ? (DEMO_TEATRO_POR_IDIOMA[langIso] || DEMO_TEATRO_POR_IDIOMA.es || {})
+        : {};
+    const ctxVars = Object.assign({}, abrevCfg, teatroCfg, (vars && typeof vars === 'object') ? vars : {});
+
+    return resolved
+        .replace(/\$\{cfg\.([a-zA-Z0-9_]+)\}/g, (m, k) => (ctxVars[k] !== undefined && ctxVars[k] !== null) ? String(ctxVars[k]) : m)
+        .replace(/\{([a-zA-Z0-9_]+)\}/g, (m, k) => (ctxVars[k] !== undefined && ctxVars[k] !== null) ? String(ctxVars[k]) : m);
+}
+
+window.CALIBRACION_POR_IDIOMA = CALIBRACION_POR_IDIOMA;
+window.DEMO_PASO4_POR_IDIOMA = DEMO_PASO4_POR_IDIOMA;
+window.DEMO_ABREVIATURAS_POR_IDIOMA = DEMO_ABREVIATURAS_POR_IDIOMA;
+window.DEMO_TEATRO_POR_IDIOMA = DEMO_TEATRO_POR_IDIOMA;
+window.DEMO_IA_POR_IDIOMA = DEMO_IA_POR_IDIOMA;
+window.DEMO_TRADUCCION_POR_IDIOMA = DEMO_TRADUCCION_POR_IDIOMA;
+window.DEMO_EXTRACCION_POR_IDIOMA = DEMO_EXTRACCION_POR_IDIOMA;
+window.obtenerAtajoAgregarLimite = obtenerAtajoAgregarLimite;
+window.teclasDelAtajo = teclasDelAtajo;
+window.atajoLegibleAgregarLimite = atajoLegibleAgregarLimite;
+window.aplicarAtajoEnTexto = aplicarAtajoEnTexto;
+window.comboDesdeEvento = comboDesdeEvento;
+window.detectarIdiomaTutorialActivo = detectarIdiomaTutorialActivo;
+window.getTourText = getTourText;

@@ -1,0 +1,1115 @@
+/* LiraLoud
+ * Copyright 2026 José Pablo González Macías
+ * Licensed under the Apache License, Version 2.0
+ */
+
+/* --- SISTEMA DE MODALES (SEPARADO) --- */
+
+/* TIPO 1: Modal Bloqueante (Config y Descarga) */
+.overlay-bloqueante {
+    display: none;
+    /* JS lo cambia a flex */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 5000;
+    justify-content: center;
+    align-items: center;
+    pointer-events: auto;
+}
+
+/* Pantalla de carga inicial: debe estar por encima de absolutamente todos los elementos */
+#pantalla-carga {
+    z-index: 2147483647 !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+}
+
+/* Configuración Avanzada y Descarga siempre por encima de la barra flotante Zen y con fondo difuminado */
+#modalConfig,
+#modal-descarga {
+    z-index: 110000 !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+/* TIPO 2: Modal No Bloqueante (Diccionario) */
+.overlay-diccionario {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 98000;
+    pointer-events: none;
+    /* Permite click atras */
+    justify-content: flex-end;
+    /* A la derecha */
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/* ESTILOS INTERNOS DE MODAL CONFIGURACIÓN */
+.modal-content {
+    background: #fdf6e3;
+    width: fit-content;
+    max-width: 90vw;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+.modal-header {
+    background: #fdf6e3;
+    padding: 15px 20px;
+    border-bottom: 2px solid #e0dacc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-body {
+    padding: 20px;
+    max-height: 60vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    width: 0;
+    min-width: 100%;
+    box-sizing: border-box;
+}
+
+/* Filas de Atajos */
+.atajo-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #ddd;
+}
+
+.btn-binder {
+    background: white;
+    border: 2px solid #ccc;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    min-width: 140px;
+    color: #333;
+}
+
+.btn-binder:hover {
+    border-color: #aaa;
+}
+
+/* Animación de escucha */
+.btn-binder.escuchando {
+    background: #ffeaa7;
+    border-color: #d35400;
+    color: #d35400;
+    animation: palpitar 1s infinite;
+}
+
+@keyframes palpitar {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.02);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* --- ESTILOS DICCIONARIO Y MODO TEATRO REMASTERIZADOS --- */
+
+#panel-diccionario,
+#panel-teatro {
+    pointer-events: auto;
+    background: #ffffff;
+    width: 480px;
+    max-width: 95vw;
+    height: 85vh;
+    max-height: 820px;
+    align-self: center;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(108, 92, 231, 0.2);
+    border: none;
+    overflow: hidden;
+    animation: modalDeslizarEntrada 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    font-family: inherit;
+}
+
+#panel-teatro {
+    width: 620px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(9, 132, 227, 0.2);
+}
+
+@keyframes modalDeslizarEntrada {
+    from {
+        opacity: 0;
+        transform: translateX(35px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+/* Headers con degradados modernos y suaves */
+.header-dicc {
+    background: linear-gradient(135deg, #5b4db8 0%, #4c3ea8 100%);
+    color: white;
+    padding: 13px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.3px;
+    box-shadow: 0 2px 10px rgba(91, 77, 184, 0.18);
+    border-bottom: none;
+}
+
+.header-teatro {
+    background: linear-gradient(135deg, #2b6cb0 0%, #1e528d 100%);
+    color: white;
+    padding: 13px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.3px;
+    box-shadow: 0 2px 10px rgba(43, 108, 176, 0.18);
+    border-bottom: none;
+}
+
+/* Botón Cerrar X Estilo Moderno */
+.btn-cerrar-x {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    backdrop-filter: blur(4px);
+}
+
+.btn-cerrar-x:hover {
+    background-color: rgba(231, 76, 60, 0.9) !important;
+    color: white !important;
+    transform: scale(1.1);
+}
+
+.btn-cerrar-x:active {
+    transform: scale(0.92);
+}
+
+/* Cuerpo de modales */
+.cuerpo-dicc,
+.cuerpo-teatro {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+    background: #ffffff;
+}
+
+.cuerpo-teatro {
+    padding: 14px;
+}
+
+/* Barras de Pestañas / Bloques (Scroll Horizontal) */
+.tabs-secciones,
+#lista-obras-teatro {
+    display: flex;
+    overflow-x: auto;
+    background: #f8f9fa;
+    padding: 8px 12px;
+    gap: 8px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    scrollbar-width: thin;
+    align-items: center;
+}
+
+.tab-item {
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    background: #e9ecef;
+    color: #495057;
+    border-radius: 20px;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid transparent;
+    user-select: none;
+}
+
+.tab-item:hover:not(.active) {
+    background: #dee2e6;
+    color: #212529;
+    transform: translateY(-1px);
+}
+
+.tab-item.active {
+    background: linear-gradient(135deg, #5b4db8, #4c3ea8) !important;
+    color: #ffffff !important;
+    border-color: transparent !important;
+    box-shadow: 0 2px 8px rgba(91, 77, 184, 0.25);
+    transform: translateY(-1px);
+}
+
+.tab-item.tab-teatro.active {
+    background: linear-gradient(135deg, #2b6cb0, #1e528d) !important;
+    box-shadow: 0 2px 8px rgba(43, 108, 176, 0.25);
+}
+
+.tab-nombre-texto {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.tab-acciones {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-cerrar-bloque {
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    color: currentColor;
+    opacity: 0.6;
+    transition: opacity 0.2s, transform 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-cerrar-bloque:hover {
+    opacity: 1;
+    transform: scale(1.2);
+    color: #e74c3c !important;
+}
+
+/* Grupos de Agregar Nueva Sección / Obra */
+.seccion-input-group,
+.teatro-input-group {
+    display: flex;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #ffffff;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.teatro-input-group {
+    padding: 0;
+    margin-bottom: 12px;
+    border-bottom: none;
+}
+
+.seccion-input-group input,
+.teatro-input-group input {
+    flex: 1;
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1px solid #dcdde1;
+    font-size: 13px;
+    background: #f8f9fa;
+    color: #2f3640;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.seccion-input-group input:focus,
+.teatro-input-group input:focus {
+    border-color: #5b4db8;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(91, 77, 184, 0.12);
+}
+
+.teatro-input-group input:focus {
+    border-color: #2b6cb0;
+    box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.12);
+}
+
+.btn-add-seccion,
+.btn-add-obra {
+    background: linear-gradient(135deg, #5b4db8, #4c3ea8);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 0 16px;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(91, 77, 184, 0.2);
+}
+
+.btn-add-obra {
+    background: linear-gradient(135deg, #2b6cb0, #1e528d);
+    box-shadow: 0 2px 6px rgba(43, 108, 176, 0.2);
+}
+
+.btn-add-seccion:hover,
+.btn-add-obra:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+}
+
+/* Área de Contenido y Modo Captura */
+.contenido-terminos {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 12px 14px;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+.modo-captura-badge {
+    font-size: 11px;
+    font-weight: 500;
+    color: #5b4db8;
+    background: rgba(91, 77, 184, 0.07);
+    border: 1px solid rgba(91, 77, 184, 0.18);
+    padding: 5px 12px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    align-self: flex-start;
+}
+
+.modo-captura-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #5b4db8;
+    box-shadow: 0 0 6px rgba(91, 77, 184, 0.6);
+    animation: capturaPulso 1.8s infinite;
+}
+
+@keyframes capturaPulso {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0.6; }
+}
+
+/* Card para agregar Término o Actor */
+.add-termino-box {
+    background: rgba(91, 77, 184, 0.03);
+    padding: 12px 14px;
+    border: 1px solid rgba(91, 77, 184, 0.16);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 6px rgba(91, 77, 184, 0.04);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.add-termino-box.teatro-box {
+    background: rgba(43, 108, 176, 0.03);
+    border-color: rgba(43, 108, 176, 0.16);
+    box-shadow: 0 2px 6px rgba(43, 108, 176, 0.04);
+}
+
+.fila-inputs {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.fila-inputs input,
+.add-termino-box input,
+.add-termino-box select {
+    padding: 8px 12px;
+    border: 1px solid #dcdde1;
+    border-radius: 8px;
+    font-size: 13px;
+    background: #ffffff;
+    color: #2f3640;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.fila-inputs input:focus,
+.add-termino-box input:focus,
+.add-termino-box select:focus {
+    border-color: #5b4db8;
+    box-shadow: 0 0 0 3px rgba(91, 77, 184, 0.12);
+}
+
+.add-termino-box.teatro-box input:focus,
+.add-termino-box.teatro-box select:focus {
+    border-color: #2b6cb0;
+    box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.12);
+}
+
+.btn-guardar-termino {
+    background: linear-gradient(135deg, #5b4db8, #4c3ea8);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 6px rgba(91, 77, 184, 0.22);
+    width: 100%;
+}
+
+.btn-guardar-termino:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(91, 77, 184, 0.35);
+    filter: brightness(1.06);
+}
+
+.btn-guardar-actor {
+    background: linear-gradient(135deg, #2b6cb0, #1e528d);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 6px rgba(43, 108, 176, 0.22);
+    width: 100%;
+}
+
+.btn-guardar-actor:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(43, 108, 176, 0.35);
+    filter: brightness(1.06);
+}
+
+/* Buscadores */
+#buscador-terminos,
+#buscador-actores {
+    width: 100%;
+    padding: 8px 14px;
+    border-radius: 20px;
+    border: 1px solid #dcdde1;
+    font-size: 12px;
+    background: #f8f9fa;
+    color: #2f3640;
+    outline: none;
+    box-sizing: border-box;
+    margin-bottom: 8px;
+    transition: all 0.2s ease;
+}
+
+#buscador-terminos:focus,
+#buscador-actores:focus {
+    border-color: #5b4db8;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(91, 77, 184, 0.12);
+}
+
+#buscador-actores:focus {
+    border-color: #2b6cb0;
+    box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.12);
+}
+
+/* Listas con Scroll */
+.lista-terminos-scroll {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 10px;
+    background: #fafbfc;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* Filas de Términos y Actores */
+.fila-termino {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #ffffff;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 13px;
+    user-select: none;
+}
+
+.fila-termino:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+    border-color: rgba(91, 77, 184, 0.25);
+}
+
+.fila-actor:hover {
+    border-color: rgba(43, 108, 176, 0.25);
+}
+
+.col-sigla {
+    font-weight: 700;
+    color: #e74c3c;
+    font-size: 13px;
+    letter-spacing: 0.2px;
+}
+
+.col-significado {
+    font-size: 12px;
+    color: #636e72;
+    margin-top: 1px;
+}
+
+.badge-voz-actor {
+    font-size: 11px;
+    color: #2b6cb0;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 500;
+}
+
+.select-mover {
+    font-size: 11px;
+    border: 1px solid #dcdde1;
+    background: #f1f2f6;
+    color: #2f3640;
+    border-radius: 6px;
+    padding: 3px 6px;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.select-mover:hover {
+    background: #e4e7eb;
+    border-color: #5b4db8;
+}
+
+.btn-editar-term,
+.btn-borrar-term {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    color: #95a5a6;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.btn-editar-term:hover {
+    background: rgba(91, 77, 184, 0.12);
+    color: #5b4db8;
+}
+
+.btn-borrar-term:hover {
+    background: rgba(231, 76, 60, 0.12);
+    color: #e74c3c;
+}
+
+/* Footer de Modo Teatro */
+.footer-teatro {
+    padding: 12px 18px;
+    background: #f8f9fa;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.btn-listo-teatro {
+    background: linear-gradient(135deg, #27ae60, #219653);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 24px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 6px rgba(39, 174, 96, 0.25);
+}
+
+.btn-listo-teatro:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(39, 174, 96, 0.35);
+}
+
+/* Modo Oscuro para Diccionario y Teatro */
+body.ui-dark-mode #panel-diccionario {
+    background: #161b22;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(108, 92, 231, 0.3);
+}
+
+body.ui-dark-mode #panel-teatro {
+    background: #161b22;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(9, 132, 227, 0.3);
+}
+
+body.ui-dark-mode .cuerpo-dicc,
+body.ui-dark-mode .cuerpo-teatro,
+body.ui-dark-mode .contenido-terminos,
+body.ui-dark-mode .seccion-input-group {
+    background: #161b22;
+}
+
+body.ui-dark-mode .tabs-secciones,
+body.ui-dark-mode #lista-obras-teatro,
+body.ui-dark-mode .footer-teatro {
+    background: #0d1117;
+    border-color: #30363d;
+}
+
+body.ui-dark-mode .tab-item {
+    background: #21262d;
+    color: #8b949e;
+}
+
+body.ui-dark-mode .tab-item:hover:not(.active) {
+    background: #30363d;
+    color: #e6edf3;
+}
+
+body.ui-dark-mode .add-termino-box {
+    background: rgba(108, 92, 231, 0.06);
+    border-color: rgba(108, 92, 231, 0.3);
+}
+
+body.ui-dark-mode .add-termino-box.teatro-box {
+    background: rgba(9, 132, 227, 0.06);
+    border-color: rgba(9, 132, 227, 0.3);
+}
+
+body.ui-dark-mode .seccion-input-group input,
+body.ui-dark-mode .teatro-input-group input,
+body.ui-dark-mode .fila-inputs input,
+body.ui-dark-mode .add-termino-box input,
+body.ui-dark-mode .add-termino-box select,
+body.ui-dark-mode #buscador-terminos,
+body.ui-dark-mode #buscador-actores {
+    background: #0d1117;
+    color: #e6edf3;
+    border-color: #30363d;
+}
+
+body.ui-dark-mode .lista-terminos-scroll {
+    background: #0d1117;
+    border-color: #30363d;
+}
+
+body.ui-dark-mode .fila-termino {
+    background: #161b22;
+    border-color: #30363d;
+}
+
+body.ui-dark-mode .fila-termino:hover {
+    border-color: #6c5ce7;
+}
+
+body.ui-dark-mode .col-significado {
+    color: #8b949e;
+}
+
+body.ui-dark-mode .select-mover {
+    background: #21262d;
+    color: #e6edf3;
+    border-color: #30363d;
+}
+
+body.ui-dark-mode .btn-listo-teatro {
+    background: linear-gradient(135deg, #238636, #2ea043);
+    box-shadow: 0 2px 6px rgba(35, 134, 54, 0.3);
+}
+
+body.ui-dark-mode .btn-listo-teatro:hover {
+    background: linear-gradient(135deg, #2ea043, #3fb950);
+    box-shadow: 0 4px 10px rgba(46, 160, 67, 0.45);
+}
+
+body.ui-dark-mode #barra-contenedor {
+    background: #21262d;
+    border-color: #30363d;
+}
+
+/* ==========================================================================
+   EDITOR DE TEXTO - Iconos de herramientas (tool-svg)
+   ========================================================================== */
+.tool-svg {
+    stroke: currentColor;
+    fill: currentColor;
+}
+
+body:not(.ui-dark-mode) .tool-svg {
+    stroke: #1C274C;
+    fill: #1C274C;
+}
+
+body.ui-dark-mode .tool-svg {
+    stroke: #e0e0e0;
+    fill: #e0e0e0;
+}
+
+.tool-btn .tool-svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* ==========================================================================
+   MODAL: RANGO OCR CON VISTAS PREVIAS DUALES
+   ========================================================================== */
+.ocr-rango-preview-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 16px 0;
+}
+
+.ocr-rango-card {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.ocr-rango-header-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #38bdf8;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ocr-rango-input-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ocr-rango-btn-step {
+    background: #1e293b;
+    color: #38bdf8;
+    border: 1px solid #475569;
+    border-radius: 6px;
+    width: 28px;
+    height: 28px;
+    font-weight: bold;
+    font-size: 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.ocr-rango-btn-step:hover {
+    background: #0284c7;
+    color: white;
+    border-color: #38bdf8;
+}
+
+.ocr-rango-input {
+    width: 65px;
+    background: #1e293b;
+    border: 1px solid #475569;
+    color: #f8fafc;
+    border-radius: 6px;
+    padding: 4px 6px;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.ocr-rango-input:focus {
+    outline: none;
+    border-color: #38bdf8;
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.4);
+}
+
+.ocr-rango-img-box {
+    width: 100%;
+    height: 180px;
+    background: #182234;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.ocr-rango-img-box img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: block;
+    transition: opacity 0.2s ease;
+}
+
+.ocr-rango-img-tag {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    background: rgba(15, 23, 42, 0.85);
+    color: #38bdf8;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+/* ==========================================================================
+   BOTONES DEL LABORATORIO DE VOZ (MEZCLA KOKORO Y CLONACIÓN POCKET AI)
+   ========================================================================== */
+.btn-voz-lab-cargar-pocket {
+    font-size: 11px;
+    padding: 6px 12px;
+    background: #2980b9;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+.btn-voz-lab-cargar-pocket:hover {
+    background: #3498db !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(41, 128, 185, 0.35);
+}
+.btn-voz-lab-cargar-pocket:active {
+    transform: translateY(0);
+}
+
+.btn-voz-lab-cargar-kokoro {
+    font-size: 11px;
+    padding: 6px 12px;
+    background: #27ae60;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+.btn-voz-lab-cargar-kokoro:hover {
+    background: #2ecc71 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(39, 174, 96, 0.35);
+}
+.btn-voz-lab-cargar-kokoro:active {
+    transform: translateY(0);
+}
+
+.btn-voz-lab-grabar {
+    font-size: 11px;
+    padding: 6px 12px;
+    background: #2c3e50;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+.btn-voz-lab-grabar:hover {
+    background: #34495e !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(44, 62, 80, 0.35);
+}
+.btn-voz-lab-grabar:active {
+    transform: translateY(0);
+}
+
+.btn-voz-lab-probar {
+    font-size: 12px;
+    padding: 7px 14px;
+    background: #4b6584;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+.btn-voz-lab-probar:hover {
+    background: #596275 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(75, 101, 132, 0.35);
+}
+.btn-voz-lab-probar:active {
+    transform: translateY(0);
+}
+
+.btn-voz-lab-guardar {
+    font-size: 12px;
+    padding: 7px 14px;
+    background: #009432;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+.btn-voz-lab-guardar:hover {
+    background: #10ac84 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 148, 50, 0.35);
+}
+.btn-voz-lab-guardar:active {
+    transform: translateY(0);
+}
+
+/* Botones en filas de voces creadas (Probar y Eliminar) */
+.btn-voz-item-test {
+    background: #f1f2f6;
+    border: 1px solid #ced6e0;
+    border-radius: 4px;
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+.btn-voz-item-test:hover {
+    background: #dfe4ea !important;
+    border-color: #747d8c !important;
+    transform: scale(1.05);
+}
+.btn-voz-item-test:active {
+    transform: scale(0.96);
+}
+
+.btn-voz-item-delete {
+    background: #ffeaa7;
+    border: 1px solid #fdcb6e;
+    color: #d63031;
+    border-radius: 4px;
+    cursor: pointer;
+    padding: 3px 7px;
+    font-size: 11px;
+    font-weight: bold;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+.btn-voz-item-delete:hover {
+    background: #d63031 !important;
+    border-color: #c0392b !important;
+    color: #ffffff !important;
+    transform: scale(1.08);
+}
+.btn-voz-item-delete:active {
+    transform: scale(0.96);
+}
+
+/* Modo Oscuro para elementos del laboratorio de voz */
+body.ui-dark-mode .btn-voz-item-test {
+    background: #2f3640;
+    border-color: #57606f;
+    color: #f5f6fa;
+}
+body.ui-dark-mode .btn-voz-item-test:hover {
+    background: #353b48 !important;
+    border-color: #718093 !important;
+}
+body.ui-dark-mode .btn-voz-item-test svg {
+    color: #74b9ff !important;
+}
+body.ui-dark-mode .btn-voz-item-delete {
+    background: rgba(214, 48, 49, 0.2);
+    border-color: rgba(214, 48, 49, 0.5);
+    color: #ff7675;
+}
+body.ui-dark-mode .btn-voz-item-delete:hover {
+    background: #d63031 !important;
+    border-color: #ff7675 !important;
+    color: #ffffff !important;
+}
+
+
+
+.btn-tienda-voces {
+    width: 100%;
+    margin-top: 8px;
+    padding: 7px 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #1e293b;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.btn-tienda-voces:hover {
+    background: #eff6ff;
+}
+

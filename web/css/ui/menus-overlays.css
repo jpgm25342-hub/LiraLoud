@@ -1,0 +1,880 @@
+/* ========================================================================== */
+/* SIDEBAR LATERAL IZQUIERDA (MODO NORMAL / OLD SCHOOL)                       */
+/* ========================================================================== */
+#contenedor-cuerpo-principal {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.sidebar-izq {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    background: #fdfefe;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    overflow: visible !important;
+    width: 175px;
+    min-width: 175px;
+    height: fit-content;
+    max-height: calc(100vh - 180px);
+    box-shadow: 2px 4px 12px rgba(0, 0, 0, 0.05);
+    transition: padding 0.3s ease, gap 0.3s ease;
+}
+
+/* Estado Colapsado Vertical (Oculta todos los botones de arriba a abajo) */
+.sidebar-izq.colapsado {
+    width: 175px !important;
+    min-width: 175px !important;
+    padding: 10px 12px !important;
+    gap: 0 !important;
+}
+
+.sidebar-izq.colapsado>*:not(.sidebar-header) {
+    display: none !important;
+}
+
+.sidebar-izq.colapsado .sidebar-header {
+    margin-bottom: 0 !important;
+}
+
+.sidebar-izq .btn-secundario,
+.sidebar-izq summary.btn-secundario,
+.sidebar-izq #btn-ia,
+.sidebar-izq #btn-abrir-descarga {
+    width: 100% !important;
+    justify-content: flex-start !important;
+    height: 38px !important;
+    padding: 0 12px !important;
+    border-radius: 10px !important;
+    font-size: 13px !important;
+    box-sizing: border-box !important;
+    white-space: nowrap !important;
+}
+
+.sidebar-izq #dropdown-ocr-container,
+.sidebar-izq #details-traduccion-main {
+    width: 100% !important;
+    position: relative !important;
+}
+
+.sidebar-izq #btn-menu-ocr {
+    width: 100% !important;
+    justify-content: space-between !important;
+    height: 38px !important;
+    padding: 0 12px !important;
+    border-radius: 10px !important;
+}
+
+/* Posicionamiento lateral desplegable para menús desplegables en la barra lateral */
+.sidebar-izq .dropdown-ocr-menu,
+.sidebar-izq .zen-dropdown-popup {
+    left: calc(100% + 8px) !important;
+    top: 0 !important;
+    transform: none !important;
+    z-index: 1100 !important;
+}
+
+/* Ocultar barra lateral en Modo Minimalista / ZEN */
+body.modo-minimalista .sidebar-izq {
+    display: none !important;
+}
+
+/* Soporte Modo Oscuro para Sidebar */
+body.ui-dark-mode .sidebar-izq {
+    background: #1e1b2e !important;
+    border-color: rgba(155, 89, 182, 0.2) !important;
+    box-shadow: 2px 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+#ic_fluent_erase_24_regular {
+    fill: currentColor !important;
+}
+
+/* ===== CAJA DE TEXTO FLOTANTE (CREACIÓN Y EDICIÓN) ===== */
+.caja-texto-flotante {
+    min-width: 150px;
+    min-height: 30px;
+    padding: 5px 8px;
+    border: 2px dashed transparent;
+    background: transparent;
+    border-radius: 4px;
+    z-index: 1000;
+    outline: none;
+    box-sizing: border-box;
+    cursor: text;
+    transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.caja-texto-flotante.caja-texto-activa {
+    border: 2px dashed #3498db;
+    background: rgba(255, 255, 255, 0.85);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+
+body.ui-dark-mode .caja-texto-flotante.caja-texto-activa {
+    border: 2px dashed #58a6ff;
+    background: rgba(22, 27, 34, 0.88);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
+}
+
+/* ===== BARRA DE FORMATO FLOTANTE PARA CUADROS DE TEXTO ===== */
+#toolbar-formato-texto {
+    position: fixed;
+    z-index: 10000;
+    background: #ffffff;
+    border: 1px solid #dcdde1;
+    border-radius: 8px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    padding: 5px 8px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    user-select: none;
+    box-sizing: border-box;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+body.ui-dark-mode #toolbar-formato-texto {
+    background: #1e272e;
+    border-color: #30363d;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+}
+
+.fmt-select {
+    padding: 3px 6px;
+    font-size: 12px;
+    border: 1px solid #ced6e0;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #2f3542;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+body.ui-dark-mode .fmt-select {
+    background: #2c3e50;
+    border-color: #485460;
+    color: #ecf0f1;
+}
+
+body.ui-dark-mode .fmt-select option {
+    background: #1e272e;
+    color: #ecf0f1;
+}
+
+.fmt-input-num {
+    width: 48px;
+    padding: 3px 4px;
+    font-size: 12px;
+    border: 1px solid #ced6e0;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #2f3542;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+body.ui-dark-mode .fmt-input-num {
+    background: #2c3e50;
+    border-color: #485460;
+    color: #ecf0f1;
+    color-scheme: dark;
+}
+
+.fmt-input-color {
+    width: 28px;
+    height: 26px;
+    padding: 1px;
+    border: 1px solid #ced6e0;
+    border-radius: 4px;
+    cursor: pointer;
+    background: none;
+    transition: border-color 0.2s ease;
+}
+
+body.ui-dark-mode .fmt-input-color {
+    border-color: #485460;
+    background: #2c3e50;
+}
+
+.fmt-separator {
+    width: 1px;
+    height: 20px;
+    background: #dcdde1;
+    margin: 0 2px;
+}
+
+body.ui-dark-mode .fmt-separator {
+    background: #485460;
+}
+
+/* Botones B, I, U con fondo #2c3e50 y efecto hover */
+.fmt-btn {
+    background-color: #2c3e50;
+    color: #ffffff;
+    border: 1px solid #1a252f;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 26px;
+    height: 26px;
+    box-sizing: border-box;
+    transition: background-color 0.15s ease, transform 0.1s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.fmt-btn:hover {
+    background-color: #3e5871;
+    border-color: #2c3e50;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.fmt-btn:active {
+    transform: translateY(0);
+}
+
+.fmt-btn.activo,
+.fmt-btn.active {
+    background-color: #2980b9 !important;
+    border-color: #1f618d !important;
+    color: #ffffff !important;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+body.ui-dark-mode .fmt-btn {
+    background-color: #2c3e50;
+    border-color: #34495e;
+    color: #ecf0f1;
+}
+
+body.ui-dark-mode .fmt-btn:hover {
+    background-color: #3e5871;
+    border-color: #58a6ff;
+    color: #ffffff;
+}
+
+body.ui-dark-mode .fmt-btn.activo,
+body.ui-dark-mode .fmt-btn.active {
+    background-color: #2980b9 !important;
+    border-color: #58a6ff !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 6px rgba(88, 166, 255, 0.4);
+}
+
+.fmt-action-btn {
+    background: #f1f2f6;
+    color: #2c3e50;
+    border: 1px solid #ced6e0;
+    border-radius: 4px;
+    padding: 3px 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 26px;
+    min-width: 26px;
+    box-sizing: border-box;
+    transition: all 0.15s ease;
+}
+
+.fmt-action-btn:hover {
+    background: #dfe4ea;
+    border-color: #a4b0be;
+    transform: translateY(-1px);
+}
+
+.fmt-save-btn:hover {
+    background: #2ed573;
+    color: #ffffff;
+    border-color: #26af5f;
+}
+
+body.ui-dark-mode .fmt-action-btn {
+    background: #2c3e50;
+    border-color: #485460;
+    color: #ecf0f1;
+}
+
+body.ui-dark-mode .fmt-action-btn:hover {
+    background: #3e5871;
+    border-color: #747d8c;
+    color: #ffffff;
+}
+
+body.ui-dark-mode .fmt-save-btn:hover {
+    background: #2ed573;
+    color: #ffffff;
+    border-color: #26af5f;
+}
+
+/* Iconos de los botones Crear Cuadro de Texto en modo oscuro y estado activo */
+body.ui-dark-mode #btn-text-box svg path,
+body.ui-dark-mode #btn-text-box-zen svg path,
+body.ui-dark-mode .zen-item-cuadro-texto svg path {
+    stroke: #adbac7 !important;
+}
+
+body.ui-dark-mode #btn-text-box svg path[fill="#1C274C"],
+body.ui-dark-mode #btn-text-box-zen svg path[fill="#1C274C"],
+body.ui-dark-mode .zen-item-cuadro-texto svg path[fill="#1C274C"] {
+    fill: #adbac7 !important;
+    stroke: none !important;
+}
+
+#group-text-box.active #btn-text-box svg path,
+#btn-text-box.activo svg path,
+.zen-item-cuadro-texto.tool-active-underline svg path {
+    stroke: #2980b9 !important;
+}
+
+#group-text-box.active #btn-text-box svg path[fill="#1C274C"],
+#btn-text-box.activo svg path[fill="#1C274C"],
+.zen-item-cuadro-texto.tool-active-underline svg path[fill="#1C274C"] {
+    fill: #2980b9 !important;
+    stroke: none !important;
+}
+
+body.ui-dark-mode #group-text-box.active #btn-text-box svg path,
+body.ui-dark-mode #btn-text-box.activo svg path,
+body.ui-dark-mode .zen-item-cuadro-texto.tool-active-underline svg path {
+    stroke: #58a6ff !important;
+}
+
+body.ui-dark-mode #group-text-box.active #btn-text-box svg path[fill="#1C274C"],
+body.ui-dark-mode #btn-text-box.activo svg path[fill="#1C274C"],
+body.ui-dark-mode .zen-item-cuadro-texto.tool-active-underline svg path[fill="#1C274C"] {
+    fill: #58a6ff !important;
+    stroke: none !important;
+}
+
+/* ==========================================================================
+   HOVER ESTILIZADO: CREAR CUADRO DE TEXTO, BORRADOR Y MARCATEXTOS
+   ========================================================================== */
+
+/* Prevenir interferencias de eventos de ratón en el interior del SVG */
+#btn-text-box svg,
+#btn-text-box-zen svg,
+.zen-item-cuadro-texto svg,
+#btn-erase svg,
+#btn-erase-zen svg,
+.zen-item-borrador svg,
+#btn-highlight svg,
+#btn-highlight-zen svg,
+.zen-item-subrayador svg {
+    pointer-events: none;
+}
+
+/* Transiciones estándar de la interfaz */
+#btn-text-box svg path,
+#btn-text-box-zen svg path,
+.zen-item-cuadro-texto svg path {
+    transition: stroke 0.15s ease, fill 0.15s ease;
+}
+
+#btn-erase,
+#btn-erase-zen,
+.zen-item-borrador,
+#btn-erase svg,
+#btn-erase-zen svg,
+.zen-item-borrador svg {
+    transition: color 0.15s ease, fill 0.15s ease;
+}
+
+/* 1. CREAR CUADRO DE TEXTO: SVG blanco en hover SOLO en Modo Oscuro */
+body.ui-dark-mode #btn-text-box:hover svg path,
+body.ui-dark-mode #group-text-box:hover #btn-text-box svg path,
+body.ui-dark-mode #btn-text-box-zen:hover svg path,
+body.ui-dark-mode .zen-item-cuadro-texto:hover svg path {
+    stroke: #ffffff !important;
+}
+
+body.ui-dark-mode #btn-text-box:hover svg path[fill],
+body.ui-dark-mode #group-text-box:hover #btn-text-box svg path[fill],
+body.ui-dark-mode #btn-text-box-zen:hover svg path[fill],
+body.ui-dark-mode .zen-item-cuadro-texto:hover svg path[fill] {
+    fill: #ffffff !important;
+    stroke: none !important;
+}
+
+/* 2. BORRADOR: Colores base y SVG blanco en hover SOLO en Modo Oscuro */
+#btn-erase,
+#btn-erase-zen,
+.zen-item-borrador {
+    color: #2c3e50;
+}
+
+body.ui-dark-mode #btn-erase,
+body.ui-dark-mode #btn-erase-zen,
+body.ui-dark-mode .zen-item-borrador {
+    color: #adbac7;
+}
+
+#btn-erase svg,
+#btn-erase-zen svg,
+.zen-item-borrador svg {
+    fill: currentColor !important;
+}
+
+#group-erase.active #btn-erase,
+#btn-erase.activo,
+.zen-item-borrador.tool-active-underline {
+    color: #2980b9 !important;
+}
+
+body.ui-dark-mode #group-erase.active #btn-erase,
+body.ui-dark-mode #btn-erase.activo,
+body.ui-dark-mode .zen-item-borrador.tool-active-underline {
+    color: #58a6ff !important;
+}
+
+body.ui-dark-mode #btn-erase:hover,
+body.ui-dark-mode #group-erase:hover #btn-erase,
+body.ui-dark-mode #btn-erase-zen:hover,
+body.ui-dark-mode .zen-item-borrador:hover {
+    color: #ffffff !important;
+}
+
+/* 3. MARCATEXTOS: SVG más claro e iluminado en hover conservando su color */
+#btn-highlight svg,
+#btn-highlight-zen svg,
+.zen-item-subrayador svg,
+.dynamic-ink {
+    transition: filter 0.15s ease, opacity 0.15s ease;
+}
+
+#btn-highlight:hover svg,
+#group-highlight:hover #btn-highlight svg,
+#btn-highlight-zen:hover svg,
+.zen-item-subrayador:hover svg {
+    filter: brightness(1.45) drop-shadow(0 0 2px rgba(255, 255, 255, 0.5)) !important;
+}
+
+body.ui-dark-mode #btn-highlight:hover svg,
+body.ui-dark-mode #group-highlight:hover #btn-highlight svg,
+body.ui-dark-mode #btn-highlight-zen:hover svg,
+body.ui-dark-mode .zen-item-subrayador:hover svg {
+    filter: brightness(1.75) drop-shadow(0 0 4px rgba(255, 255, 255, 0.8)) !important;
+}
+
+/* 4. NOTAS Y APUNTES: Iconos y estados hover */
+#btn-crear-nota,
+#btn-gestor-notas {
+    color: #34495e;
+    transition: background 0.2s ease, transform 0.1s ease, color 0.15s ease;
+}
+
+#btn-crear-nota svg,
+#btn-gestor-notas svg {
+    pointer-events: none;
+    transition: stroke 0.15s ease, color 0.15s ease;
+}
+
+body.ui-dark-mode #btn-crear-nota,
+body.ui-dark-mode #btn-gestor-notas {
+    color: #adbac7;
+}
+
+body.ui-dark-mode #btn-crear-nota svg,
+body.ui-dark-mode #btn-gestor-notas svg {
+    color: #adbac7;
+}
+
+body.ui-dark-mode #btn-crear-nota:hover,
+body.ui-dark-mode #btn-gestor-notas:hover {
+    color: #ffffff !important;
+}
+
+body.ui-dark-mode #btn-crear-nota:hover svg path,
+body.ui-dark-mode #btn-gestor-notas:hover svg path {
+    stroke: #ffffff !important;
+}
+
+body.ui-dark-mode #btn-zen-crear-nota:hover svg path,
+body.ui-dark-mode #btn-zen-gestor-notas:hover svg path {
+    stroke: #ffffff !important;
+}
+
+/* ========================================================================== */
+/* ESTILOS PARA CAPTURA VISUAL / RECORTE EN GESTOR DE EXTRACCIÓN              */
+/* ========================================================================== */
+#group-crop-extract.active .tool-btn,
+#btn-crop-extract.active,
+#btn-crop-extract.activo {
+    background-color: rgba(52, 152, 219, 0.2) !important;
+    outline: 1.5px solid #3498db;
+    border-radius: 4px;
+}
+
+.zen-item-recorte.tool-active-underline {
+    border-bottom: 2px solid #3498db !important;
+    color: #3498db !important;
+}
+
+body.ui-dark-mode #btn-crop-extract svg path,
+body.ui-dark-mode #btn-crop-extract svg circle {
+    stroke: #adbac7 !important;
+}
+
+body.ui-dark-mode #btn-crop-extract:hover svg path,
+body.ui-dark-mode #btn-crop-extract:hover svg circle {
+    stroke: #ffffff !important;
+}
+
+.capture-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.capture-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+}
+
+.tab-extraccion {
+    transition: all 0.2s ease;
+}
+
+.tab-extraccion:hover {
+    color: #3498db !important;
+}
+
+.tab-extraccion.active {
+    border-bottom: 2px solid #3498db !important;
+    color: #2c3e50 !important;
+}
+
+body.ui-dark-mode .tabs-extraccion {
+    background: #1e222b !important;
+    border-color: #343a46 !important;
+}
+
+body.ui-dark-mode .tab-extraccion {
+    color: #768390 !important;
+}
+
+body.ui-dark-mode .tab-extraccion.active {
+    color: #58a6ff !important;
+    border-bottom-color: #58a6ff !important;
+}
+
+body.ui-dark-mode .capture-card {
+    background: #22272e !important;
+    border-color: #316dca !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.ui-dark-mode .capture-card div {
+    color: #adbac7 !important;
+}
+
+/* Botones del modal de Guardar Captura con hover responsivo */
+#btn-cancelar-captura {
+    padding: 8px 18px;
+    border: 1px solid #ccd1d9;
+    background: #ffffff;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    color: #555555;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#btn-cancelar-captura:hover {
+    background: #f1f2f6;
+    border-color: #b2bec3;
+    color: #2d3436;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+#btn-cancelar-captura:active {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+#btn-confirmar-captura {
+    padding: 8px 20px;
+    border: none;
+    background: #3498db;
+    color: #ffffff;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(52, 152, 219, 0.35);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#btn-confirmar-captura:hover {
+    background: #2980b9;
+    box-shadow: 0 4px 12px rgba(41, 128, 185, 0.45);
+    transform: translateY(-1px);
+}
+
+#btn-confirmar-captura:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(41, 128, 185, 0.3);
+}
+
+body.ui-dark-mode #btn-cancelar-captura {
+    background: #2d333b;
+    border-color: #444c56;
+    color: #adbac7;
+}
+
+body.ui-dark-mode #btn-cancelar-captura:hover {
+    background: #373e47;
+    border-color: #545d68;
+    color: #ffffff;
+}
+
+body.ui-dark-mode #btn-confirmar-captura {
+    background: #1f6feb;
+    box-shadow: 0 2px 6px rgba(31, 111, 235, 0.4);
+}
+
+body.ui-dark-mode #btn-confirmar-captura:hover {
+    background: #388bfd;
+    box-shadow: 0 4px 12px rgba(56, 139, 253, 0.5);
+}
+
+/* ===== BOTONES TIENDA DE VOCES ===== */
+.btn-tienda-ayuda {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #334155;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.12s ease;
+}
+.btn-tienda-ayuda:hover {
+    background: #e0f2fe;
+    border-color: #3498db;
+    color: #0369a1;
+    transform: translateY(-1px);
+}
+body.ui-dark-mode .btn-tienda-ayuda {
+    background: #21262d;
+    border-color: #30363d;
+    color: #e6edf3;
+}
+body.ui-dark-mode .btn-tienda-ayuda:hover {
+    background: #30363d;
+    border-color: #58a6ff;
+}
+
+.btn-tienda-descargar {
+    padding: 6px 12px;
+    border: 1px solid #86efac;
+    border-radius: 6px;
+    background: #dcfce7;
+    color: #166534;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.12s ease;
+}
+.btn-tienda-descargar:hover:not(:disabled) {
+    background: #bbf7d0;
+    border-color: #4ade80;
+    transform: translateY(-1px);
+}
+
+.btn-tienda-eliminar {
+    padding: 6px 12px;
+    border: 1px solid #fca5a5;
+    border-radius: 6px;
+    background: #fee2e2;
+    color: #b91c1c;
+    cursor: pointer;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.12s ease, opacity 0.18s ease;
+}
+.btn-tienda-eliminar:hover:not(:disabled) {
+    background: #fecaca;
+    border-color: #f87171;
+    transform: translateY(-1px);
+}
+.btn-tienda-eliminar:disabled {
+    opacity: 0.78;
+    cursor: wait;
+}
+
+@keyframes tiendaSpin {
+    to { transform: rotate(360deg); }
+}
+.tienda-spinner {
+    width: 12px;
+    height: 12px;
+    min-width: 12px;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    display: inline-block;
+    animation: tiendaSpin 0.65s linear infinite;
+}
+.tienda-voz-eliminando {
+    opacity: 0.72;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.25s ease, max-height 0.25s ease, padding 0.25s ease;
+}
+.tienda-voz-eliminada {
+    opacity: 0 !important;
+    transform: translateX(22px);
+    overflow: hidden;
+    transition: opacity 0.24s ease, transform 0.24s ease;
+}
+
+.btn-tienda-pausar {
+    padding: 5px 10px;
+    border: 1px solid #fcd34d;
+    border-radius: 6px;
+    background: #fef3c7;
+    color: #92400e;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 12px;
+    transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+.btn-tienda-pausar:hover {
+    background: #fde68a;
+    border-color: #f59e0b;
+}
+
+.btn-tienda-cancelar {
+    padding: 5px 10px;
+    border: 1px solid #fca5a5;
+    border-radius: 6px;
+    background: #fee2e2;
+    color: #b91c1c;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 12px;
+    transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+.btn-tienda-cancelar:hover {
+    background: #fecaca;
+    border-color: #ef4444;
+}
+
+.btn-tienda-token {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #334155;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.12s ease;
+}
+.btn-tienda-token:hover {
+    background: #fef3c7;
+    border-color: #f59e0b;
+    color: #92400e;
+    transform: translateY(-1px);
+}
+.btn-tienda-token.activo {
+    background: #dcfce7;
+    border-color: #4ade80;
+    color: #166534;
+}
+.panel-tienda-token {
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #334155;
+    line-height: 1.45;
+}
+.badge-token-estado {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    color: #475569;
+}
+.badge-token-estado.activo {
+    background: #dcfce7;
+    color: #166534;
+}
+.badge-tienda-gated {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 6px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    color: #92400e;
+    font-size: 11px;
+    font-weight: 600;
+    vertical-align: middle;
+}
+.btn-tienda-hf-link {
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #475569;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+.btn-tienda-hf-link:hover {
+    background: #e0f2fe;
+    border-color: #38bdf8;
+    color: #0369a1;
+}
+body.ui-dark-mode .btn-tienda-token {
+    background: #21262d;
+    border-color: #30363d;
+    color: #e6edf3;
+}
+body.ui-dark-mode .panel-tienda-token {
+    background: #161b22;
+    border-color: #30363d;
+    color: #c9d1d9;
+}
+body.ui-dark-mode .btn-tienda-hf-link {
+    background: #21262d;
+    border-color: #30363d;
+    color: #c9d1d9;
+}

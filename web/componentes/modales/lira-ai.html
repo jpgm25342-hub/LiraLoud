@@ -1,0 +1,667 @@
+<div id="modal-ia" class="overlay-diccionario" style="display:none;">
+            <div id="panel-ia">
+                <!-- Header -->
+                <div class="header-ia">
+                    <div class="header-ia-titulo">
+                        <svg class="svg-icon-ia" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M208,512a24.84,24.84,0,0,1-23.34-16l-39.84-103.6a16.06,16.06,0,0,0-9.19-9.19L32,343.34a25,25,0,0,1,0-46.68l103.6-39.84a16.06,16.06,0,0,0,9.19-9.19L184.66,144a25,25,0,0,1,46.68,0l39.84,103.6a16.06,16.06,0,0,0,9.19,9.19l103,39.63A25.49,25.49,0,0,1,400,320.52a24.82,24.82,0,0,1-16,22.82l-103.6,39.84a16.06,16.06,0,0,0-9.19,9.19L231.34,496A24.84,24.84,0,0,1,208,512Zm66.85-254.84h0Z">
+                            </path>
+                            <path
+                                d="M88,176a14.67,14.67,0,0,1-13.69-9.4L57.45,122.76a7.28,7.28,0,0,0-4.21-4.21L9.4,101.69a14.67,14.67,0,0,1,0-27.38L53.24,57.45a7.31,7.31,0,0,0,4.21-4.21L74.16,9.79A15,15,0,0,1,86.23.11,14.67,14.67,0,0,1,101.69,9.4l16.86,43.84a7.31,7.31,0,0,0,4.21,4.21L166.6,74.31a14.67,14.67,0,0,1,0,27.38l-43.84,16.86a7.28,7.28,0,0,0-4.21,4.21L101.69,166.6A14.67,14.67,0,0,1,88,176Z">
+                            </path>
+                            <path
+                                d="M400,256a16,16,0,0,1-14.93-10.26l-22.84-59.37a8,8,0,0,0-4.6-4.6l-59.37-22.84a16,16,0,0,1,0-29.86l59.37-22.84a8,8,0,0,0,4.6-4.6L384.9,42.68a16.45,16.45,0,0,1,13.17-10.57,16,16,0,0,1,16.86,10.15l22.84,59.37a8,8,0,0,0,4.6,4.6l59.37,22.84a16,16,0,0,1,0,29.86l-59.37,22.84a8,8,0,0,0-4.6,4.6l-22.84,59.37A16,16,0,0,1,400,256Z">
+                            </path>
+                        </svg>
+                        <span data-i18n="lbl-ia-header-titulo">LiraAI - Asistente de Documentos</span>
+                    </div>
+                    <div class="header-ia-acciones">
+                        <label class="ia-toggle-leer-bloque"
+                            title="Permite hacer clic directamente en cualquier párrafo o bloque para escucharlo" data-i18n-title="ttl-ia-leer-bloque">
+                            <input type="checkbox" id="chk-ia-leer-bloque" checked onchange="guardarTodosAjustes()">
+                            <span style="display:flex; align-items:center; gap:5px;">
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+                                <span data-i18n="lbl-ia-clic-leer-bloque">Clic = Leer bloque</span>
+                            </span>
+                        </label>
+                        <div class="ia-status-badge" id="ia-status-badge" title="Estado del motor local Ollama" data-i18n-title="ttl-ia-status-ollama">
+                            <span class="ia-status-dot" id="ia-status-dot"></span>
+                            <span id="ia-status-texto" data-i18n="lbl-verificando">Verificando...</span>
+                        </div>
+                        <button class="btn-cerrar-ia" onclick="cerrarModalIA()" title="Cerrar Asistente" data-i18n-title="ttl-cerrar-ia">✕</button>
+                    </div>
+                </div>
+
+                <!-- Tabs de Navegación -->
+                <div class="tabs-ia">
+                    <button class="tab-ia-btn active" id="btn-tab-chat" onclick="cambiarTabIA('chat')">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle; margin-right:4px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        <span data-i18n="tab-ia-chat">Chat con PDF</span>
+                    </button>
+                    <button class="tab-ia-btn" id="btn-tab-solicitudes" onclick="cambiarTabIA('solicitudes')">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle; margin-right:4px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        <span data-i18n="tab-ia-solicitudes">Solicitudes & Resúmenes</span>
+                    </button>
+                    <button class="tab-ia-btn" id="btn-tab-fuentes" onclick="cambiarTabIA('fuentes')">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle; margin-right:4px;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                        <span data-i18n="tab-ia-fuentes">Fuentes</span>
+                    </button>
+                    <button class="tab-ia-btn" id="btn-tab-config" onclick="cambiarTabIA('config')">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle; margin-right:4px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        <span data-i18n="tab-ia-config">Memoria & Modelos</span>
+                    </button>
+                </div>
+
+                <!-- Cuerpo del Panel -->
+                <div class="cuerpo-ia">
+                    <!-- TAB 1: CHAT -->
+                    <div class="ia-tab-panel active" id="ia-tab-chat">
+                        <div class="ia-chat-doc-header"
+                            style="display: flex; justify-content: space-between; align-items: center; padding: 6px 14px; background: rgba(241, 242, 246, 0.7); border-bottom: 1px solid #e1e8ed; font-size: 11.5px; color: #57606f;">
+                            <div style="display:flex; align-items:center; gap:8px; overflow:hidden; max-width:55%;">
+                                <span id="ia-chat-doc-nombre"
+                                    style="display:flex; align-items:center; gap:5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                    <span data-i18n="lbl-ia-doc-actual">Documento actual</span>
+                                </span>
+                                <span id="ia-badge-fuentes-activas" onclick="cambiarTabIA('fuentes')"
+                                    title="Fuentes activas para esta consulta (clic para configurar)" data-i18n-title="ttl-ia-fuentes-activas"
+                                    style="cursor:pointer; display:inline-flex; align-items:center; gap:4px; background:#e0e7ff; color:#3730a3; font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:10px; border:1px solid #c7d2fe; white-space:nowrap; flex-shrink:0;">
+                                    <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                                    <span data-i18n="lbl-ia-fuentes-pdf">Fuentes: PDF</span>
+                                </span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <select id="sel-ia-modo-salida" class="sel-ia-modo-salida"
+                                    onchange="if(typeof cambiarModoSalidaIA==='function') cambiarModoSalidaIA(this.value); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes(false);"
+                                    title="Estilo de respuesta del RAG: Trazabilidad 1:1 o Prosa Fluida" data-i18n-title="ttl-ia-modo-salida"
+                                    style="padding:2px 6px; border:1px solid #ced6e0; border-radius:6px; font-size:11px; font-weight:600; background:#ffffff; color:#2f3542; cursor:pointer;">
+                                    <option value="trazabilidad" data-i18n="opt-ia-trazabilidad-corto" selected>🎯 Trazabilidad 1:1</option>
+                                    <option value="prosa" data-i18n="opt-ia-prosa-corto">📖 Prosa Fluida</option>
+                                </select>
+                                <div class="ia-chat-mini-token-badge" id="ia-chat-mini-tokens"
+                                    title="Tokens restantes para este proveedor (clic para ver detalles)" data-i18n-title="ttl-ia-mini-tokens"
+                                    onclick="cambiarTabIA('config')"
+                                    style="cursor:pointer; display:flex; align-items:center; gap:5px; background:#ffffff; border:1px solid #ced6e0; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600; color:#4b6584; transition:all 0.2s;">
+                                    <span class="ia-mini-dot"
+                                        style="width:7px; height:7px; border-radius:50%; background:#2ed573; display:inline-block;"></span>
+                                    <span id="ia-mini-tokens-texto">Tokens: 100%</span>
+                                </div>
+                                <button class="ia-btn-reiniciar-chat" onclick="reiniciarChatIA()"
+                                    title="Reiniciar chat y borrar memoria de este documento" data-i18n-title="ttl-ia-reiniciar-chat"
+                                    style="background: #ffffff; border: 1px solid #ced6e0; padding: 3px 8px; border-radius: 6px; font-size: 11px; color: #57606f; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.2s;">
+                                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                                    <span data-i18n="btn-ia-reiniciar">Reiniciar</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="ia-chat-historial" id="ia-chat-historial">
+                            <div class="ia-mensaje ai">
+                                <div class="ia-avatar"><svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"
+                                        class="ia-avatar-svg" aria-hidden="true" role="img">
+                                        <path fill="#FFAC33"
+                                            d="M34.347 16.893l-8.899-3.294l-3.323-10.891a1 1 0 0 0-1.912 0l-3.322 10.891l-8.9 3.294a1 1 0 0 0 0 1.876l8.895 3.293l3.324 11.223a1 1 0 0 0 1.918-.001l3.324-11.223l8.896-3.293a.998.998 0 0 0-.001-1.875z">
+                                        </path>
+                                        <path fill="#FFCC4D"
+                                            d="M14.347 27.894l-2.314-.856l-.9-3.3a.998.998 0 0 0-1.929-.001l-.9 3.3l-2.313.856a1 1 0 0 0 0 1.876l2.301.853l.907 3.622a1 1 0 0 0 1.94-.001l.907-3.622l2.301-.853a.997.997 0 0 0 0-1.874zM10.009 6.231l-2.364-.875l-.876-2.365a.999.999 0 0 0-1.876 0l-.875 2.365l-2.365.875a1 1 0 0 0 0 1.876l2.365.875l.875 2.365a1 1 0 0 0 1.876 0l.875-2.365l2.365-.875a1 1 0 0 0 0-1.876z">
+                                        </path>
+                                    </svg></div>
+                                <div class="ia-burbuja">
+                                    <p data-i18n="lbl-ia-saludo-1">¡Hola! Soy <b>LiraAI</b>, tu asistente offline para este documento.</p>
+                                    <p data-i18n="lbl-ia-saludo-2">Puedo responder preguntas específicas, analizar datos o resumir conceptos basados
+                                        en
+                                        el contenido del PDF indexado.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chips de Sugerencias Rápidas -->
+                        <div class="ia-sugerencias-box">
+                            <button class="ia-chip-sugerencia"
+                                onclick="enviarMensajeChatIA('¿De qué trata este documento?')">
+                                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7z"/></svg>
+                                <span data-i18n="btn-ia-chip-trata">¿De qué trata este PDF?</span>
+                            </button>
+                            <button class="ia-chip-sugerencia"
+                                onclick="enviarMensajeChatIA('¿Cuáles son los puntos o resultados más importantes?')">
+                                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                                <span data-i18n="btn-ia-chip-puntos">Puntos más importantes</span>
+                            </button>
+                            <button class="ia-chip-sugerencia"
+                                onclick="enviarMensajeChatIA('¿Qué metodología o enfoque se utilizó?')">
+                                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18h8"/><path d="M3 22h18"/><path d="M14 22a7 7 0 1 0 0-14h-1"/><path d="M9 14h2"/><path d="M9 12a2 2 0 0 1-2-2V6h6v4a2 2 0 0 1-2 2z"/><path d="M12 6V3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3"/></svg>
+                                <span data-i18n="btn-ia-chip-metodo">Metodología usada</span>
+                            </button>
+                        </div>
+
+                        <!-- Input y Botón de Envío -->
+                        <div class="ia-input-container">
+                            <textarea class="ia-textarea" id="ia-chat-input"
+                                placeholder="Haz una pregunta sobre el documento..." data-i18n-placeholder="ph-ia-chat-input" rows="1"
+                                oninput="autoAjustarTextarea(this)" onkeydown="manejarKeydownChat(event)"></textarea>
+                            <button class="btn-enviar-ia" id="btn-ia-chat-enviar" onclick="enviarMensajeChatIA()"
+                                title="Enviar mensaje (Enter)" data-i18n-title="ttl-ia-enviar">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- TAB 2: SOLICITUDES & TAREAS -->
+                    <div class="ia-tab-panel" id="ia-tab-solicitudes">
+                        <div class="ia-solicitudes-scroll">
+                            <div class="ia-grid-solicitudes">
+                                <button class="ia-card-solicitud" onclick="ejecutarSolicitudIA('resumen')">
+                                    <span class="ia-card-icon">
+                                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#6366f1" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                                    </span>
+                                    <span class="ia-card-title" data-i18n="lbl-ia-card-resumen">Resumen Ejecutivo</span>
+                                    <span class="ia-card-desc" data-i18n="lbl-ia-card-resumen-desc">Objetivo general, metodología, puntos clave y
+                                        conclusión.</span>
+                                </button>
+                                <button class="ia-card-solicitud" onclick="ejecutarSolicitudIA('conclusiones')">
+                                    <span class="ia-card-icon">
+                                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#10b981" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                                    </span>
+                                    <span class="ia-card-title" data-i18n="lbl-ia-card-conclusiones">Conclusiones Clave</span>
+                                    <span class="ia-card-desc" data-i18n="lbl-ia-card-conclusiones-desc">Hallazgos numéricos, resultados e implicaciones.</span>
+                                </button>
+                                <button class="ia-card-solicitud" onclick="ejecutarSolicitudIA('conceptos')">
+                                    <span class="ia-card-icon">
+                                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7z"/></svg>
+                                    </span>
+                                    <span class="ia-card-title" data-i18n="lbl-ia-card-conceptos">Glosario & Conceptos</span>
+                                    <span class="ia-card-desc" data-i18n="lbl-ia-card-conceptos-desc">Explicación concisa de términos técnicos y
+                                        fórmulas.</span>
+                                </button>
+                                <button class="ia-card-solicitud" onclick="ejecutarSolicitudIA('flashcards')">
+                                    <span class="ia-card-icon">
+                                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#ec4899" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                    </span>
+                                    <span class="ia-card-title" data-i18n="lbl-ia-card-flashcards">Preguntas de Estudio</span>
+                                    <span class="ia-card-desc" data-i18n="lbl-ia-card-flashcards-desc">5 preguntas clave con respuestas para
+                                        autoevaluación.</span>
+                                </button>
+                            </div>
+
+                            <!-- Solicitudes / Prompts Personalizados Guardados -->
+                            <div style="margin-top: 12px; padding: 10px; background: #f8f9fa; border: 1px solid #e4e7eb; border-radius: 10px;">
+                                <label style="display:flex; align-items:center; gap:5px; font-size: 11px; font-weight: 700; color: #747d8c; margin-bottom: 6px;">
+                                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                                    <span data-i18n="lbl-ia-prompts-guardados">PROMPTS PERSONALIZADOS GUARDADOS:</span>
+                                </label>
+                                <input type="text" id="ia-prompt-titulo"
+                                    placeholder="Nombre del prompt (ej: Resumen Clínico Detallado)..." data-i18n-placeholder="ph-ia-prompt-titulo"
+                                    style="width:100%; box-sizing:border-box; padding:7px 10px; border:1px solid #ced6e0; border-radius:8px; font-size:12px; margin-bottom:6px;">
+                                <textarea id="ia-input-solicitud-custom" rows="3"
+                                    placeholder="Escribe o pega aquí tu prompt largo para reutilizarlo con un clic..." data-i18n-placeholder="ph-ia-prompt-custom"
+                                    style="width:100%; box-sizing:border-box; padding:8px 10px; border:1px solid #ced6e0; border-radius:8px; font-size:12px; resize:vertical; font-family:inherit;"></textarea>
+                                <div style="display:flex; gap:6px; margin-top:6px;">
+                                    <button type="button" class="btn-accion-ia"
+                                        style="flex:1; background:#00b894; color:white; border-color:#00b894; padding:7px 12px; justify-content:center;"
+                                        onclick="guardarPromptPersonalizado()" data-i18n="btn-ia-guardar-prompt">Guardar Prompt</button>
+                                    <button type="button" class="btn-accion-ia"
+                                        style="flex:1; background:#6c5ce7; color:white; border-color:#6c5ce7; padding:7px 12px; justify-content:center;"
+                                        onclick="ejecutarSolicitudPersonalizada()" data-i18n="btn-ia-ejecutar-ahora">Ejecutar Ahora</button>
+                                </div>
+                                <div id="ia-lista-prompts-guardados" style="display:flex; flex-direction:column; gap:6px; margin-top:10px;"></div>
+                            </div>
+
+                            <!-- Tarjeta de Resultado -->
+                            <div class="ia-resultado-box" id="ia-resultado-box" style="display:none;">
+                                <div class="ia-resultado-header">
+                                    <span class="ia-resultado-titulo" id="ia-resultado-titulo" style="display:flex; align-items:center; gap:5px;">
+                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#6366f1" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                                        <span data-i18n="lbl-ia-resultado-titulo">Resultado de Solicitud</span>
+                                    </span>
+                                    <div class="ia-resultado-acciones">
+                                        <button class="btn-accion-ia" onclick="escucharResultadoIA()"
+                                            title="Escuchar este resumen con la voz de Piper TTS" data-i18n-title="ttl-ia-escuchar"
+                                            style="display:flex; align-items:center; gap:4px;">
+                                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                                            <span data-i18n="btn-ia-escuchar">Escuchar</span>
+                                        </button>
+                                        <button class="btn-accion-ia" onclick="copiarResultadoIA()"
+                                            title="Copiar texto al portapapeles" data-i18n-title="ttl-copiar-texto"
+                                            style="display:flex; align-items:center; gap:4px;">
+                                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                            <span data-i18n="btn-copiar">Copiar</span>
+                                        </button>
+                                        <button class="btn-accion-ia" onclick="importarResultadoIAANotas()"
+                                            title="Guardar esta respuesta como una nota del documento" data-i18n-title="ttl-ia-a-notas"
+                                            style="display:flex; align-items:center; gap:4px;">
+                                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                                            <span data-i18n="btn-ia-a-notas">A Notas</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="ia-resultado-cuerpo" id="ia-resultado-cuerpo"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 3: SELECCIÓN DE FUENTES & CONTEXTO -->
+                    <div class="ia-tab-panel" id="ia-tab-fuentes">
+                        <div class="ia-config-scroll">
+                            <div class="ia-config-card">
+                                <h4 style="display:flex; align-items:center; gap:6px; margin:0 0 4px 0;">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#6366f1" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                                    <span data-i18n="lbl-ia-fuentes-titulo">Fuentes de Información para Lira AI</span>
+                                </h4>
+                                <p style="font-size:12px; color:#57606f; margin:0 0 10px 0; line-height:1.4;" data-i18n="lbl-ia-fuentes-desc">
+                                    Selecciona qué fuentes alimentar a la IA para responder tus dudas y generar resúmenes:
+                                </p>
+                                <div id="ia-fuentes-resumen-banner" style="background:#eef2ff; border:1px solid #c7d2fe; border-radius:8px; padding:8px 12px; font-size:12px; font-weight:600; color:#3730a3; display:flex; align-items:center; gap:6px;">
+                                    <span style="display:flex; align-items:center; gap:4px;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> <span data-i18n="lbl-ia-contexto-activo">Contexto activo:</span></span> <span id="ia-fuentes-resumen-texto" data-i18n="lbl-ia-fuente-doc-pdf">Documento PDF</span>
+                                </div>
+                            </div>
+
+                            <!-- FUENTE 1: DOCUMENTO PDF -->
+                            <div class="ia-config-card">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <div style="display:flex; align-items:center; gap:10px;">
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                        <div>
+                                            <h4 style="margin:0; font-size:13px; color:#1e293b;" data-i18n="lbl-ia-fuente-pdf-titulo">Documento Activo (PDF)</h4>
+                                            <span style="font-size:11px; color:#64748b;" data-i18n="lbl-ia-fuente-pdf-desc">Búsqueda vectorial RAG en todo el libro</span>
+                                        </div>
+                                    </div>
+                                    <input type="checkbox" id="chk-ia-fuente-pdf" class="switch-individual" checked onchange="actualizarEstadoFuentesUI(); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes(false);">
+                                </div>
+                            </div>
+
+                            <!-- FUENTE 2: MIS SUBRAYADOS (MARCATEXTOS) -->
+                            <div class="ia-config-card">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <div style="display:flex; align-items:center; gap:10px;">
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#f59e0b" stroke-width="2"><path d="m9 11-6 6v3h3l6-6"/><path d="m22 2-4.5 4.5"/><path d="M13.5 6.5 17.5 2.5"/><path d="m18 10 4-4"/><path d="m15 7 4 4"/></svg>
+                                        <div>
+                                            <h4 style="margin:0; font-size:13px; color:#1e293b;" data-i18n="lbl-ia-fuente-sub-titulo">Mis Subrayados (Marcatextos)</h4>
+                                            <span style="font-size:11px; color:#64748b;" data-i18n="lbl-ia-fuente-sub-desc">Texto resaltado en la lectura</span>
+                                        </div>
+                                    </div>
+                                    <input type="checkbox" id="chk-ia-fuente-subrayados" class="switch-individual" onchange="toggleOpcionesSubrayadosUI(this.checked); actualizarEstadoFuentesUI(); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes(false);">
+                                </div>
+
+                                <!-- Sub-menú desplegable de colores, alcance y páginas de subrayados -->
+                                <div id="ia-sub-opciones-subrayados" style="display:none; margin-top:12px; padding-top:10px; border-top:1px dashed #cbd5e1;">
+                                    <!-- Selector de Alcance -->
+                                    <div style="margin-bottom:10px;">
+                                        <label style="font-size:11.5px; font-weight:700; color:#475569; display:flex; align-items:center; gap:5px; margin-bottom:4px;">
+                                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                                            <span data-i18n="lbl-ia-alcance-sub">Alcance de Subrayados:</span>
+                                        </label>
+                                        <select id="sel-ia-sub-alcance" onchange="actualizarEstadoFuentesUI(); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes(false);" style="width:100%; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px; background:#ffffff; color:#334155;">
+                                            <option value="libro_actual" data-i18n="opt-ia-solo-este-libro" selected>📖 Solo este libro actual</option>
+                                            <option value="todos_libros" data-i18n="opt-ia-todos-libros-bib">🌐 Todos los libros de la biblioteca</option>
+                                        </select>
+                                    </div>
+
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                        <label style="font-size:11.5px; font-weight:700; color:#475569; display:flex; align-items:center; gap:5px;">
+                                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+                                            <span data-i18n="lbl-ia-colores-marcatextos">COLORES DE MARCATEXTOS A INCLUIR:</span>
+                                        </label>
+                                        <div style="display:flex; gap:6px;">
+                                            <button type="button" class="btn-link-key" onclick="seleccionarTodosColoresSubrayados(true)" style="background:none; border:none; color:#6366f1; font-size:11px; font-weight:600; cursor:pointer;" data-i18n="btn-todos">Todos</button>
+                                            <span style="color:#cbd5e1;">|</span>
+                                            <button type="button" class="btn-link-key" onclick="seleccionarTodosColoresSubrayados(false)" style="background:none; border:none; color:#64748b; font-size:11px; font-weight:600; cursor:pointer;" data-i18n="btn-ninguno">Ninguno</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Los 6 colores exactos de la paleta de marcatextos de LiraLoud -->
+                                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(105px, 1fr)); gap:6px; margin-bottom:10px;">
+                                        <label style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#334155; cursor:pointer; background:#f8fafc; padding:4px 8px; border-radius:6px; border:1px solid #e2e8f0;">
+                                            <input type="checkbox" id="chk-ia-sub-amarillo" checked onchange="actualizarEstadoFuentesUI(); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes(false);">
+                                            <span style="display:inline-block; width:12px; height:12px; border-radius:3px; background:#FFFF00; border:1px solid #d4d400; flex-shrink:0;"></span>
+                                            <span data-i18n="lbl-color-amarillo">Amarillo</span>
+                                        </label>
+                                        <label style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#334155; cursor:pointer; background:#f8fafc; padding:4px 8px; border-radius:6px; border:1px solid #e2e8f0;">
+                                            <input type="checkbox" id="chk-ia-sub-verde" checked onchange="actualizarEstadoFuentesUI(); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes(false);">
+                                            <span style="display:inline-block; width:12px; height:12px; border-radius:3px; background:#00FF00; border:1px solid #00cc00; flex-shrink:0;"></span>
+                                            <span data-i18n="lbl-color-verde">Verde</span>
+                                        </label>
+                                        <label style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#334155; cursor:pointer; background:#f8fafc; padding:4px 8px; border-radius:6px; border:1px solid #e2e8f0;">
+                                            <input type="checkbox" id="chk-ia-sub-cian" checked onchange="actualizarEstadoFuentesUI(); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes(false);">
+                                            <span style="display:inline-block; width:12px; height:12px; border-radius:3px; background:#00FFFF; border:1px solid #00cccc; flex-shrink:0;"></span>
+                                            <span data-i18n="lbl-color-cian">Cian</span>
+                                        </label>
+                                        <label style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#334155; cursor:pointer; background:#f8fafc; padding:4px 8px; border-radius:6px; border:1px solid #e2e8f0;">
+                                            <input type="checkbox" id="chk-ia-sub-magenta" checked onchange="actualizarEstadoFuentesUI(); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes(false);">
+                                            <span style="display:inline-block; width:12px; height:12px; border-radius:3px; background:#FF00FF; border:1px solid #cc00cc; flex-shrink:0;"></span>
+                                            <span data-i18n="lbl-color-magenta">Magenta</span>
+                                        </label>
+                                        <label style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#334155; cursor:pointer; background:#f8fafc; padding:4px 8px; border-radius:6px; border:1px solid #e2e8f0;">
+                                            <input type="checkbox" id="chk-ia-sub-dorado" checked onchange="actualizarEstadoFuentesUI(); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes(false);">
+                                            <span style="display:inline-block; width:12px; height:12px; border-radius:3px; background:#f1c40f; border:1px solid #d4ac0d; flex-shrink:0;"></span>
+                                            <span data-i18n="lbl-color-dorado">Dorado</span>
+                                        </label>
+                                        <label style="display:flex; align-items:center; gap:6px; font-size:11.5px; color:#334155; cursor:pointer; background:#f8fafc; padding:4px 8px; border-radius:6px; border:1px solid #e2e8f0;">
+                                            <input type="checkbox" id="chk-ia-sub-rojo" checked onchange="actualizarEstadoFuentesUI(); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes(false);">
+                                            <span style="display:inline-block; width:12px; height:12px; border-radius:3px; background:#e74c3c; border:1px solid #c0392b; flex-shrink:0;"></span>
+                                            <span data-i18n="lbl-color-rojo">Rojo</span>
+                                        </label>
+                                    </div>
+
+                                    <div style="margin-top:8px;">
+                                        <label style="font-size:11.5px; font-weight:700; color:#475569; display:flex; align-items:center; gap:5px; margin-bottom:4px;">
+                                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                            <span data-i18n="lbl-ia-rango-paginas-opc">Rango de Páginas (Opcional):</span>
+                                        </label>
+                                        <input type="text" id="txt-ia-sub-paginas" placeholder="Ej: 1-5, 8 (deja vacío para todas las páginas)" data-i18n-placeholder="ph-ia-rango-pags" oninput="actualizarEstadoFuentesUI(); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes(false);" style="width:100%; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px;">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- FUENTE 3: MIS APUNTES Y NOTAS -->
+                            <div class="ia-config-card">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <div style="display:flex; align-items:center; gap:10px;">
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#8b5cf6" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                                        <div>
+                                            <h4 style="margin:0; font-size:13px; color:#1e293b;" data-i18n="lbl-ia-fuente-notas-titulo">Mis Apuntes y Notas</h4>
+                                            <span style="font-size:11px; color:#64748b;" data-i18n="lbl-ia-fuente-notas-desc">Notas y reflexiones del cuaderno</span>
+                                        </div>
+                                    </div>
+                                    <input type="checkbox" id="chk-ia-fuente-notas" class="switch-individual" onchange="toggleOpcionesNotasUI(this.checked); actualizarEstadoFuentesUI(); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes(false);">
+                                </div>
+
+                                <!-- Sub-menú desplegable de notas -->
+                                <div id="ia-sub-opciones-notas" style="display:none; margin-top:12px; padding-top:10px; border-top:1px dashed #cbd5e1;">
+                                    <!-- Selector de Alcance -->
+                                    <div style="margin-bottom:10px;">
+                                        <label style="font-size:11.5px; font-weight:700; color:#475569; display:flex; align-items:center; gap:5px; margin-bottom:4px;">
+                                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                                            <span data-i18n="lbl-ia-alcance-apuntes">Alcance de Apuntes:</span>
+                                        </label>
+                                        <select id="sel-ia-notas-alcance" onchange="actualizarEstadoFuentesUI(); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes(false);" style="width:100%; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px; background:#ffffff; color:#334155;">
+                                            <option value="libro_actual" data-i18n="opt-ia-solo-este-libro" selected>📖 Solo este libro actual</option>
+                                            <option value="todos_libros" data-i18n="opt-ia-todos-libros-cuaderno">🌐 Todos los libros (Cuaderno completo)</option>
+                                        </select>
+                                    </div>
+
+                                    <div style="margin-bottom:8px;">
+                                        <label style="font-size:11.5px; font-weight:700; color:#475569; display:flex; align-items:center; gap:5px; margin-bottom:4px;">
+                                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                            <span data-i18n="lbl-ia-rango-paginas-opc">Rango de Páginas (Opcional):</span>
+                                        </label>
+                                        <input type="text" id="txt-ia-notas-paginas" placeholder="Ej: 1-5, 8 (deja vacío para todas las notas)" data-i18n-placeholder="ph-ia-rango-notas" oninput="actualizarEstadoFuentesUI(); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes(false);" style="width:100%; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px;">
+                                    </div>
+                                    <div style="margin-top:8px;">
+                                        <label style="font-size:11.5px; font-weight:700; color:#475569; display:flex; align-items:center; gap:5px; margin-bottom:4px;">
+                                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                                            <span data-i18n="lbl-ia-area-clasif">Área / Clasificación:</span>
+                                        </label>
+                                        <input type="text" id="txt-ia-notas-clasif" placeholder="Todas o escribe un área..." data-i18n-placeholder="ph-ia-area-clasif" oninput="actualizarEstadoFuentesUI(); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes(false);" style="width:100%; padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 4: PROVEEDOR, MODELOS & MEMORIA -->
+                    <div class="ia-tab-panel" id="ia-tab-config">
+                        <div class="ia-config-scroll">
+                            <!-- TARJETA 1: SELECTOR DE PROVEEDOR (HÍBRIDO) -->
+                            <div class="ia-config-card">
+                                <h4 style="display:flex; align-items:center; gap:6px; margin:0 0 4px 0;">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#6366f1" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                                    <span data-i18n="lbl-ia-motor-titulo">Motor de Inteligencia Artificial</span>
+                                </h4>
+                                <p style="font-size:12px; color:#57606f; margin:0 0 10px 0; line-height:1.4;" data-i18n="lbl-ia-motor-desc">
+                                    Elige entre ejecutar la IA de forma local y privada en tu PC o conectarte a modelos
+                                    ultra rápidos en la nube.
+                                </p>
+                                <div class="ia-info-row"
+                                    style="flex-direction: column; align-items: flex-start; gap: 6px;">
+                                    <label style="font-weight:600; font-size:12px; color:#2f3542;" data-i18n="lbl-ia-proveedor-activo">Proveedor
+                                        Activo:</label>
+                                    <select id="sel-ia-proveedor" class="ia-select-proveedor"
+                                        onchange="validarProveedorIA(this)"
+                                        style="width:100%; padding:8px 10px; border:1px solid #ced6e0; border-radius:8px; font-size:13px; font-weight:600; background:#f8f9fa; color:#2f3542; cursor:pointer;">
+                                        <option value="ollama" data-i18n="opt-ia-prov-ollama">💻 Local - Ollama (100% Offline, Privado)</option>
+                                        <option value="gemini" data-i18n="opt-ia-prov-gemini">🌐 Google Gemini (Recomendado Nube - Gratis & Rápido)
+                                        </option>
+                                        <option value="groq" data-i18n="opt-ia-prov-groq">⚡ Groq Cloud (Llama 3.3 70B - Ultra Rápido)</option>
+                                        <option value="openrouter" data-i18n="opt-ia-prov-openrouter">🌐 OpenRouter (Modelos Gratis :free & Premium)
+                                        </option>
+                                        <option value="openai" data-i18n="opt-ia-prov-openai">🤖 OpenAI (ChatGPT / gpt-4o-mini)</option>
+                                        <option value="deepseek" data-i18n="opt-ia-prov-deepseek">🐋 DeepSeek (Oficial - deepseek-chat)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- TARJETA 2A: AJUSTES MODO LOCAL (OLLAMA) -->
+                            <div class="ia-config-card" id="ia-card-local-ollama">
+                                <h4 style="display:flex; align-items:center; gap:6px;">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#6366f1" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                                    <span data-i18n="lbl-ia-servidor-local">Servidor y Modelos Locales (Ollama)</span>
+                                </h4>
+                                <div class="ia-info-row">
+                                    <span data-i18n="lbl-ia-estado-servidor">Estado del Servidor:</span>
+                                    <span id="ia-config-ollama-status" data-i18n="lbl-verificando">Verificando...</span>
+                                </div>
+                                <div class="ia-info-row"
+                                    style="flex-direction: column; align-items: flex-start; gap: 4px; padding-top: 8px;">
+                                    <span data-i18n="lbl-ia-modelo-local">Modelo de Generación Local:</span>
+                                    <select id="ia-select-modelo-chat"
+                                        onchange="if(typeof guardarTodosAjustes==='function') guardarTodosAjustes(false);"
+                                        style="width:100%; padding:6px; border:1px solid #ced6e0; border-radius:6px; font-size:12px;"></select>
+                                </div>
+                                <div style="margin-top: 10px; display:flex; flex-direction:column; gap:8px;">
+                                    <div style="display:flex; gap:8px;">
+                                        <button type="button" class="btn-accion-ia" id="btn-conectar-ollama" onclick="conectarOIniciarOllama()"
+                                            style="flex:1; justify-content:center; padding:8px; display:flex; align-items:center; gap:6px;">
+                                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                                            <span data-i18n="btn-conectar-ollama">Conectar / Iniciar Ollama</span>
+                                        </button>
+                                        <button type="button" class="btn-accion-ia" id="btn-tienda-ollama" onclick="abrirTiendaOllama()"
+                                            style="padding:8px 12px; display:flex; align-items:center; gap:6px; background:#00b894; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:600;">
+                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                                            <span data-i18n="btn-tienda">Tienda</span>
+                                        </button>
+                                    </div>
+                                    <label style="display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer; color:#2c3e50;">
+                                        <input type="checkbox" id="chk-ollama-auto-inicio" onchange="guardarTodosAjustes()">
+                                        <span data-i18n="lbl-ollama-auto-inicio">Arrancar Ollama al iniciar la aplicación</span>
+                                    </label>
+                                    <label style="display:flex; align-items:center; gap:8px; font-size:12px; cursor:pointer; color:#2c3e50;">
+                                        <input type="checkbox" id="chk-ollama-auto-solicitud" onchange="guardarTodosAjustes()">
+                                        <span data-i18n="lbl-ollama-auto-solicitud">Arrancar Ollama automáticamente al pedir solicitud de IA</span>
+                                    </label>
+                                    <div id="ollama-descargas-panel" style="margin-top:4px; padding:8px 10px; background:#f8f9fa; border:1px solid #e9ecef; border-radius:8px; font-size:12px; color:#636e72;" data-i18n="lbl-ollama-sin-descargas">
+                                        No hay modelos con descarga pendiente
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- TARJETA 2B: AJUSTES MODO NUBE (GEMINI / GROQ / OPENAI / DEEPSEEK) -->
+                            <div class="ia-config-card" id="ia-card-cloud-config" style="display:none;">
+                                <h4 id="ia-cloud-card-title" style="display:flex; align-items:center; gap:6px;">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#6366f1" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+                                    <span data-i18n="lbl-ia-conexion-nube">Conexión en la Nube</span>
+                                </h4>
+                                <div
+                                    style="background: rgba(108, 92, 231, 0.08); border-left: 3px solid #6c5ce7; padding: 8px 12px; border-radius: 4px; margin-bottom: 12px; font-size: 11.5px; color: #2f3542; line-height: 1.4; display:flex; align-items:flex-start; gap:6px;">
+                                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#6c5ce7" stroke-width="2" style="flex-shrink:0; margin-top:1px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                    <div data-i18n="lbl-ia-privacidad-directa"><b>Privacidad Directa:</b> Tu clave se guarda exclusivamente en tu PC y las consultas van directo al proveedor seleccionado sin intermediarios.</div>
+                                </div>
+
+                                <!-- Campo de API Key -->
+                                <div class="ia-info-row"
+                                    style="flex-direction: column; align-items: flex-start; gap: 6px;">
+                                    <div
+                                        style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                                        <label style="font-weight:600; font-size:12px; color:#2f3542;"
+                                            id="lbl-ia-api-key" data-i18n="lbl-ia-api-key">API Key del Proveedor:</label>
+                                        <button type="button" class="btn-link-key" id="btn-ia-obtener-key"
+                                            onclick="abrirConsolaProveedorActual()"
+                                            style="background:none; border:none; color:#6c5ce7; font-size:11px; font-weight:600; cursor:pointer; text-decoration:underline; display:flex; align-items:center; gap:4px;">
+                                            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>
+                                            <span data-i18n="btn-ia-obtener-key">Obtener clave gratis ↗</span>
+                                        </button>
+                                    </div>
+                                    <div style="display:flex; width:100%; gap:6px;">
+                                        <input type="password" id="txt-ia-api-key" placeholder="Pega tu API Key aquí..." data-i18n-placeholder="ph-ia-api-key"
+                                            oninput="actualizarApiKeyProveedorActual(this.value); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes(false);"
+                                            onchange="actualizarApiKeyProveedorActual(this.value); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes(false);"
+                                            onblur="if(typeof guardarTodosAjustes==='function') guardarTodosAjustes(false);"
+                                            style="flex:1; padding:8px 10px; border:1px solid #ced6e0; border-radius:6px; font-size:12px; font-family:monospace;">
+                                        <button type="button" class="btn-toggle-eye" onclick="toggleVisibilidadApiKey()"
+                                            title="Mostrar/Ocultar clave" data-i18n-title="ttl-mostrar-ocultar-key"
+                                            style="padding:0 10px; border:1px solid #ced6e0; background:#f1f2f6; border-radius:6px; cursor:pointer;">
+                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Selector de Modelo Cloud -->
+                                <div class="ia-info-row"
+                                    style="flex-direction: column; align-items: flex-start; gap: 4px; padding-top: 8px;">
+                                    <div
+                                        style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                                        <span style="font-weight:600; font-size:12px; color:#2f3542;" data-i18n="lbl-ia-modelo-nube">Modelo en la
+                                            Nube:</span>
+                                        <button type="button" id="btn-refrescar-modelos-cloud"
+                                            onclick="refrescarModelosProveedorActual(true)"
+                                            title="Consultar modelos disponibles en tiempo real desde la API oficial" data-i18n-title="ttl-refrescar-modelos-cloud"
+                                            style="background:none; border:none; color:#6c5ce7; font-size:11.5px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;">
+                                            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                                            <span data-i18n="btn-actualizar-lista">Actualizar lista</span>
+                                        </button>
+                                    </div>
+                                    <select id="sel-ia-modelo-cloud"
+                                        onchange="actualizarModeloCloudActual(this.value); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes(false);"
+                                        style="width:100%; padding:6px; border:1px solid #ced6e0; border-radius:6px; font-size:12px; font-weight:500;"></select>
+                                    <small id="lbl-info-modelos-cloud"
+                                        style="font-size:11px; color:#747d8c; margin-top:2px;"></small>
+                                </div>
+
+                                <!-- Botón de prueba de conexión -->
+                                <div style="margin-top: 12px; display:flex; gap:8px; align-items:center;">
+                                    <button type="button" class="btn-accion-ia" id="btn-ia-test-cloud"
+                                        onclick="probarConexionCloudIA()"
+                                        style="flex:1; justify-content:center; padding:8px; display:flex; align-items:center; gap:6px;">
+                                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                                        <span data-i18n="btn-probar-conexion-cloud">Probar Conexión con Proveedor</span>
+                                    </button>
+                                </div>
+                                <div id="ia-cloud-test-status"
+                                    style="font-size:11.5px; margin-top:6px; min-height:16px;">
+                                </div>
+                            </div>
+
+                            <!-- TARJETA: MONITOR DE TOKENS & CUOTA (GRÁFICO CIRCULAR) -->
+                            <div class="ia-config-card" id="ia-card-tokens-monitor">
+                                <div
+                                    style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                    <h4 style="margin:0; display:flex; align-items:center; gap:6px;">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#6366f1" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                                        <span data-i18n="lbl-ia-consumo-tokens">Consumo de Tokens & Cuota</span>
+                                    </h4>
+                                    <button type="button" class="btn-accion-ia" onclick="actualizarGaugeTokensUI(true)"
+                                        title="Actualizar estadísticas en tiempo real" data-i18n-title="ttl-actualizar-stats"
+                                        style="padding:3px 8px; font-size:11px; display:flex; align-items:center; gap:4px;">
+                                        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                                        <span data-i18n="btn-actualizar">Actualizar</span>
+                                    </button>
+                                </div>
+
+                                <div class="ia-token-gauge-container">
+                                    <!-- Gráfico Circular SVG -->
+                                    <div class="ia-gauge-svg-wrap">
+                                        <svg class="ia-token-gauge-svg" viewBox="0 0 120 120">
+                                            <circle class="ia-gauge-bg" cx="60" cy="60" r="48"></circle>
+                                            <circle class="ia-gauge-bar" id="ia-token-gauge-bar" cx="60" cy="60" r="48"
+                                                stroke-dasharray="301.6" stroke-dashoffset="0"></circle>
+                                        </svg>
+                                        <div class="ia-gauge-center-text">
+                                            <span class="ia-gauge-percent" id="ia-gauge-percent">100%</span>
+                                            <span class="ia-gauge-label" data-i18n="lbl-ia-restante">Restante</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Métricas y Desglose Numérico -->
+                                    <div class="ia-token-stats-details">
+                                        <div class="ia-token-stat-item">
+                                            <span class="ia-stat-name" data-i18n="lbl-ia-tokens-disp">🎯 Tokens Disponibles:</span>
+                                            <span class="ia-stat-val highlight" id="ia-stat-tokens-restantes">-- /
+                                                --</span>
+                                        </div>
+                                        <div class="ia-token-stat-item">
+                                            <span class="ia-stat-name" data-i18n="lbl-ia-tokens-sesion">⚡ Usados en esta Sesión:</span>
+                                            <span class="ia-stat-val" id="ia-stat-tokens-sesion">0 tokens</span>
+                                        </div>
+                                        <div class="ia-token-stat-item">
+                                            <span class="ia-stat-name" data-i18n="lbl-ia-ultima-consulta">💬 Última Consulta:</span>
+                                            <span class="ia-stat-val sub" id="ia-stat-tokens-ultimo">0 entrada + 0
+                                                salida</span>
+                                        </div>
+                                        <div class="ia-token-stat-item" id="ia-row-token-detalle">
+                                            <span class="ia-stat-name" data-i18n="lbl-ia-cuota-reset">🌐 Cuota / Reset API:</span>
+                                            <span class="ia-stat-val" id="ia-stat-tokens-detalle"
+                                                style="color:#6c5ce7; font-size:11px; font-weight:600; text-align:right; word-break:break-word;" data-i18n="lbl-sincronizado">Sincronizado</span>
+                                        </div>
+                                        <div class="ia-token-stat-badge" id="ia-token-provider-badge">
+                                            <span id="ia-token-badge-text">Motor: Google Gemini</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- TARJETA 3: OPCIONES DE INTERACCIÓN Y FORMATO RAG -->
+                            <div class="ia-config-card">
+                                <h4 style="display:flex; align-items:center; gap:6px;">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#6366f1" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                                    <span data-i18n="lbl-ia-opciones-respuesta">Opciones de Respuesta y Lectura</span>
+                                </h4>
+                                <div class="ia-info-row"
+                                    style="flex-direction:column; align-items:flex-start; gap:4px; margin-bottom:10px;">
+                                    <label style="font-weight:600; font-size:12px; color:#2f3542;" data-i18n="lbl-ia-modo-salida">Modo de Salida
+                                        RAG:</label>
+                                    <select id="sel-ia-modo-salida-config" class="sel-ia-modo-salida"
+                                        onchange="if(typeof cambiarModoSalidaIA==='function') cambiarModoSalidaIA(this.value); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes(false);"
+                                        style="width:100%; padding:6px 10px; border:1px solid #ced6e0; border-radius:6px; font-size:12px; background:#ffffff; color:#2f3542; cursor:pointer;">
+                                        <option value="trazabilidad" data-i18n="opt-ia-trazabilidad-largo" selected>🎯 Trazabilidad 1:1 (Estructurado por
+                                            secciones + Citas de Página)</option>
+                                        <option value="prosa" data-i18n="opt-ia-prosa-largo">📖 Prosa Fluida (Síntesis Continua y Redacción Ejecutiva)
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="ia-info-row">
+                                    <span style="display:flex; align-items:center; gap:5px;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg> <span data-i18n="lbl-ia-leer-bloque-doc">Leer bloque al dar clic en el documento:</span></span>
+                                    <input type="checkbox" id="chk-ia-leer-bloque-config" checked
+                                        onchange="const el = document.getElementById('chk-ia-leer-bloque'); if(el) el.checked = this.checked; guardarTodosAjustes();"
+                                        style="cursor:pointer; accent-color:#6c5ce7; width:16px; height:16px;">
+                                </div>
+                            </div>
+
+                            <!-- TARJETA 4: MEMORIA VECTORIAL (CHROMADB) -->
+                            <div class="ia-config-card">
+                                <h4 style="display:flex; align-items:center; gap:6px;">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#6366f1" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    <span data-i18n="lbl-ia-memoria-vectorial">Memoria Vectorial y Re-Indexación</span>
+                                </h4>
+                                <p style="font-size:12px; color:#57606f; margin:0 0 10px 0; line-height:1.4;" data-i18n="lbl-ia-memoria-vectorial-desc">
+                                    El documento se indexa automáticamente. Si modificaste el PDF o cambiaste de modelo
+                                    de
+                                    embeddings, puedes forzar una re-vectorización limpia.
+                                </p>
+                                <button class="btn-indexar-pdf" id="btn-ia-indexar"
+                                    onclick="indexarDocumentoActualIA()" style="display:flex; align-items:center; justify-content:center; gap:6px;">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    <span data-i18n="btn-ia-reindexar">Re-indexar Documento Actual</span>
+                                </button>
+                                <div class="ia-progress-bar-container" id="ia-progress-container">
+                                    <div class="ia-progress-bar" id="ia-progress-bar"></div>
+                                </div>
+                                <p id="ia-txt-progreso-index"
+                                    style="font-size:11px; margin-top:8px; color:#747d8c; min-height:15px;"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>

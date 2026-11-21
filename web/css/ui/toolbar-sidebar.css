@@ -1,0 +1,590 @@
+/* --- TABS DE CONFIGURACIÓN --- */
+.tabs-config-header {
+    display: flex;
+    gap: 5px;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 5px;
+}
+
+/* =====================*/
+/* ==========PESTAÑAS DE CONFIGURACIÓN (Micro-interacciones) ===========*/
+/* =====================*/
+.tab-btn {
+    background: #e0dacc;
+    /* Color crema base */
+    color: #333;
+    padding: 8px 15px;
+    border-radius: 4px 4px 0 0;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    opacity: 0.8;
+    transition: all 0.2s ease-in-out;
+    /* Transición suave de iluminación */
+}
+
+/* Iluminación verde clara al acercar el ratón (Hover) hacia los iconos de las pestañas */
+.tab-btn:hover:not(.active) {
+    background-color: #d1f2eb !important;
+    /* Verde menta muy claro */
+    color: #16a085 !important;
+    /* Texto en verde oscuro técnico */
+    opacity: 1;
+    transform: translateY(-1px);
+}
+
+/* Colores SVG dinámicos (Hover) */
+.tab-btn:hover:not(.active) .svg-main {
+    fill: #16a085 !important;
+}
+
+.tab-btn:hover:not(.active) .svg-sec {
+    fill: rgba(22, 160, 133, 0.6) !important;
+}
+
+.tab-btn:hover:not(.active) .svg-ter {
+    fill: rgba(22, 160, 133, 0.3) !important;
+}
+
+/* color verde sólido al estar seleccionado (Activo) */
+.tab-btn.active {
+    background: #27ae60 !important;
+    /* Tu Verde original */
+    color: white !important;
+    opacity: 1;
+    box-shadow: 0 2px 5px rgba(39, 174, 96, 0.2);
+}
+
+/* Colores SVG dinámicos [cambia de color los iconos y letras a blanco] (Activo) */
+.tab-btn.active .svg-main {
+    fill: white !important;
+}
+
+.tab-btn.active .svg-sec {
+    fill: rgba(255, 255, 255, 0.65) !important;
+}
+
+.tab-btn.active .svg-ter {
+    fill: rgba(255, 255, 255, 0.35) !important;
+}
+
+/* Confirmación de pulsación (Sistema 1) */
+.tab-btn:active {
+    transform: scale(0.96);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+
+
+/* Media Buttons SVG */
+.svg-btn,
+.svg-btn-main {
+    border-radius: 50%;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.svg-btn {
+    width: 35px;
+    height: 35px;
+    background: #ecf0f1;
+    color: #7f8c8d;
+}
+
+.svg-btn:hover {
+    background: #bdc3c7;
+    color: #2c3e50;
+    transform: scale(1.05);
+}
+
+.svg-btn-main {
+    width: 45px;
+    height: 45px;
+    background: #3498db;
+    color: white;
+
+}
+
+.svg-btn-main:hover {
+    background: #2980b9;
+    transform: scale(1.05);
+}
+
+/* Buscadores de Voz e Idioma Redondeados */
+.combo-contenedor input[type="text"] {
+    border-radius: 20px !important;
+    padding: 6px 12px !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+
+/* BOTONES DE REPRODUCTOR (Play, Pause, Stop) */
+.btn-reproductor {
+    background-color: transparent !important;
+    color: #34495e;
+    /* Color base de los íconos */
+    transition: all 0.3s ease-in-out;
+    padding: 6px 10px;
+    border: none;
+    border-radius: 50%;
+    /* Para que el fondo hover sea circular */
+}
+
+.btn-reproductor:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    /* Pequeño fondo para notar que es clickeable */
+    color: #3e5871;
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.6));
+}
+
+.btn-reproductor:active {
+    transform: scale(0.92);
+    background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* NUEVAS CLASES DE BOTONES ESTETICOS */
+.btn-dorado {
+    background-color: #c3ac6f;
+    color: white;
+    transition: all 0.2s ease-in-out;
+    border: 1px solid transparent;
+}
+
+.btn-dorado:hover {
+    background-color: #d6be7b !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(195, 172, 111, 0.4);
+}
+
+.btn-dorado:active {
+    background-color: #b09a63 !important;
+    transform: scale(0.96);
+}
+
+.btn-azul {
+    background-color: #2c8ac7;
+    color: white;
+    transition: all 0.2s ease-in-out;
+    border: 1px solid transparent;
+}
+
+.btn-azul:hover {
+    background-color: #3fa1df !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(44, 138, 199, 0.4);
+}
+
+.btn-azul:active {
+    background-color: #2475a8 !important;
+    transform: scale(0.96);
+}
+
+/* ========================================== */
+/* HERRAMIENTAS DE SUBRAYADO (NUEVO DISEÑO)    */
+/* ========================================== */
+.pdf-toolbar-inline {
+    background: white;
+    padding: 4px 8px;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: visible !important;
+}
+
+.tool-group {
+    display: inline-flex;
+    position: relative;
+    border-radius: 4px;
+    border: 1px solid transparent;
+}
+
+.tool-group.active {
+    border: 2px solid #3498db;
+    background-color: #eaf4fb;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.tool-btn {
+    background: none;
+    border: none;
+    padding: 4px 6px;
+    cursor: pointer;
+    display: flex;
+    border-radius: 4px;
+    align-items: center;
+    justify-content: center;
+}
+
+.tool-btn:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.btn-secundario:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.highlighter-group .tool-btn {
+    border-radius: 4px 0 0 4px;
+}
+
+.dropdown-btn {
+    background: none;
+    border: none;
+    border-left: 1px solid #ccc;
+    padding: 4px 6px;
+    cursor: pointer;
+    border-radius: 0 4px 4px 0;
+}
+
+.dropdown-btn:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.palette {
+    display: flex;
+}
+
+.palette.hidden {
+    display: none !important;
+}
+
+.color-swatch {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 1px solid #aaa;
+    transition: transform 0.1s;
+}
+
+.color-swatch:hover {
+    transform: scale(1.15);
+}
+
+/* GESTOR DE EXTRACCIÓN */
+.text-card {
+    background: #ffffff;
+    border-left: 4px solid;
+    padding: 10px;
+    font-size: 13px;
+    color: #34495e;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    position: relative;
+    transition: opacity 0.3s, transform 0.3s;
+    border-radius: 4px;
+}
+
+.text-card.removing {
+    opacity: 0;
+    transform: translateX(20px);
+}
+
+/* ========================================================================== */
+/* STANDARDIZATION & CLEANUP FOR THE MAIN TOOLBAR (.fila-top & .fila-ajustes)  */
+/* ========================================================================== */
+
+/* Enable horizontal scrolling without scrollbars on narrow screens to prevent wrapping/squishing */
+.fila-top {
+    overflow: visible !important;
+}
+
+.fila-ajustes {
+    overflow: visible !important;
+}
+
+/* Force standard height, padding and capsule shape on all top row buttons/interactive blocks */
+.fila-top .btn-principal,
+.fila-top .btn-secundario,
+.fila-top #btn-abrir-descarga,
+.fila-top #btn-kofi-global,
+.fila-top summary.btn-secundario {
+    height: 38px !important;
+    padding: 0 16px !important;
+    border-radius: 20px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    font-size: 13px !important;
+    font-weight: bold !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    margin: 0 !important;
+    line-height: 1.2 !important;
+    border: none !important;
+}
+
+#btn-kofi-global.hidden-kofi {
+    display: none !important;
+}
+
+/* Reset specific elements list-style for summary */
+.fila-top details summary {
+    list-style: none !important;
+    outline: none !important;
+}
+
+.fila-top details summary::-webkit-details-marker {
+    display: none !important;
+}
+
+/* Standardize the inline PDF toolbar (highlighter, eraser, extraction) to match button height */
+.fila-top .pdf-toolbar-inline {
+    height: 38px !important;
+    padding: 0 8px !important;
+    border-radius: 20px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    box-sizing: border-box !important;
+    background: #ffffff !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+    flex-shrink: 0 !important;
+    gap: 6px !important;
+    margin: 0 !important;
+    overflow: visible !important;
+}
+
+/* Align and size inner tools inside the highlighter inline toolbar */
+.fila-top .pdf-toolbar-inline .tool-group {
+    height: 28px !important;
+    align-items: center !important;
+}
+
+.fila-top .pdf-toolbar-inline .tool-btn,
+.fila-top .pdf-toolbar-inline .dropdown-btn {
+    height: 28px !important;
+    padding: 0 8px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 4px !important;
+}
+
+.fila-top .pdf-toolbar-inline button.btn-secundario {
+    height: 28px !important;
+    width: 28px !important;
+    padding: 0 !important;
+    border-radius: 4px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Paginación container standard alignment and sizing */
+.fila-top .paginacion-container {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 2px !important;
+    flex-shrink: 0 !important;
+}
+
+.fila-top .paginacion-container .btn-nav {
+    height: 38px !important;
+    width: 38px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    background: transparent !important;
+    color: #34495e !important;
+}
+
+.fila-top .paginacion-container .btn-nav:hover {
+    background: rgba(0, 0, 0, 0.05) !important;
+}
+
+.fila-top .paginacion-container input[type="number"] {
+    height: 32px !important;
+    width: 50px !important;
+    border-radius: 6px !important;
+    border: 1px solid #bdc3c7 !important;
+    padding: 0 4px !important;
+    font-size: 13px !important;
+    text-align: center !important;
+    margin: 0 4px !important;
+    box-sizing: border-box !important;
+}
+
+
+
+
+/* Box-columnas (Límites: + -) */
+.fila-top .box-columnas {
+    height: 38px !important;
+    padding: 0 12px !important;
+    border-radius: 20px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
+    gap: 6px !important;
+    background: rgba(255, 255, 255, 0.7) !important;
+}
+
+.fila-top .box-columnas .btn-mini {
+    height: 24px !important;
+    width: 24px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    border: 1px solid rgba(0, 0, 0, 0.15) !important;
+    background: #ffffff !important;
+    color: #333333 !important;
+    font-size: 14px !important;
+    font-weight: bold !important;
+}
+
+@keyframes rotarInfinito {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.rotando-icono svg {
+    animation: rotarInfinito 0.8s linear infinite;
+}
+
+/* Robot Auto-Layout: Estado Apagado (Gris sutil) */
+.btn-layout-robot {
+    color: #64748b !important;
+    border-color: rgba(0, 0, 0, 0.15) !important;
+    transition: all 0.2s ease !important;
+}
+
+body.ui-dark-mode .btn-layout-robot {
+    color: #94a3b8 !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Robot Auto-Layout: Estado Activo (Coloreado brillante en Verde IA / Esmeralda con ojos brillantes) */
+.tool-active-auto-layout {
+    background: #10b981 !important;
+    color: #ffffff !important;
+    border-color: #059669 !important;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.65) !important;
+}
+
+.tool-active-auto-layout svg line {
+    stroke: #fef08a !important; /* Ojos amarillos brillantes cuando está encendido */
+}
+
+body.ui-dark-mode .tool-active-auto-layout {
+    background: #059669 !important;
+    color: #ffffff !important;
+    border-color: #34d399 !important;
+    box-shadow: 0 0 10px rgba(52, 211, 153, 0.6) !important;
+}
+
+/* Gear button standard sizing */
+.fila-top .btn-engranaje {
+    height: 38px !important;
+    width: 38px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    border-radius: 50% !important;
+    background: transparent !important;
+}
+
+.fila-top .btn-engranaje:hover {
+    background: rgba(0, 0, 0, 0.05) !important;
+}
+
+.fila-top .btn-engranaje svg {
+    width: 20px !important;
+    height: 20px !important;
+}
+
+/* Premium Star Button for Voice Favorites */
+#btn-pin-voz {
+    background: none !important;
+    border: none !important;
+    cursor: pointer !important;
+    font-size: 18px !important;
+    color: #f1c40f !important;
+    /* Gold */
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 28px !important;
+    height: 28px !important;
+    transition: transform 0.2s ease !important;
+}
+
+#btn-pin-voz:hover {
+    transform: scale(1.25) !important;
+}
+
+/* Dark Mode Overrides for standardized elements */
+body.ui-dark-mode .pdf-toolbar-inline {
+    background: #1e1b2e !important;
+    border-color: rgba(155, 89, 182, 0.3) !important;
+}
+
+body.ui-dark-mode .pdf-toolbar-inline .tool-btn:hover,
+body.ui-dark-mode .pdf-toolbar-inline .dropdown-btn:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+body.ui-dark-mode .fila-top .box-columnas {
+    background: #1e1b2e !important;
+    border-color: rgba(155, 89, 182, 0.3) !important;
+    color: #e2e8f0 !important;
+}
+
+body.ui-dark-mode .fila-top .box-columnas span {
+    color: #e2e8f0 !important;
+}
+
+body.ui-dark-mode .paginacion-container .btn-nav {
+    color: #cdd9e5 !important;
+}
+
+body.ui-dark-mode .paginacion-container .btn-nav:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+body.ui-dark-mode .btn-engranaje {
+    color: #cdd9e5 !important;
+}
+
+body.ui-dark-mode .btn-engranaje:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+body.ui-dark-mode #color-palette {
+    background: #1e1b2e !important;
+    border: 1px solid rgba(155, 89, 182, 0.4) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5) !important;
+}
+
+.fila-top {
+    overflow: visible !important;
+    justify-content: space-between !important;
+}
+
+.fila-ajustes {
+    overflow: visible !important;
+}
+
