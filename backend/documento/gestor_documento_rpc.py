@@ -482,6 +482,8 @@ def obtener_pagina_data(
             "chk-referencias": ajustes_json.get("omitirSuperindices", ajustes_json.get("omitirReferencias", True)),
             "chk-superindices": ajustes_json.get("omitirSuperindices", ajustes_json.get("omitirReferencias", True)),
             "chk-subindices": ajustes_json.get("omitirSubindices", False),
+            "modo_teatro": bool(ajustes_json.get("teatro_activo", False)),
+            "obra_actual": str(ajustes_json.get("obra_actual", "General") or "General"),
         }
 
         es_texto_escrito = getattr(estado_app, "tipo_documento", "pdf") == "texto_escrito"

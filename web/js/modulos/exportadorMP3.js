@@ -115,6 +115,49 @@ function seleccionarComboMp3(tipo) {
     }
 }
 
+function actualizarUIControlesCorteMp3() {
+    const modo = document.getElementById('mp3-corte-modo')?.value || 'unico';
+    const pagWrap = document.getElementById('mp3-corte-pag-wrap');
+    const minWrap = document.getElementById('mp3-corte-min-wrap');
+    if (pagWrap) pagWrap.style.display = modo === 'pagina' ? 'inline-flex' : 'none';
+    if (minWrap) minWrap.style.display = modo === 'duracion' ? 'inline-flex' : 'none';
+}
+
+function actualizarUIControlesTraduccionMp3() {
+    const activo = document.getElementById('chk-traduccion-export')?.checked ?? false;
+    const wrap = document.getElementById('mp3-trad-wrap');
+    if (wrap) wrap.style.display = activo ? 'flex' : 'none';
+}
+
+function inicializarOpcionesTraduccionMp3() {
+    const chkExport = document.getElementById('chk-traduccion-export');
+    const chkGlobal = document.getElementById('chk-traduccion-activa');
+    if (chkExport && chkGlobal) {
+        chkExport.checked = !!chkGlobal.checked;
+    }
+
+    const selDest = document.getElementById('mp3-trad-destino');
+    const selGlobalDest = document.getElementById('sel-traduccion-destino');
+    if (selDest && selDest.options.length === 0) {
+        if (typeof window.poblarSelectIdiomas === 'function') {
+            window.poblarSelectIdiomas(selDest);
+        } else if (selGlobalDest) {
+            selDest.innerHTML = selGlobalDest.innerHTML;
+        }
+    }
+    if (selDest && selGlobalDest && selGlobalDest.value) {
+        selDest.value = selGlobalDest.value;
+    }
+
+    const selModo = document.getElementById('mp3-trad-modo');
+    const selGlobalModo = document.getElementById('sel-traduccion-modo');
+    if (selModo && selGlobalModo) {
+        selModo.value = selGlobalModo.value === 'aprendizaje' ? 'aprendizaje' : 'solo_traduccion';
+    }
+
+    actualizarUIControlesTraduccionMp3();
+}
+
 function abrirModalDescarga() {
     // Lógica de exclusión mutua universal
     if (typeof cerrarOtrasFuncionesPrincipales === 'function') {
@@ -124,6 +167,17 @@ function abrirModalDescarga() {
     const modal = document.getElementById('modal-descarga');
     if (modal) {
         modal.style.display = 'flex';
+
+        const inpIni = document.getElementById('modal-pag-ini');
+        const inpFin = document.getElementById('modal-pag-fin');
+        const maxP = (typeof totalPaginas === 'number' && totalPaginas > 0) ? totalPaginas : 1;
+        if (inpIni && (!inpIni.value || parseInt(inpIni.value, 10) < 1)) inpIni.value = 1;
+        if (inpFin && (!inpFin.value || parseInt(inpFin.value, 10) < 1 || parseInt(inpFin.value, 10) > maxP)) inpFin.value = maxP;
+
+        actualizarUIControlesCorteMp3();
+        inicializarOpcionesTraduccionMp3();
+        previsualizarPagina('ini');
+        previsualizarPagina('fin');
 
         // Blindaje contra el error de 'aviso-columnas'
         const aviso = document.getElementById('aviso-columnas');
@@ -174,12 +228,13 @@ function actModalVel() {
 
 async function iniciarDescargaFinal() {
     try {
-        const ini = parseInt(document.getElementById('modal-pag-ini').value);
-        const fin = parseInt(document.getElementById('modal-pag-fin').value);
+        const ini = parseInt(document.getElementById('modal-pag-ini').value, 10);
+        const fin = parseInt(document.getElementById('modal-pag-fin').value, 10);
         const voz = document.getElementById('modal-voz').value || document.getElementById('selector-voz-live').value;
         const vel = parseFloat(document.getElementById('modal-rng-vel').value);
+        const maxPags = (typeof totalPaginas === 'number' && totalPaginas > 0) ? totalPaginas : fin;
 
-        if (!ini || !fin || !voz) {
+        if (!ini || !fin || !voz || ini < 1 || fin < ini || fin > maxPags) {
             const msgConfig = (typeof window.t === 'function') ? window.t('msg-mp3-config-pags', 'Por favor configure las páginas y la voz antes de exportar.') : "Por favor configure las páginas y la voz antes de exportar.";
             await liraAlert(msgConfig, 'advertencia');
             return;
@@ -191,6 +246,38 @@ async function iniciarDescargaFinal() {
 
         const chkAbbr = document.getElementById('mp3-chk-abbr')?.checked ?? true;
         const dictActivo = chkAbbr ? (window.dbDiccionario || null) : {};
+        const usarLimites = document.getElementById('mp3-chk-limits')?.checked ?? true;
+        const corteModo = document.getElementById('mp3-corte-modo')?.value || 'unico';
+        const corteMinutos = Math.max(1, parseInt(document.getElementById('mp3-corte-minutos')?.value || '15', 10) || 15);
+        const cortePaginas = Math.max(1, parseInt(document.getElementById('mp3-corte-paginas')?.value || '1', 10) || 1);
+        const empaquetarZip = document.getElementById('mp3-chk-zip')?.checked ?? true;
+
+        if (usarTeatro && typeof window.compilarLibroTeatroPagina === 'function' && typeof datosPagina !== 'undefined' && datosPagina?.oraciones) {
+            window.compilarLibroTeatroPagina(paginaActual, datosPagina.oraciones);
+        }
+        const libroTeatroRango = (usarTeatro && typeof window.obtenerIntervencionesLibroTeatro === 'function')
+            ? window.obtenerIntervencionesLibroTeatro(ini - 1, fin - 1)
+            : [];
+
+        const tradActiva = document.getElementById('chk-traduccion-export')?.checked ?? false;
+        const tradOrigen = document.getElementById('sel-traduccion-origen')?.value || 'auto';
+        const tradDestino = document.getElementById('mp3-trad-destino')?.value || document.getElementById('sel-traduccion-destino')?.value || 'es';
+        const tradMotor = document.getElementById('sel-traduccion-motor')?.value || 'hibrido';
+        const tradModo = document.getElementById('mp3-trad-modo')?.value || 'solo_traduccion';
+
+        const opcionesExport = {
+            corte_modo: corteModo,
+            corte_minutos: corteMinutos,
+            corte_paginas: cortePaginas,
+            empaquetar_zip: empaquetarZip,
+            usar_limites: usarLimites,
+            libro_teatro: libroTeatroRango,
+            traduccion_activa: tradActiva,
+            traduccion_origen: tradOrigen,
+            traduccion_destino: tradDestino,
+            traduccion_motor: tradMotor,
+            traduccion_modo: tradModo
+        };
 
         const btnCancelar = document.getElementById('btn-cancelar-exportacion');
         const btnGenerar = document.getElementById('btn-iniciar-descarga');
@@ -211,7 +298,7 @@ async function iniciarDescargaFinal() {
 
         // Llamada al backend
         eel.descargar_audio_dedicado(
-            ini, fin, voz, vel, null, null, dictActivo, usarTeatro, obraMP3
+            ini, fin, voz, vel, null, null, dictActivo, usarTeatro, obraMP3, opcionesExport
         )(function (res) {
             if (txtEstado) {
                 txtEstado.innerText = res;
@@ -240,26 +327,25 @@ async function iniciarDescargaFinal() {
 }
 
 async function previsualizarPagina(tipo) {
-    const input = document.getElementById(`modal-pag-${tipo}`);
+    const suf = (tipo === 'fin') ? 'fin' : 'ini';
+    const input = document.getElementById(`modal-pag-${suf}`);
     if (!input) return;
 
-    const num = parseInt(input.value) - 1;
-    // Validación Bayesiana: Evitamos pedir páginas inexistentes [cite: 2025-12-26]
-    if (num < 0 || num >= totalPaginas) return;
-
-    console.log(`[MONITOR] Solicitando miniatura de página ${num + 1}...`);
+    const num = parseInt(input.value, 10) - 1;
+    if (isNaN(num) || num < 0 || (typeof totalPaginas === 'number' && totalPaginas > 0 && num >= totalPaginas)) return;
 
     try {
-        // Solicitamos a Python solo la materia prima (imagen) sin oraciones para ganar velocidad
-        const data = await eel.obtener_pagina_data(num, null, null, null)();
+        const data = (typeof eel !== 'undefined' && typeof eel.obtener_vista_rapida_pagina === 'function')
+            ? await eel.obtener_vista_rapida_pagina(num)()
+            : await eel.obtener_pagina_data(num, null, null, null)();
 
         if (data && data.imagen) {
-            const imgPreview = document.getElementById('img-preview-mp3');
-            const txtPreview = document.getElementById('txt-preview-mp3');
-
-            // Forzamos el refresco de la imagen
-            imgPreview.src = data.imagen;
-            imgPreview.style.display = 'block';
+            const imgPreview = document.getElementById(`img-preview-mp3-${suf}`);
+            const txtPreview = document.getElementById(`txt-preview-mp3-${suf}`);
+            if (imgPreview) {
+                imgPreview.src = data.imagen;
+                imgPreview.style.display = 'block';
+            }
             if (txtPreview) txtPreview.style.display = 'none';
         }
     } catch (e) {

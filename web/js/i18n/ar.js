@@ -842,5 +842,17 @@ window.LIRA_I18N["ar"] = {
     "msg-tienda-error-401": "يتطلب هذا النموذج تصريحاً على Hugging Face. افتح صفحته على Hugging Face، ووافق على الشروط (أو انتظر موافقة المؤلف)، ثم أضف رمزك عبر أيقونة القفل في المتجر.",
     "lbl-token-hf-sesion-activa": "لديك رمز Hugging Face محفوظ",
     "lbl-no-sup": "بدون علوي²",
-    "lbl-no-sub": "بدون سفلي₂"
+    "lbl-no-sub": "بدون سفلي₂",
+    "lbl-corte-mp3": "التقسيم:",
+    "opt-corte-unico": "ملف واحد",
+    "opt-corte-pagina": "لكل صفحة",
+    "opt-corte-seccion": "لكل قسم / فصل",
+    "opt-corte-duracion": "حسب المدة القصوى (د)",
+    "lbl-empaquetar-zip": "ضغط ZIP عند التعدد",
+  "lbl-preview-inicio": "البداية",
+  "lbl-preview-fin": "النهاية",
+  "lbl-pags-corto": "صفحات",
+  "lbl-traduccion-export": "🌐 مع الترجمة",
+  "opt-trad-solo": "الترجمة فقط",
+  "opt-trad-bilingue": "الأصل + الترجمة"
 };

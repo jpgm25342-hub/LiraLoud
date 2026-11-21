@@ -292,236 +292,159 @@ class ExportadorAudio:
         filtros: Optional[Dict[str, Any]] = None,
         modo_teatro: bool = False,
         obra_actual: str = "General",
-        voz_default: str = "es-MX-DaliaNeural"
+        voz_default: str = "es-MX-DaliaNeural",
+        aplicar_layout: bool = True,
     ) -> List[Tuple[str, str]]:
         """
-        Extrae oraciones de la página aplicando la cadena completa de filtros,
-        abreviaturas, OCR automático si es escaneado, y detección de personajes en Teatro.
-        Devuelve lista de tuplas: [(texto_a_leer, voz_a_usar), ...]
+        Prepara la lista de (texto_frase, voz_asignada) usando el mismo pipeline
+        de segmentación y filtros que el karaoke en vivo.
         """
         if not doc or num_pag < 0 or num_pag >= len(doc):
             return []
 
-        if filtros is None:
-            ajustes = cargar_ajustes_lectura()
-            filtros = {
-                'chk-urls': ajustes.get('omitirUrls', False),
-                'chk-paren': ajustes.get('omitirParen', False),
-                'chk-corch': ajustes.get('omitirCorch', False),
-                'chk-llaves': ajustes.get('omitirLlaves', False),
-                'chk-barras': ajustes.get('omitirBarras', False),
-                'chk-referencias': ajustes.get('omitirReferencias', True)
-            }
+        from backend.core.estado_global import estado_app
+        from backend.core.gestor_archivos import cargar_progreso_libro
+        from backend.documento.gestor_documento_rpc import (
+            _extraer_palabras_con_tipografia,
+            _filtrar_palabras_por_exclusiones,
+        )
+        from backend.documento.procesador_texto import (
+            organizar_palabras_con_cortes_y_limites,
+            procesar_oraciones_de_palabras,
+            aplicar_reemplazos,
+        )
 
+        pagina = doc[num_pag]
+        ajustes = cargar_ajustes_lectura()
         if dict_activo is None:
             dict_activo = cargar_diccionario()
 
-        db_teatro = cargar_diccionario_teatro() if modo_teatro else {}
+        if filtros is None:
+            filtros = {
+                "chk-urls": ajustes.get("omitirUrls", False),
+                "chk-paren": ajustes.get("omitirParen", False),
+                "chk-corch": ajustes.get("omitirCorch", False),
+                "chk-llaves": ajustes.get("omitirLlaves", False),
+                "chk-barras": ajustes.get("omitirBarras", False),
+                "chk-referencias": ajustes.get("omitirSuperindices", ajustes.get("omitirReferencias", True)),
+                "chk-superindices": ajustes.get("omitirSuperindices", ajustes.get("omitirReferencias", True)),
+                "chk-subindices": ajustes.get("omitirSubindices", False),
+            }
+        filtros = {
+            **filtros,
+            "usarBloquesNativos": ajustes.get("usarBloquesNativos", True),
+            "sensibilidadSalto": float(ajustes.get("sensibilidadSalto", 0.5)),
+            "detectarSangria": ajustes.get("detectarSangria", True),
+            "modo_teatro": bool(modo_teatro),
+            "obra_actual": str(obra_actual or "General"),
+        }
 
-        pagina = doc[num_pag]
-        palabras_raw = pagina.get_text("words", sort=True)
+        pag_cortes_v = []
+        pag_limites_h = {}
+        pag_zonas = []
+        est_ia = None
+        doc_path = getattr(doc, "name", "") or ""
 
-        # Fallback inteligente a OCR si la página es escaneada o solo imagen
-        if len(palabras_raw) == 0:
+        if aplicar_layout:
+            lay_mem = estado_app.layouts_por_pagina.get(int(num_pag))
+            if isinstance(lay_mem, dict):
+                pag_cortes_v = lay_mem.get("cortesV") or []
+                pag_limites_h = lay_mem.get("limitesH") or {}
+                pag_zonas = lay_mem.get("zonasExcluidas") or []
+                est_ia = lay_mem.get("estructura")
+            elif doc_path:
+                prog = cargar_progreso_libro(doc_path)
+                layouts = prog.get("layouts", {}) if isinstance(prog, dict) else {}
+                pag_layout = layouts.get(str(num_pag), {})
+                pag_cortes_v = pag_layout.get("cortesV", [])
+                pag_limites_h = pag_layout.get("limitesH", {})
+                pag_zonas = pag_layout.get("zonasExcluidas", [])
+
+        tiene_cortes_v = bool(pag_cortes_v and len(pag_cortes_v) > 0)
+        tiene_limites_h = any(
+            isinstance(lim, (list, tuple)) and len(lim) >= 2 and (lim[0] > 5 or lim[1] < (pagina.rect.height - 5))
+            for lim in (pag_limites_h or {}).values()
+        )
+        usar_sort = not tiene_cortes_v and not tiene_limites_h
+
+        palabras_raw = _extraer_palabras_con_tipografia(pagina, sort=usar_sort)
+        if not palabras_raw and ajustes.get("auto_ocr", True):
             try:
                 pix = pagina.get_pixmap(dpi=150)
-                palabras_ocr = procesar_ocr_pagina(
+                palabras_raw = procesar_ocr_pagina(
                     pixmap_bytes=pix.tobytes("png"),
                     ancho_pdf=pagina.rect.width,
                     alto_pdf=pagina.rect.height,
                     ancho_px=pix.width,
                     alto_px=pix.height,
-                    doc_path=getattr(doc, "name", "doc_actual"),
+                    doc_path=doc_path or "doc_actual",
                     num_pagina=num_pag,
-                    forzar=False
+                    forzar=False,
                 )
-                if palabras_ocr:
-                    palabras_raw = palabras_ocr
             except Exception as e:
                 logger.warning(f"⚠️ No se pudo procesar OCR para la página {num_pag}: {e}")
 
-        # Filtrado por límites de corte (cortes verticales y límites horizontales de lectura)
-        if palabras_raw:
-            try:
-                # Filtrar palabras fuera de la zona visible por Recorte de Bordes
-                recorte_val = ajustes.get("recortePDF", 0) if isinstance(ajustes, dict) else 0
-                try:
-                    recorte_val = int(recorte_val)
-                except Exception:
-                    recorte_val = 0
-                if recorte_val > 0:
-                    crop_h = (float(recorte_val) / 100.0) * pagina.rect.width * 0.20
-                    crop_v = (float(recorte_val) / 100.0) * pagina.rect.height * 0.12
-                    palabras_raw = [
-                        p for p in palabras_raw
-                        if (crop_h <= (p[0] + p[2]) / 2.0 <= pagina.rect.width - crop_h) and
-                           (crop_v <= (p[1] + p[3]) / 2.0 <= pagina.rect.height - crop_v)
-                    ]
+        if aplicar_layout and pag_zonas:
+            palabras_raw = _filtrar_palabras_por_exclusiones(palabras_raw, pag_zonas)
 
-                from backend.core.gestor_archivos import cargar_progreso_libro
-                doc_path = getattr(doc, "name", "")
-                prog = cargar_progreso_libro(doc_path) if doc_path else None
-                layouts = prog.get("layouts", {}) if isinstance(prog, dict) else {}
-                clave = str(num_pag)
-                pag_layout = layouts.get(clave, {})
-                pag_cortes_v = pag_layout.get("cortesV", [])
-                pag_limites_h = pag_layout.get("limitesH", {})
-                pag_zonas = pag_layout.get("zonasExcluidas", [])
+        if aplicar_layout and (tiene_cortes_v or tiene_limites_h):
+            palabras_raw = organizar_palabras_con_cortes_y_limites(
+                palabras_raw, pag_cortes_v, pag_limites_h, pagina.rect.width, pagina.rect.height
+            )
 
-                # Si no tiene límites propios, buscar en memoria por paridad
-                if not pag_limites_h and layouts:
-                    best_even = None
-                    min_even_dist = float('inf')
-                    best_odd = None
-                    min_odd_dist = float('inf')
-                    for p_str, l_data in layouts.items():
-                        if not p_str.isdigit(): continue
-                        p_num = int(p_str)
-                        if p_num == num_pag: continue
-                        lh = l_data.get("limitesH", {})
-                        if lh and isinstance(lh, dict) and any(isinstance(v, (list, tuple)) and len(v) == 2 and (v[0] > 5 or (l_data.get("height", 842) - v[1]) > 5) for v in lh.values()):
-                            dist = abs(num_pag - p_num)
-                            if dist % 2 == 0:
-                                if dist < min_even_dist:
-                                    min_even_dist = dist
-                                    best_even = lh
-                            else:
-                                if dist < min_odd_dist:
-                                    min_odd_dist = dist
-                                    best_odd = lh
-                    pag_limites_h = best_even if best_even is not None else best_odd
-
-                # Filtrar palabras en zonas excluidas si existen
-                if pag_zonas and isinstance(pag_zonas, list):
-                    def _en_exclusion(p):
-                        px = (p[0] + p[2]) / 2
-                        py = (p[1] + p[3]) / 2
-                        for z in pag_zonas:
-                            if len(z) >= 4:
-                                x0, x1 = min(z[0], z[2]), max(z[0], z[2])
-                                y0, y1 = min(z[1], z[3]), max(z[1], z[3])
-                                if x0 <= px <= x1 and y0 <= py <= y1:
-                                    return True
-                        return False
-                    palabras_raw = [p for p in palabras_raw if not _en_exclusion(p)]
-
-                # Filtrar palabras por límites horizontales y cortes verticales
-                if pag_cortes_v or pag_limites_h:
-                    limites_v = [0] + sorted(pag_cortes_v or []) + [pagina.rect.width]
-                    palabras_filtradas = []
-                    for i in range(len(limites_v) - 1):
-                        x_min, x_max = limites_v[i], limites_v[i+1]
-                        y_min, y_max = 0, pagina.rect.height
-                        if pag_limites_h and str(i) in pag_limites_h:
-                            y_min, y_max = pag_limites_h[str(i)]
-                        col = [p for p in palabras_raw if (p[0]+p[2])/2 >= x_min and (p[0]+p[2])/2 < x_max and (p[1]+p[3])/2 >= y_min and (p[1]+p[3])/2 <= y_max]
-                        palabras_filtradas.extend(col)
-                    palabras_raw = palabras_filtradas
-            except Exception as e:
-                logger.warning(f"⚠️ Error aplicando layout en exportador_audio: {e}")
-
-        # Extracción de bloques de texto
-        bloques_texto: List[str] = []
-        if palabras_raw:
-            # Reconstrucción de texto a partir de palabras ordenadas
-            linea_actual: List[str] = []
-            ultimo_y = None
-            for p in palabras_raw:
-                w_texto = p[4] if len(p) > 4 else ""
-                w_y0 = p[1] if len(p) > 1 else 0
-                if ultimo_y is not None and abs(w_y0 - ultimo_y) > 8:
-                    if linea_actual:
-                        bloques_texto.append(" ".join(linea_actual))
-                        linea_actual = []
-                linea_actual.append(w_texto)
-                ultimo_y = w_y0
-            if linea_actual:
-                bloques_texto.append(" ".join(linea_actual))
-        else:
-            bloques = pagina.get_text("blocks", sort=True)
-            bloques_texto = [b[4].replace("\n", " ").strip() for b in bloques if b[6] == 0]
-
-        texto_completo = " ".join(bloques_texto)
-        if not texto_completo.strip():
-            return []
-
-        # 1. Filtros estructurales de bloque completo
-        if filtros.get('chk-paren'): texto_completo = re.sub(r'\(.*?\)', '', texto_completo)
-        if filtros.get('chk-corch'): texto_completo = re.sub(r'\[.*?\]', '', texto_completo)
-        if filtros.get('chk-llaves'): texto_completo = re.sub(r'\{.*?\}', '', texto_completo)
-        if filtros.get('chk-urls'):
-            texto_completo = re.sub(r'https?://\S+|www\.\S+|\b\w+\.(?:com|org|net|edu|gov|mx)\b', '', texto_completo)
-        if filtros.get('chk-barras'):
-            texto_completo = texto_completo.replace('/', ' ').replace('\\', ' ')
-
-        # 2. Protección decimal (36.5 -> 36 punto 5)
-        texto_completo = re.sub(r'(\d)\.(\d)', r'\1 punto \2', texto_completo)
-
-        # 3. Filtrado de referencias
-        if filtros.get('chk-referencias'):
-            texto_completo = re.sub(r'[⁰¹²³⁴⁵⁶⁷⁸⁹]', '', texto_completo)
-            texto_completo = re.sub(r'\[\d{1,3}\]', '', texto_completo)
-            texto_completo = re.sub(r'([a-zA-Záéíóúñ])\d{1,3}([.,;:?\s]|$)', r'\1\2', texto_completo)
-
-        # 4. Segmentación en oraciones lógicas
-        frases_crudas = re.split(r'(?<=[.?!;:])\s+', texto_completo)
+        oraciones_raw = procesar_oraciones_de_palabras(palabras_raw, dict_activo, filtros_externos=filtros, estructura_ia=est_ia)
         oraciones_filtradas: List[Tuple[str, str]] = []
 
-        voz_personaje_persistente = None
-
-        for frase in frases_crudas:
-            frase = frase.strip()
-            if not frase or not re.search(r'[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]', frase):
+        for orac in oraciones_raw:
+            txt_orac = str(orac.get("texto") or "").strip()
+            if not txt_orac:
                 continue
-
-            voz_actual = voz_default
-
-            # Modo Teatro: Detección de personaje
-            if modo_teatro and db_teatro:
-                try:
-                    obra_data = db_teatro.get(obra_actual, {})
-                    if isinstance(obra_data, dict) and obra_data.get("active", True):
-                        reparto = obra_data.get("actors", {})
-                        for actor_key, data in reparto.items():
-                            if not data.get("on", True): continue
-                            patron_nombre = crear_regex_inmune_acentos(actor_key)
-                            regex_combate = rf"^\s*(?:(?:[\w\d]+\s+){{0,3}})?\b{patron_nombre}\s*[:](?:\s*,\s*)?"
-                            match = re.search(regex_combate, frase, re.IGNORECASE)
-                            if match:
-                                voz_actual = data["voz"]
-                                voz_personaje_persistente = voz_actual
-                                frase = frase[match.end():].strip()
-                                break
-                        else:
-                            if voz_personaje_persistente:
-                                voz_actual = voz_personaje_persistente
-                except Exception as e:
-                    logger.warning(f"⚠️ Error evaluando teatro en frase: {e}")
-
-            # Diccionario y Abreviaturas
-            if dict_activo:
-                for categoria in dict_activo.values():
-                    if not isinstance(categoria, dict) or not categoria.get("active", True):
-                        continue
-                    terminos = categoria.get("terms", {})
-                    claves_ordenadas = sorted(terminos.keys(), key=len, reverse=True)
-                    for sigla in claves_ordenadas:
-                        raw = terminos[sigla]
-                        if isinstance(raw, dict) and not raw.get("on", True):
-                            continue
-                        significado = str(raw.get("val", "")) if isinstance(raw, dict) else str(raw)
-                        s_esc = re.escape(sigla)
-                        patron = f"(?i)(?<![a-zA-Z0-9_ÁÉÍÓÚáéíóúÑñüÜ]){s_esc}(?![a-zA-Z0-9_ÁÉÍÓÚáéíóúÑñüÜ])"
-                        frase = re.sub(patron, f" {significado} ", frase)
-
-            # Sanitización de caracteres extraños y espacios
-            frase = re.sub(r'[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s\.\,\:\;\-\(\)\[\]\?\¿\!\¡\%\+\°\=\⁰\¹\²\³\⁴\⁵\⁶\⁷\⁸\⁹]', ' ', frase)
-            frase = re.sub(r'[ \t]{2,}', ' ', frase).strip()
-
-            if frase and re.search(r'[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]', frase):
-                oraciones_filtradas.append((frase, voz_actual))
+            pack = aplicar_reemplazos(
+                txt_orac,
+                dict_activo,
+                filtros,
+                modo_teatro=modo_teatro,
+                obra_actual=obra_actual,
+            )
+            texto_final, voz_detectada = pack if isinstance(pack, tuple) else (pack, None)
+            voz_actual = voz_detectada or (estado_app.voz_teatro_persistente if modo_teatro else None) or voz_default
+            if texto_final and re.search(r"[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]", str(texto_final)):
+                oraciones_filtradas.append((str(texto_final).strip(), voz_actual))
 
         return oraciones_filtradas
+
+    def _es_inicio_seccion(self, texto: str) -> bool:
+        t = (texto or "").strip()
+        if not t or len(t) > 90:
+            return False
+        if re.match(r"^(?:cap[ií]tulo|secci[oó]n|parte|chapter|section|part|act|acto|escena)\b", t, re.IGNORECASE):
+            return True
+        letras = re.sub(r"[^a-zA-ZáéíóúÁÉÍÓÚñÑ]", "", t)
+        return len(letras) >= 5 and letras.isupper() and len(t.split()) <= 10
+
+    def _codificar_pista(self, ruta_wav: str, ruta_destino: str, es_mp3: bool) -> str:
+        if es_mp3 and shutil.which("ffmpeg"):
+            cmd = [
+                "ffmpeg", "-y", "-i", ruta_wav,
+                "-codec:a", "libmp3lame", "-b:a", "192k",
+                ruta_destino,
+            ]
+            subprocess.run(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=0x08000000 if os.name == "nt" else 0,
+            )
+            if os.path.exists(ruta_wav):
+                try:
+                    os.remove(ruta_wav)
+                except Exception:
+                    pass
+            return ruta_destino
+        final_wav = ruta_destino.replace(".mp3", ".wav") if es_mp3 else ruta_destino
+        if ruta_wav != final_wav and os.path.exists(ruta_wav):
+            os.replace(ruta_wav, final_wav)
+        return final_wav
 
     def exportar_rango(
         self,
@@ -536,129 +459,163 @@ class ExportadorAudio:
         obra_actual: str = "General",
         cortes_v: Optional[List[Any]] = None,
         limites_h: Optional[List[Any]] = None,
-        progress_callback: Optional[Callable[[int, int], None]] = None
+        progress_callback: Optional[Callable[[int, int], None]] = None,
+        opciones_corte: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
-        Ejecuta el proceso completo de exportación a archivo WAV/MP3.
+        Ejecuta la exportación a MP3/WAV con soporte de Modo Teatro (libro temporal),
+        validación estricta de rango y cortes automáticos (único, página, sección, duración).
         """
-        if not doc:
+        if not doc or len(doc) == 0:
             return {"exito": False, "mensaje": "Error: No hay documento cargado."}
+
+        try:
+            pag_ini = max(1, int(pag_ini))
+            pag_fin = min(len(doc), int(pag_fin))
+        except Exception:
+            return {"exito": False, "mensaje": "Error: Rango de páginas inválido."}
+        if pag_ini > pag_fin:
+            return {"exito": False, "mensaje": f"Error: Rango inválido ({pag_ini} > {pag_fin})."}
+
+        from backend.audio.pistas_exporter import (
+            GestorPistasExportacion,
+            es_inicio_seccion,
+            extraer_mapa_capitulos_toc,
+        )
+
+        opts = opciones_corte if isinstance(opciones_corte, dict) else {}
+        corte_modo = str(opts.get("corte_modo", "unico") or "unico").lower()
+        corte_minutos = max(1.0, float(opts.get("corte_minutos", 15) or 15))
+        corte_paginas = max(1, int(opts.get("corte_paginas", 1) or 1))
+        max_segundos_pista = corte_minutos * 60.0
+        empaquetar_zip = bool(opts.get("empaquetar_zip", True))
+        usar_limites = bool(opts.get("usar_limites", True))
+        libro_teatro = opts.get("libro_teatro") if isinstance(opts.get("libro_teatro"), list) else []
+        trad_activa = bool(opts.get("traduccion_activa", False))
+        trad_origen = str(opts.get("traduccion_origen", "auto") or "auto")
+        trad_destino = str(opts.get("traduccion_destino", "es") or "es")
+        trad_motor = str(opts.get("traduccion_motor", "hibrido") or "hibrido")
+        trad_modo = str(opts.get("traduccion_modo", "solo_traduccion") or "solo_traduccion")
+
+        traductor_global = None
+        if trad_activa:
+            from backend.ia.traductor import traductor_global as _tg
+            traductor_global = _tg
+
+        mapa_toc = extraer_mapa_capitulos_toc(doc) if corte_modo == "seccion" else {}
+        libro_por_pag: Dict[int, List[Tuple[str, str]]] = {}
+        if modo_teatro and libro_teatro:
+            for item in libro_teatro:
+                if not isinstance(item, dict):
+                    continue
+                p_idx = item.get("pagina")
+                if p_idx is None:
+                    continue
+                p_num = int(p_idx)
+                if (pag_ini - 1) <= p_num <= (pag_fin - 1):
+                    txt_it = str(item.get("texto") or "").strip()
+                    voz_it = str(item.get("voz") or voz_id)
+                    if txt_it:
+                        libro_por_pag.setdefault(p_num, []).append((txt_it, voz_it))
 
         with self._lock:
             self.exportacion_activa = True
 
         total_pags = max(1, pag_fin - pag_ini + 1)
-        paso_actual = 0
+        gestor = GestorPistasExportacion(ruta_salida, corte_modo, self.esta_activo)
 
-        es_mp3 = ruta_salida.lower().endswith(".mp3")
-        ruta_wav_temp = ruta_salida if not es_mp3 else ruta_salida + ".temp.wav"
-
-        # Archivo WAV receptor
         try:
-            with wave.open(ruta_wav_temp, "wb") as wav_file:
-                wav_file.setparams((1, 2, 22050, 0, 'NONE', 'not compressed'))
-                header_listo = False
-                sr_maestro = 22050
+            async def _proceso_asincrono():
+                titulo_inicial = mapa_toc.get(pag_ini - 1, "") if corte_modo == "seccion" else ""
+                gestor.abrir_nueva_pista(titulo_inicial)
 
-                async def _proceso_asincrono():
-                    nonlocal paso_actual, header_listo, sr_maestro
-                    for i in range(pag_ini - 1, pag_fin):
-                        if not self.esta_activo():
-                            break
+                for p_idx in range(pag_ini - 1, pag_fin):
+                    if not self.esta_activo():
+                        break
+                    hoja_actual = (p_idx - (pag_ini - 1)) + 1
+                    if progress_callback:
+                        progress_callback(hoja_actual, total_pags)
 
-                        if i >= len(doc):
-                            break
+                    if corte_modo == "pagina" and p_idx > (pag_ini - 1) and ((p_idx - (pag_ini - 1)) % corte_paginas == 0) and gestor.seg_en_pista > 0:
+                        gestor.abrir_nueva_pista(f"pag_{p_idx + 1}")
+                    elif corte_modo == "seccion" and p_idx > (pag_ini - 1) and p_idx in mapa_toc and gestor.seg_en_pista > 0.5:
+                        gestor.abrir_nueva_pista(mapa_toc[p_idx])
 
-                        hoja_actual = (i - (pag_ini - 1)) + 1
-                        if progress_callback:
-                            progress_callback(hoja_actual, total_pags)
-
+                    if p_idx in libro_por_pag:
+                        oraciones = libro_por_pag[p_idx]
+                    else:
                         oraciones = self.preparar_texto_pagina(
                             doc=doc,
-                            num_pag=i,
+                            num_pag=p_idx,
                             dict_activo=dict_activo,
                             modo_teatro=modo_teatro,
                             obra_actual=obra_actual,
-                            voz_default=voz_id
+                            voz_default=voz_id,
+                            aplicar_layout=usar_limites,
                         )
 
-                        for texto_frase, voz_frase in oraciones:
+                    for texto_frase, voz_frase in oraciones:
+                        if not self.esta_activo():
+                            break
+
+                        if corte_modo == "seccion" and not mapa_toc and gestor.seg_en_pista > 0.5 and es_inicio_seccion(texto_frase):
+                            gestor.abrir_nueva_pista(texto_frase)
+                        elif corte_modo == "duracion" and gestor.seg_en_pista >= max_segundos_pista:
+                            gestor.abrir_nueva_pista()
+
+                        textos_sintesis = [texto_frase]
+                        if trad_activa and traductor_global and texto_frase.strip():
+                            res_trad = traductor_global.traducir(texto_frase, trad_origen, trad_destino, trad_motor)
+                            txt_trad = (res_trad.get("traducido") or "").strip() if isinstance(res_trad, dict) else ""
+                            if trad_modo == "aprendizaje":
+                                if txt_trad and txt_trad != texto_frase.strip():
+                                    textos_sintesis = [texto_frase, txt_trad]
+                            elif txt_trad:
+                                textos_sintesis = [txt_trad]
+
+                        for txt_item in textos_sintesis:
                             if not self.esta_activo():
                                 break
-
                             resultado = await self.generar_audio_oracion(
-                                texto=texto_frase,
+                                texto=txt_item,
                                 voz_objetivo=voz_frase,
-                                velocidad=velocidad_float
+                                velocidad=velocidad_float,
                             )
-
                             if resultado and "pcm" in resultado and len(resultado["pcm"]) > 0:
-                                sr_actual = int(resultado.get("sr", 22050))
-                                pcm_bytes = resultado["pcm"]
-                                if not header_listo:
-                                    sr_maestro = sr_actual
-                                    wav_file.setframerate(sr_maestro)
-                                    header_listo = True
-                                elif sr_actual != sr_maestro and len(pcm_bytes) >= 4:
-                                    # Resamplear linealmente con NumPy para mantener tono y velocidad exactos en Modo Teatro híbrido
-                                    arr = np.frombuffer(pcm_bytes, dtype=np.int16).astype(np.float32)
-                                    n_out = max(1, int(round(len(arr) * float(sr_maestro) / float(sr_actual))))
-                                    x_old = np.linspace(0.0, 1.0, len(arr))
-                                    x_new = np.linspace(0.0, 1.0, n_out)
-                                    pcm_bytes = np.interp(x_new, x_old, arr).clip(-32768, 32767).astype(np.int16).tobytes()
-                                wav_file.writeframes(pcm_bytes)
+                                gestor.escribir_pcm(resultado["pcm"], int(resultado.get("sr", 22050)))
 
-                        paso_actual += 1
-                        if progress_callback:
-                            progress_callback(paso_actual, total_pags)
+                gestor.cerrar_pista_actual()
 
-                # Ejecución en bucle asíncrono
-                try:
-                    loop = asyncio.get_event_loop()
-                except RuntimeError:
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            loop.run_until_complete(_proceso_asincrono())
 
-                loop.run_until_complete(_proceso_asincrono())
-
-            # Verificación de cancelación
             if not self.esta_activo():
-                if os.path.exists(ruta_wav_temp):
-                    try: os.remove(ruta_wav_temp)
-                    except Exception: pass
+                gestor.limpiar_pistas()
                 return {"exito": False, "mensaje": "⏹️ Exportación cancelada por el usuario."}
 
-            # Conversión a MP3 si fue solicitado
-            if es_mp3:
-                if shutil.which("ffmpeg"):
-                    logger.info("🎼 [FFmpeg] Codificando a MP3 de 192kbps...")
-                    cmd = [
-                        'ffmpeg', '-y', '-i', ruta_wav_temp,
-                        '-codec:a', 'libmp3lame', '-b:a', '192k',
-                        ruta_salida
-                    ]
-                    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=0x08000000 if os.name == 'nt' else 0)
-                    if os.path.exists(ruta_wav_temp):
-                        try: os.remove(ruta_wav_temp)
-                        except Exception: pass
-                else:
-                    # Si no hay FFmpeg, renombrar el temporal como WAV
-                    os.replace(ruta_wav_temp, ruta_salida.replace(".mp3", ".wav"))
-                    return {
-                        "exito": True,
-                        "mensaje": f"✅ Audio exportado en formato WAV (FFmpeg no disponible para MP3):\n{ruta_salida.replace('.mp3', '.wav')}"
-                    }
+            if len(gestor.pistas_generadas) > 1 and empaquetar_zip:
+                ruta_zip = gestor.empaquetar_zip()
+                return {
+                    "exito": True,
+                    "pistas": [ruta_zip],
+                    "cantidad_pistas": len(gestor.pistas_generadas),
+                    "mensaje": f"✅ Exportación completada ({len(gestor.pistas_generadas)} pistas en ZIP):\n{ruta_zip}",
+                }
 
             return {
                 "exito": True,
-                "mensaje": f"✅ ¡Exportación completada exitosamente!\nGuardado en: {ruta_salida}"
+                "pistas": gestor.pistas_generadas,
+                "cantidad_pistas": len(gestor.pistas_generadas),
+                "mensaje": f"✅ ¡Exportación completada exitosamente! ({len(gestor.pistas_generadas)} pista(s))\nGuardado en: {gestor.pistas_generadas[0] if gestor.pistas_generadas else ruta_salida}",
             }
 
         except Exception as e:
             logger.error(f"❌ Error durante la exportación de audio: {e}", exc_info=True)
-            if os.path.exists(ruta_wav_temp):
-                try: os.remove(ruta_wav_temp)
-                except Exception: pass
+            gestor.cerrar_pista_actual()
             return {"exito": False, "mensaje": f"❌ Error: {str(e)}"}
         finally:
             with self._lock:

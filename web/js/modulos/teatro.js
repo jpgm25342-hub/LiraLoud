@@ -1,3 +1,167 @@
+function _detectarMotorVozTeatro(vozId) {
+    const v = String(vozId || '');
+    if (!v) return 'edge';
+    if (v.startsWith('Local-kokoro-') || v.includes('kokoro')) return 'kokoro';
+    if (v.startsWith('Local-pocket-') || v.includes('pocket')) return 'pocket';
+    if (v.startsWith('Local-') || v.endsWith('.onnx')) return 'piper';
+    if (v.includes('Neural') || v.includes('Online')) return 'edge';
+    return 'navegador';
+}
+
+function _normalizarNombreTeatro(txt) {
+    return String(txt || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+}
+
+window.reiniciarLibroTeatro = function (rutaDoc = "") {
+    window.libroTeatro = {
+        rutaDoc: rutaDoc || (typeof rutaPDFActual !== 'undefined' ? rutaPDFActual : ''),
+        obra: window.obraActualTeatro || null,
+        intervenciones: [],
+        personajes: {}
+    };
+};
+
+window.sincronizarVocesLibroTeatro = function () {
+    if (!window.libroTeatro) return;
+    const obra = window.obraActualTeatro;
+    const reparto = (obra && dbTeatro && dbTeatro[obra] && dbTeatro[obra].actors) ? dbTeatro[obra].actors : {};
+    const personajes = window.libroTeatro.personajes || {};
+
+    for (const [nombre, info] of Object.entries(reparto)) {
+        const clave = nombre.replace(/:\s*$/, '').trim() + ':';
+        const motor = _detectarMotorVozTeatro(info.voz);
+        personajes[clave] = {
+            personaje: clave,
+            voz: info.voz,
+            motor,
+            on: info.on !== false,
+            parametrosVoz: {
+                velocidad: typeof velocidadLectura !== 'undefined' ? velocidadLectura : 1.0,
+                pitch: typeof pitchLectura !== 'undefined' ? pitchLectura : 1.0
+            }
+        };
+    }
+
+    window.libroTeatro.obra = obra || null;
+    for (const item of window.libroTeatro.intervenciones) {
+        const pInfo = personajes[item.personaje];
+        if (pInfo && pInfo.on !== false && pInfo.voz) {
+            item.voz = pInfo.voz;
+            item.motor = pInfo.motor;
+            item.parametrosVoz = { ...pInfo.parametrosVoz };
+        }
+    }
+};
+
+window.compilarLibroTeatroPagina = function (numPagina, oracionesPag = null) {
+    const ruta = (typeof rutaPDFActual !== 'undefined' ? rutaPDFActual : '') || '';
+    if (!window.libroTeatro || window.libroTeatro.rutaDoc !== ruta) {
+        window.reiniciarLibroTeatro(ruta);
+    }
+    const listaOrac = Array.isArray(oracionesPag)
+        ? oracionesPag
+        : ((typeof datosPagina !== 'undefined' && datosPagina && Array.isArray(datosPagina.oraciones)) ? datosPagina.oraciones : []);
+    if (!listaOrac.length) return window.libroTeatro;
+
+    const obra = window.obraActualTeatro;
+    const reparto = (obra && dbTeatro && dbTeatro[obra] && dbTeatro[obra].actors) ? dbTeatro[obra].actors : {};
+    const vozDefault = (typeof vozPredeterminada !== 'undefined' && vozPredeterminada)
+        ? vozPredeterminada
+        : (document.getElementById('selector-voz-live')?.value || '');
+
+    // Eliminar entradas previas de esta página para evitar duplicados
+    window.libroTeatro.intervenciones = window.libroTeatro.intervenciones.filter(x => x.pagina !== numPagina);
+
+    let personajeActual = 'Narrador:';
+    const nuevas = [];
+    for (let idx = 0; idx < listaOrac.length; idx++) {
+        const txt = String(listaOrac[idx]?.texto || '').trim();
+        if (!txt) continue;
+
+        let personajeDetectado = null;
+        let textoLimpio = txt;
+        const mPrefijo = txt.match(/^\s*([A-ZÁÉÍÓÚÑa-záéíóúñ0-9_\s]{1,28}:)\s*(.*)$/);
+        if (mPrefijo) {
+            const cand = mPrefijo[1].trim();
+            const candNorm = _normalizarNombreTeatro(cand.replace(':', ''));
+            for (const actorKey of Object.keys(reparto)) {
+                const actorNorm = _normalizarNombreTeatro(actorKey.replace(':', ''));
+                if (actorNorm === candNorm || candNorm.endsWith(' ' + actorNorm)) {
+                    personajeDetectado = actorKey.endsWith(':') ? actorKey : (actorKey + ':');
+                    textoLimpio = (mPrefijo[2] || '').trim() || txt;
+                    break;
+                }
+            }
+            if (!personajeDetectado && cand.length <= 24) {
+                personajeDetectado = cand;
+            }
+        }
+
+        if (personajeDetectado) {
+            personajeActual = personajeDetectado;
+        }
+        const actorCfg = reparto[personajeActual] || reparto[personajeActual.replace(':', '')];
+        const vozAsignada = (actorCfg && actorCfg.on !== false && actorCfg.voz) ? actorCfg.voz : vozDefault;
+        const motorAsignado = _detectarMotorVozTeatro(vozAsignada);
+        const params = {
+            velocidad: typeof velocidadLectura !== 'undefined' ? velocidadLectura : 1.0,
+            pitch: typeof pitchLectura !== 'undefined' ? pitchLectura : 1.0
+        };
+
+        if (!window.libroTeatro.personajes[personajeActual]) {
+            window.libroTeatro.personajes[personajeActual] = {
+                personaje: personajeActual,
+                voz: vozAsignada,
+                motor: motorAsignado,
+                on: actorCfg ? (actorCfg.on !== false) : true,
+                parametrosVoz: { ...params }
+            };
+        }
+
+        nuevas.push({
+            id: `p${numPagina}_o${idx}`,
+            pagina: numPagina,
+            indiceOracion: idx,
+            personaje: personajeActual,
+            texto: textoLimpio,
+            motor: motorAsignado,
+            voz: vozAsignada,
+            parametrosVoz: params
+        });
+    }
+
+    window.libroTeatro.intervenciones.push(...nuevas);
+    window.libroTeatro.intervenciones.sort((a, b) => (a.pagina - b.pagina) || (a.indiceOracion - b.indiceOracion));
+    window.sincronizarVocesLibroTeatro();
+    return window.libroTeatro;
+};
+
+window.obtenerIntervencionesLibroTeatro = function (pagIni = null, pagFin = null) {
+    if (!window.libroTeatro || !Array.isArray(window.libroTeatro.intervenciones)) return [];
+    return window.libroTeatro.intervenciones.filter(item => {
+        if (pagIni !== null && item.pagina < pagIni) return false;
+        if (pagFin !== null && item.pagina > pagFin) return false;
+        return true;
+    });
+};
+
+window.reproducirDesdeLibroTeatro = async function (numPagina, indiceOrac = 0) {
+    if (typeof paginaActual !== 'undefined' && paginaActual !== numPagina && typeof cargarPagina === 'function') {
+        await cargarPagina(numPagina);
+    }
+    if (typeof datosPagina !== 'undefined' && datosPagina && Array.isArray(datosPagina.oraciones)) {
+        window.compilarLibroTeatroPagina(numPagina, datosPagina.oraciones);
+    }
+    if (typeof reproducirSecuencia === 'function') {
+        leyendo = true;
+        reproducirSecuencia(indiceOrac);
+    }
+};
+
 // --- FUNCIONES DE CONTROL DE MODAL TEATRO ---
 async function abrirTeatro() {
     detenerLectura();
@@ -307,6 +471,7 @@ async function agregarActor() {
 
         // 2. Persistencia en disco vía Python
         await eel.guardar_diccionario_teatro(dbTeatro)();
+        if (typeof window.sincronizarVocesLibroTeatro === 'function') window.sincronizarVocesLibroTeatro();
 
         // 3. Limpieza y Feedback
         inPersonaje.value = "";
@@ -322,6 +487,7 @@ window.toggleActorIndividual = async (personaje, estado) => {
     if (dbTeatro[obraActualTeatro] && dbTeatro[obraActualTeatro].actors[personaje]) {
         dbTeatro[obraActualTeatro].actors[personaje].on = estado;
         await eel.guardar_diccionario_teatro(dbTeatro)();
+        if (typeof window.sincronizarVocesLibroTeatro === 'function') window.sincronizarVocesLibroTeatro();
         renderizarActores();
     }
 };
@@ -393,6 +559,7 @@ function renderizarSidebarTeatro() {
 
 function seleccionarObraTeatro(nombre) {
     obraActualTeatro = nombre;
+    if (typeof window.sincronizarVocesLibroTeatro === 'function') window.sincronizarVocesLibroTeatro();
     renderizarSidebarTeatro();
     renderizarActores();
     guardarTodosAjustes(); // 💾 Notificamos a Python el cambio de obra

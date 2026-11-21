@@ -336,9 +336,19 @@ def organizar_palabras_con_cortes_y_limites(palabras_raw, lista_cortes_v, limite
         ]
 
         if not cortes_activos:
-            # Franja sin corte vertical (e.g. título superior, tabla corrida, o pie)
-            # Aplicar filtro horizontal si hay límites
-            palabras_ordenadas.extend(ordenar_palabras_por_lineas_top_down(franja_palabras))
+            # Franja sin corte vertical: respetar igualmente el límite horizontal azul de la columna 0
+            palabras_franja = franja_palabras
+            if limites_h and "0" in limites_h:
+                lh0 = limites_h["0"]
+                if isinstance(lh0, (list, tuple)) and len(lh0) >= 2:
+                    lim_y0 = max(f_y0, float(lh0[0]))
+                    lim_y1 = min(f_y1, float(lh0[1]))
+                    palabras_franja = [
+                        p for p in franja_palabras
+                        if lim_y0 <= ((p[1] + p[3]) / 2.0) <= lim_y1
+                    ]
+            if palabras_franja:
+                palabras_ordenadas.extend(ordenar_palabras_por_lineas_top_down(palabras_franja))
         else:
             # Franja dividida en columnas
             xs = [0.0] + sorted(cortes_activos) + [float(ancho_pag)]
@@ -363,9 +373,21 @@ def organizar_palabras_con_cortes_y_limites(palabras_raw, lista_cortes_v, limite
                 if col_palabras:
                     palabras_ordenadas.extend(ordenar_palabras_por_lineas_top_down(col_palabras))
 
-    # Aseguramos que no se pierdan palabras que hayan caído en bordes exactos
+    # Aseguramos que no se pierdan palabras en bordes exactos, sin re-inyectar texto excluido por limites_h
     ids_procesadas = set(id(p) for p in palabras_ordenadas)
-    sobrantes = [p for p in palabras_raw if id(p) not in ids_procesadas]
+    sobrantes = []
+    for p in palabras_raw:
+        if id(p) in ids_procesadas:
+            continue
+        if limites_h and isinstance(limites_h, dict):
+            cy = (p[1] + p[3]) / 2.0
+            dentro_algun_limite = any(
+                isinstance(lh, (list, tuple)) and len(lh) >= 2 and float(lh[0]) <= cy <= float(lh[1])
+                for lh in limites_h.values()
+            )
+            if not dentro_algun_limite:
+                continue
+        sobrantes.append(p)
     if sobrantes:
         palabras_ordenadas.extend(ordenar_palabras_por_lineas_top_down(sobrantes))
 
@@ -455,6 +477,8 @@ def procesar_oraciones_de_palabras(palabras, dict_activo, filtros_externos=None,
         usar_bloques = filtros_externos.get('usarBloquesNativos', True)
         umbral_mult = float(filtros_externos.get('sensibilidadSalto', 0.5))
         usar_sangria = filtros_externos.get('detectarSangria', True)
+        modo_teatro_seg = bool(filtros_externos.get('modo_teatro', False))
+        obra_actual_seg = str(filtros_externos.get('obra_actual', 'General') or 'General')
     else:
         ajustes = cargar_ajustes_lectura()
         omitir_sup = ajustes.get('omitirSuperindices', ajustes.get('omitirReferencias', True))
@@ -462,6 +486,27 @@ def procesar_oraciones_de_palabras(palabras, dict_activo, filtros_externos=None,
         usar_bloques = ajustes.get('usarBloquesNativos', True)
         umbral_mult = float(ajustes.get('sensibilidadSalto', 0.5))
         usar_sangria = ajustes.get('detectarSangria', True)
+        modo_teatro_seg = bool(ajustes.get('teatro_activo', False))
+        obra_actual_seg = str(ajustes.get('obra_actual', 'General') or 'General')
+
+    actores_teatro_norm = set()
+    if modo_teatro_seg:
+        try:
+            db_t = cargar_diccionario_teatro()
+            obra_d = db_t.get(obra_actual_seg, {}) if isinstance(db_t, dict) else {}
+            reparto_seg = {}
+            if isinstance(obra_d, dict) and obra_d.get("active", True):
+                reparto_seg.update(obra_d.get("actors", {}))
+            if estado_app.doc and getattr(estado_app.doc, "name", None):
+                reg_l = cargar_reglas_libro(os.path.basename(estado_app.doc.name))
+                t_lib = reg_l.get("teatro", {}) if isinstance(reg_l, dict) else {}
+                if isinstance(t_lib, dict) and t_lib.get("active", True):
+                    reparto_seg.update(t_lib.get("actors", {}))
+            for a_k, a_v in reparto_seg.items():
+                if isinstance(a_v, dict) and a_v.get("on", True):
+                    actores_teatro_norm.add(a_k.rstrip(":").strip().lower())
+        except Exception:
+            pass
 
     patron_lista_vineta = re.compile(r'^(?:[•\-–—*▪►]|\d+[.)]|[a-zA-Z][.)])')
     patron_cierre = re.compile(r'(?:[.?!][)\]"\'”’»]?|[)\]"\'”’»][.?!])$')
@@ -614,6 +659,16 @@ def procesar_oraciones_de_palabras(palabras, dict_activo, filtros_externos=None,
 
             if mapa_cajas_ia is not None and (mapa_cajas_ia[i] != mapa_cajas_ia[i + 1]) and (mapa_cajas_ia[i] != -1 or mapa_cajas_ia[i + 1] != -1):
                 es_salto = True
+
+            # Sensor agresivo de Modo Teatro: cortar antes de cualquier pie de personaje (ej. "Narrador:", "Sergio:")
+            if modo_teatro_seg and parentesis_abiertos == 0 and len(texto_acumulado) > 0:
+                sig_clean = siguiente_txt.strip()
+                if sig_clean.endswith(':'):
+                    sig_base = sig_clean[:-1].strip().lower()
+                    es_actor_conocido = bool(actores_teatro_norm and sig_base in actores_teatro_norm)
+                    es_cue_teatro = bool(re.match(r'^[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚáéíóúñÑ0-9_]{0,20}:$', sig_clean))
+                    if es_actor_conocido or es_cue_teatro:
+                        es_salto = True
 
             salto_vertical_adaptativo = brecha_vertical > (dy_modal * (1.35 + umbral_mult))
 

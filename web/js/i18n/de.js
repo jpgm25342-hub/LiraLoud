@@ -842,5 +842,17 @@ window.LIRA_I18N["de"] = {
     "msg-tienda-error-401": "Dieses Modell erfordert eine Autorisierung auf Hugging Face. Öffnen Sie die Modellseite auf Hugging Face, akzeptieren Sie die Bedingungen (oder warten Sie auf die Freigabe) und hinterlegen Sie Ihr Token über das Schloss-Symbol.",
     "lbl-token-hf-sesion-activa": "Sie haben ein Hugging-Face-Token gespeichert",
     "lbl-no-sup": "Ohne Hoch.²",
-    "lbl-no-sub": "Ohne Tief.₂"
+    "lbl-no-sub": "Ohne Tief.₂",
+    "lbl-corte-mp3": "Schnitte:",
+    "opt-corte-unico": "Einzelne Datei",
+    "opt-corte-pagina": "Pro Seite",
+    "opt-corte-seccion": "Pro Abschnitt / Kapitel",
+    "opt-corte-duracion": "Nach max. Dauer (Min.)",
+    "lbl-empaquetar-zip": "ZIP bei mehreren",
+  "lbl-preview-inicio": "Anfang",
+  "lbl-preview-fin": "Ende",
+  "lbl-pags-corto": "Seiten",
+  "lbl-traduccion-export": "🌐 Mit Übersetzung",
+  "opt-trad-solo": "Nur Übersetzung",
+  "opt-trad-bilingue": "Original + Übersetzung"
 };

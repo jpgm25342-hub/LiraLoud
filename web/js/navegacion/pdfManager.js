@@ -69,6 +69,9 @@ async function abrirDocumentoDesdeRuta(ruta, esTemporal = false, esCaptura = fal
     cortesV = [];
     limitesH = {};
     zonasExcluidas = [];
+    if (typeof window.reiniciarLibroTeatro === 'function') {
+        window.reiniciarLibroTeatro(ruta);
+    }
 
     if (!esTemporal) {
         let progreso = await eel.cargar_progreso_libro(rutaPDFActual)();
@@ -554,6 +557,9 @@ async function cargarPagina(num) {
         };
 
         guardarEstadoPaginaActual();
+        if (typeof window.compilarLibroTeatroPagina === 'function' && data?.oraciones) {
+            window.compilarLibroTeatroPagina(num, data.oraciones);
+        }
 
         document.getElementById('input-pagina-actual').value = num + 1;
         document.getElementById('total-paginas-texto').innerText = `/ ${totalPaginas}`;
@@ -718,6 +724,9 @@ function quitarCorteV() {
             return;
         }
         guardarEstadoPaginaActual();
+        if (typeof window.compilarLibroTeatroPagina === 'function' && data?.oraciones) {
+            window.compilarLibroTeatroPagina(num, data.oraciones);
+        }
         cargarPagina(paginaActual);
     }
 }
@@ -842,6 +851,9 @@ async function autoDetectarLayoutActual() {
             };
 
             guardarEstadoPaginaActual();
+        if (typeof window.compilarLibroTeatroPagina === 'function' && data?.oraciones) {
+            window.compilarLibroTeatroPagina(num, data.oraciones);
+        }
             if (typeof dibujar === 'function') dibujar();
             await cargarPagina(paginaActual);
 

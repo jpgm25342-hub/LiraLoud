@@ -842,5 +842,17 @@ window.LIRA_I18N["zh"] = {
     "msg-tienda-error-401": "此模型需要在 Hugging Face 上授权。请打开其 Hugging Face 页面同意条款（或等待作者批准），然后在商店的锁图标中配置您的令牌。",
     "lbl-token-hf-sesion-activa": "您已保存 Hugging Face 令牌",
     "lbl-no-sup": "无上标²",
-    "lbl-no-sub": "无下标₂"
+    "lbl-no-sub": "无下标₂",
+    "lbl-corte-mp3": "分段:",
+    "opt-corte-unico": "单个文件",
+    "opt-corte-pagina": "按页",
+    "opt-corte-seccion": "按章节",
+    "opt-corte-duracion": "按最大时长（分钟）",
+    "lbl-empaquetar-zip": "多文件打包 ZIP",
+  "lbl-preview-inicio": "开始",
+  "lbl-preview-fin": "结束",
+  "lbl-pags-corto": "页",
+  "lbl-traduccion-export": "🌐 附带翻译",
+  "opt-trad-solo": "仅翻译",
+  "opt-trad-bilingue": "原文 + 翻译"
 };

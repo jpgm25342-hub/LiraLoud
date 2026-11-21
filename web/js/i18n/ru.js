@@ -842,5 +842,17 @@ window.LIRA_I18N["ru"] = {
     "msg-tienda-error-401": "Эта модель требует авторизации на Hugging Face. Откройте её страницу на Hugging Face, примите условия (или дождитесь одобрения автора) и укажите токен через значок замка в магазине.",
     "lbl-token-hf-sesion-activa": "У вас сохранён токен Hugging Face",
     "lbl-no-sup": "Без надстр.²",
-    "lbl-no-sub": "Без подстр.₂"
+    "lbl-no-sub": "Без подстр.₂",
+    "lbl-corte-mp3": "Разбиение:",
+    "opt-corte-unico": "Один файл",
+    "opt-corte-pagina": "По страницам",
+    "opt-corte-seccion": "По разделам / главам",
+    "opt-corte-duracion": "По макс. длительности (мин)",
+    "lbl-empaquetar-zip": "ZIP при нескольких",
+  "lbl-preview-inicio": "Начало",
+  "lbl-preview-fin": "Конец",
+  "lbl-pags-corto": "стр.",
+  "lbl-traduccion-export": "🌐 С переводом",
+  "opt-trad-solo": "Только перевод",
+  "opt-trad-bilingue": "Оригинал + Перевод"
 };

@@ -842,5 +842,17 @@ window.LIRA_I18N["hi"] = {
     "msg-tienda-error-401": "इस मॉडल के लिए Hugging Face पर अनुमति आवश्यक है। Hugging Face पर इसका पृष्ठ खोलें, शर्तें स्वीकार करें (या लेखक की स्वीकृति की प्रतीक्षा करें), और स्टोर के लॉक आइकन में अपना टोकन सेट करें।",
     "lbl-token-hf-sesion-activa": "आपका Hugging Face टोकन सहेजा गया है",
     "lbl-no-sup": "सुपरस्क्रिप्ट नहीं²",
-    "lbl-no-sub": "सबस्क्रिप्ट नहीं₂"
+    "lbl-no-sub": "सबस्क्रिप्ट नहीं₂",
+    "lbl-corte-mp3": "विभाजन:",
+    "opt-corte-unico": "एकल फ़ाइल",
+    "opt-corte-pagina": "प्रति पृष्ठ",
+    "opt-corte-seccion": "अनुभाग / अध्याय के अनुसार",
+    "opt-corte-duracion": "अधिकतम अवधि (मिनट)",
+    "lbl-empaquetar-zip": "एकाधिक होने पर ZIP",
+  "lbl-preview-inicio": "शुरुआत",
+  "lbl-preview-fin": "अंत",
+  "lbl-pags-corto": "पृष्ठ",
+  "lbl-traduccion-export": "🌐 अनुवाद सहित",
+  "opt-trad-solo": "केवल अनुवाद",
+  "opt-trad-bilingue": "मूल + अनुवाद"
 };

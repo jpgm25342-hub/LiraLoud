@@ -842,5 +842,17 @@ window.LIRA_I18N["es"] = {
     "msg-tienda-error-401": "Este modelo requiere autorización en Hugging Face. Abre su página en Hugging Face, acepta los términos (o espera aprobación del autor) y configura tu token en el icono de candado de la tienda.",
     "lbl-token-hf-sesion-activa": "Tienes un token de Hugging Face guardado",
     "lbl-no-sup": "No Sup.²",
-    "lbl-no-sub": "No Sub.₂"
+    "lbl-no-sub": "No Sub.₂",
+    "lbl-corte-mp3": "Cortes:",
+    "opt-corte-unico": "Archivo único",
+    "opt-corte-pagina": "Por página",
+    "opt-corte-seccion": "Por sección / capítulo",
+    "opt-corte-duracion": "Por duración máxima (min)",
+    "lbl-empaquetar-zip": "ZIP si hay varios",
+  "lbl-preview-inicio": "Inicio",
+  "lbl-preview-fin": "Fin",
+  "lbl-pags-corto": "págs",
+  "lbl-traduccion-export": "🌐 Con traducción",
+  "opt-trad-solo": "Solo traducción",
+  "opt-trad-bilingue": "Original + Traducción"
 };

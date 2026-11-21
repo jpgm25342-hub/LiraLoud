@@ -65,6 +65,12 @@ let bloqueoCambioPagina = false; // "Semáforo" de seguridad
 // TEATRO
 window.obraActualTeatro = null;
 let dbTeatro = {};
+window.libroTeatro = {
+    rutaDoc: "",
+    obra: null,
+    intervenciones: [],
+    personajes: {}
+};
 
 // --- VARIABLES PARA BARRA DE PROGRESO FLUIDA ---
 let progresoVisualActual = 0;

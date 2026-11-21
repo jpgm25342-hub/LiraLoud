@@ -842,5 +842,17 @@ window.LIRA_I18N["bn"] = {
     "msg-tienda-error-401": "এই মডেলের জন্য Hugging Face-এ অনুমোদন প্রয়োজন। Hugging Face-এ এর পৃষ্ঠা খুলুন, শর্তাবলী গ্রহণ করুন (অথবা লেখকের অনুমোদনের অপেক্ষা করুন), এবং স্টোরের লক আইকনে আপনার টোকেন সেট করুন।",
     "lbl-token-hf-sesion-activa": "আপনার একটি Hugging Face টোকেন সংরক্ষিত আছে",
     "lbl-no-sup": "সুপারস্ক্রিপ্ট নয়²",
-    "lbl-no-sub": "সাবস্ক্রিপ্ট নয়₂"
+    "lbl-no-sub": "সাবস্ক্রিপ্ট নয়₂",
+    "lbl-corte-mp3": "বিভাগ:",
+    "opt-corte-unico": "একটি ফাইল",
+    "opt-corte-pagina": "প্রতি পৃষ্ঠা",
+    "opt-corte-seccion": "অংশ / অধ্যায় অনুযায়ী",
+    "opt-corte-duracion": "সর্বোচ্চ সময়কাল (মিনিট)",
+    "lbl-empaquetar-zip": "একাধিক হলে ZIP",
+  "lbl-preview-inicio": "শুরু",
+  "lbl-preview-fin": "শেষ",
+  "lbl-pags-corto": "পৃষ্ঠা",
+  "lbl-traduccion-export": "🌐 অনুবাদসহ",
+  "opt-trad-solo": "শুধুমাত্র অনুবাদ",
+  "opt-trad-bilingue": "মূল + অনুবাদ"
 };

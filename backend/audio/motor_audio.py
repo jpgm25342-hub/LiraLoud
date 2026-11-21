@@ -753,7 +753,7 @@ def pre_renderizar_bloque_paginas(lista_paginas, voz, velocidad, dict_activo, tr
     estado_app.hilo_rendimiento_actual.start()
 
 @eel.expose
-def descargar_audio_dedicado(pag_ini, pag_fin, voz_id, velocidad_float, lista_cortes_v=None, limites_h=None, dict_activo=None, modo_teatro=False, obra_actual="General"):
+def descargar_audio_dedicado(pag_ini, pag_fin, voz_id, velocidad_float, lista_cortes_v=None, limites_h=None, dict_activo=None, modo_teatro=False, obra_actual="General", opciones_corte=None):
     if not estado_app.doc:
         return "❌ Error: No hay ningún documento abierto."
 
@@ -803,7 +803,8 @@ def descargar_audio_dedicado(pag_ini, pag_fin, voz_id, velocidad_float, lista_co
         obra_actual=obra_actual,
         cortes_v=lista_cortes_v,
         limites_h=limites_h,
-        progress_callback=_progreso_ui
+        progress_callback=_progreso_ui,
+        opciones_corte=opciones_corte,
     )
 
     return res.get("mensaje", "Finalizado.")
