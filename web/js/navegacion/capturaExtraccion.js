@@ -276,6 +276,7 @@ function abrirModalGuardarCaptura(dataUrl, paginaIdx) {
         window.removeEventListener('keydown', listenerModalGuardarTeclado, true);
     }
     listenerModalGuardarTeclado = (e) => {
+        if (document.getElementById('lira-dialog-overlay')?.classList.contains('activo')) return;
         if (modal.style.display !== 'flex') return;
         if (e.key === 'Escape') {
             e.preventDefault();
@@ -514,16 +515,17 @@ function renderizarTarjetaCaptura(item, container) {
     titleSpan.innerHTML = `${cameraSvg}${escapeHtml(item.titulo)}`;
 
     const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'capture-delete-btn';
     deleteBtn.innerHTML = '&times;';
     deleteBtn.title = 'Eliminar captura';
     deleteBtn.style.background = 'none';
     deleteBtn.style.border = 'none';
-    deleteBtn.style.color = '#bdc3c7';
+    deleteBtn.style.color = '#475569';
     deleteBtn.style.cursor = 'pointer';
-    deleteBtn.style.fontSize = '12px';
+    deleteBtn.style.fontSize = '13px';
     deleteBtn.style.padding = '0 4px';
-    deleteBtn.onmouseover = () => deleteBtn.style.color = '#e74c3c';
-    deleteBtn.onmouseout = () => deleteBtn.style.color = '#bdc3c7';
+    deleteBtn.onmouseover = () => deleteBtn.style.color = '#b91c1c';
+    deleteBtn.onmouseout = () => deleteBtn.style.color = '#475569';
     deleteBtn.onclick = (e) => {
         e.stopPropagation();
         eliminarCaptura(item.id);
@@ -609,7 +611,7 @@ function renderizarTarjetaCaptura(item, container) {
     footerDiv.style.justifyContent = 'space-between';
     footerDiv.style.alignItems = 'center';
     footerDiv.style.fontSize = '11px';
-    footerDiv.style.color = '#7f8c8d';
+    footerDiv.style.color = '#475569';
 
     const pageSpan = document.createElement('span');
     pageSpan.innerText = item.pagina !== undefined ? `Pág. ${item.pagina + 1}` : '';
@@ -629,10 +631,12 @@ function renderizarTarjetaCaptura(item, container) {
     actionDiv.style.gap = '6px';
 
     const copyBtn = document.createElement('button');
+    copyBtn.className = 'capture-copy-btn';
     copyBtn.innerText = 'Copiar';
     copyBtn.title = 'Copiar imagen al portapapeles';
-    copyBtn.style.border = '1px solid #dcdde1';
-    copyBtn.style.background = '#f5f6fa';
+    copyBtn.style.border = '1px solid #cbd5e1';
+    copyBtn.style.background = '#f1f5f9';
+    copyBtn.style.color = '#1e293b';
     copyBtn.style.borderRadius = '4px';
     copyBtn.style.padding = '2px 8px';
     copyBtn.style.fontSize = '11px';
@@ -720,6 +724,7 @@ function abrirModalVerCaptura(imgSrc, titulo, pagina) {
         window.removeEventListener('keydown', listenerModalVerTeclado, true);
     }
     listenerModalVerTeclado = (e) => {
+        if (document.getElementById('lira-dialog-overlay')?.classList.contains('activo')) return;
         if (modal.style.display !== 'flex') return;
         if (e.key === 'Escape') {
             e.preventDefault();
@@ -813,9 +818,10 @@ function mostrarNotificacionToast(mensaje, icono) {
 }
 
 function escapeHtml(str) {
-    return String(str || '')
+    return String(str ?? '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }

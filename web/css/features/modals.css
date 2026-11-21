@@ -879,7 +879,7 @@ body.ui-dark-mode .tool-svg {
 .ocr-modal-subtitle {
     display: block;
     font-size: 12px;
-    color: #64748b;
+    color: #475569;
     margin-top: 2px;
 }
 
@@ -963,7 +963,7 @@ body.ui-dark-mode .tool-svg {
 
 .ocr-decision-desc {
     font-size: 12px;
-    color: #64748b;
+    color: #475569;
     margin-top: 3px;
     line-height: 1.4;
 }
@@ -973,7 +973,7 @@ body.ui-dark-mode .tool-svg {
     justify-content: space-between;
     align-items: center;
     font-size: 12px;
-    color: #64748b;
+    color: #475569;
     border-top: 1px solid #e5dec9;
     padding-top: 12px;
 }
@@ -1008,7 +1008,7 @@ body.ui-dark-mode .tool-svg {
 
 .ocr-progreso-sub {
     font-size: 13px;
-    color: #64748b;
+    color: #475569;
     margin: 0 0 18px 0;
 }
 
@@ -1293,7 +1293,8 @@ body.ui-dark-mode .ocr-decision-btn-secondary .ocr-decision-icon {
 }
 
 body.ui-dark-mode .ocr-decision-badge {
-    background: #1f6feb;
+    background: #1d4ed8;
+    color: #ffffff;
 }
 
 body.ui-dark-mode .ocr-modal-footer {
@@ -1318,8 +1319,13 @@ body.ui-dark-mode .ocr-btn-secondary:hover {
 }
 
 body.ui-dark-mode .ocr-btn-primary {
-    background: linear-gradient(135deg, #388bfd, #1f6feb);
-    box-shadow: 0 4px 12px rgba(31, 111, 235, 0.4);
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    box-shadow: 0 4px 12px rgba(29, 78, 216, 0.4);
+}
+
+body.ui-dark-mode .ocr-btn-primary:hover {
+    background: linear-gradient(135deg, #1d4ed8, #1e40af);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.5);
 }
 
 body.ui-dark-mode .ocr-progreso-bar-track {
@@ -1351,7 +1357,7 @@ body.ui-dark-mode .ocr-rango-btn-step {
 }
 
 body.ui-dark-mode .ocr-rango-btn-step:hover {
-    background: #1f6feb;
+    background: #1d4ed8;
     color: #ffffff;
     border-color: #58a6ff;
 }

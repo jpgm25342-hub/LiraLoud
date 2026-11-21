@@ -97,13 +97,13 @@
 }
 
 .tour-btn-primary {
-    background: #0284c7;
+    background: #0369a1;
     color: white;
-    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.4);
+    box-shadow: 0 2px 8px rgba(3, 105, 161, 0.4);
 }
 
 .tour-btn-primary:hover {
-    background: #0369a1;
+    background: #075985;
     transform: translateY(-1px);
 }
 

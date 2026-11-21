@@ -949,6 +949,80 @@ function limpiarListenersCondicionales() {
 // RENDERIZADO Y POSICIONAMIENTO INTELIGENTE DEL SPOTLIGHT GUI
 // ============================================================================
 
+function _limpiarEmojisTourHtml(textoHtml) {
+    let s = String(textoHtml ?? '');
+    // Eliminar parentesis que solo contienen emojis/simbolos (ej. (⚡), (⚙️), (☰))
+    s = s.replace(/\s*\(\s*[\u{1F300}-\u{1FAFF}\u2600-\u27BF\u2300-\u23FF\u2B00-\u2BFF\u2139\u2195\u25B6\u25C0\u2630\u2714\u2715\u2794\uFE0F\u200D]+\s*\)/gu, '');
+    // Reemplazar referencias textuales al boton '✕' por 'X'
+    s = s.replace(/(['"‘“「『]?)\u2715(['"’”」』]?)/g, '$1X$2');
+    // Eliminar flechas/checks finales y cualquier emoji residual
+    s = s.replace(/\s*[\u2794\u2714]\s*/g, '');
+    s = s.replace(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF\u2300-\u23FF\u2B00-\u2BFF\u2139\u2195\u25B6\u25C0\u2630\uFE0F\u200D]+/gu, '');
+    s = s.replace(/(<br\s*\/?>)\s+/gi, '$1').replace(/<b>\s+/gi, '<b>').replace(/ {2,}/g, ' ').trim();
+    return s;
+}
+
+function _claveIconoPasoTour(pasoId) {
+    const id = String(pasoId || '');
+    if (id.includes('lanzador')) return 'archivo';
+    if (id.includes('idioma_y_voz')) return 'audio';
+    if (id.includes('leer')) return 'reproducir';
+    if (id.includes('limite') || id.includes('corte') || id.includes('exclusion')) return 'objetivo';
+    if (id.includes('diccionario') || id.includes('abreviatura')) return 'diccionario';
+    if (id.includes('teatro')) return 'teatro';
+    if (id.includes('ia')) return 'ia';
+    if (id.includes('traduc')) return 'traduccion';
+    if (id.includes('subray') || id.includes('nota') || id.includes('cuaderno')) return 'editar';
+    if (id.includes('captura') || id.includes('recorte')) return 'imagen';
+    if (id.includes('ocr')) return 'buscar';
+    if (id.includes('descarga')) return 'descarga';
+    if (id.includes('config')) return 'configuracion';
+    return 'graduacion';
+}
+
+function _renderizarTituloTour(titleEl, tituloRaw, defaultClave = 'graduacion') {
+    if (!titleEl) return;
+    const raw = String(tituloRaw || '');
+    const resEmoji = (typeof window.limpiarTextoEmoji === 'function')
+        ? window.limpiarTextoEmoji(raw)
+        : { clave: null, texto: raw };
+    const clave = resEmoji.clave || defaultClave;
+    const textoLimpio = _limpiarEmojisTourHtml(resEmoji.texto || raw);
+    const esc = (typeof window.escapeHtml === 'function')
+        ? window.escapeHtml
+        : (s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'));
+    let svgHtml = (typeof window.obtenerIconoDialogoSVG === 'function')
+        ? window.obtenerIconoDialogoSVG(clave, 'lira-svg-icon')
+        : '';
+    if (svgHtml) {
+        svgHtml = svgHtml.replace(/width="22"\s+height="22"/, 'width="18" height="18"');
+    } else {
+        svgHtml = '<svg class="lira-svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.91 5.09L19 10l-5.09 1.91L12 17l-1.91-5.09L5 10l5.09-1.91L12 3z"></path></svg>';
+    }
+    titleEl.innerHTML = `${svgHtml}<span id="tour-card-title-texto">${esc(textoLimpio)}</span>`;
+}
+window._renderizarTituloTour = _renderizarTituloTour;
+
+function _actualizarBotonAudioTour(btnAudio) {
+    if (!btnAudio) return;
+    const muteado = Boolean(window.tutorialAudioMuteado);
+    const txtRaw = muteado
+        ? getTourText("tour-btn-voz-mute", "Voz")
+        : getTourText("tour-btn-voz-on", "Voz");
+    const txtLimpio = _limpiarEmojisTourHtml(txtRaw) || 'Voz';
+    const esc = (typeof window.escapeHtml === 'function')
+        ? window.escapeHtml
+        : (s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'));
+    const svgIcon = muteado
+        ? '<svg class="lira-svg-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>'
+        : '<svg class="lira-svg-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>';
+    btnAudio.innerHTML = `${svgIcon}<span id="tour-btn-voz-texto" data-i18n="tour-btn-voz">${esc(txtLimpio)}</span>`;
+    btnAudio.title = muteado
+        ? _limpiarEmojisTourHtml(getTourText("tour-btn-voz-mute-title", "Voz del tutorial silenciada (haz clic para activar)"))
+        : _limpiarEmojisTourHtml(getTourText("tour-btn-voz-on-title", "Voz del tutorial activa (haz clic para silenciar)"));
+}
+window._actualizarBotonAudioTour = _actualizarBotonAudioTour;
+
 function renderizarPasoTour() {
     const paso = PASOS_TOUR_GUI[window.tutorialPasoActual];
     if (!paso) return;
@@ -1000,19 +1074,25 @@ function renderizarPasoTour() {
         .replace("{total}", PASOS_TOUR_GUI.length);
     
     const titulo = typeof paso.getTitulo === 'function' ? paso.getTitulo() : paso.titulo;
-    const instruccion = typeof paso.getInstruccion === 'function' ? paso.getInstruccion() : paso.instruccion;
-    const detalleExtra = typeof paso.getDetalleExtra === 'function' ? paso.getDetalleExtra() : paso.detalleExtra;
+    const instruccion = _limpiarEmojisTourHtml(typeof paso.getInstruccion === 'function' ? paso.getInstruccion() : paso.instruccion);
+    const detalleExtraRaw = typeof paso.getDetalleExtra === 'function' ? paso.getDetalleExtra() : paso.detalleExtra;
+    const detalleExtra = detalleExtraRaw ? _limpiarEmojisTourHtml(detalleExtraRaw) : '';
 
-    if (titleEl) titleEl.innerHTML = titulo;
+    _renderizarTituloTour(titleEl, titulo, _claveIconoPasoTour(paso.id));
 
     if (bodyEl) {
         let demoBtnHtml = '';
         if (paso.botonDemoExtra) {
-            const txtDemo = typeof paso.botonDemoExtra.getTexto === 'function' ? paso.botonDemoExtra.getTexto() : paso.botonDemoExtra.texto;
+            const txtDemoRaw = typeof paso.botonDemoExtra.getTexto === 'function' ? paso.botonDemoExtra.getTexto() : paso.botonDemoExtra.texto;
+            const txtDemo = _limpiarEmojisTourHtml(txtDemoRaw);
+            const esc = (typeof window.escapeHtml === 'function')
+                ? window.escapeHtml
+                : (s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'));
+            const demoSvg = '<svg class="lira-svg-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>';
             demoBtnHtml = `
                 <div style="margin-top:12px; text-align:center;">
                     <button id="btn-tour-demo-action" class="tour-btn tour-btn-demo" style="width:100%; justify-content:center; padding:7px 14px; font-size:0.83rem;">
-                        ${txtDemo}
+                        ${demoSvg}<span>${esc(txtDemo)}</span>
                     </button>
                 </div>
             `;
@@ -1042,18 +1122,24 @@ function renderizarPasoTour() {
         btnPrev.style.display = window.tutorialPasoActual === 0 ? 'none' : 'inline-flex';
     }
     if (btnNext) {
-        if (window.tutorialPasoActual === PASOS_TOUR_GUI.length - 1) {
-            btnNext.innerHTML = getTourText("tour-btn-finalizar", "Finalizar ✔");
-        } else {
-            btnNext.innerHTML = getTourText("tour-btn-siguiente", "Siguiente ➔");
-        }
+        const esUltimoPaso = window.tutorialPasoActual === PASOS_TOUR_GUI.length - 1;
+        const txtNext = _limpiarEmojisTourHtml(
+            esUltimoPaso
+                ? getTourText("tour-btn-finalizar", "Finalizar")
+                : getTourText("tour-btn-siguiente", "Siguiente")
+        );
+        const esc = (typeof window.escapeHtml === 'function')
+            ? window.escapeHtml
+            : (s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'));
+        const nextSvg = esUltimoPaso
+            ? '<svg class="lira-svg-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+            : '<svg class="lira-svg-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+        btnNext.innerHTML = `<span id="btn-tour-next-texto" data-i18n="${esUltimoPaso ? 'tour-btn-finalizar' : 'btn-tut-siguiente'}">${esc(txtNext)}</span>${nextSvg}`;
     }
 
     const btnAudio = document.getElementById('btn-tour-audio-toggle');
     if (btnAudio) {
-        btnAudio.innerHTML = window.tutorialAudioMuteado
-            ? getTourText("tour-btn-voz-mute", "🔇 Voz")
-            : getTourText("tour-btn-voz-on", "🔊 Voz");
+        _actualizarBotonAudioTour(btnAudio);
     }
 
     // Gestionar visualización del lanzador de bienvenida

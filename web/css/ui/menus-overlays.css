@@ -646,13 +646,14 @@ body.ui-dark-mode #btn-cancelar-captura:hover {
 }
 
 body.ui-dark-mode #btn-confirmar-captura {
-    background: linear-gradient(135deg, #388bfd, #1f6feb);
-    box-shadow: 0 2px 8px rgba(31, 111, 235, 0.4);
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    box-shadow: 0 2px 8px rgba(29, 78, 216, 0.4);
 }
 
 body.ui-dark-mode #btn-confirmar-captura:hover {
-    opacity: 0.95;
-    box-shadow: 0 4px 12px rgba(56, 139, 253, 0.5);
+    background: linear-gradient(135deg, #1d4ed8, #1e40af);
+    opacity: 1;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.5);
 }
 
 /* ===== BOTONES TIENDA DE VOCES ===== */
@@ -966,7 +967,7 @@ body.ui-dark-mode .btn-tienda-hf-link {
 .modal-captura-close {
     background: transparent;
     border: none;
-    color: #64748b;
+    color: #475569;
     font-size: 20px;
     cursor: pointer;
     padding: 0 5px;
@@ -1034,7 +1035,7 @@ body.ui-dark-mode .btn-tienda-hf-link {
 
 .modal-captura-help {
     font-size: 11px;
-    color: #64748b;
+    color: #475569;
     margin-top: 5px;
 }
 
@@ -1202,7 +1203,7 @@ body.ui-dark-mode .btn-captura-copiar:hover {
 
 .buscador-contador {
     font-size: 11px;
-    color: #64748b;
+    color: #475569;
     margin-right: 2px;
 }
 
@@ -1229,7 +1230,7 @@ body.ui-dark-mode .btn-captura-copiar:hover {
 .buscador-close-btn {
     background: none;
     border: none;
-    color: #64748b;
+    color: #475569;
     font-size: 17px;
     line-height: 1;
     cursor: pointer;
@@ -1276,7 +1277,7 @@ body.ui-dark-mode .btn-captura-copiar:hover {
     justify-content: center;
     gap: 6px;
     font-size: 11.5px;
-    color: #64748b;
+    color: #475569;
     text-align: center;
     padding: 10px;
 }
@@ -1350,7 +1351,7 @@ body.ui-dark-mode .buscador-nav-btn {
 }
 
 body.ui-dark-mode .buscador-nav-btn:hover {
-    background: #1f6feb;
+    background: #1d4ed8;
     color: #ffffff;
 }
 
@@ -1407,7 +1408,7 @@ body.ui-dark-mode .buscador-resultado-frase {
 .extraccion-empty-state {
     text-align: center;
     padding: 40px 15px;
-    color: #64748b;
+    color: #475569;
     font-size: 12px;
 }
 
@@ -1450,4 +1451,10 @@ body.ui-dark-mode .capture-card button {
     background: #21262d !important;
     border-color: #30363d !important;
     color: #e6edf3 !important;
+}
+
+body.ui-dark-mode .capture-card .capture-delete-btn {
+    background: transparent !important;
+    border: none !important;
+    color: #cbd5e1 !important;
 }

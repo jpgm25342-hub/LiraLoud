@@ -39,11 +39,11 @@ const PASOS_LECTURA = [
             return targets;
         },
         posicion: "adaptable-paso-1",
-        getTitulo: () => getTourText("tour-paso1-titulo", "📂 Paso 1: Abrir un Documento"),
-        getInstruccion: () => getTourText("tour-paso1-instruccion", "¡Bienvenido al tutorial de LiraLoud! El primer paso es aprender a abrir un documento. Actualmente LiraLoud cuenta con soporte para archivos <b>PDF</b>, <b>DOC</b> y <b>DOCX</b>.<br><br>👉 Para abrir tu documento, haz clic en la tarjeta resaltada <b>'Abrir PDF'</b> o en el botón <b>'PDF'</b> de tu barra."),
-        getDetalleExtra: () => getTourText("tour-paso1-detalle", "💡 La tarea se completará automáticamente en cuanto selecciones y cargues tu archivo."),
+        getTitulo: () => getTourText("tour-paso1-titulo", "Paso 1: Abrir un Documento"),
+        getInstruccion: () => getTourText("tour-paso1-instruccion", "¡Bienvenido al tutorial de LiraLoud! El primer paso es aprender a abrir un documento. Actualmente LiraLoud cuenta con soporte para archivos <b>PDF</b>, <b>DOC</b> y <b>DOCX</b>.<br><br>Para abrir tu documento, haz clic en la tarjeta resaltada <b>'Abrir PDF'</b> o en el botón <b>'PDF'</b> de tu barra."),
+        getDetalleExtra: () => getTourText("tour-paso1-detalle", "La tarea se completará automáticamente en cuanto selecciones y cargues tu archivo."),
         botonDemoExtra: {
-            getTexto: () => getTourText("tour-paso1-btn-demo", "⚡ ¿No tienes un archivo ahora? Cargar libro de prueba"),
+            getTexto: () => getTourText("tour-paso1-btn-demo", "¿No tienes un archivo ahora? Cargar libro de prueba"),
             accion: () => {
                 if (typeof window.cargarDocumentoEjemploTutorial === 'function') {
                     window.cargarDocumentoEjemploTutorial();
@@ -519,7 +519,12 @@ const PASOS_LECTURA = [
                 // Actualizar la tarjeta al Paso 3.2
                 const titleEl = document.getElementById('tour-card-title');
                 if (titleEl) {
-                    titleEl.innerText = getTourText("tour-paso3-sub2-titulo", "🎯 Paso 3.2: Leer desde un Punto Fijo");
+                    const titSub2 = getTourText("tour-paso3-sub2-titulo", "Paso 3.2: Leer desde un Punto Fijo");
+                    if (typeof window._renderizarTituloTour === 'function') {
+                        window._renderizarTituloTour(titleEl, titSub2, 'objetivo');
+                    } else {
+                        titleEl.innerText = titSub2;
+                    }
                 }
 
                 const bodyEl = document.getElementById('tour-card-body');

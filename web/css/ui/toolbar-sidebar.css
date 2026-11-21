@@ -27,7 +27,7 @@
 .tab-btn:hover:not(.active) {
     background-color: #d1f2eb !important;
     /* Verde menta muy claro */
-    color: #16a085 !important;
+    color: #0f766e !important;
     /* Texto en verde oscuro técnico */
     opacity: 1;
     transform: translateY(-1px);
@@ -35,24 +35,24 @@
 
 /* Colores SVG dinámicos (Hover) */
 .tab-btn:hover:not(.active) .svg-main {
-    fill: #16a085 !important;
+    fill: #0f766e !important;
 }
 
 .tab-btn:hover:not(.active) .svg-sec {
-    fill: rgba(22, 160, 133, 0.6) !important;
+    fill: rgba(15, 118, 110, 0.6) !important;
 }
 
 .tab-btn:hover:not(.active) .svg-ter {
-    fill: rgba(22, 160, 133, 0.3) !important;
+    fill: rgba(15, 118, 110, 0.3) !important;
 }
 
 /* color verde sólido al estar seleccionado (Activo) */
 .tab-btn.active {
-    background: #27ae60 !important;
-    /* Tu Verde original */
+    background: #15803d !important;
+    /* Verde accesible WCAG AA */
     color: white !important;
     opacity: 1;
-    box-shadow: 0 2px 5px rgba(39, 174, 96, 0.2);
+    box-shadow: 0 2px 5px rgba(21, 128, 61, 0.25);
 }
 
 /* Colores SVG dinámicos [cambia de color los iconos y letras a blanco] (Activo) */
@@ -418,7 +418,7 @@
     align-items: center;
     margin-top: 8px;
     font-size: 11px;
-    color: #64748b;
+    color: #475569;
 }
 
 .text-card-actions {
@@ -432,7 +432,7 @@
     border: none;
     cursor: pointer;
     font-size: 10px;
-    color: #94a3b8;
+    color: #475569;
     padding: 2px;
 }
 
@@ -490,6 +490,10 @@ body.ui-dark-mode .text-card {
 
 body.ui-dark-mode .text-card-meta {
     color: #adbac7;
+}
+
+body.ui-dark-mode .text-card-expand-btn {
+    color: #cbd5e1;
 }
 
 body.ui-dark-mode .text-card-copy-btn {

@@ -1542,20 +1542,25 @@ const PASOS_HERRAMIENTAS = [
                 // Actualizar la tarjeta del tour para instruir el cierre o continuación
                 const titleEl = document.getElementById('tour-card-title');
                 if (titleEl) {
-                    titleEl.innerHTML = getTourText("tour-paso9-6-abierta-titulo", "📝 Paso 9.6: Nota Rápida (Abierta)");
+                    const tit96 = getTourText("tour-paso9-6-abierta-titulo", "Paso 9.6: Nota Rápida (Abierta)");
+                    if (typeof window._renderizarTituloTour === 'function') {
+                        window._renderizarTituloTour(titleEl, tit96, 'archivo');
+                    } else {
+                        titleEl.textContent = tit96;
+                    }
                 }
                 const bodyEl = document.getElementById('tour-card-body');
                 if (bodyEl) {
                     const instDiv = bodyEl.children[0];
                     if (instDiv) {
-                        instDiv.innerHTML = getTourText("tour-paso9-6-abierta-inst", "✨ <b>¡Nota Rápida abierta!</b> Observa cómo queda vinculada automáticamente a la <b>Página 1</b> de tu documento.<br><br>👉 Ahora <b>ciérrala</b> (pulsando <kbd style='background:#1e293b; padding:2px 6px; border-radius:4px; border:1px solid #0284c7; color:#38bdf8; font-weight:bold;'>Alt + N</kbd> o en la <b>✕</b>) para continuar hacia el Cuaderno.");
+                        instDiv.innerHTML = getTourText("tour-paso9-6-abierta-inst", "<b>¡Nota Rápida abierta!</b> Observa cómo queda vinculada automáticamente a la <b>Página 1</b> de tu documento.<br><br>Ahora <b>ciérrala</b> (pulsando <kbd style='background:#1e293b; padding:2px 6px; border-radius:4px; border:1px solid #0284c7; color:#38bdf8; font-weight:bold;'>Alt + N</kbd> o en la <b>X</b>) para continuar hacia el Cuaderno.");
                     }
                     const bubble = bodyEl.querySelector('.tutorial-speech-bubble');
                     if (bubble) {
                         bubble.innerHTML = `<div style="line-height:1.45;">
-                            <div style="margin-bottom:8px;">${getTourText("tour-paso9-6-abierta-tip", "💡 <i>Las notas rápidas te permiten escribir ideas al instante sin interrumpir tu lectura ni tapar el texto.</i>")}</div>
+                            <div style="margin-bottom:8px;">${getTourText("tour-paso9-6-abierta-tip", "<i>Las notas rápidas te permiten escribir ideas al instante sin interrumpir tu lectura ni tapar el texto.</i>")}</div>
                             <button id="btn-tour-continuar-rapida" class="btn-tour-accion" style="margin-top:6px; width:100%; background:linear-gradient(135deg, #10b981, #059669); color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;">
-                                ${getTourText("tour-paso9-6-btn-continuar", "Siguiente: Cuaderno de Notas ➔")}
+                                ${getTourText("tour-paso9-6-btn-continuar", "Siguiente: Cuaderno de Notas")}
                             </button>
                         </div>`;
                         const btnCont = document.getElementById('btn-tour-continuar-rapida');
@@ -1875,20 +1880,25 @@ const PASOS_HERRAMIENTAS = [
                 // Actualizar la tarjeta del tour
                 const titleEl = document.getElementById('tour-card-title');
                 if (titleEl) {
-                    titleEl.innerHTML = getTourText("tour-paso9-7-abierto-titulo", "📓 Paso 9.7: Cuaderno de Notas y Apuntes (Abierto)");
+                    const tit97 = getTourText("tour-paso9-7-abierto-titulo", "Paso 9.7: Cuaderno de Notas y Apuntes (Abierto)");
+                    if (typeof window._renderizarTituloTour === 'function') {
+                        window._renderizarTituloTour(titleEl, tit97, 'archivo');
+                    } else {
+                        titleEl.textContent = tit97;
+                    }
                 }
                 const bodyEl = document.getElementById('tour-card-body');
                 if (bodyEl) {
                     const instDiv = bodyEl.children[0];
                     if (instDiv) {
-                        instDiv.innerHTML = getTourText("tour-paso9-7-abierto-inst", "✨ <b>¡Cuaderno de Notas abierto!</b> Aquí puedes ver y organizar <b>todos los apuntes globales</b> que has hecho en tu documento PDF.<br><br>👉 Ahora <b>ciérralo</b> (pulsando la tecla <kbd style='background:#1e293b; padding:2px 6px; border-radius:4px; border:1px solid #0284c7; color:#38bdf8; font-weight:bold;'>N</kbd> o en la <b>✕</b>) para continuar hacia el Reconocimiento OCR.");
+                        instDiv.innerHTML = getTourText("tour-paso9-7-abierto-inst", "<b>¡Cuaderno de Notas abierto!</b> Aquí puedes ver y organizar <b>todos los apuntes globales</b> que has hecho en tu documento PDF.<br><br>Ahora <b>ciérralo</b> (pulsando la tecla <kbd style='background:#1e293b; padding:2px 6px; border-radius:4px; border:1px solid #0284c7; color:#38bdf8; font-weight:bold;'>N</kbd> o en la <b>X</b>) para continuar hacia el Reconocimiento OCR.");
                     }
                     const bubble = bodyEl.querySelector('.tutorial-speech-bubble');
                     if (bubble) {
                         bubble.innerHTML = `<div style="line-height:1.45;">
-                            <div style="margin-bottom:8px;">${getTourText("tour-paso9-7-abierto-tip", "💡 <b>Diferencia clave:</b> Mientras la <i>Nota Rápida</i> guarda anotaciones por página, el <i>Cuaderno</i> reúne todos los apuntes del libro en formato Markdown, con búsqueda y soporte IA.")}</div>
+                            <div style="margin-bottom:8px;">${getTourText("tour-paso9-7-abierto-tip", "<b>Diferencia clave:</b> Mientras la <i>Nota Rápida</i> guarda anotaciones por página, el <i>Cuaderno</i> reúne todos los apuntes del libro en formato Markdown, con búsqueda y soporte IA.")}</div>
                             <button id="btn-tour-continuar-cuaderno" class="btn-tour-accion" style="margin-top:6px; width:100%; background:linear-gradient(135deg, #10b981, #059669); color:white; border:none; padding:8px 12px; border-radius:6px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;">
-                                ${getTourText("tour-paso9-7-btn-continuar", "Siguiente: Reconocimiento OCR ➔")}
+                                ${getTourText("tour-paso9-7-btn-continuar", "Siguiente: Reconocimiento OCR")}
                             </button>
                         </div>`;
                         const btnCont = document.getElementById('btn-tour-continuar-cuaderno');
