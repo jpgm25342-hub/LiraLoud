@@ -159,12 +159,12 @@ async function probarMezclaKokoroLive() {
         if (res && res.exito && res.pcm_b64) {
             reproducirMuestraPCM(res.pcm_b64, res.sr || 24000, perfilEq);
         } else {
-            alert("No se pudo generar la muestra: " + (res?.error || "Error desconocido"));
+            await liraAlert("No se pudo generar la muestra: " + (res?.error || "Error desconocido"), 'error');
         }
     } catch (err) {
         const errorMsg = err?.error || err?.message || (typeof err === 'object' ? JSON.stringify(err) : String(err));
         console.error("Error al pedir muestra:", errorMsg, err);
-        alert("Error al generar muestra: " + errorMsg);
+        await liraAlert("Error al generar muestra: " + errorMsg, 'error');
     } finally {
         if (btn) btn.disabled = false;
         if (icn) icn.style.opacity = "1";
@@ -176,7 +176,7 @@ async function guardarMezclaKokoroLive() {
     let nombre = inputNombre?.value?.trim() || "";
     if (!nombre) {
         const sugerido = "Voz Personalizada " + Math.floor(Math.random() * 900 + 100);
-        nombre = prompt("Introduce un nombre para tu voz personalizada:", sugerido);
+        nombre = await liraPrompt("Introduce un nombre para tu voz personalizada:", sugerido, 'voz');
         if (!nombre || !nombre.trim()) return;
         nombre = nombre.trim();
         if (inputNombre) inputNombre.value = nombre;
@@ -255,13 +255,13 @@ async function guardarMezclaKokoroLive() {
                 }, 1600);
             }
         } else {
-            alert("Error al guardar mezcla: " + (res?.error || "Error desconocido"));
+            await liraAlert("Error al guardar mezcla: " + (res?.error || "Error desconocido"), 'error');
             if (btn) btn.disabled = false;
         }
     } catch (err) {
         const errorMsg = err?.error || err?.message || (typeof err === 'object' ? JSON.stringify(err) : String(err));
         console.error("Error guardando mezcla:", errorMsg, err);
-        alert("Error al guardar: " + errorMsg);
+        await liraAlert("Error al guardar: " + errorMsg, 'error');
         if (btn) btn.disabled = false;
     }
 }
@@ -278,7 +278,7 @@ async function procesarArchivoMuestraAudio(inputElement) {
     if (!nombre) {
         const baseName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").trim();
         const sugerido = baseName ? `Voz ${baseName}` : "Mi Voz Muestra";
-        nombre = prompt("Introduce un nombre para tu nueva voz:", sugerido);
+        nombre = await liraPrompt("Introduce un nombre para tu nueva voz:", sugerido, 'voz');
         if (!nombre || !nombre.trim()) return;
         nombre = nombre.trim();
         if (inputNombre) inputNombre.value = nombre;
@@ -303,8 +303,8 @@ async function procesarArchivoMuestraAudio(inputElement) {
 
     try {
         const reader = new FileReader();
-        reader.onerror = () => {
-            alert("No se pudo leer el archivo de audio seleccionado.");
+        reader.onerror = async () => {
+            await liraAlert("No se pudo leer el archivo de audio seleccionado.", 'error');
             if (btn) btn.disabled = false;
             if (lbl) lbl.innerText = txtOriginal;
         };
@@ -339,13 +339,13 @@ async function procesarArchivoMuestraAudio(inputElement) {
                         if (btn) btn.disabled = false;
                     }, 2000);
                 } else {
-                    alert("Error al procesar la muestra: " + (res?.error || "Error desconocido"));
+                    await liraAlert("Error al procesar la muestra: " + (res?.error || "Error desconocido"), 'error');
                     if (lbl) lbl.innerText = txtOriginal;
                     if (btn) btn.disabled = false;
                 }
             } catch (rpcErr) {
                 console.error("Error en llamada RPC crear_voz_desde_muestra:", rpcErr);
-                alert("Error al procesar audio: " + (rpcErr?.error || rpcErr?.message || rpcErr));
+                await liraAlert("Error al procesar audio: " + (rpcErr?.error || rpcErr?.message || rpcErr), 'error');
                 if (lbl) lbl.innerText = txtOriginal;
                 if (btn) btn.disabled = false;
             }
@@ -463,7 +463,7 @@ async function toggleGrabacionMuestraAudio() {
     // Iniciar grabación
     try {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            alert("Tu navegador no soporta grabación de audio desde micrófono.");
+            await liraAlert("Tu navegador no soporta grabación de audio desde micrófono.", 'advertencia');
             return;
         }
 
@@ -493,7 +493,7 @@ async function toggleGrabacionMuestraAudio() {
             if (lblTimer) lblTimer.style.display = "none";
 
             if (segundosGrabadosMuestra < 2) {
-                alert("La grabación fue demasiado corta. Habla al menos de 4 a 10 segundos para afinar la voz.");
+                await liraAlert("La grabación fue demasiado corta. Habla al menos de 4 a 10 segundos para afinar la voz.", 'advertencia');
                 if (lbl) lbl.innerText = "Grabar Voz";
                 if (btn) btn.disabled = false;
                 mediaRecorderMuestra = null;
@@ -508,7 +508,7 @@ async function toggleGrabacionMuestraAudio() {
             let nombre = inputNombre?.value?.trim() || "";
             if (!nombre) {
                 const sugerido = "Mi Voz Grabada " + Math.floor(Math.random() * 900 + 100);
-                nombre = prompt("Introduce un nombre para tu nueva voz grabada:", sugerido);
+                nombre = await liraPrompt("Introduce un nombre para tu nueva voz grabada:", sugerido, 'voz');
                 if (!nombre || !nombre.trim()) {
                     if (lbl) lbl.innerText = "Grabar Voz";
                     if (btn) btn.disabled = false;
@@ -566,13 +566,13 @@ async function toggleGrabacionMuestraAudio() {
                                 if (btn) btn.disabled = false;
                             }, 2000);
                         } else {
-                            alert("Error al procesar la grabación: " + (res?.error || "Error desconocido"));
+                            await liraAlert("Error al procesar la grabación: " + (res?.error || "Error desconocido"), 'error');
                             if (lbl) lbl.innerText = "Grabar Voz";
                             if (btn) btn.disabled = false;
                         }
                     } catch (rpcErr) {
                         console.error("Error en llamada RPC crear_voz_desde_muestra:", rpcErr);
-                        alert("Error al afinar la voz grabada: " + (rpcErr?.error || rpcErr?.message || rpcErr));
+                        await liraAlert("Error al afinar la voz grabada: " + (rpcErr?.error || rpcErr?.message || rpcErr), 'error');
                         if (lbl) lbl.innerText = "Grabar Voz";
                         if (btn) btn.disabled = false;
                     }
@@ -580,7 +580,7 @@ async function toggleGrabacionMuestraAudio() {
                 reader.readAsDataURL(wavBlob);
             } catch (convErr) {
                 console.error("Error al convertir grabación a WAV:", convErr);
-                alert("Error al procesar audio grabado: " + convErr);
+                await liraAlert("Error al procesar audio grabado: " + convErr, 'error');
                 if (lbl) lbl.innerText = "Grabar Voz";
                 if (btn) btn.disabled = false;
             }
@@ -611,9 +611,9 @@ async function toggleGrabacionMuestraAudio() {
     } catch (micErr) {
         console.error("Error al acceder al micrófono:", micErr);
         if (micErr && (micErr.name === 'NotAllowedError' || micErr.name === 'PermissionDeniedError')) {
-            alert("Acceso al micrófono denegado.\n\nPara solucionarlo:\n1. Revisa en la barra de direcciones o en Windows si los permisos de micrófono para Chrome/la aplicación están permitidos.\n2. Si prefieres no usar el micrófono, puedes grabar tu voz con la grabadora de Windows o tu celular y usar el botón 'Cargar Audio...'");
+            await liraAlert("Acceso al micrófono denegado.\n\nPara solucionarlo:\n1. Revisa en la barra de direcciones o en Windows si los permisos de micrófono para Chrome/la aplicación están permitidos.\n2. Si prefieres no usar el micrófono, puedes grabar tu voz con la grabadora de Windows o tu celular y usar el botón 'Cargar Audio...'", 'advertencia');
         } else {
-            alert("No se pudo acceder al micrófono: " + (micErr?.message || "Verifica los permisos en tu sistema."));
+            await liraAlert("No se pudo acceder al micrófono: " + (micErr?.message || "Verifica los permisos en tu sistema."), 'error');
         }
         if (lbl) lbl.innerText = "Grabar Voz";
         if (btn) {
@@ -629,7 +629,7 @@ async function toggleGrabacionMuestraAudio() {
 }
 
 async function eliminarMezclaKokoroLive(blendId) {
-    if (!confirm("¿Deseas eliminar esta mezcla de voz personalizada?")) return;
+    if (!await liraConfirm("¿Deseas eliminar esta mezcla de voz personalizada?", 'borrar')) return;
     try {
         const ok = await eel.eliminar_mezcla_kokoro(blendId)();
         if (ok) {
@@ -738,7 +738,7 @@ async function procesarArchivoClonPocket(inputElement) {
     if (!nombre) {
         const baseName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").trim();
         const sugerido = baseName ? `Clon ${baseName}` : "Mi Voz Clonada";
-        nombre = prompt("Introduce un nombre para tu nueva voz clonada:", sugerido);
+        nombre = await liraPrompt("Introduce un nombre para tu nueva voz clonada:", sugerido, 'voz');
         if (!nombre || !nombre.trim()) return;
         nombre = nombre.trim();
         if (inputNombre) inputNombre.value = nombre;
@@ -753,8 +753,8 @@ async function procesarArchivoClonPocket(inputElement) {
 
     try {
         const reader = new FileReader();
-        reader.onerror = () => {
-            alert("No se pudo leer el archivo de audio seleccionado.");
+        reader.onerror = async () => {
+            await liraAlert("No se pudo leer el archivo de audio seleccionado.", 'error');
             if (btn) btn.disabled = false;
             if (lbl) lbl.innerText = txtOriginal;
         };
@@ -789,13 +789,13 @@ async function procesarArchivoClonPocket(inputElement) {
                         if (btn) btn.disabled = false;
                     }, 2000);
                 } else {
-                    alert("Error al clonar voz: " + (res?.error || "Error desconocido"));
+                    await liraAlert("Error al clonar voz: " + (res?.error || "Error desconocido"), 'error');
                     if (lbl) lbl.innerText = txtOriginal;
                     if (btn) btn.disabled = false;
                 }
             } catch (rpcErr) {
                 console.error("Error en llamada RPC clonar_voz_pocket:", rpcErr);
-                alert("Error al clonar audio: " + (rpcErr?.error || rpcErr?.message || rpcErr));
+                await liraAlert("Error al clonar audio: " + (rpcErr?.error || rpcErr?.message || rpcErr), 'error');
                 if (lbl) lbl.innerText = txtOriginal;
                 if (btn) btn.disabled = false;
             }
@@ -839,7 +839,7 @@ async function toggleGrabacionClonPocket() {
     // Iniciar grabación
     try {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            alert("Tu navegador no soporta grabación de audio desde micrófono.");
+            await liraAlert("Tu navegador no soporta grabación de audio desde micrófono.", 'advertencia');
             return;
         }
 
@@ -869,7 +869,7 @@ async function toggleGrabacionClonPocket() {
             if (lblTimer) lblTimer.style.display = "none";
 
             if (segundosGrabadosPocket < 2) {
-                alert("La grabación fue demasiado corta. Habla o susurra de 4 a 10 segundos para clonar la voz.");
+                await liraAlert("La grabación fue demasiado corta. Habla o susurra de 4 a 10 segundos para clonar la voz.", 'advertencia');
                 if (lbl) lbl.innerText = "Grabar Voz";
                 if (btn) btn.disabled = false;
                 mediaRecorderPocket = null;
@@ -883,7 +883,7 @@ async function toggleGrabacionClonPocket() {
             let nombre = inputNombre?.value?.trim() || "";
             if (!nombre) {
                 const sugerido = "Mi Voz Clonada " + Math.floor(Math.random() * 900 + 100);
-                nombre = prompt("Introduce un nombre para tu nueva voz clonada:", sugerido);
+                nombre = await liraPrompt("Introduce un nombre para tu nueva voz clonada:", sugerido, 'voz');
                 if (!nombre || !nombre.trim()) {
                     if (lbl) lbl.innerText = "Grabar Voz";
                     if (btn) btn.disabled = false;
@@ -929,13 +929,13 @@ async function toggleGrabacionClonPocket() {
                                 if (btn) btn.disabled = false;
                             }, 2000);
                         } else {
-                            alert("Error al procesar la grabación: " + (res?.error || "Error desconocido"));
+                            await liraAlert("Error al procesar la grabación: " + (res?.error || "Error desconocido"), 'error');
                             if (lbl) lbl.innerText = "Grabar Voz";
                             if (btn) btn.disabled = false;
                         }
                     } catch (rpcErr) {
                         console.error("Error en llamada RPC clonar_voz_pocket:", rpcErr);
-                        alert("Error al clonar voz grabada: " + (rpcErr?.error || rpcErr?.message || rpcErr));
+                        await liraAlert("Error al clonar voz grabada: " + (rpcErr?.error || rpcErr?.message || rpcErr), 'error');
                         if (lbl) lbl.innerText = "Grabar Voz";
                         if (btn) btn.disabled = false;
                     }
@@ -943,7 +943,7 @@ async function toggleGrabacionClonPocket() {
                 reader.readAsDataURL(wavBlob);
             } catch (convErr) {
                 console.error("Error al convertir grabación a WAV:", convErr);
-                alert("Error al procesar audio grabado: " + convErr);
+                await liraAlert("Error al procesar audio grabado: " + convErr, 'error');
                 if (lbl) lbl.innerText = "Grabar Voz";
                 if (btn) btn.disabled = false;
             }
@@ -974,9 +974,9 @@ async function toggleGrabacionClonPocket() {
     } catch (micErr) {
         console.error("Error al acceder al micrófono:", micErr);
         if (micErr && (micErr.name === 'NotAllowedError' || micErr.name === 'PermissionDeniedError')) {
-            alert("Acceso al micrófono denegado. Puedes usar el botón 'Cargar Audio...' para subir una grabación.");
+            await liraAlert("Acceso al micrófono denegado. Puedes usar el botón 'Cargar Audio...' para subir una grabación.", 'advertencia');
         } else {
-            alert("No se pudo acceder al micrófono: " + (micErr?.message || "Verifica los permisos en tu sistema."));
+            await liraAlert("No se pudo acceder al micrófono: " + (micErr?.message || "Verifica los permisos en tu sistema."), 'error');
         }
         if (lbl) lbl.innerText = "Grabar Voz";
         if (btn) {
@@ -1043,7 +1043,7 @@ async function probarMuestraClonPocket(idEncoded, nombreEncoded) {
         if (res && res.exito && res.pcm_b64) {
             reproducirMuestraPCM(res.pcm_b64, res.sr || 24000, "estudio");
         } else {
-            alert("No se pudo generar la muestra: " + (res?.error || "Error"));
+            await liraAlert("No se pudo generar la muestra: " + (res?.error || "Error"), 'error');
         }
     } catch (err) {
         console.error("Error al probar muestra de clon Pocket:", err);
@@ -1051,7 +1051,7 @@ async function probarMuestraClonPocket(idEncoded, nombreEncoded) {
 }
 
 async function eliminarClonPocketLive(voiceId) {
-    if (!confirm("¿Deseas eliminar esta voz clonada?")) return;
+    if (!await liraConfirm("¿Deseas eliminar esta voz clonada?", 'borrar')) return;
     try {
         const ok = await eel.eliminar_clon_pocket(voiceId)();
         if (ok) {

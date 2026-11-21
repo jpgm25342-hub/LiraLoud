@@ -89,9 +89,9 @@ window.toggleModoPrivacidad = toggleModoPrivacidad;
 function notificarBloqueoPrivacidad(accion) {
     const textoMsg = `Actualmente te encuentras usando el modo privacidad. Desactiva el modo en Ajustes > Avanzado para utilizar funciones en línea (${accion}).`;
     if (typeof mostrarToastLira === 'function') {
-        mostrarToastLira(textoMsg);
-    } else {
-        alert(textoMsg);
+        mostrarToastLira(textoMsg, 'advertencia');
+    } else if (typeof liraAlert === 'function') {
+        liraAlert(textoMsg, 'advertencia');
     }
 }
 

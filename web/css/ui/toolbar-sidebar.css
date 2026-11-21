@@ -274,7 +274,127 @@
     transform: scale(1.15);
 }
 
-/* GESTOR DE EXTRACCIÓN */
+/* GESTOR DE EXTRACCIÓN (#modal-subrayados / #panel-subrayados) */
+.modal-subrayados-overlay {
+    z-index: 9999 !important;
+    pointer-events: auto !important;
+    background: rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+}
+
+.subrayador-panel {
+    width: 350px;
+    height: 100%;
+    right: -350px;
+    position: absolute;
+    background: #ffffff;
+    color: #2c3e50;
+    transition: right 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -5px 0 20px rgba(0, 0, 0, 0.15);
+    pointer-events: auto;
+}
+
+.subrayador-subtitulo {
+    padding: 10px 15px;
+    font-size: 11px;
+    color: #64748b;
+    border-bottom: 1px solid #e2e8f0;
+    background: #ffffff;
+}
+
+.subrayador-filtros {
+    padding: 10px 15px;
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.subrayador-filtros-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #34495e;
+}
+
+.subrayador-limpiar-btn {
+    background: none;
+    border: none;
+    color: #7d54c4;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.subrayador-filtros-row {
+    display: flex;
+    gap: 10px;
+}
+
+.subrayador-select,
+.subrayador-input-pag {
+    padding: 5px 6px;
+    font-size: 11px;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    background: #ffffff;
+    color: #2c3e50;
+}
+
+.subrayador-select {
+    flex: 1;
+}
+
+.subrayador-input-pag {
+    width: 64px;
+}
+
+.tabs-extraccion {
+    display: flex;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+
+.tab-extraccion {
+    flex: 1;
+    padding: 8px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    color: #64748b;
+}
+
+.subrayador-tab-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.subrayador-tab-count {
+    font-weight: 400;
+    font-size: 10px;
+    opacity: 0.85;
+}
+
+.subrayador-lista {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: #f8f9fa;
+}
+
 .text-card {
     background: #ffffff;
     border-left: 4px solid;
@@ -284,12 +404,103 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     position: relative;
     transition: opacity 0.3s, transform 0.3s;
-    border-radius: 4px;
+    border-radius: 6px;
 }
 
 .text-card.removing {
     opacity: 0;
     transform: translateX(20px);
+}
+
+.text-card-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    font-size: 11px;
+    color: #64748b;
+}
+
+.text-card-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.text-card-expand-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 10px;
+    color: #94a3b8;
+    padding: 2px;
+}
+
+.text-card-copy-btn {
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #334155;
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.text-card-copy-btn:hover {
+    background: #e2e8f0;
+}
+
+body.ui-dark-mode .subrayador-panel {
+    background: #161b22;
+    color: #e6edf3;
+    box-shadow: -5px 0 24px rgba(0, 0, 0, 0.6);
+}
+
+body.ui-dark-mode .subrayador-subtitulo,
+body.ui-dark-mode .subrayador-filtros {
+    background: #0d1117;
+    border-bottom-color: #30363d;
+    color: #adbac7;
+}
+
+body.ui-dark-mode .subrayador-filtros-head {
+    color: #e6edf3;
+}
+
+body.ui-dark-mode .subrayador-limpiar-btn {
+    color: #58a6ff;
+}
+
+body.ui-dark-mode .subrayador-select,
+body.ui-dark-mode .subrayador-input-pag {
+    background: #161b22;
+    border-color: #30363d;
+    color: #e6edf3;
+}
+
+body.ui-dark-mode .subrayador-lista {
+    background: #0d1117;
+}
+
+body.ui-dark-mode .text-card {
+    background: #1f242c;
+    color: #e6edf3;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+body.ui-dark-mode .text-card-meta {
+    color: #adbac7;
+}
+
+body.ui-dark-mode .text-card-copy-btn {
+    background: #21262d;
+    border-color: #30363d;
+    color: #e6edf3;
+}
+
+body.ui-dark-mode .text-card-copy-btn:hover {
+    background: #30363d;
+    border-color: #58a6ff;
 }
 
 /* ========================================================================== */

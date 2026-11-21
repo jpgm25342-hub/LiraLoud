@@ -1,9 +1,28 @@
+function _vincularBackdropTiendaVoces() {
+    const modal = document.getElementById('modal-tienda-voces');
+    if (modal && !modal.dataset.backdropBound) {
+        modal.dataset.backdropBound = 'true';
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) window.cerrarTiendaVoces();
+        });
+    }
+}
+
+function _iconoTiendaSVG(clave) {
+    return (typeof window.obtenerIconoDialogoSVG === 'function')
+        ? window.obtenerIconoDialogoSVG(clave, 'lira-inline-svg')
+        : '';
+}
+
 window.abrirTiendaVoces = function () {
     const modal = document.getElementById('modal-tienda-voces');
     if (modal) modal.style.display = 'flex';
+    _vincularBackdropTiendaVoces();
     if (typeof cargarEstadoTokenHF === 'function') cargarEstadoTokenHF();
     if (typeof cargarTiendaVoces === 'function') cargarTiendaVoces();
 };
+
+document.addEventListener('DOMContentLoaded', _vincularBackdropTiendaVoces);
 
 window.cerrarTiendaVoces = function () {
     const modal = document.getElementById('modal-tienda-voces');
@@ -176,7 +195,7 @@ window.filtrarTiendaVoces = function () {
 
     cont.innerHTML = filtradas.map(v => {
         const dlTxt = typeof v.descargas === 'number'
-            ? ` · ⬇ ${v.descargas.toLocaleString()}`
+            ? ` · <span class="tienda-dl-count">${_iconoTiendaSVG('descarga')} ${v.descargas.toLocaleString()}</span>`
             : '';
         const estDl = window._descargasTiendaEstado[v.id];
         const enDescarga = !!estDl && !v.instalada;
@@ -196,7 +215,7 @@ window.filtrarTiendaVoces = function () {
         } else if (enDescarga) {
             controlesHtml = `
                 <div style="display:flex; gap:6px; align-items:center;">
-                    <button id="btn-pause-${v.id}" class="btn-tienda-pausar" onclick="togglePausaDescargaTienda('${v.id}')">${pausada ? '▶ Reanudar' : '⏸ Pausar'}</button>
+                    <button id="btn-pause-${v.id}" class="btn-tienda-pausar" onclick="togglePausaDescargaTienda('${v.id}')">${pausada ? `${_iconoTiendaSVG('reproducir')} Reanudar` : `${_iconoTiendaSVG('pausar')} Pausar`}</button>
                     <button id="btn-cancel-${v.id}" class="btn-tienda-cancelar" onclick="cancelarDescargaTiendaUI('${v.id}')">✕ Cancelar</button>
                 </div>`;
         } else {
@@ -244,7 +263,7 @@ window.togglePausaDescargaTienda = async function (vozId) {
     const pausar = est.estado !== 'pausada';
     est.estado = pausar ? 'pausada' : 'descargando';
     const btn = document.getElementById(`btn-pause-${vozId}`);
-    if (btn) btn.textContent = pausar ? '▶ Reanudar' : '⏸ Pausar';
+    if (btn) btn.innerHTML = pausar ? `${_iconoTiendaSVG('reproducir')} Reanudar` : `${_iconoTiendaSVG('pausar')} Pausar`;
     try {
         if (typeof eel !== 'undefined') {
             if (pausar && eel.pausar_descarga_voz_tienda) await eel.pausar_descarga_voz_tienda(vozId)();
@@ -284,7 +303,7 @@ window.descargarVozTiendaUI = async function (motor, vozId) {
                     ? window.t('msg-tienda-error-401', 'Este modelo requiere autorización en Hugging Face. Abre su página en Hugging Face, acepta los términos (o espera aprobación del autor) y configura tu token en el icono de candado de la tienda.')
                     : 'Este modelo requiere autorización en Hugging Face. Abre su página en Hugging Face, acepta los términos (o espera aprobación del autor) y configura tu token en el icono de candado de la tienda.')
                 : `Error al descargar: ${errStr || 'Desconocido'}`;
-            if (typeof liraAlert === 'function') await liraAlert(msgErr, '⚠️');
+            if (typeof liraAlert === 'function') await liraAlert(msgErr, 'advertencia');
         }
     } catch (e) {
         delete window._descargasTiendaEstado[vozId];

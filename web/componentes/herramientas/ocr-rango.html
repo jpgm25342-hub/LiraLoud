@@ -1,69 +1,65 @@
-<div id="modal-ocr-rango" class="overlay-bloqueante" style="display: none;">
-            <div class="modal-ocr-card"
-                style="width: 580px; max-width: 94vw; background: #1e293b; color: #f8fafc; border-radius: 14px; padding: 25px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); border: 1px solid #334155; box-sizing: border-box;">
-                <div style="margin-bottom: 12px; border-bottom: 1px solid #334155; padding-bottom: 12px;">
-                    <h3 style="margin:0; font-size: 17px; color: #38bdf8;" data-i18n="ocr-rango-titulo">Escanear Rango de Páginas con OCR</h3>
-                    <span style="font-size: 12px; color: #94a3b8;" data-i18n="ocr-rango-sub">Verifica las miniaturas para seleccionar con precisión tus páginas útiles</span>
+<div id="modal-ocr-rango" class="overlay-bloqueante modal-ocr-overlay" style="display: none;"
+    onclick="if(event.target === this) cerrarModalRangoOCR()">
+    <div class="modal-ocr-card modal-ocr-rango-card" onclick="event.stopPropagation()">
+        <div class="ocr-rango-header">
+            <h3 class="ocr-modal-title" data-i18n="ocr-rango-titulo">Escanear Rango de Páginas con OCR</h3>
+            <span class="ocr-modal-subtitle" data-i18n="ocr-rango-sub">Verifica las miniaturas para seleccionar con precisión tus páginas útiles</span>
+        </div>
+
+        <!-- Contenedor de 2 vistas previas -->
+        <div class="ocr-rango-preview-container">
+            <!-- Tarjeta Desde -->
+            <div class="ocr-rango-card">
+                <span class="ocr-rango-header-label">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon" aria-hidden="true">
+                        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                        <line x1="4" y1="22" x2="4" y2="15"></line>
+                    </svg>
+                    <span data-i18n="ocr-rango-desde">Desde Página</span>
+                </span>
+                <div class="ocr-rango-input-group">
+                    <button type="button" class="ocr-rango-btn-step" onclick="cambiarPasoRangoOCR('desde', -1)">-</button>
+                    <input type="number" id="ocr-rango-input-desde" class="ocr-rango-input" min="1" value="1" onchange="actualizarPreviewRangoOCR('desde')">
+                    <button type="button" class="ocr-rango-btn-step" onclick="cambiarPasoRangoOCR('desde', 1)">+</button>
                 </div>
-
-                <!-- Contenedor de 2 vistas previas -->
-                <div class="ocr-rango-preview-container">
-                    <!-- Tarjeta Desde -->
-                    <div class="ocr-rango-card">
-                        <span class="ocr-rango-header-label">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon">
-                                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
-                                <line x1="4" y1="22" x2="4" y2="15"></line>
-                            </svg>
-                            <span data-i18n="ocr-rango-desde">Desde Página</span>
-                        </span>
-                        <div class="ocr-rango-input-group">
-                            <button type="button" class="ocr-rango-btn-step" onclick="cambiarPasoRangoOCR('desde', -1)">-</button>
-                            <input type="number" id="ocr-rango-input-desde" class="ocr-rango-input" min="1" value="1" onchange="actualizarPreviewRangoOCR('desde')">
-                            <button type="button" class="ocr-rango-btn-step" onclick="cambiarPasoRangoOCR('desde', 1)">+</button>
-                        </div>
-                        <div class="ocr-rango-img-box">
-                            <img id="ocr-rango-img-desde" src="" alt="Cargando...">
-                            <span id="ocr-rango-tag-desde" class="ocr-rango-img-tag" data-i18n="ocr-rango-pag1">Pág. 1</span>
-                        </div>
-                    </div>
-
-                    <!-- Tarjeta Hasta -->
-                    <div class="ocr-rango-card">
-                        <span class="ocr-rango-header-label">
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon">
-                                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
-                                <line x1="4" y1="22" x2="4" y2="15"></line>
-                            </svg>
-                            <span data-i18n="ocr-rango-hasta">Hasta Página</span>
-                        </span>
-                        <div class="ocr-rango-input-group">
-                            <button type="button" class="ocr-rango-btn-step" onclick="cambiarPasoRangoOCR('hasta', -1)">-</button>
-                            <input type="number" id="ocr-rango-input-hasta" class="ocr-rango-input" min="1" value="1" onchange="actualizarPreviewRangoOCR('hasta')">
-                            <button type="button" class="ocr-rango-btn-step" onclick="cambiarPasoRangoOCR('hasta', 1)">+</button>
-                        </div>
-                        <div class="ocr-rango-img-box">
-                            <img id="ocr-rango-img-hasta" src="" alt="Cargando...">
-                            <span id="ocr-rango-tag-hasta" class="ocr-rango-img-tag" data-i18n="ocr-rango-pag1">Pág. 1</span>
-                        </div>
-                    </div>
+                <div class="ocr-rango-img-box">
+                    <img id="ocr-rango-img-desde" src="" alt="Cargando...">
+                    <span id="ocr-rango-tag-desde" class="ocr-rango-img-tag" data-i18n="ocr-rango-pag1">Pág. 1</span>
                 </div>
+            </div>
 
-                <div id="ocr-rango-resumen" style="font-size: 12.5px; color: #38bdf8; text-align: center; margin-bottom: 18px; font-weight: 600;" data-i18n="ocr-rango-resumen-default">
-                    Total a procesar: 1 página
+            <!-- Tarjeta Hasta -->
+            <div class="ocr-rango-card">
+                <span class="ocr-rango-header-label">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon" aria-hidden="true">
+                        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
+                        <line x1="4" y1="22" x2="4" y2="15"></line>
+                    </svg>
+                    <span data-i18n="ocr-rango-hasta">Hasta Página</span>
+                </span>
+                <div class="ocr-rango-input-group">
+                    <button type="button" class="ocr-rango-btn-step" onclick="cambiarPasoRangoOCR('hasta', -1)">-</button>
+                    <input type="number" id="ocr-rango-input-hasta" class="ocr-rango-input" min="1" value="1" onchange="actualizarPreviewRangoOCR('hasta')">
+                    <button type="button" class="ocr-rango-btn-step" onclick="cambiarPasoRangoOCR('hasta', 1)">+</button>
                 </div>
-
-                <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
-                    <button type="button" onclick="volverADecisionOCR()"
-                        style="background: #334155; color: #cbd5e1; border: none; padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s ease;"
-                        onmouseover="this.style.background='#475569'" onmouseout="this.style.background='#334155'" data-i18n="btn-volver">
-                        Volver
-                    </button>
-                    <button type="button" onclick="iniciarRangoOCRConfirmado()"
-                        style="background: linear-gradient(90deg, #0284c7, #0369a1); color: white; border: none; padding: 10px 22px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);"
-                        onmouseover="this.style.background='#0284c7'" onmouseout="this.style.background='linear-gradient(90deg, #0284c7, #0369a1)'" data-i18n="ocr-rango-iniciar">
-                        Iniciar OCR en este Rango
-                    </button>
+                <div class="ocr-rango-img-box">
+                    <img id="ocr-rango-img-hasta" src="" alt="Cargando...">
+                    <span id="ocr-rango-tag-hasta" class="ocr-rango-img-tag" data-i18n="ocr-rango-pag1">Pág. 1</span>
                 </div>
             </div>
         </div>
+
+        <div id="ocr-rango-resumen" class="ocr-rango-resumen" data-i18n="ocr-rango-resumen-default">
+            Total a procesar: 1 página
+        </div>
+
+        <div class="ocr-rango-footer">
+            <button type="button" class="ocr-btn-secondary" onclick="volverADecisionOCR()" data-i18n="btn-volver">
+                Volver
+            </button>
+            <button type="button" id="btn-ocr-rango-confirmar" class="ocr-btn-primary" onclick="iniciarRangoOCRConfirmado()" data-i18n="ocr-rango-iniciar">
+                Iniciar OCR en este Rango
+            </button>
+        </div>
+    </div>
+</div>

@@ -20,8 +20,15 @@ async function ejecutarBusquedaPDF() {
     if (query.length < 3) return;
 
     const contenedor = document.getElementById('resultados-busqueda');
-    const txtBuscando = (typeof window.t === 'function') ? window.t('msg-buscando-doc', '🔍 Buscando en el documento...') : '🔍 Buscando en el documento...';
-    contenedor.innerHTML = `<div style='font-size:11px; color:#7f8c8d; text-align:center; padding:10px;'>${txtBuscando}</div>`;
+    const esc = (typeof window.escapeHtml === 'function')
+        ? window.escapeHtml
+        : (s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'));
+    const rawBuscando = (typeof window.t === 'function') ? window.t('msg-buscando-doc', 'Buscando en el documento...') : 'Buscando en el documento...';
+    const txtBuscando = (typeof window.limpiarTextoEmoji === 'function') ? window.limpiarTextoEmoji(rawBuscando).texto : rawBuscando;
+    const svgBuscando = (typeof window.obtenerIconoDialogoSVG === 'function')
+        ? window.obtenerIconoDialogoSVG('buscar', 'buscador-estado-icon')
+        : '<svg class="lira-svg-icon buscador-estado-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+    contenedor.innerHTML = `<div class="buscador-estado-msg">${svgBuscando}<span>${esc(txtBuscando)}</span></div>`;
 
     try {
         const resultados = await eel.buscar_texto_avanzado(query)();
@@ -35,7 +42,7 @@ async function ejecutarBusquedaPDF() {
             if (cnt) cnt.textContent = '0/0';
             if (typeof dibujar === 'function') dibujar();
             const txtSinCoincidencias = (typeof window.t === 'function') ? window.t('msg-sin-coincidencias', 'Sin coincidencias.') : 'Sin coincidencias.';
-            contenedor.innerHTML = `<div style='font-size:11px; color:#c0392b; text-align:center; padding:10px;'>${txtSinCoincidencias}</div>`;
+            contenedor.innerHTML = `<div class="buscador-estado-msg buscador-estado-vacio">${esc(txtSinCoincidencias)}</div>`;
             return;
         }
 
@@ -58,16 +65,7 @@ async function ejecutarBusquedaPDF() {
 
         resultados.forEach((res, idxRes) => {
             const div = document.createElement('div');
-            div.style = "padding:10px; border-bottom:1px solid #eee; cursor:pointer; transition:background 0.2s; border-left: 3px solid transparent;";
-
-            div.onmouseover = () => {
-                div.style.background = "#f1f2f6";
-                div.style.borderLeftColor = "#2980b9";
-            };
-            div.onmouseout = () => {
-                div.style.background = "white";
-                div.style.borderLeftColor = "transparent";
-            };
+            div.className = 'buscador-resultado-item';
 
             div.onclick = () => {
                 window._busquedaIdxActual = idxRes;
@@ -86,15 +84,15 @@ async function ejecutarBusquedaPDF() {
 
             const lblPagina = (typeof window.t === 'function') ? window.t('lbl-pagina-num', 'Página {num}', { num: res.pagina }) : `Página ${res.pagina}`;
             div.innerHTML = `
-                <div style="font-weight:bold; color:#2980b9; font-size:11px; margin-bottom:3px;">${lblPagina}</div>
-                <div style="font-size:10px; color:#2d3436; line-height:1.3; font-style:italic;">"${res.frase}"</div>
+                <div class="buscador-resultado-pag">${esc(lblPagina)}</div>
+                <div class="buscador-resultado-frase">"${esc(res.frase)}"</div>
             `;
             contenedor.appendChild(div);
         });
     } catch (error) {
         console.error("Error en búsqueda:", error);
         const txtErrBusqueda = (typeof window.t === 'function') ? window.t('msg-error-busqueda', 'Error en el motor de búsqueda.') : 'Error en el motor de búsqueda.';
-        contenedor.innerHTML = `<div style='color:red; font-size:10px;'>${txtErrBusqueda}</div>`;
+        contenedor.innerHTML = `<div class="buscador-estado-msg buscador-estado-error">${esc(txtErrBusqueda)}</div>`;
     }
 }
 
@@ -218,10 +216,21 @@ function aplicarResaltadoBuscador(ctx, factorZoom) {
 // --- MOTOR DE BÚSQUEDA (Ctrl + F) ---
 
 document.addEventListener('keydown', function (e) {
+    const dlgOverlay = document.getElementById('lira-dialog-overlay');
+    if (dlgOverlay && dlgOverlay.classList.contains('activo')) return;
+
     if (e.ctrlKey && e.key === 'f') {
         e.preventDefault(); // Evita que el navegador use su propio buscador
         const panel = document.getElementById('panel-busqueda');
-        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-        if (panel.style.display === 'block') document.getElementById('input-busqueda-pdf').focus();
+        if (!panel) return;
+        const abrir = (panel.style.display === 'none' || getComputedStyle(panel).display === 'none');
+        panel.style.display = abrir ? 'block' : 'none';
+        if (abrir) document.getElementById('input-busqueda-pdf')?.focus();
+    } else if (e.key === 'Escape') {
+        const panel = document.getElementById('panel-busqueda');
+        if (panel && panel.style.display !== 'none' && getComputedStyle(panel).display !== 'none') {
+            e.preventDefault();
+            cerrarBuscadorPDF();
+        }
     }
 });

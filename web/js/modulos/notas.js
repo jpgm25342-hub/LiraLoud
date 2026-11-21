@@ -88,7 +88,7 @@ async function guardarNotaRapida() {
     const contenido = editor.innerHTML.trim();
     
     if (!contenido && !titulo) {
-        await liraAlert("Escribe contenido o un título para tu nota.", "📝");
+        await liraAlert("Escribe contenido o un título para tu nota.", "archivo");
         return;
     }
     
@@ -116,7 +116,7 @@ async function guardarNotaRapida() {
             // Refrescar lista si el gestor general se abre después
             cargarNotasDesdeBackend();
         } else {
-            await liraAlert("Error al guardar nota: " + (res?.error || "Error desconocido"), "⚠️");
+            await liraAlert("Error al guardar nota: " + (res?.error || "Error desconocido"), "advertencia");
             if (btnSave) btnSave.innerText = "Guardar";
         }
     } catch(e) {
@@ -137,7 +137,7 @@ async function enviarNotaRapidaAIA() {
     const textoNota = (editor?.innerText || editor?.textContent || '').trim();
     
     if (!textoNota) {
-        await liraAlert("La nota actual está vacía. Escribe contenido antes de enviarla a la IA.", "ℹ️");
+        await liraAlert("La nota actual está vacía. Escribe contenido antes de enviarla a la IA.", "info");
         return;
     }
     
@@ -455,7 +455,7 @@ async function guardarNotaActual() {
             }
             await cargarNotasDesdeBackend();
         } else {
-            await liraAlert("Error al guardar nota: " + (res?.error || "Error desconocido"), "⚠️");
+            await liraAlert("Error al guardar nota: " + (res?.error || "Error desconocido"), "advertencia");
             if (btnSave) btnSave.innerText = "Guardar Nota";
         }
     } catch(e) {
@@ -470,7 +470,7 @@ async function eliminarNotaActual() {
         return;
     }
     
-    if (!await liraConfirm(`¿Deseas eliminar permanentemente la nota "${window.notaSeleccionadaActual.titulo}"?`, '🗑️')) {
+    if (!await liraConfirm(`¿Deseas eliminar permanentemente la nota "${window.notaSeleccionadaActual.titulo}"?`, 'borrar')) {
         return;
     }
     
@@ -480,7 +480,7 @@ async function eliminarNotaActual() {
             window.notaSeleccionadaActual = null;
             await cargarNotasDesdeBackend();
         } else {
-            await liraAlert("Error al eliminar nota: " + (res?.error || "No se pudo eliminar"), "⚠️");
+            await liraAlert("Error al eliminar nota: " + (res?.error || "No se pudo eliminar"), "advertencia");
         }
     } catch(e) {
         console.error('[Notas] Error al eliminar nota:', e);
@@ -626,7 +626,7 @@ async function ejecutarAccionIANota(accion, editorId, tituloInputId) {
     const textoNota = (editor?.innerText || editor?.textContent || '').trim();
 
     if (!textoNota) {
-        await liraAlert("La nota está vacía. Escribe o dicta contenido para que la IA pueda trabajar sobre ella.", "ℹ️");
+        await liraAlert("La nota está vacía. Escribe o dicta contenido para que la IA pueda trabajar sobre ella.", "info");
         return;
     }
 
@@ -638,7 +638,7 @@ async function ejecutarAccionIANota(accion, editorId, tituloInputId) {
     } else if (accion === 'expandir') {
         instruccion = "Explica a fondo y complementa los conceptos clave de este apunte con definiciones claras y ejemplos didácticos para facilitar el estudio.";
     } else if (accion === 'custom') {
-        const peticion = await liraPrompt("¿Qué deseas que la IA haga sobre esta nota?", "Resume los puntos principales", "✍️");
+        const peticion = await liraPrompt("¿Qué deseas que la IA haga sobre esta nota?", "Resume los puntos principales", "editar");
         if (!peticion || !peticion.trim()) return;
         instruccion = peticion.trim();
     }
@@ -658,7 +658,7 @@ async function ejecutarAccionIANota(accion, editorId, tituloInputId) {
                 textoGenerado = res.resultado;
             } else if (res && res.error) {
                 console.warn("[Notas IA] Error al procesar con IA:", res.error);
-                await liraAlert("Error de IA: " + res.error, "⚠️");
+                await liraAlert("Error de IA: " + res.error, "advertencia");
             }
         }
 
@@ -689,7 +689,7 @@ async function ejecutarAccionIANota(accion, editorId, tituloInputId) {
                 }
             }, 1200);
         } else {
-            await liraAlert("No se pudo procesar la nota con la IA. Asegúrate de tener Ollama activo o una API Key configurada en Ajustes > Inteligencia Artificial.", "🤖");
+            await liraAlert("No se pudo procesar la nota con la IA. Asegúrate de tener Ollama activo o una API Key configurada en Ajustes > Inteligencia Artificial.", "ia");
             if (btnIA) {
                 btnIA.innerHTML = textoBotonOriginal;
                 btnIA.disabled = false;
@@ -697,7 +697,7 @@ async function ejecutarAccionIANota(accion, editorId, tituloInputId) {
         }
     } catch(e) {
         console.error('[Notas IA] Error al procesar nota con IA:', e);
-        await liraAlert("Error al procesar con IA: " + e.message, "❌");
+        await liraAlert("Error al procesar con IA: " + e.message, "error");
         if (btnIA) {
             btnIA.innerHTML = textoBotonOriginal;
             btnIA.disabled = false;
@@ -743,7 +743,7 @@ let btnDictadoActualId = null;
 async function toggleDictadoVoz(editorId = 'nota-editor-content', btnId = 'btn-dictar-nota-general') {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-        await liraAlert("Tu navegador o sistema no tiene habilitado el reconocimiento de voz Web Speech.", "🎤");
+        await liraAlert("Tu navegador o sistema no tiene habilitado el reconocimiento de voz Web Speech.", "mic");
         return;
     }
 
@@ -802,7 +802,7 @@ function iniciarDictadoVoz(editorId, btnId) {
         recognitionInstancia.onerror = async (event) => {
             console.warn('[Dictado] Error de reconocimiento:', event.error);
             if (event.error === 'not-allowed') {
-                await liraAlert("Permiso de micrófono denegado. Permite el acceso al micrófono para usar el dictado.", "🎙️");
+                await liraAlert("Permiso de micrófono denegado. Permite el acceso al micrófono para usar el dictado.", "mic");
             }
             detenerDictadoVoz();
         };

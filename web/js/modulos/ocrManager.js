@@ -7,13 +7,13 @@ let indiceMensajeOCR = 0;
 
 function obtenerMensajesRotativosOCR() {
     return [
-        "🔍 Analizando imagen de la página...",
-        "🧠 Reconociendo caracteres con RapidOCR...",
-        "🧩 Descifrando maquetación y tipografía...",
-        "⚡ Detectando orientación y párrafos...",
-        "✨ ¡Ya casi está listo!...",
-        "🔬 Alineando cajas de texto y palabras...",
-        "📖 Preparando el documento para lectura fluida..."
+        "Analizando imagen de la página...",
+        "Reconociendo caracteres con RapidOCR...",
+        "Descifrando maquetación y tipografía...",
+        "Detectando orientación y párrafos...",
+        "¡Ya casi está listo!...",
+        "Alineando cajas de texto y palabras...",
+        "Preparando el documento para lectura fluida..."
     ];
 }
 
@@ -248,7 +248,7 @@ async function actualizarPreviewRangoOCR(tipo) {
                 }
             }
         } catch (e) {
-            console.warn(`⚠️ Error cargando miniatura rango ${tipo}:`, e);
+            console.warn(`[OCR] Error cargando miniatura rango ${tipo}:`, e);
         } finally {
             img.style.opacity = '1';
         }
@@ -314,7 +314,12 @@ async function iniciarBatchOCR(inicio = 0, fin = null) {
     const estado = document.getElementById('ocr-progreso-texto-estado');
     if (estado) estado.innerText = `Iniciando RapidOCR...`;
     const tiempoEl = document.getElementById('ocr-progreso-tiempo-estimado');
-    if (tiempoEl) tiempoEl.innerText = '⏱️ Calculando tiempo estimado...';
+    if (tiempoEl) {
+        const iconoReloj = (typeof obtenerIconoDialogoSVG === 'function')
+            ? obtenerIconoDialogoSVG('reloj', 'ocr-eta-svg')
+            : '';
+        tiempoEl.innerHTML = `${iconoReloj}<span id="ocr-progreso-tiempo-texto">Calculando tiempo estimado...</span>`;
+    }
 
     try {
         await eel.ejecutar_batch_ocr(inicio, finVal)();
@@ -363,7 +368,13 @@ if (typeof eel !== 'undefined') {
         if (pct) pct.innerText = `${porcentaje}%`;
         if (estado) estado.innerText = `Reconociendo página ${actual} de ${total}...`;
         if (tiempoEl && tiempoEstimado) {
-            tiempoEl.innerText = `⏱️ Tiempo estimado: ${tiempoEstimado}`;
+            const iconoReloj = (typeof obtenerIconoDialogoSVG === 'function')
+                ? obtenerIconoDialogoSVG('reloj', 'ocr-eta-svg')
+                : '';
+            const esc = (typeof window.escapeHtml === 'function')
+                ? window.escapeHtml
+                : (s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'));
+            tiempoEl.innerHTML = `${iconoReloj}<span id="ocr-progreso-tiempo-texto">Tiempo estimado: ${esc(tiempoEstimado)}</span>`;
         }
     }
 
@@ -371,7 +382,11 @@ if (typeof eel !== 'undefined') {
     function finalizar_batch_ocr(completado) {
         cerrarModalOCRProgreso();
         if (typeof mostrarToastLira === 'function') {
-            mostrarToastLira(completado ? "✅ Reconocimiento OCR de todo el documento completado" : "⏹️ Procesamiento OCR pausado.");
+            if (completado) {
+                mostrarToastLira("Reconocimiento OCR de todo el documento completado", 'exito');
+            } else {
+                mostrarToastLira("Procesamiento OCR pausado.", 'detener');
+            }
         }
         cargarPagina(paginaActual);
     }
@@ -379,7 +394,7 @@ if (typeof eel !== 'undefined') {
     eel.expose(abrir_desde_extension);
     function abrir_desde_extension(ruta) {
         if (!ruta) return false;
-        console.log("📥 [EXTENSIÓN] Solicitud recibida para cargar:", ruta);
+        console.log("[EXTENSIÓN] Solicitud recibida para cargar:", ruta);
         setTimeout(async () => {
             try {
                 if (typeof detenerLectura === 'function') detenerLectura();
@@ -390,10 +405,10 @@ if (typeof eel !== 'undefined') {
                 if (typeof cerrarLanzador === 'function') cerrarLanzador();
                 await abrirDocumentoDesdeRuta(ruta, true);
                 if (typeof mostrarToastLira === 'function') {
-                    mostrarToastLira("📖 Documento cargado desde el navegador");
+                    mostrarToastLira("Documento cargado desde el navegador", 'archivo');
                 }
             } catch (e) {
-                console.error("❌ Error al abrir documento desde extensión:", e);
+                console.error("Error al abrir documento desde extensión:", e);
             }
         }, 20);
         return true;
@@ -441,7 +456,7 @@ function ejecutarOpcionOCRMenu(tipo) {
     } else if (tipo === 'rango') {
         if (!rutaPDFActual) {
             if (typeof mostrarToastLira === 'function') {
-                mostrarToastLira("⚠️ No hay ningún documento abierto");
+                mostrarToastLira("No hay ningún documento abierto", 'advertencia');
             }
             return;
         }
@@ -449,7 +464,7 @@ function ejecutarOpcionOCRMenu(tipo) {
     } else if (tipo === 'todo') {
         if (!rutaPDFActual) {
             if (typeof mostrarToastLira === 'function') {
-                mostrarToastLira("⚠️ No hay ningún documento abierto");
+                mostrarToastLira("No hay ningún documento abierto", 'advertencia');
             }
             return;
         }
@@ -460,7 +475,7 @@ function ejecutarOpcionOCRMenu(tipo) {
 async function forzarOCRPaginaActual() {
     if (!rutaPDFActual) {
         if (typeof mostrarToastLira === 'function') {
-            mostrarToastLira("⚠️ No hay ningún documento abierto");
+            mostrarToastLira("No hay ningún documento abierto", 'advertencia');
         }
         return;
     }
@@ -471,10 +486,10 @@ async function forzarOCRPaginaActual() {
         btnOcr.style.opacity = '0.5';
     }
 
-    mostrarHUDScannerOCR("🔍 Forzando re-análisis con RapidOCR...", paginaActual);
+    mostrarHUDScannerOCR("Forzando re-análisis con RapidOCR...", paginaActual);
 
     if (typeof mostrarToastLira === 'function') {
-        mostrarToastLira("🔍 Ejecutando RapidOCR en página actual...");
+        mostrarToastLira("Ejecutando RapidOCR en página actual...", 'buscar');
     }
 
     try {
@@ -493,17 +508,17 @@ async function forzarOCRPaginaActual() {
             }
             if (typeof mostrarToastLira === 'function') {
                 const totalPalabras = res.data.palabras?.length || 0;
-                mostrarToastLira(`✅ OCR completado: ${totalPalabras} palabras reconocidas`);
+                mostrarToastLira(`OCR completado: ${totalPalabras} palabras reconocidas`, 'exito');
             }
         } else {
             if (typeof mostrarToastLira === 'function') {
-                mostrarToastLira("❌ " + (res?.error || "No se pudo procesar OCR"));
+                mostrarToastLira(res?.error || "No se pudo procesar OCR", 'error');
             }
         }
     } catch (e) {
         console.error("Error forzando OCR:", e);
         if (typeof mostrarToastLira === 'function') {
-            mostrarToastLira("❌ Error en OCR: " + e.message);
+            mostrarToastLira("Error en OCR: " + e.message, 'error');
         }
     } finally {
         ocultarHUDScannerOCR();
@@ -513,3 +528,40 @@ async function forzarOCRPaginaActual() {
         }
     }
 }
+
+document.addEventListener('keydown', function (e) {
+    const dlgOverlay = document.getElementById('lira-dialog-overlay');
+    if (dlgOverlay && dlgOverlay.classList.contains('activo')) return;
+
+    const modalRango = document.getElementById('modal-ocr-rango');
+    if (modalRango && modalRango.style.display === 'flex') {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            cerrarModalRangoOCR();
+            return;
+        }
+        if (e.key === 'Enter') {
+            const tag = document.activeElement?.tagName;
+            if (tag !== 'BUTTON') {
+                e.preventDefault();
+                const btnConfirm = document.getElementById('btn-ocr-rango-confirmar');
+                if (btnConfirm) btnConfirm.click();
+                else iniciarRangoOCRConfirmado();
+                return;
+            }
+        }
+    }
+
+    const modalDecision = document.getElementById('modal-ocr-decision');
+    if (modalDecision && modalDecision.style.display === 'flex' && e.key === 'Escape') {
+        e.preventDefault();
+        cerrarModalOCRDecision();
+        return;
+    }
+
+    const modalProgreso = document.getElementById('modal-ocr-progreso');
+    if (modalProgreso && modalProgreso.style.display === 'flex' && e.key === 'Escape') {
+        e.preventDefault();
+        cancelarBatchOCRYLeer();
+    }
+});

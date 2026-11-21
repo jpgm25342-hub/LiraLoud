@@ -55,8 +55,8 @@ async function abrirDocumentoDesdeRuta(ruta, esTemporal = false, esCaptura = fal
     if (typeof eel.cargar_documento === 'function') {
         const cargadoOk = await eel.cargar_documento(ruta)();
         if (!cargadoOk) {
-            console.error("❌ Error cargando documento en Python:", ruta);
-            if (typeof liraAlert === 'function') liraAlert("No se pudo cargar el documento.");
+            console.error("[PDF] Error cargando documento en Python:", ruta);
+            if (typeof liraAlert === 'function') liraAlert("No se pudo cargar el documento.", 'error');
             return;
         }
     }
@@ -148,7 +148,7 @@ async function abrirDocumentoDesdeRuta(ruta, esTemporal = false, esCaptura = fal
                 }
             }
         } catch (e) {
-            console.warn("⚠️ Error comprobando si es documento escaneado:", e);
+            console.warn("[PDF] Error comprobando si es documento escaneado:", e);
         }
     }
 
@@ -295,7 +295,7 @@ async function cargarPagina(num) {
                     }
                 }
             }).catch(errLayout => {
-                console.warn("⚠️ No se pudo auto-detectar layout en navegación:", errLayout);
+                console.warn("[PDF] No se pudo auto-detectar layout en navegación:", errLayout);
             });
         }
 
@@ -458,7 +458,7 @@ async function cargarPagina(num) {
                     imgRapida.src = vistaRapida.imagen;
                 }
             } catch (e) {
-                console.warn("⚠️ No se pudo cargar vista previa rápida:", e);
+                console.warn("[PDF] No se pudo cargar vista previa rápida:", e);
             }
         }
 
@@ -567,7 +567,7 @@ async function cargarPagina(num) {
                     };
                 }
 
-                console.log("🧬 Rendimiento: Estable en página. Iniciando ráfaga con voz:", vozAPre, "Trad:", tradConfig);
+                console.log("[PDF] Rendimiento: Estable en página. Iniciando ráfaga con voz:", vozAPre, "Trad:", tradConfig);
                 if (typeof eel !== 'undefined' && typeof eel.pre_renderizar_bloque_paginas === 'function') {
                     eel.pre_renderizar_bloque_paginas(paginasAProcesar, vozAPre, velocidadLectura, dictActivo, tradConfig)();
                 }
@@ -584,7 +584,7 @@ async function cargarPagina(num) {
             eel.pretraducir_bloque_paginas(num, origen, destino, motor, true)();
         }
     } catch (err) {
-        console.error("❌ Error en cargarPagina:", err);
+        console.error("[PDF] Error en cargarPagina:", err);
     } finally {
         if (miToken === tokenCargaActual) {
             ocultarHUDScannerOCR();
@@ -603,7 +603,7 @@ async function cargarPagina(num) {
 
 function irAPaginaDirecta() {
     if (bloqueoCambioPagina) {
-        console.warn("⏳ La página actual se está procesando. Por favor espera...");
+        console.warn("[PDF] La página actual se está procesando. Por favor espera...");
         return;
     }
     let valor = parseInt(document.getElementById('input-pagina-actual').value);
@@ -615,9 +615,9 @@ function irAPaginaDirecta() {
 }
 
 function cambiarPagina(delta) {
-    // 🛡️ ESCUDO FÍSICO UNIVERSAL: Evita carreras y cascadas de peticiones
+    // Escudo físico universal: evita carreras y cascadas de peticiones
     if (bloqueoCambioPagina) {
-        console.warn("⏳ La página actual se está procesando. Por favor espera...");
+        console.warn("[PDF] La página actual se está procesando. Por favor espera...");
         return;
     }
 
@@ -710,7 +710,7 @@ function restablecerLimitesHorizontales() {
     guardarEstadoPaginaActual();
     cargarPagina(paginaActual);
     if (typeof mostrarToastLira === 'function') {
-        mostrarToastLira("↕️ Límites horizontales restablecidos");
+        mostrarToastLira("Límites horizontales restablecidos", 'reiniciar');
     }
 }
 window.restablecerLimitesHorizontales = restablecerLimitesHorizontales;
@@ -725,7 +725,7 @@ function limpiarZonasExcluidas() {
     guardarEstadoPaginaActual();
     cargarPagina(paginaActual);
     if (typeof mostrarToastLira === 'function') {
-        mostrarToastLira("Zonas de exclusión eliminadas");
+        mostrarToastLira("Zonas de exclusión eliminadas", 'borrar');
     }
 }
 window.limpiarZonasExcluidas = limpiarZonasExcluidas;

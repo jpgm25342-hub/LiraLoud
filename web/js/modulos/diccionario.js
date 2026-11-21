@@ -100,7 +100,7 @@ async function abrirRenombrarSeccionActual() {
     ocultarMenuContextualTab();
     if (!seccionSeleccionadaParaMenu) return;
     const nombreViejo = seccionSeleccionadaParaMenu;
-    const nuevoNombre = await liraPrompt(`Cambiar nombre del bloque "${nombreViejo}":`, nombreViejo, '🏷️');
+    const nuevoNombre = await liraPrompt(`Cambiar nombre del bloque "${nombreViejo}":`, nombreViejo, 'etiqueta');
     if (nuevoNombre && nuevoNombre.trim() && nuevoNombre.trim() !== nombreViejo) {
         renombrarSeccion(nombreViejo, nuevoNombre.trim());
     }
@@ -120,7 +120,7 @@ async function renombrarSeccion(nombreViejo, nombreNuevo) {
     nombreNuevo = nombreNuevo.trim();
 
     if (dbDiccionario[nombreNuevo]) {
-        await liraAlert(`Ya existe un bloque con el nombre "${nombreNuevo}".`, '⚠️');
+        await liraAlert(`Ya existe un bloque con el nombre "${nombreNuevo}".`, 'advertencia');
         return;
     }
 
@@ -218,7 +218,7 @@ function renderizarSidebar() {
             if (e.target.closest('.tab-acciones')) return;
             e.preventDefault();
             e.stopPropagation();
-            const nuevoNombre = await liraPrompt(`Cambiar nombre del bloque "${nombreSec}":`, nombreSec, '🏷️');
+            const nuevoNombre = await liraPrompt(`Cambiar nombre del bloque "${nombreSec}":`, nombreSec, 'etiqueta');
             if (nuevoNombre && nuevoNombre.trim() && nuevoNombre.trim() !== nombreSec) {
                 renombrarSeccion(nombreSec, nuevoNombre.trim());
             }
@@ -380,7 +380,7 @@ window.toggleTerminoIndividual = async (sigla, estado) => {
 };
 
 async function agregarTermino() {
-    if (!seccionActual) { await liraAlert("Selecciona una sección primero", '⚠️'); return; }
+    if (!seccionActual) { await liraAlert("Selecciona una sección primero", 'advertencia'); return; }
 
     let inSigla = document.getElementById('input-sigla');
     let inSig = document.getElementById('input-significado');
@@ -398,7 +398,7 @@ async function agregarTermino() {
         }
 
         if (seccionExistente) {
-            if (!await liraConfirm(`Esta abreviatura se encuentra ya registrada en [${seccionExistente}], ¿quiere ingresarlo en este apartado?`, '⚠️')) {
+            if (!await liraConfirm(`Esta abreviatura se encuentra ya registrada en [${seccionExistente}], ¿quiere ingresarlo en este apartado?`, 'advertencia')) {
                 return;
             }
         }
@@ -418,8 +418,8 @@ async function agregarTermino() {
 }
 
 async function eliminarSeccion(nombre) {
-    if (Object.keys(dbDiccionario).length <= 1) { await liraAlert("Debes tener al menos un bloque.", '⚠️'); return; }
-    if (await liraConfirm(`¿Eliminar el bloque "${nombre}" y todos sus términos?`, '🗑️')) {
+    if (Object.keys(dbDiccionario).length <= 1) { await liraAlert("Debes tener al menos un bloque.", 'advertencia'); return; }
+    if (await liraConfirm(`¿Eliminar el bloque "${nombre}" y todos sus términos?`, 'borrar')) {
         delete dbDiccionario[nombre];
         seccionActual = Object.keys(dbDiccionario)[0];
         await guardarDiccionarioSinEsteLibro();
@@ -440,6 +440,6 @@ async function moverTerminoABloque(sigla, destino) {
     renderizarTerminos();
     await actualizarFiltrosSnapshot();
 }
-async function borrarTermino(sigla) { if (await liraConfirm("¿Eliminar este término?", '🗑️')) { delete dbDiccionario[seccionActual].terms[sigla]; await guardarDiccionarioSinEsteLibro(); renderizarTerminos(); } }
+async function borrarTermino(sigla) { if (await liraConfirm("¿Eliminar este término?", 'borrar')) { delete dbDiccionario[seccionActual].terms[sigla]; await guardarDiccionarioSinEsteLibro(); renderizarTerminos(); } }
 function filtrarTerminosUI() { renderizarTerminos(); }
 function abrirDiccionarioConPalabra(palabra) { abrirDiccionario(); document.getElementById('input-sigla').value = palabra; document.getElementById('input-significado').focus(); }

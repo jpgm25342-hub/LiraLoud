@@ -116,7 +116,7 @@ function seleccionarComboMp3(tipo) {
 }
 
 function abrirModalDescarga() {
-    // 🛡️ Lógica de exclusión mutua universal
+    // Lógica de exclusión mutua universal
     if (typeof cerrarOtrasFuncionesPrincipales === 'function') {
         cerrarOtrasFuncionesPrincipales('mp3');
     }
@@ -131,12 +131,12 @@ function abrirModalDescarga() {
             aviso.style.display = (cortesV && cortesV.length > 0) ? 'block' : 'none';
         }
     } else {
-        console.error("🔥 Error: No se encontró el elemento 'modal-descarga' en el HTML.");
+        console.error("Error: No se encontró el elemento 'modal-descarga' en el HTML.");
     }
 }
 
 async function cerrarModalDescarga() {
-    console.log("⏹️ [EXPORTACIÓN] Cerrando modal y cancelando exportación si está activa...");
+    console.log("[EXPORTACIÓN] Cerrando modal y cancelando exportación si está activa...");
 
     // 1. Ocultamos el modal inmediatamente
     const modal = document.getElementById('modal-descarga');
@@ -181,7 +181,7 @@ async function iniciarDescargaFinal() {
 
         if (!ini || !fin || !voz) {
             const msgConfig = (typeof window.t === 'function') ? window.t('msg-mp3-config-pags', 'Por favor configure las páginas y la voz antes de exportar.') : "Por favor configure las páginas y la voz antes de exportar.";
-            await liraAlert(msgConfig, '⚠️');
+            await liraAlert(msgConfig, 'advertencia');
             return;
         }
 
@@ -203,7 +203,7 @@ async function iniciarDescargaFinal() {
 
         const txtEstado = document.getElementById('txt-estado-descarga');
         if (txtEstado) {
-            txtEstado.innerText = (typeof window.t === 'function') ? window.t('msg-mp3-generando', '⏳ Generando audio de estudio...') : "⏳ Generando audio de estudio...";
+            txtEstado.innerText = (typeof window.t === 'function') ? window.t('msg-mp3-generando', 'Generando audio de estudio...') : "Generando audio de estudio...";
             txtEstado.style.color = "#d35400";
         }
         const barra = document.getElementById('barra-contenedor');
@@ -215,20 +215,20 @@ async function iniciarDescargaFinal() {
         )(function (res) {
             if (txtEstado) {
                 txtEstado.innerText = res;
-                txtEstado.style.color = (typeof res === 'string' && res.includes("❌")) ? "#e74c3c" : "#27ae60";
+                txtEstado.style.color = (typeof res === 'string' && res.includes("\u274C")) ? "#e74c3c" : "#27ae60";
             }
 
             setTimeout(() => {
                 if (typeof res === 'string' && res.trim()) {
-                    liraAlert(res, res.includes('❌') ? '❌' : '✅');
+                    liraAlert(res, res.includes('\u274C') ? 'error' : 'exito');
                 }
                 cerrarModalDescarga();
             }, 600);
         });
 
     } catch (e) {
-        console.error("🔥 Error crítico en exportación:", e);
-        await liraAlert("Error al iniciar exportación: " + e, '🔥');
+        console.error("Error crítico en exportación:", e);
+        await liraAlert("Error al iniciar exportación: " + e, 'error');
         const btnCancelar = document.getElementById('btn-cancelar-exportacion');
         const btnGenerar = document.getElementById('btn-iniciar-descarga');
         if (btnCancelar) {
@@ -247,7 +247,7 @@ async function previsualizarPagina(tipo) {
     // Validación Bayesiana: Evitamos pedir páginas inexistentes [cite: 2025-12-26]
     if (num < 0 || num >= totalPaginas) return;
 
-    console.log(`📸 [MONITOR] Solicitando miniatura de página ${num + 1}...`);
+    console.log(`[MONITOR] Solicitando miniatura de página ${num + 1}...`);
 
     try {
         // Solicitamos a Python solo la materia prima (imagen) sin oraciones para ganar velocidad
@@ -263,6 +263,6 @@ async function previsualizarPagina(tipo) {
             if (txtPreview) txtPreview.style.display = 'none';
         }
     } catch (e) {
-        console.error("🔥 Error en el Monitor Visual:", e);
+        console.error("Error en el Monitor Visual:", e);
     }
 }

@@ -153,13 +153,13 @@ async function refrescarLienzoSinRecarga() {
                 }
             }
         } catch(e) {
-            console.warn("⚠️ No se pudo refrescar vista rápida:", e);
+            console.warn("[Subrayador] No se pudo refrescar vista rápida:", e);
         }
     }
 }
 
 function finalizarTrazoSubrayado() {
-    console.log("✏️ finalizarTrazoSubrayado llamado, palabras capturadas:", palabrasEnTrazo.length);
+    console.log("[Subrayador] finalizarTrazoSubrayado llamado, palabras capturadas:", palabrasEnTrazo.length);
     if (palabrasEnTrazo.length === 0) return;
     
     if (window.tutorialActivo && typeof window.onTrazoSubrayadoTutorial === 'function') {
@@ -187,10 +187,10 @@ function finalizarTrazoSubrayado() {
         let fullText = palabrasEnTrazo.map(p => p.texto).join(" ");
         let uniqueId = "rag_" + Date.now();
         
-        console.log(`🖌️ Enviando lote de ${coordList.length} palabras al backend...`, coordList);
+        console.log(`[Subrayador] Enviando lote de ${coordList.length} palabras al backend...`, coordList);
         eel.agregar_subrayados_lote(rutaPDFActual, paginaActual, coordList, window.colorSubrayadorActual, uniqueId, fullText)(function(res) {
             if (res.success) {
-                console.log("✅ Lote de subrayados guardado en PDF.");
+                console.log("[Subrayador] Lote de subrayados guardado en PDF.");
                 appendExtractedText(fullText, window.colorSubrayadorActual, uniqueId, paginaActual);
                 
                 // Limpiar trazos visuales
@@ -199,7 +199,7 @@ function finalizarTrazoSubrayado() {
                 // Refrescar el canvas de inmediato (<50ms) sin recargar toda la página ni bloquear
                 refrescarLienzoSinRecarga();
             } else {
-                console.error("❌ Error al subrayar:", res.error);
+                console.error("[Subrayador] Error al subrayar:", res.error);
                 document.querySelectorAll('.subrayado-visual').forEach(el => el.remove());
             }
         });
@@ -210,10 +210,10 @@ function finalizarTrazoSubrayado() {
 // Eliminar el trazado de borrado, ahora es puntual
 function borrarSubrayadoPuntual(x, y) {
     if (typeof paginaActual !== 'undefined' && rutaPDFActual) {
-        console.log(`🧹 Intentando borrar en punto (${x}, ${y})`);
+        console.log(`[Subrayador] Intentando borrar en punto (${x}, ${y})`);
         eel.eliminar_subrayado_punto(rutaPDFActual, paginaActual, x, y)(function(res) {
             if (res.success && res.id_borrado) {
-                console.log(`✅ Subrayado borrado (ID: ${res.id_borrado})`);
+                console.log(`[Subrayador] Subrayado borrado (ID: ${res.id_borrado})`);
                 const card = document.getElementById(res.id_borrado);
                 if (card) {
                     card.remove();
@@ -228,7 +228,7 @@ function borrarSubrayadoPuntual(x, y) {
 }
 
 function dibujarSubrayadoVisual(x0, y0, x1, y1, color) {
-    console.log(`🎨 dibujarSubrayadoVisual llamado con coord: ${x0},${y0} -> ${x1},${y1} color: ${color}`);
+    console.log(`[Subrayador] dibujarSubrayadoVisual llamado con coord: ${x0},${y0} -> ${x1},${y1} color: ${color}`);
 
     // Ajustar a la escala del canvas
     let z = (typeof datosPagina !== 'undefined' && datosPagina && datosPagina.factor_zoom) ? datosPagina.factor_zoom : 1.0;
@@ -241,7 +241,7 @@ function dibujarSubrayadoVisual(x0, y0, x1, y1, color) {
     const container = document.getElementById('visor-container');
     
     if (!canvas || !wrapper || !container) {
-        console.log("❌ Elementos no encontrados para subrayado");
+        console.log("[Subrayador] Elementos no encontrados para subrayado");
         return;
     }
     
@@ -278,9 +278,9 @@ function dibujarSubrayadoVisual(x0, y0, x1, y1, color) {
 
     if (container) {
         container.appendChild(overlay);
-        console.log("🎨 overlay añadido al DOM");
+        console.log("[Subrayador] overlay añadido al DOM");
     } else {
-        console.log("❌ NO SE ENCONTRÓ visor-container");
+        console.log("[Subrayador] NO SE ENCONTRÓ visor-container");
     }
 }
 
@@ -313,33 +313,23 @@ function appendExtractedText(text, colorHex, id, pageNum) {
     
     // Botón para expandir/contraer
     const expandBtn = document.createElement('button');
-    expandBtn.innerHTML = '▼';
-    expandBtn.style.background = 'none';
-    expandBtn.style.border = 'none';
-    expandBtn.style.cursor = 'pointer';
-    expandBtn.style.fontSize = '10px';
-    expandBtn.style.color = '#bdc3c7';
-    expandBtn.style.padding = '2px';
+    expandBtn.className = 'text-card-expand-btn';
+    expandBtn.innerHTML = '&#9660;';
     expandBtn.title = "Expandir/Contraer";
     expandBtn.onclick = (e) => {
         e.stopPropagation();
         if (textDiv.style.webkitLineClamp === '3') {
             textDiv.style.webkitLineClamp = 'unset';
-            expandBtn.innerHTML = '▲';
+            expandBtn.innerHTML = '&#9650;';
         } else {
             textDiv.style.webkitLineClamp = '3';
-            expandBtn.innerHTML = '▼';
+            expandBtn.innerHTML = '&#9660;';
         }
     };
     
     // Contenedor de metadata (Página + Botón copiar)
     const metaDiv = document.createElement('div');
-    metaDiv.style.display = 'flex';
-    metaDiv.style.justifyContent = 'space-between';
-    metaDiv.style.alignItems = 'center';
-    metaDiv.style.marginTop = '8px';
-    metaDiv.style.fontSize = '11px';
-    metaDiv.style.color = '#7f8c8d';
+    metaDiv.className = 'text-card-meta';
 
     const pageSpan = document.createElement('span');
     pageSpan.innerText = pageNum !== undefined ? `Página ${pageNum + 1}` : '';
@@ -349,17 +339,12 @@ function appendExtractedText(text, colorHex, id, pageNum) {
 
     // Contenedor interno para botón expandir y copiar
     const actionDiv = document.createElement('div');
-    actionDiv.style.display = 'flex';
-    actionDiv.style.gap = '8px';
+    actionDiv.className = 'text-card-actions';
     actionDiv.appendChild(expandBtn);
     
     const copyBtn = document.createElement('button');
+    copyBtn.className = 'text-card-copy-btn';
     copyBtn.innerText = 'Copiar';
-    copyBtn.style.border = '1px solid #ccc';
-    copyBtn.style.background = '#f9f9f9';
-    copyBtn.style.borderRadius = '4px';
-    copyBtn.style.padding = '2px 6px';
-    copyBtn.style.cursor = 'pointer';
     copyBtn.onclick = (e) => {
         e.stopPropagation(); // Evitar click en la tarjeta
         navigator.clipboard.writeText(text).then(() => {

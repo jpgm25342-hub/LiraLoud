@@ -159,3 +159,147 @@ body.ui-dark-mode #tienda-ollama-lista button:hover {
     background: #30363d !important;
     border-color: #484f58 !important;
 }
+
+/* --- UNIFICACIÓN DE TIENDA DE VOCES Y TIENDA OLLAMA (CLARO Y OSCURO) --- */
+.lira-inline-svg {
+    width: 14px;
+    height: 14px;
+    vertical-align: -2px;
+    flex-shrink: 0;
+    display: inline-block;
+}
+
+.tienda-dl-count,
+.tienda-hw-alerta,
+.ayuda-tienda-voces-titulo {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.tienda-hw-alerta .lira-inline-svg {
+    color: #d97706;
+}
+
+body.ui-dark-mode .tienda-hw-alerta .lira-inline-svg {
+    color: #f59e0b;
+}
+
+#modal-tienda-ollama .btn-cerrar-x,
+#modal-tienda-voces .btn-cerrar-x {
+    color: #334155;
+    background: rgba(0, 0, 0, 0.06);
+}
+
+body.ui-dark-mode #modal-tienda-ollama .btn-cerrar-x,
+body.ui-dark-mode #modal-tienda-voces .btn-cerrar-x {
+    color: #adbac7 !important;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+#modal-tienda-ollama .modal-content,
+#modal-tienda-voces .modal-content {
+    border-radius: 14px;
+    border-top: 4px solid #7d54c4;
+}
+
+body.ui-dark-mode #modal-tienda-ollama .modal-content,
+body.ui-dark-mode #modal-tienda-voces .modal-content {
+    border-top-color: #58a6ff !important;
+}
+
+.tienda-ollama-hw {
+    padding: 8px 10px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 12px;
+    margin-bottom: 10px;
+    color: #1e293b;
+}
+
+.tienda-input-buscar {
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #1e293b;
+    font-size: 13px;
+}
+
+.tienda-input-token {
+    flex: 1;
+    padding: 6px 9px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #1e293b;
+    font-size: 12px;
+}
+
+.tienda-input-buscar:focus,
+.tienda-input-token:focus {
+    outline: none;
+    border-color: #7d54c4;
+    box-shadow: 0 0 0 3px rgba(125, 84, 196, 0.18);
+}
+
+body.ui-dark-mode .tienda-input-buscar,
+body.ui-dark-mode .tienda-input-token {
+    background: #0d1117 !important;
+    border-color: #30363d !important;
+    color: #f0f6fc !important;
+}
+
+body.ui-dark-mode .tienda-input-buscar:focus,
+body.ui-dark-mode .tienda-input-token:focus {
+    border-color: #58a6ff !important;
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.22);
+}
+
+.aviso-token-hf-activo {
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    background: #dcfce7;
+    border: 1px solid #86efac;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #166534;
+    font-weight: 600;
+    align-items: center;
+    gap: 6px;
+}
+
+body.ui-dark-mode .aviso-token-hf-activo {
+    background: rgba(34, 197, 94, 0.14) !important;
+    border-color: rgba(74, 222, 128, 0.35) !important;
+    color: #86efac !important;
+}
+
+.ayuda-tienda-voces {
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #1e3a8a;
+    line-height: 1.5;
+    max-height: 190px;
+    overflow-y: auto;
+}
+
+.btn-tienda-pausar,
+.btn-tienda-cancelar {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+body.ui-dark-mode .btn-tienda-pausar,
+body.ui-dark-mode .btn-tienda-cancelar,
+body.ui-dark-mode .btn-tienda-descargar,
+body.ui-dark-mode .btn-tienda-eliminar {
+    border-color: #30363d !important;
+}

@@ -177,7 +177,7 @@ async function guardarTodosAjustes(forceRamReload = false) {
 
 // BLOQUE A: Estilo y Visualización
 async function restablecerEstiloBase() {
-    if (!await liraConfirm("¿Restablecer solo Colores, Márgenes y Resaltado?", '🎨')) return;
+    if (!await liraConfirm("¿Restablecer solo Colores, Márgenes y Resaltado?", 'estilo')) return;
     const ajustes = await eel.cargar_ajustes_lectura()();
     const nuevosAjustes = {
         ...ajustes,
@@ -190,7 +190,7 @@ async function restablecerEstiloBase() {
 
 // BLOQUE B: Motor de Audio
 async function restablecerAudioBase() {
-    if (!await liraConfirm("¿Restablecer solo Velocidad, Tono y Pausas?", '🔊')) return;
+    if (!await liraConfirm("¿Restablecer solo Velocidad, Tono y Pausas?", 'audio')) return;
     const ajustes = await eel.cargar_ajustes_lectura()();
     const nuevosAjustes = {
         ...ajustes,
@@ -202,7 +202,7 @@ async function restablecerAudioBase() {
 
 // BLOQUE C: Atajos de Teclado (Usa el archivo atajos.json)
 async function restablecerAtajosBase() {
-    if (!await liraConfirm("¿Restablecer todos los Atajos de Teclado a los de fábrica?", '⌨️')) return;
+    if (!await liraConfirm("¿Restablecer todos los Atajos de Teclado a los de fábrica?", 'teclado')) return;
     const defaults = {
         "play_pause": " ", "add_limit": "control+ ", "add_abbr": "control+i",
         "speed_up": "arrowup", "speed_down": "arrowdown", "prev_page": "arrowleft",

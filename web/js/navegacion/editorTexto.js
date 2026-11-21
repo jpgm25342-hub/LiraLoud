@@ -469,7 +469,7 @@ function abrirEditorTexto(bloquePdf, rectVisual) {
                 await renderizarBloquesEditor();
             } else {
                 console.error("Error de edición:", r.error);
-                if (typeof liraAlert === 'function') await liraAlert("Error guardando cambios.", "⚠️");
+                if (typeof liraAlert === 'function') await liraAlert("Error guardando cambios.", "advertencia");
                 btnG.innerText = 'Guardar';
                 btnG.disabled = false;
                 btnCancel.disabled = false;
@@ -486,7 +486,7 @@ function abrirEditorTexto(bloquePdf, rectVisual) {
     btnCancel.onclick = async (e) => {
         e.stopPropagation();
         if (hasUnsavedChanges) {
-            if (await liraConfirm('Hay cambios sin guardar. ¿Descartar y cerrar?', '⚠️')) {
+            if (await liraConfirm('Hay cambios sin guardar. ¿Descartar y cerrar?', 'advertencia')) {
                 cerrarEditorTexto();
             }
         } else {
@@ -499,7 +499,7 @@ function abrirEditorTexto(bloquePdf, rectVisual) {
         if (editor.contains(e.target)) return;
         e.preventDefault();
         if (hasUnsavedChanges) {
-            if (typeof liraAlert === 'function') await liraAlert('Hay cambios sin guardar. Usa "Guardar" o "Cancelar".', 'ℹ️');
+            if (typeof liraAlert === 'function') await liraAlert('Hay cambios sin guardar. Usa "Guardar" o "Cancelar".', 'info');
         } else {
             cerrarEditorTexto();
         }

@@ -3,18 +3,6 @@
  * Licensed under the Apache License, Version 2.0
  */
 
-// ============================================================
-// LIRA DIALOG — Sistema de alertas y confirmaciones nativas
-// Reemplaza alert() y confirm() del sistema operativo
-// ============================================================
-
-/**
- * Muestra un modal de alerta personalizado (reemplaza alert()).
- * @param {string} msg - Mensaje a mostrar.
- * @param {string} [emoji='ℹ️'] - Emoji o icono decorativo.
- * @returns {Promise<void>}
- */
-
 // 7. AJUSTES DE LECTURA Y UI (SINCRONIZADOS)
 // ==========================================
 
@@ -690,16 +678,16 @@ window.limpiarCacheTraduccionFrontend = async function () {
         if (typeof eel !== 'undefined' && eel.limpiar_cache_traducciones) {
             const ok = await eel.limpiar_cache_traducciones()();
             if (ok) {
-                await liraAlert("Caché de traducción eliminada con éxito (Memoria RAM y Disco).", '🗑️');
+                await liraAlert("Caché de traducción eliminada con éxito (Memoria RAM y Disco).", 'borrar');
             } else {
-                await liraAlert("No se pudo vaciar la caché.", '⚠️');
+                await liraAlert("No se pudo vaciar la caché.", 'advertencia');
             }
         } else {
-            await liraAlert("Conexión con el backend no disponible.", '⚠️');
+            await liraAlert("Conexión con el backend no disponible.", 'advertencia');
         }
     } catch (e) {
         console.error("Error al limpiar caché:", e);
-        await liraAlert("Solicitud de limpieza completada.", '🗑️');
+        await liraAlert("Solicitud de limpieza completada.", 'borrar');
     }
 };
 

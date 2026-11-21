@@ -1,34 +1,39 @@
-<div id="modal-ocr-progreso" class="overlay-bloqueante">
-            <div
-                style="width: 480px; max-width: 90vw; background: #1e293b; color: #f8fafc; border-radius: 14px; padding: 25px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); border: 1px solid #334155; text-align: center; box-sizing: border-box;">
-                <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
-                <h3 style="margin: 0 0 6px 0; font-size: 17px; color: #38bdf8;" data-i18n="ocr-prog-titulo">Procesando documento con RapidOCR</h3>
-                <p id="ocr-progreso-texto-estado" style="font-size: 13px; color: #94a3b8; margin-bottom: 20px;" data-i18n="ocr-prog-sub">
-                    Extrayendo texto y coordenadas para sincronización de lectura...
-                </p>
-
-                <!-- Barra de Progreso -->
-                <div
-                    style="width: 100%; height: 12px; background: #0f172a; border-radius: 8px; overflow: hidden; margin-bottom: 12px; border: 1px solid #334155; position: relative;">
-                    <div id="barra-ocr-progreso-fill"
-                        style="width: 0%; height: 100%; background: linear-gradient(90deg, #0284c7, #38bdf8); transition: width 0.3s ease; box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);">
-                    </div>
-                </div>
-
-                <div
-                    style="display: flex; justify-content: space-between; font-size: 12px; color: #cbd5e1; margin-bottom: 6px; font-weight: 500;">
-                    <span id="ocr-progreso-contador" data-i18n="ocr-prog-contador-default">Página 1 de 1</span>
-                    <span id="ocr-progreso-porcentaje">0%</span>
-                </div>
-                <div id="ocr-progreso-tiempo-estimado"
-                    style="font-size: 12px; color: #38bdf8; margin-bottom: 20px; font-weight: 600; text-align: right;" data-i18n="ocr-prog-tiempo-calc">
-                    ⏱️ Calculando tiempo estimado...
-                </div>
-
-                <button type="button" onclick="cancelarBatchOCRYLeer()"
-                    style="background: #334155; color: #f8fafc; border: none; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s ease;"
-                    onmouseover="this.style.background='#475569'" onmouseout="this.style.background='#334155'" data-i18n="ocr-prog-cancelar">
-                    ⏹️ Cancelar y Empezar a Leer Ahora
-                </button>
-            </div>
+<div id="modal-ocr-progreso" class="overlay-bloqueante modal-ocr-overlay">
+    <div class="modal-ocr-card modal-ocr-progreso-card" onclick="event.stopPropagation()">
+        <div class="ocr-progreso-hero-icon">
+            <svg class="lira-svg-icon" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
         </div>
+        <h3 class="ocr-modal-title ocr-progreso-title" data-i18n="ocr-prog-titulo">Procesando documento con RapidOCR</h3>
+        <p id="ocr-progreso-texto-estado" class="ocr-progreso-sub" data-i18n="ocr-prog-sub">
+            Extrayendo texto y coordenadas para sincronización de lectura...
+        </p>
+
+        <!-- Barra de Progreso -->
+        <div class="ocr-progreso-bar-track">
+            <div id="barra-ocr-progreso-fill" class="ocr-progreso-bar-fill"></div>
+        </div>
+
+        <div class="ocr-progreso-meta">
+            <span id="ocr-progreso-contador" data-i18n="ocr-prog-contador-default">Página 1 de 1</span>
+            <span id="ocr-progreso-porcentaje">0%</span>
+        </div>
+        <div id="ocr-progreso-tiempo-estimado" class="ocr-progreso-eta">
+            <svg class="lira-svg-icon ocr-eta-svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span id="ocr-progreso-tiempo-texto" data-i18n="ocr-prog-tiempo-calc">Calculando tiempo estimado...</span>
+        </div>
+
+        <button type="button" class="ocr-btn-cancel" onclick="cancelarBatchOCRYLeer()">
+            <svg class="lira-svg-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"></circle>
+                <rect x="9" y="9" width="6" height="6"></rect>
+            </svg>
+            <span data-i18n="ocr-prog-cancelar">Cancelar y Empezar a Leer Ahora</span>
+        </button>
+    </div>
+</div>

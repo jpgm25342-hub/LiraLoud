@@ -305,9 +305,9 @@ async function refrescarModelosProveedorActual(notificarUsuario = false) {
 
                 if (notificarUsuario) {
                     if (res.origen === 'live') {
-                        mostrarToastLira(`✅ Modelos de ${PROVEEDORES_CLOUD[prov]?.nombre || prov} actualizados.`);
+                        mostrarToastLira(`Modelos de ${PROVEEDORES_CLOUD[prov]?.nombre || prov} actualizados.`, 'exito');
                     } else if (res.error) {
-                        mostrarToastLira(`⚠️ Usando lista base (${res.error})`);
+                        mostrarToastLira(`Usando lista base (${res.error})`, 'advertencia');
                     }
                 }
                 return;
@@ -391,7 +391,7 @@ async function actualizarModeloCloudActual(val) {
     if (val === '__custom_model_prompt__') {
         const modeloActual = configProveedores.modelos[prov] || '';
         const sugerencia = prov === 'gemini' ? 'gemini-2.0-flash' : (prov === 'deepseek' ? 'deepseek-reasoner' : (prov === 'groq' ? 'llama-3.3-70b-versatile' : ''));
-        const nuevoModelo = await liraPrompt(`Ingresa el nombre/ID exacto del modelo para ${PROVEEDORES_CLOUD[prov]?.nombre || prov}:\n(Ej: gemini-2.0-flash, deepseek-reasoner, llama-3.3-70b-versatile, etc.)`, modeloActual || sugerencia, '🤖');
+        const nuevoModelo = await liraPrompt(`Ingresa el nombre/ID exacto del modelo para ${PROVEEDORES_CLOUD[prov]?.nombre || prov}:\n(Ej: gemini-2.0-flash, deepseek-reasoner, llama-3.3-70b-versatile, etc.)`, modeloActual || sugerencia, 'ia');
         
         const sel = document.getElementById('sel-ia-modelo-cloud');
         if (nuevoModelo && nuevoModelo.trim()) {
@@ -479,7 +479,7 @@ async function probarConexionCloudIA() {
                 if (testStatus) {
                     testStatus.innerHTML = `<span style="color:#27ae60; font-weight:600;">✅ ${res.mensaje || '¡Conexión exitosa!'}</span>`;
                 }
-                mostrarToastLira(`✅ Conexión exitosa con ${PROVEEDORES_CLOUD[prov]?.nombre || prov}`);
+                mostrarToastLira(`Conexión exitosa con ${PROVEEDORES_CLOUD[prov]?.nombre || prov}`, 'exito');
                 refrescarModelosProveedorActual(false);
                 actualizarGaugeTokensUI(true);
             } else {
@@ -672,7 +672,7 @@ async function reiniciarChatIA() {
     }
 
     mostrarSaludoInicialChat(nombreDoc);
-    mostrarToastLira("🔄 Conversación reiniciada para este documento.");
+    mostrarToastLira("Conversación reiniciada para este documento.", 'reiniciar');
 }
 
 // --- GESTIÓN DE PESTAÑAS (TABS) ---
@@ -1262,7 +1262,7 @@ window.liraNavegarYResaltarFuente = async function (pagina, textoSnippet, btnEl 
     console.log(`🎯 [LiraAI] Navegando a página ${numPag} y resaltando fragmento...`);
 
     // 1. Mostrar feedback visual inmediato (Toast)
-    mostrarToastLira(`🎯 Saltando a Página ${numPag} del PDF...`);
+    mostrarToastLira(`Saltando a Página ${numPag} del PDF...`, 'objetivo');
 
     // 2. Si no estamos en esa página, cambiar (cargarPagina limpia resaltados previos)
     if (typeof paginaActual !== 'undefined' && paginaActual !== pagObjetivo) {
@@ -1328,14 +1328,20 @@ window.liraNavegarYResaltarFuente = async function (pagina, textoSnippet, btnEl 
     }
 };
 
-function mostrarToastLira(mensaje) {
+function mostrarToastLira(mensaje, icono) {
+    if (typeof window.mostrarToast === 'function') {
+        window.mostrarToast(mensaje, icono);
+        return;
+    }
     let toast = document.getElementById('ia-toast');
     if (!toast) {
         toast = document.createElement('div');
         toast.id = 'ia-toast';
         document.body.appendChild(toast);
     }
-    toast.innerText = mensaje;
+    toast.textContent = (typeof window.limpiarTextoEmoji === 'function')
+        ? window.limpiarTextoEmoji(mensaje).texto
+        : String(mensaje || '');
     toast.classList.add('visible');
 
     if (window._iaToastTimer) clearTimeout(window._iaToastTimer);
@@ -1343,6 +1349,7 @@ function mostrarToastLira(mensaje) {
         toast.classList.remove('visible');
     }, 2800);
 }
+window.mostrarToastLira = mostrarToastLira;
 
 // --- SOLICITUDES RÁPIDAS (PROMPTS TEMPLATE) ---
 async function ejecutarSolicitudIA(tipo, promptCustom = null) {
@@ -1576,7 +1583,7 @@ window.liraIniciarLecturaSecuencial = function (contenedorPrincipal, bloqueInici
         const textoLimpio = extraerTextoLimpioParaLectura(soloTextoSeleccion);
         const oraciones = segmentarTextoEnOracionesIA(textoLimpio);
         if (oraciones.length === 0) {
-            mostrarToastLira("⚠️ No se detectaron oraciones para leer.");
+            mostrarToastLira("No se detectaron oraciones para leer.", 'advertencia');
             return;
         }
 
@@ -1607,7 +1614,7 @@ window.liraIniciarLecturaSecuencial = function (contenedorPrincipal, bloqueInici
         window.liraAIAudioState.esSoloSeleccion = true;
 
         actualizarBotonLecturaIA(btnId, true);
-        mostrarToastLira(`🔊 Leyendo selección (${oraciones.length} frases)...`);
+        mostrarToastLira(`Leyendo selección (${oraciones.length} frases)...`, 'audio');
         reproducirPasoIA(sesionId);
         return;
     }
@@ -1618,7 +1625,7 @@ window.liraIniciarLecturaSecuencial = function (contenedorPrincipal, bloqueInici
 
     const listaBloques = extraerBloquesLegiblesIA(contenedorPrincipal);
     if (listaBloques.length === 0) {
-        mostrarToastLira("⚠️ No hay contenido legible en esta respuesta.");
+        mostrarToastLira("No hay contenido legible en esta respuesta.", 'advertencia');
         window.liraDetenerLectura();
         return;
     }
@@ -1643,7 +1650,7 @@ window.liraIniciarLecturaSecuencial = function (contenedorPrincipal, bloqueInici
 
     actualizarBotonLecturaIA(btnId, true);
     const totalBloquesRestantes = listaBloques.length - idxInicial;
-    mostrarToastLira(`🔊 Lectura fluida (${totalBloquesRestantes} ${totalBloquesRestantes === 1 ? 'bloque' : 'bloques'})...`);
+    mostrarToastLira(`Lectura fluida (${totalBloquesRestantes} ${totalBloquesRestantes === 1 ? 'bloque' : 'bloques'})...`, 'audio');
 
     reproducirPasoIA(sesionId);
 };
@@ -1665,7 +1672,7 @@ function reproducirPasoIA(sesionId) {
 
     // ¿Se terminaron todos los bloques de la respuesta?
     if (state.idxBloque >= state.bloques.length) {
-        mostrarToastLira("✅ Lectura de respuesta completada.");
+        mostrarToastLira("Lectura de respuesta completada.", 'exito');
         window.liraDetenerLectura();
         return;
     }
@@ -1908,9 +1915,9 @@ window.liraCopiarTextoMensaje = function (msgId) {
     }
     if (!txtACopiar) return;
     navigator.clipboard.writeText(txtACopiar).then(() => {
-        mostrarToastLira("📋 Respuesta copiada al portapapeles.");
+        mostrarToastLira("Respuesta copiada al portapapeles.", 'portapapeles');
     }).catch(() => {
-        liraAlert("No se pudo copiar automáticamente.", '⚠️');
+        liraAlert("No se pudo copiar automáticamente.", 'advertencia');
     });
 };
 
@@ -1920,9 +1927,9 @@ function copiarResultadoIA() {
     if (!cuerpo) return;
     const texto = cuerpo.getAttribute('data-texto-plano') || cuerpo.innerText;
     navigator.clipboard.writeText(texto).then(() => {
-        mostrarToastLira("📋 Copiado al portapapeles con éxito.");
+        mostrarToastLira("Copiado al portapapeles con éxito.", 'portapapeles');
     }).catch(() => {
-        liraAlert("No se pudo copiar automáticamente.", '⚠️');
+        liraAlert("No se pudo copiar automáticamente.", 'advertencia');
     });
 }
 
@@ -2093,7 +2100,7 @@ document.addEventListener('click', (e) => {
             window.liraAIAudioState.idxBloque = idxTarget;
             window.liraAIAudioState.idxOracion = 0;
             window.liraAIAudioState.cursorPalabraEnBloque = 0;
-            mostrarToastLira(`⏩ Continuando desde bloque ${idxTarget + 1}...`);
+            mostrarToastLira(`Continuando desde bloque ${idxTarget + 1}...`, 'reproducir');
             reproducirPasoIA(sesionId);
             return;
         }
@@ -2187,9 +2194,9 @@ async function conectarOIniciarOllama() {
             const res = await eel.iniciar_ollama_local()();
             if (!res.instalado) {
                 if (typeof liraAlert === 'function') {
-                    liraAlert('Ollama no instalado', res.mensaje || 'Descarga Ollama desde ollama.com para usar modelos locales.', '⚠️');
+                    liraAlert('Ollama no instalado: ' + (res.mensaje || 'Descarga Ollama desde ollama.com para usar modelos locales.'), 'advertencia');
                 } else if (typeof mostrarToastLira === 'function') {
-                    mostrarToastLira(res.mensaje);
+                    mostrarToastLira(res.mensaje || 'Ollama no instalado', 'advertencia');
                 }
                 return;
             }
@@ -2197,7 +2204,7 @@ async function conectarOIniciarOllama() {
         }
         if (typeof verificarEstadoIA === 'function') await verificarEstadoIA();
     } catch (e) {
-        if (typeof mostrarToastLira === 'function') mostrarToastLira('Error al conectar con Ollama');
+        if (typeof mostrarToastLira === 'function') mostrarToastLira('Error al conectar con Ollama', 'error');
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = 'Conectar / Iniciar Ollama'; }
     }
@@ -2210,10 +2217,10 @@ async function iniciarOllamaDesdeUI() {
         const res = await eel.iniciar_ollama_local()();
         if (typeof mostrarToastLira === 'function') mostrarToastLira(res.mensaje || 'Listo');
         if (!res.instalado && typeof liraAlert === 'function') {
-            liraAlert('Ollama no detectado', res.mensaje, '⚠️');
+            liraAlert('Ollama no detectado: ' + (res.mensaje || 'Descarga Ollama desde ollama.com para usar modelos locales.'), 'advertencia');
         }
     } catch (e) {
-        if (typeof mostrarToastLira === 'function') mostrarToastLira('Error al iniciar Ollama');
+        if (typeof mostrarToastLira === 'function') mostrarToastLira('Error al iniciar Ollama', 'error');
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = '▶ Iniciar Ollama'; }
     }

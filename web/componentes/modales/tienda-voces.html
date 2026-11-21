@@ -3,7 +3,7 @@
                 <div class="modal-header" style="display:flex; flex-direction:column; gap:10px;">
                     <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
                         <h2 style="margin:0; font-size:18px;" data-i18n="lbl-tienda-voces-titulo">Tienda de Voces (Hugging Face)</h2>
-                        <button onclick="cerrarTiendaVoces()" class="btn-cerrar-x" style="color:#333;">✕</button>
+                        <button onclick="cerrarTiendaVoces()" class="btn-cerrar-x">&times;</button>
                     </div>
                     <div class="tabs-config-header">
                         <button id="tab-tienda-buscar-btn" class="tab-btn active" onclick="cambiarTabTienda('buscar', this)"
@@ -27,7 +27,7 @@
                 </div>
                 <div class="modal-body">
                     <div style="display:flex; gap:8px; margin-bottom:8px; align-items:center;">
-                        <input type="text" id="buscar-voz-tienda" placeholder="Buscar por nombre, autor o idioma (ej. es_MX, es_ES, en_US)..." data-i18n-placeholder="ph-buscar-voz-tienda" oninput="filtrarTiendaVoces()" style="flex:1; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px;">
+                        <input type="text" id="buscar-voz-tienda" class="tienda-input-buscar" placeholder="Buscar por nombre, autor o idioma (ej. es_MX, es_ES, en_US)..." data-i18n-placeholder="ph-buscar-voz-tienda" oninput="filtrarTiendaVoces()">
                         <button type="button" id="btn-token-hf-tienda" class="btn-tienda-token" onclick="togglePanelTokenHF()" title="Token de Hugging Face (para voces con acceso restringido)" data-i18n-title="ttl-token-hf-tienda">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" style="display:block; width:16px; height:16px; flex-shrink:0;">
                                 <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
@@ -35,7 +35,7 @@
                         </button>
                         <button type="button" id="btn-ayuda-tienda-voces" class="btn-tienda-ayuda" onclick="toggleAyudaTiendaVoces()" title="¿Cómo buscar voces en tu idioma?" data-i18n-title="ttl-ayuda-tienda-voces">?</button>
                     </div>
-                    <div id="aviso-token-hf-activo" style="display:none; margin-bottom:8px; padding:6px 10px; background:#dcfce7; border:1px solid #86efac; border-radius:6px; font-size:12px; color:#166534; font-weight:600; align-items:center; gap:6px;">
+                    <div id="aviso-token-hf-activo" class="aviso-token-hf-activo" style="display:none;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" style="display:block; width:14px; height:14px; flex-shrink:0;">
                             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                             <polyline points="22 4 12 14.01 9 11.01"></polyline>
@@ -49,13 +49,13 @@
                         </div>
                         <div data-i18n="lbl-token-hf-desc" style="margin-bottom:8px;">Algunas voces de la comunidad requieren aceptar sus términos en Hugging Face. Pega tu token de lectura (<code>hf_...</code>) aquí para descargarlas tras obtener acceso.</div>
                         <div style="display:flex; gap:6px; align-items:center;">
-                            <input type="password" id="input-token-hf-tienda" placeholder="Pega tu token hf_..." data-i18n-placeholder="ph-token-hf-tienda" style="flex:1; padding:6px 9px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px;">
+                            <input type="password" id="input-token-hf-tienda" class="tienda-input-token" placeholder="Pega tu token hf_..." data-i18n-placeholder="ph-token-hf-tienda">
                             <button type="button" class="btn-tienda-descargar" onclick="guardarTokenHFTienda()" data-i18n="btn-guardar-token-hf">Guardar</button>
                             <button type="button" class="btn-tienda-eliminar" onclick="quitarTokenHFTienda()" data-i18n="btn-quitar-token-hf">Quitar</button>
                         </div>
                     </div>
-                    <div id="ayuda-tienda-voces" style="display:none; margin-bottom:10px; padding:10px 12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; font-size:12px; color:#1e3a8a; line-height:1.5; max-height:190px; overflow-y:auto;">
-                        <b data-i18n="lbl-ayuda-tienda-voces-titulo">💡 ¿Cómo buscar voces por idioma (formato Rhasspy / Piper)?</b><br>
+                    <div id="ayuda-tienda-voces" class="ayuda-tienda-voces" style="display:none;">
+                        <b class="ayuda-tienda-voces-titulo"><svg class="lira-inline-svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg> <span data-i18n="lbl-ayuda-tienda-voces-titulo">¿Cómo buscar voces por idioma (formato Rhasspy / Piper)?</span></b><br>
                         <span data-i18n="lbl-ayuda-tienda-voces-desc">Los modelos usan una abreviatura de 2 letras al inicio (<code>idioma = abreviatura</code>) o combinada con país (ej. <code>es_MX</code>, <code>es_ES</code>, <code>en_US</code>). Escribe cualquiera en el buscador:</span><br>
                         <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(135px, 1fr)); gap:4px 10px; margin-top:6px;">
                             <span>• Español = <code>es</code></span>

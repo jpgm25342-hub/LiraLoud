@@ -586,20 +586,20 @@ body.ui-dark-mode .capture-card div {
 /* Botones del modal de Guardar Captura con hover responsivo */
 #btn-cancelar-captura {
     padding: 8px 18px;
-    border: 1px solid #ccd1d9;
-    background: #ffffff;
-    border-radius: 6px;
+    border: 1px solid #d0c9e3;
+    background: #eae6f0;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 12px;
-    font-weight: 500;
-    color: #555555;
+    font-size: 13px;
+    font-weight: 600;
+    color: #34495e;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 #btn-cancelar-captura:hover {
-    background: #f1f2f6;
-    border-color: #b2bec3;
-    color: #2d3436;
+    background: #dcd5e8;
+    border-color: #b8aed1;
+    color: #2c3e50;
     transform: translateY(-1px);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
@@ -612,46 +612,46 @@ body.ui-dark-mode .capture-card div {
 #btn-confirmar-captura {
     padding: 8px 20px;
     border: none;
-    background: #3498db;
+    background: linear-gradient(135deg, #7d54c4, #5b3ea8);
     color: #ffffff;
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
-    box-shadow: 0 2px 6px rgba(52, 152, 219, 0.35);
+    box-shadow: 0 2px 8px rgba(125, 84, 196, 0.35);
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 #btn-confirmar-captura:hover {
-    background: #2980b9;
-    box-shadow: 0 4px 12px rgba(41, 128, 185, 0.45);
+    opacity: 0.94;
+    box-shadow: 0 4px 12px rgba(125, 84, 196, 0.45);
     transform: translateY(-1px);
 }
 
 #btn-confirmar-captura:active {
     transform: translateY(0);
-    box-shadow: 0 2px 4px rgba(41, 128, 185, 0.3);
+    box-shadow: 0 2px 4px rgba(125, 84, 196, 0.3);
 }
 
 body.ui-dark-mode #btn-cancelar-captura {
-    background: #2d333b;
-    border-color: #444c56;
+    background: #21262d;
+    border-color: #30363d;
     color: #adbac7;
 }
 
 body.ui-dark-mode #btn-cancelar-captura:hover {
-    background: #373e47;
-    border-color: #545d68;
+    background: #30363d;
+    border-color: #484f58;
     color: #ffffff;
 }
 
 body.ui-dark-mode #btn-confirmar-captura {
-    background: #1f6feb;
-    box-shadow: 0 2px 6px rgba(31, 111, 235, 0.4);
+    background: linear-gradient(135deg, #388bfd, #1f6feb);
+    box-shadow: 0 2px 8px rgba(31, 111, 235, 0.4);
 }
 
 body.ui-dark-mode #btn-confirmar-captura:hover {
-    background: #388bfd;
+    opacity: 0.95;
     box-shadow: 0 4px 12px rgba(56, 139, 253, 0.5);
 }
 
@@ -877,4 +877,577 @@ body.ui-dark-mode .btn-tienda-hf-link {
     background: #21262d;
     border-color: #30363d;
     color: #c9d1d9;
+}
+
+/* ==========================================================================
+   MODALES DE CAPTURA (GUARDAR Y VER / LIGHTBOX)
+   ========================================================================== */
+.modal-captura-overlay {
+    z-index: 100000 !important;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    pointer-events: auto !important;
+}
+
+.modal-ver-captura-overlay {
+    z-index: 100001 !important;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.modal-captura-card {
+    background: #fdf6e3;
+    color: #2c3e50;
+    border-radius: 14px;
+    border-top: 4px solid #7d54c4;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35), 0 4px 16px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: fadeIn 0.18s ease;
+    pointer-events: auto !important;
+}
+
+.modal-guardar-captura-card {
+    width: 440px;
+    max-width: 92vw;
+}
+
+.modal-ver-captura-card {
+    max-width: 90vw;
+    max-height: 90vh;
+}
+
+.modal-captura-header {
+    padding: 14px 18px;
+    background: #f5edd6;
+    border-bottom: 1px solid #e5dec9;
+    color: #2c3e50;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.modal-captura-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 14px;
+    color: #2c3e50;
+}
+
+.modal-captura-title-wrap .lira-svg-icon {
+    color: #7d54c4;
+    flex-shrink: 0;
+}
+
+.modal-ver-captura-titulo {
+    font-weight: 700;
+    font-size: 13.5px;
+}
+
+.modal-captura-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.modal-captura-badge {
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(125, 84, 196, 0.14);
+    color: #5b3ea8;
+    padding: 3px 9px;
+    border-radius: 999px;
+}
+
+.modal-captura-close {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0 5px;
+    line-height: 1;
+    border-radius: 6px;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.modal-captura-close:hover {
+    background: rgba(231, 76, 60, 0.14);
+    color: #e74c3c;
+}
+
+.modal-captura-body {
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.modal-captura-preview-box {
+    width: 100%;
+    max-height: 220px;
+    overflow: hidden;
+    border-radius: 8px;
+    border: 1px solid #e5dec9;
+    background: #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-captura-preview-box img {
+    max-width: 100%;
+    max-height: 220px;
+    object-fit: contain;
+    display: block;
+}
+
+.modal-captura-label {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #34495e;
+    margin-bottom: 6px;
+}
+
+.modal-captura-input {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 13.5px;
+    border: 1.5px solid #d0c9e3;
+    border-radius: 8px;
+    outline: none;
+    background: #ffffff;
+    color: #2c3e50;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-sizing: border-box;
+}
+
+.modal-captura-input:focus {
+    border-color: #7d54c4;
+    box-shadow: 0 0 0 3px rgba(125, 84, 196, 0.2);
+}
+
+.modal-captura-help {
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 5px;
+}
+
+.modal-captura-footer {
+    padding: 12px 20px;
+    background: #f5edd6;
+    border-top: 1px solid #e5dec9;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.btn-captura-copiar {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #ffffff;
+    color: #34495e;
+    border: 1px solid #d0c9e3;
+    padding: 5px 11px;
+    border-radius: 7px;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.btn-captura-copiar:hover {
+    background: #f5f0ff;
+    border-color: #7d54c4;
+    color: #5b3ea8;
+}
+
+.modal-ver-captura-body {
+    padding: 16px;
+    overflow: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #f8f9fa;
+}
+
+.modal-ver-captura-body img {
+    max-width: 85vw;
+    max-height: 75vh;
+    object-fit: contain;
+    border-radius: 6px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+}
+
+body.ui-dark-mode .modal-captura-card {
+    background: #161b22;
+    color: #e6edf3;
+    border-top-color: #58a6ff;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+body.ui-dark-mode .modal-captura-header,
+body.ui-dark-mode .modal-captura-footer {
+    background: #0d1117;
+    border-color: #30363d;
+    color: #e6edf3;
+}
+
+body.ui-dark-mode .modal-captura-title-wrap,
+body.ui-dark-mode .modal-captura-label {
+    color: #f0f6fc;
+}
+
+body.ui-dark-mode .modal-captura-title-wrap .lira-svg-icon {
+    color: #58a6ff;
+}
+
+body.ui-dark-mode .modal-captura-badge {
+    background: rgba(88, 166, 255, 0.16);
+    color: #58a6ff;
+}
+
+body.ui-dark-mode .modal-captura-close {
+    color: #adbac7;
+}
+
+body.ui-dark-mode .modal-captura-preview-box,
+body.ui-dark-mode .modal-ver-captura-body {
+    background: #0d1117;
+    border-color: #30363d;
+}
+
+body.ui-dark-mode .modal-captura-input {
+    background: #0d1117;
+    border-color: #30363d;
+    color: #f0f6fc;
+}
+
+body.ui-dark-mode .modal-captura-input:focus {
+    border-color: #58a6ff;
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
+}
+
+body.ui-dark-mode .modal-captura-help {
+    color: #adbac7;
+}
+
+body.ui-dark-mode .btn-captura-copiar {
+    background: #21262d;
+    border-color: #30363d;
+    color: #e6edf3;
+}
+
+body.ui-dark-mode .btn-captura-copiar:hover {
+    background: #30363d;
+    border-color: #58a6ff;
+    color: #ffffff;
+}
+
+/* ==========================================================================
+   BUSCADOR EN PDF (#panel-busqueda)
+   ========================================================================== */
+#panel-busqueda.buscador-panel,
+.buscador-panel {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    width: 310px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+    z-index: 3000;
+    border: 1px solid #e2e8f0;
+    border-top: 3px solid #7d54c4;
+    overflow: hidden;
+    font-family: inherit;
+    color: #2c3e50;
+    transition: box-shadow 0.2s ease;
+}
+
+.buscador-header {
+    background: #f8f9fa;
+    color: #2c3e50;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 10px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+}
+
+.buscador-titulo-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    font-weight: 700;
+}
+
+.buscador-titulo-wrap .lira-svg-icon {
+    color: #7d54c4;
+}
+
+.buscador-controles {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.buscador-contador {
+    font-size: 11px;
+    color: #64748b;
+    margin-right: 2px;
+}
+
+.buscador-nav-btn {
+    background: #eae6f0;
+    border: none;
+    color: #34495e;
+    cursor: pointer;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border-radius: 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.buscador-nav-btn:hover {
+    background: #7d54c4;
+    color: #ffffff;
+}
+
+.buscador-close-btn {
+    background: none;
+    border: none;
+    color: #64748b;
+    font-size: 17px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px 5px;
+    border-radius: 5px;
+}
+
+.buscador-close-btn:hover {
+    color: #e74c3c;
+    background: rgba(231, 76, 60, 0.1);
+}
+
+.buscador-body {
+    padding: 10px 12px;
+}
+
+.buscador-input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 7px;
+    box-sizing: border-box;
+    font-size: 12.5px;
+    background: #ffffff;
+    color: #2c3e50;
+    outline: none;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.buscador-input:focus {
+    border-color: #7d54c4;
+    box-shadow: 0 0 0 3px rgba(125, 84, 196, 0.18);
+}
+
+.buscador-resultados {
+    max-height: 380px;
+    overflow-y: auto;
+    margin-top: 10px;
+}
+
+.buscador-estado-msg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 11.5px;
+    color: #64748b;
+    text-align: center;
+    padding: 10px;
+}
+
+.buscador-estado-vacio,
+.buscador-estado-error {
+    color: #c0392b;
+}
+
+.buscador-resultado-item {
+    padding: 10px;
+    border-bottom: 1px solid #eef2f7;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+    border-left: 3px solid transparent;
+    background: #ffffff;
+}
+
+.buscador-resultado-item:hover {
+    background: #f5f0ff;
+    border-left-color: #7d54c4;
+}
+
+.buscador-resultado-pag {
+    font-weight: 700;
+    color: #7d54c4;
+    font-size: 11px;
+    margin-bottom: 3px;
+}
+
+.buscador-resultado-frase {
+    font-size: 11px;
+    color: #34495e;
+    line-height: 1.35;
+    font-style: italic;
+}
+
+body.ui-dark-mode #panel-busqueda.buscador-panel,
+body.ui-dark-mode .buscador-panel {
+    background: #161b22;
+    border-color: #30363d;
+    border-top-color: #58a6ff;
+    color: #e6edf3;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
+}
+
+body.ui-dark-mode .buscador-header {
+    background: #0d1117;
+    border-bottom-color: #30363d;
+    color: #f0f6fc;
+}
+
+body.ui-dark-mode .buscador-titulo-wrap .lira-svg-icon,
+body.ui-dark-mode .buscador-resultado-pag {
+    color: #58a6ff;
+}
+
+body.ui-dark-mode .buscador-contador,
+body.ui-dark-mode .buscador-estado-msg {
+    color: #adbac7;
+}
+
+body.ui-dark-mode .buscador-estado-vacio,
+body.ui-dark-mode .buscador-estado-error {
+    color: #f85149;
+}
+
+body.ui-dark-mode .buscador-nav-btn {
+    background: #21262d;
+    color: #e6edf3;
+}
+
+body.ui-dark-mode .buscador-nav-btn:hover {
+    background: #1f6feb;
+    color: #ffffff;
+}
+
+body.ui-dark-mode .buscador-close-btn {
+    color: #adbac7;
+}
+
+body.ui-dark-mode .buscador-input {
+    background: #0d1117;
+    border-color: #30363d;
+    color: #f0f6fc;
+}
+
+body.ui-dark-mode .buscador-input:focus {
+    border-color: #58a6ff;
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
+}
+
+body.ui-dark-mode .buscador-resultado-item {
+    background: #161b22;
+    border-bottom-color: #30363d;
+}
+
+body.ui-dark-mode .buscador-resultado-item:hover {
+    background: #1f2937;
+    border-left-color: #58a6ff;
+}
+
+body.ui-dark-mode .buscador-resultado-frase {
+    color: #c9d1d9;
+}
+
+/* ==========================================================================
+   HELPERS VISUALES: MENÚS CONTEXTUALES, LANZADOR Y EXTRACCIÓN VACÍA
+   ========================================================================== */
+.item-menu-flex {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.lanzador-estado-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.lanzador-estado-svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+}
+
+.extraccion-empty-state {
+    text-align: center;
+    padding: 40px 15px;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.extraccion-empty-icon {
+    margin-bottom: 10px;
+    color: #7d54c4;
+    display: flex;
+    justify-content: center;
+}
+
+.extraccion-empty-icon svg {
+    width: 30px;
+    height: 30px;
+}
+
+.extraccion-empty-title {
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 4px;
+}
+
+.extraccion-empty-sub {
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+body.ui-dark-mode .extraccion-empty-state {
+    color: #adbac7;
+}
+
+body.ui-dark-mode .extraccion-empty-icon {
+    color: #58a6ff;
+}
+
+body.ui-dark-mode .extraccion-empty-title {
+    color: #e6edf3;
+}
+
+body.ui-dark-mode .capture-card button {
+    background: #21262d !important;
+    border-color: #30363d !important;
+    color: #e6edf3 !important;
 }

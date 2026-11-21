@@ -719,32 +719,102 @@ body.ui-dark-mode .svg-icon-ia {
     border-color: #2563eb;
 }
 
-/* Toast flotante de navegación Lira */
+/* Toast flotante unificado Lira */
 #ia-toast {
     position: fixed;
     top: 75px;
     left: 50%;
     transform: translateX(-50%) translateY(-20px);
-    background: rgba(30, 39, 46, 0.95);
-    color: #ffffff;
-    padding: 10px 22px;
+    background: rgba(255, 255, 255, 0.96);
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
+    padding: 10px 20px;
     border-radius: 30px;
     font-size: 13px;
     font-weight: 600;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.16), 0 2px 8px rgba(125, 84, 196, 0.12);
     z-index: 2147483647 !important; /* Capa más alta para estar por encima de modales de configuración */
     opacity: 0;
     pointer-events: none;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 9px;
+    max-width: min(92vw, 520px);
     backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
 #ia-toast.visible {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
+}
+
+.lira-toast-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    color: #6c46b5;
+}
+
+.lira-toast-icon svg {
+    width: 17px;
+    height: 17px;
+    display: block;
+}
+
+.lira-toast-icon.lira-icon-exito,
+.lira-toast-icon.lira-icon-success {
+    color: #15803d;
+}
+
+.lira-toast-icon.lira-icon-advertencia,
+.lira-toast-icon.lira-icon-warning {
+    color: #b45309;
+}
+
+.lira-toast-icon.lira-icon-error,
+.lira-toast-icon.lira-icon-borrar,
+.lira-toast-icon.lira-icon-delete,
+.lira-toast-icon.lira-icon-prohibido,
+.lira-toast-icon.lira-icon-ban {
+    color: #b91c1c;
+}
+
+.lira-toast-msg {
+    line-height: 1.35;
+}
+
+body.ui-dark-mode #ia-toast {
+    background: rgba(22, 27, 34, 0.96);
+    color: #f0f6fc;
+    border-color: #30363d;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+}
+
+body.ui-dark-mode .lira-toast-icon {
+    color: #58a6ff;
+}
+
+body.ui-dark-mode .lira-toast-icon.lira-icon-exito,
+body.ui-dark-mode .lira-toast-icon.lira-icon-success {
+    color: #4ade80;
+}
+
+body.ui-dark-mode .lira-toast-icon.lira-icon-advertencia,
+body.ui-dark-mode .lira-toast-icon.lira-icon-warning {
+    color: #fbbf24;
+}
+
+body.ui-dark-mode .lira-toast-icon.lira-icon-error,
+body.ui-dark-mode .lira-toast-icon.lira-icon-borrar,
+body.ui-dark-mode .lira-toast-icon.lira-icon-delete,
+body.ui-dark-mode .lira-toast-icon.lira-icon-prohibido,
+body.ui-dark-mode .lira-toast-icon.lira-icon-ban {
+    color: #f87171;
 }
 
 /* Barra de acciones de mensajes de IA (Escuchar y Copiar) */

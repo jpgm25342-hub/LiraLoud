@@ -1,8 +1,25 @@
+function cerrarTiendaOllama() {
+    const modal = document.getElementById('modal-tienda-ollama');
+    if (modal) modal.style.display = 'none';
+}
+window.cerrarTiendaOllama = cerrarTiendaOllama;
+
+function _vincularBackdropTiendaOllama() {
+    const modal = document.getElementById('modal-tienda-ollama');
+    if (modal && !modal.dataset.backdropBound) {
+        modal.dataset.backdropBound = 'true';
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) cerrarTiendaOllama();
+        });
+    }
+}
+
 async function abrirTiendaOllama() {
     const modal = document.getElementById('modal-tienda-ollama');
     const hwBox = document.getElementById('tienda-ollama-hw');
     if (!modal || !hwBox) return;
 
+    _vincularBackdropTiendaOllama();
     modal.style.display = 'flex';
     hwBox.textContent = "Verificando Ollama y RAM...";
 
@@ -16,7 +33,13 @@ async function abrirTiendaOllama() {
             if (initRes && initRes.exito) {
                 info = await eel.obtener_info_hardware_ollama()();
             } else if (initRes && !initRes.instalado) {
-                hwBox.innerHTML = `⚠️ <b>${initRes.mensaje}</b>`;
+                const iconoWarn = (typeof window.obtenerIconoDialogoSVG === 'function')
+                    ? window.obtenerIconoDialogoSVG('advertencia', 'lira-inline-svg')
+                    : '';
+                const msgSeguro = (typeof window.escapeHtml === 'function')
+                    ? window.escapeHtml(initRes.mensaje)
+                    : String(initRes.mensaje ?? '');
+                hwBox.innerHTML = `<span class="tienda-hw-alerta">${iconoWarn} <b>${msgSeguro}</b></span>`;
                 await cargarCatalogoHF();
                 return;
             }
@@ -118,7 +141,7 @@ function asignarModeloOllamaActivo(nombre, tipo) {
         configProveedores.proveedorActivo = 'ollama';
     }
     if (typeof guardarTodosAjustes === 'function') guardarTodosAjustes(false);
-    if (typeof mostrarToastLira === 'function') mostrarToastLira(`✅ Modelo activo: ${nombre}`);
+    if (typeof mostrarToastLira === 'function') mostrarToastLira(`Modelo activo: ${nombre}`, 'exito');
 }
 
 async function instalarModeloOllama(nombre, tipo) {
@@ -394,6 +417,7 @@ async function eliminarPromptGuardado(idx) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    _vincularBackdropTiendaOllama();
     setTimeout(cargarPromptsPersonalizados, 800);
 });
 
@@ -444,12 +468,12 @@ async function _guardarRespuestaIAEnNotas(tituloSugerido, contenidoHtmlOPlano) {
             const res = await eel.notas_guardar(notaData, window.rutaNotasPersonalizada || '')();
             if (res && res.exito) {
                 if (typeof cargarNotasDesdeBackend === 'function') cargarNotasDesdeBackend();
-                if (typeof mostrarToastLira === 'function') mostrarToastLira('✅ Respuesta importada a tus Notas');
+                if (typeof mostrarToastLira === 'function') mostrarToastLira('Respuesta importada a tus Notas', 'exito');
             } else {
-                if (typeof mostrarToastLira === 'function') mostrarToastLira('⚠️ Error al guardar en notas');
+                if (typeof mostrarToastLira === 'function') mostrarToastLira('Error al guardar en notas', 'advertencia');
             }
         } catch (e) {
-            if (typeof mostrarToastLira === 'function') mostrarToastLira('⚠️ Error al guardar en notas');
+            if (typeof mostrarToastLira === 'function') mostrarToastLira('Error al guardar en notas', 'advertencia');
         }
     }
 }

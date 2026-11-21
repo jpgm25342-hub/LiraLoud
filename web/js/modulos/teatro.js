@@ -250,13 +250,17 @@ function renderizarActores() {
         fila.draggable = true;
         fila.dataset.personaje = personaje;
 
+        const iconoRayo = (typeof window.obtenerIconoDialogoSVG === 'function')
+            ? window.obtenerIconoDialogoSVG('rayo', 'lira-inline-svg')
+            : '';
+
         fila.innerHTML = `
             <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:0;">
                 <input type="checkbox" class="switch-individual" ${data.on ? 'checked' : ''} 
                        onchange="toggleActorIndividual('${personaje}', this.checked)">
                 <div style="display:flex; flex-direction:column; cursor:pointer; flex:1; min-width:0;" onclick="prepararEdicionActor('${personaje}')">
                     <span style="font-weight:700; color:#2c3e50;">${personaje}</span>
-                    <span class="badge-voz-actor">⚡️ ${data.voz.replace("Local-", "")}</span>
+                    <span class="badge-voz-actor">${iconoRayo}${data.voz.replace("Local-", "")}</span>
                 </div>
             </div>
             <div style="display:flex; gap:10px; align-items:center;">
@@ -285,7 +289,7 @@ function renderizarActores() {
 
 
 async function agregarActor() {
-    if (!obraActualTeatro) { await liraAlert("Selecciona o crea una obra primero.", '⚠️'); return; }
+    if (!obraActualTeatro) { await liraAlert("Selecciona o crea una obra primero.", 'advertencia'); return; }
 
     const inPersonaje = document.getElementById('input-personaje');
     const selVoz = document.getElementById('select-voz-teatro');
@@ -323,7 +327,7 @@ window.toggleActorIndividual = async (personaje, estado) => {
 };
 
 async function eliminarObraTeatro(nombre) {
-    if (await liraConfirm(`¿Eliminar la obra "${nombre}"?`, '🗑️')) {
+    if (await liraConfirm(`¿Eliminar la obra "${nombre}"?`, 'borrar')) {
         delete dbTeatro[nombre];
         obraActualTeatro = Object.keys(dbTeatro)[0] || null;
         await eel.guardar_diccionario_teatro(dbTeatro)();
@@ -333,7 +337,7 @@ async function eliminarObraTeatro(nombre) {
 }
 
 async function borrarActor(personaje) {
-    if (await liraConfirm(`¿Eliminar al actor ${personaje}?`, '🎭')) {
+    if (await liraConfirm(`¿Eliminar al actor ${personaje}?`, 'teatro')) {
         delete dbTeatro[obraActualTeatro].actors[personaje];
         await eel.guardar_diccionario_teatro(dbTeatro)();
         renderizarActores();
@@ -374,7 +378,7 @@ function renderizarSidebarTeatro() {
 
         const iconoObra = obra === "Este Libro"
             ? `<svg width="14" height="14" style="vertical-align:-2px; margin-right:5px;"><use href="assets/icons.svg#icon-clock"></use></svg>`
-            : '🎭 ';
+            : (typeof window.obtenerIconoDialogoSVG === 'function' ? window.obtenerIconoDialogoSVG('teatro', 'lira-inline-svg') + ' ' : '');
 
         div.innerHTML = `
             <span onclick="seleccionarObraTeatro('${obra}')" style="flex:1; cursor:pointer;">

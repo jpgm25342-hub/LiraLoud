@@ -86,10 +86,22 @@ function _mostrarSubmodal(id) {
 
 // ─── HELPERS DE ESTADO ──────────────────────────────────────
 
-function _setEstado(idEstado, msg, esError = false) {
+function _setEstado(idEstado, msg, esError = false, icono = null) {
     const el = document.getElementById(idEstado);
     if (!el) return;
-    el.textContent = msg;
+    if (!msg) {
+        el.innerHTML = '';
+        el.classList.toggle('error', false);
+        return;
+    }
+    const esc = (typeof window.escapeHtml === 'function')
+        ? window.escapeHtml
+        : (s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'));
+    if (icono && typeof window.obtenerIconoDialogoSVG === 'function') {
+        el.innerHTML = `<span class="lanzador-estado-row">${window.obtenerIconoDialogoSVG(icono, 'lanzador-estado-svg')}<span>${esc(msg)}</span></span>`;
+    } else {
+        el.textContent = msg;
+    }
     el.classList.toggle('error', esError);
 }
 
@@ -148,11 +160,11 @@ async function ejecutarImportarURL() {
         const resultado = await eel.importar_url_como_pdf(url)();
         console.log('[WebReader] Resultado recibido:', JSON.stringify(resultado));
 
-        if (btnEl) btnEl.innerHTML = '&#128640; Leer pagina';
+        if (btnEl) btnEl.textContent = 'Leer página';
         _setBotonesBloqueados(['btn-ejecutar-url'], false);
 
         if (resultado && resultado.ok) {
-            _setEstado('lira-url-estado', '✅ PDF generado. Cargando...');
+            _setEstado('lira-url-estado', 'PDF generado. Cargando...', false, 'exito');
             console.log('[WebReader] Abriendo documento desde ruta:', resultado.ruta);
             _destruirBienvenida();
             cerrarLanzador();
@@ -162,12 +174,12 @@ async function ejecutarImportarURL() {
         } else {
             const msg = (resultado && resultado.error) || 'Error desconocido al procesar la URL.';
             console.error('[WebReader] Error en resultado:', msg);
-            _setEstado('lira-url-estado', '❌ ' + msg, true);
+            _setEstado('lira-url-estado', msg, true, 'error');
         }
     } catch (e) {
         console.error('[WebReader] Error en comunicacion con Python:', e);
-        _setEstado('lira-url-estado', '❌ Error de comunicacion: ' + e, true);
-        if (btnEl) btnEl.innerHTML = '&#128640; Leer pagina';
+        _setEstado('lira-url-estado', 'Error de comunicacion: ' + e, true, 'error');
+        if (btnEl) btnEl.textContent = 'Leer página';
         _setBotonesBloqueados(['btn-ejecutar-url'], false);
     }
 }
@@ -203,7 +215,7 @@ async function ejecutarImportarTexto() {
         const resultado = await eel.importar_texto_como_pdf(texto)();
 
         if (resultado && resultado.ok) {
-            _setEstado('lira-texto-estado', '✅ Listo. Cargando...');
+            _setEstado('lira-texto-estado', 'Listo. Cargando...', false, 'exito');
             _destruirBienvenida();
             cerrarLanzador();
             detenerLectura();
@@ -211,12 +223,12 @@ async function ejecutarImportarTexto() {
             await abrirDocumentoDesdeRuta(resultado.ruta, true);
         } else {
             const msg = (resultado && resultado.error) || 'Error generando PDF.';
-            _setEstado('lira-texto-estado', '❌ ' + msg, true);
+            _setEstado('lira-texto-estado', msg, true, 'error');
         }
     } catch (e) {
-        _setEstado('lira-texto-estado', '❌ Error: ' + e, true);
+        _setEstado('lira-texto-estado', 'Error: ' + e, true, 'error');
     } finally {
-        if (btnEl) btnEl.innerHTML = '&#128214; Leer texto';
+        if (btnEl) btnEl.textContent = 'Leer texto';
         _setBotonesBloqueados(['btn-ejecutar-texto'], false);
     }
 }
@@ -248,7 +260,7 @@ async function lanzarCaptura() {
     } catch (e) {
         console.error('[WebReader] Error de comunicación al intentar capturar pantalla:', e);
         if (typeof rutaPDFActual === 'undefined' || !rutaPDFActual) _mostrarBienvenida();
-        if (typeof liraAlert === 'function') liraAlert('Error al iniciar la herramienta de captura.');
+        if (typeof liraAlert === 'function') liraAlert('Error al iniciar la herramienta de captura.', 'error');
     }
 }
 
@@ -256,4 +268,4 @@ async function lanzarCaptura() {
 
 // La pantalla de bienvenida se muestra al cargar (el HTML ya la tiene visible).
 // init.js la muestra en lugar de llamar a abrirBuscador() automaticamente.
-console.log('✅ [WebReader] Lanzador cargado.');
+console.log('[WebReader] Lanzador cargado.');

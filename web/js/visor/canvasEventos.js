@@ -35,8 +35,10 @@ canvas.addEventListener('mousedown', (e) => {
                 window.zonaExcluidaHoverIndex = -1;
                 window.hoverTacheZonaExcluida = -1;
                 guardarEstadoPaginaActual();
-                if (typeof mostrarToastLira === 'function') {
-                    mostrarToastLira("🗑️ Zona excluida eliminada");
+                if (typeof window.mostrarToast === 'function') {
+                    window.mostrarToast("Zona excluida eliminada", "borrar");
+                } else if (typeof mostrarToastLira === 'function') {
+                    mostrarToastLira("Zona excluida eliminada", "borrar");
                 }
                 cargarPagina(paginaActual);
                 e.preventDefault();
@@ -490,8 +492,10 @@ window.addEventListener('mouseup', () => {
                     return;
                 }
                 guardarEstadoPaginaActual();
-                if (typeof mostrarToastLira === 'function') {
-                    mostrarToastLira("🚫 Zona excluida creada (texto omitido de lectura)");
+                if (typeof window.mostrarToast === 'function') {
+                    window.mostrarToast("Zona excluida creada (texto omitido de lectura)", "prohibido");
+                } else if (typeof mostrarToastLira === 'function') {
+                    mostrarToastLira("Zona excluida creada (texto omitido de lectura)", "prohibido");
                 }
                 cargarPagina(paginaActual);
             }
@@ -571,8 +575,10 @@ canvas.addEventListener('contextmenu', (e) => {
                 window.zonaExcluidaHoverIndex = -1;
                 window.hoverTacheZonaExcluida = -1;
                 guardarEstadoPaginaActual();
-                if (typeof mostrarToastLira === 'function') {
-                    mostrarToastLira("🗑️ Zona excluida eliminada");
+                if (typeof window.mostrarToast === 'function') {
+                    window.mostrarToast("Zona excluida eliminada", "borrar");
+                } else if (typeof mostrarToastLira === 'function') {
+                    mostrarToastLira("Zona excluida eliminada", "borrar");
                 }
                 cargarPagina(paginaActual);
                 return;

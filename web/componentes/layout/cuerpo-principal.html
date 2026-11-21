@@ -146,7 +146,7 @@
                     <span data-i18n="btn-traduccion">Traductor</span>
                 </summary>
                 <div class="zen-dropdown-popup"
-                    style="width: 250px; left: 0; top: calc(100% + 5px); z-index: 1000; background: white; border: 1px solid #ccc; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 6px; padding: 12px;">
+                    style="width: 250px; left: 0; top: calc(100% + 5px); transform: none; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 6px; padding: 12px;">
                     <h6 data-i18n="lbl-traduccion-titulo"
                         style="margin-top:0; font-size:13px; color:#34495e; border-bottom:1px solid #eee; padding-bottom:6px; margin-bottom:10px;">
                         Traducción en Tiempo Real</h6>
@@ -256,11 +256,19 @@
             <div id="ocr-scanner-overlay">
                 <div class="ocr-laser-beam"></div>
                 <div class="ocr-pantalla-card">
-                    <div class="ocr-card-icono-pulsante">⚡</div>
+                    <div class="ocr-card-icono-pulsante">
+                        <svg class="lira-svg-icon" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                        </svg>
+                    </div>
                     <h3 id="ocr-hud-titulo" class="ocr-card-titulo" data-i18n="lbl-ocr-hud-titulo">Procesando Página...</h3>
                     <div class="ocr-card-header">
                         <div class="ocr-hud-spinner"></div>
-                        <span id="ocr-hud-texto" class="ocr-card-texto-principal" data-i18n="lbl-ocr-hud-texto">🔍 Reconociendo texto con RapidOCR...</span>
+                        <svg class="lira-svg-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <span id="ocr-hud-texto" class="ocr-card-texto-principal" data-i18n="lbl-ocr-hud-texto">Reconociendo texto con RapidOCR...</span>
                     </div>
                     <div class="ocr-card-barra-indeterminada">
                         <div class="ocr-card-barra-linea"></div>
@@ -272,7 +280,14 @@
         <!-- BANNER FLOTANTE DE SUBTÍTULOS DE TRADUCCIÓN -->
         <div id="subtitulo-traduccion-flotante" class="subtitulo-traduccion-overlay" style="display: none;">
             <div class="subtitulo-header">
-                <span class="subtitulo-badge">🌐 <span data-i18n="lbl-subtitulo-tag">TRADUCCIÓN</span></span>
+                <span class="subtitulo-badge" style="display:inline-flex; align-items:center; gap:5px;">
+                    <svg class="lira-svg-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                    </svg>
+                    <span data-i18n="lbl-subtitulo-tag">TRADUCCIÓN</span>
+                </span>
                 <span id="subtitulo-idiomas-tag" class="subtitulo-lang">AUTO ➔ ES</span>
                 <button class="btn-cerrar-subtitulo" onclick="cerrarSubtituloTraduccion()"
                     title="Ocultar subtítulo" data-i18n-title="ttl-ocultar-subtitulo">✕</button>

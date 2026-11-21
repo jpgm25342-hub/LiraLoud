@@ -1,26 +1,25 @@
-<div id="panel-busqueda"
-            style="display:none; position:fixed; top:80px; right:20px; width:300px; background:white; border-radius:8px; box-shadow:0 8px 25px rgba(0,0,0,0.2); z-index:3000; border:1px solid #dfe6e9; overflow:hidden; font-family: sans-serif;">
-            <div
-                style="background:#2c3e50; color:white; padding:10px; display:flex; justify-content:space-between; align-items:center; gap:6px;">
-                <span style="font-size:13px; font-weight:bold;" data-i18n="buscador-titulo">🔍 BUSCAR EN PDF</span>
-                <div style="display:flex; align-items:center; gap:4px;">
-                    <span id="busqueda-contador" style="font-size:11px; color:#bdc3c7; margin-right:2px;"></span>
-                    <button type="button" onclick="navegarBusquedaPDF(-1)" title="Coincidencia anterior" data-i18n-title="buscador-ant"
-                        style="background:rgba(255,255,255,0.12); border:none; color:white; cursor:pointer; width:24px; height:24px; padding:0; border-radius:4px; display:inline-flex; align-items:center; justify-content:center;">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-                    </button>
-                    <button type="button" onclick="navegarBusquedaPDF(1)" title="Siguiente coincidencia" data-i18n-title="buscador-sig"
-                        style="background:rgba(255,255,255,0.12); border:none; color:white; cursor:pointer; width:24px; height:24px; padding:0; border-radius:4px; display:inline-flex; align-items:center; justify-content:center;">
-                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-                    </button>
-                    <button onclick="cerrarBuscadorPDF()"
-                        style="background:none; border:none; color:white; cursor:pointer; padding:0 4px;">✕</button>
-                </div>
-            </div>
-            <div style="padding:10px;">
-                <input type="text" id="input-busqueda-pdf" placeholder="Escribe y presiona Enter..." data-i18n-placeholder="buscador-ph"
-                    style="width:100%; padding:8px; border:1px solid #bdc3c7; border-radius:4px; box-sizing:border-box;">
-                <div id="resultados-busqueda" style="max-height:400px; overflow-y:auto; margin-top:10px;">
-                </div>
-            </div>
+<div id="panel-busqueda" class="buscador-panel" style="display:none;">
+    <div class="buscador-header">
+        <span class="buscador-titulo-wrap">
+            <svg class="lira-svg-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <span data-i18n="buscador-titulo">BUSCAR EN PDF</span>
+        </span>
+        <div class="buscador-controles">
+            <span id="busqueda-contador" class="buscador-contador"></span>
+            <button type="button" class="buscador-nav-btn" onclick="navegarBusquedaPDF(-1)" title="Coincidencia anterior" data-i18n-title="buscador-ant">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <button type="button" class="buscador-nav-btn" onclick="navegarBusquedaPDF(1)" title="Siguiente coincidencia" data-i18n-title="buscador-sig">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+            <button type="button" class="buscador-close-btn" onclick="cerrarBuscadorPDF()" title="Cerrar" data-i18n-title="btn-cerrar" aria-label="Cerrar">&times;</button>
         </div>
+    </div>
+    <div class="buscador-body">
+        <input type="text" id="input-busqueda-pdf" class="buscador-input" placeholder="Escribe y presiona Enter..." data-i18n-placeholder="buscador-ph">
+        <div id="resultados-busqueda" class="buscador-resultados"></div>
+    </div>
+</div>

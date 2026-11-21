@@ -276,7 +276,7 @@ window.cerrarTutorial = async function(completado = true) {
 window.saltarTutorial = async function() {
     detenerAudioTutorial();
     if (typeof liraConfirm === 'function') {
-        const confirmar = await liraConfirm(getTourText("tour-msg-confirmar-salir", "¿Deseas salir del tour guiado? Podrás volver a consultarlo en cualquier momento desde Configuración (⚙️)."), "🎓");
+        const confirmar = await liraConfirm(getTourText("tour-msg-confirmar-salir", "¿Deseas salir del tour guiado? Podrás volver a consultarlo en cualquier momento desde Configuración."), "graduacion");
         if (!confirmar) return;
     }
     await window.cerrarTutorial(true);
@@ -1347,7 +1347,7 @@ function posicionarMouseHintEnElemento(el, textoBadge = null, tipoClick = 'izqui
     }
     const badgeTxtEl = document.getElementById('tour-mouse-badge-text');
     if (badgeTxtEl) {
-        badgeTxtEl.innerText = textoBadge || "🖱️ Haz clic aquí";
+        _renderizarTourHintBadge(badgeTxtEl, textoBadge || "Haz clic aquí", 'cursor');
     }
     const screenX = r.left + r.width / 2;
     const screenY = r.bottom + 8;
@@ -1430,9 +1430,10 @@ function posicionarMouseHintEnCoordenadas(pdfX, pdfY, textoBadge = null, tipoCli
 
     const badgeTxtEl = document.getElementById('tour-mouse-badge-text');
     if (badgeTxtEl) {
-        badgeTxtEl.innerText = textoBadge || (tipoClick === 'derecho'
-            ? getTourText("tour-paso3-badge-mouse-salto", "🖱️ Clic derecho para leer")
-            : getTourText("tour-paso3-badge-mouse", "🖱️ Clic izquierdo para leer"));
+        const textoMouse = textoBadge || (tipoClick === 'derecho'
+            ? getTourText("tour-paso3-badge-mouse-salto", "Clic derecho para leer")
+            : getTourText("tour-paso3-badge-mouse", "Clic izquierdo para leer"));
+        _renderizarTourHintBadge(badgeTxtEl, textoMouse, 'cursor');
     }
 
     const canvas = document.getElementById('lienzo-pdf');
@@ -1524,7 +1525,7 @@ function posicionarKeyboardHint(pdfX = 390, pdfY = 220, textoBadge = null, onCli
 
     const badgeTxt = document.getElementById('tour-keyboard-badge-text');
     if (badgeTxt) {
-        badgeTxt.innerText = textoBadge || `⌨️ ${atajoLegibleAgregarLimite()} (o clic aquí)`;
+        _renderizarTourHintBadge(badgeTxt, textoBadge || `${atajoLegibleAgregarLimite()} (o clic aquí)`, 'teclado');
     }
 
     if (typeof onClickCallback === 'function') {
@@ -1555,6 +1556,27 @@ function posicionarKeyboardHint(pdfX = 390, pdfY = 220, textoBadge = null, onCli
         kbdHint.style.transform = 'translate(-50%, -50%)';
     }
     kbdHint.style.display = 'block';
+}
+
+function _renderizarTourHintBadge(el, textoRaw, claveIcono) {
+    if (!el) return;
+    const limpio = (typeof window.limpiarTextoEmoji === 'function')
+        ? window.limpiarTextoEmoji(textoRaw).texto
+        : String(textoRaw || '');
+    const svg = (typeof window.obtenerIconoDialogoSVG === 'function')
+        ? window.obtenerIconoDialogoSVG(claveIcono, 'lira-inline-svg')
+        : '';
+    if (svg) {
+        const textoSeguro = (typeof window.escapeHtml === 'function')
+            ? window.escapeHtml(limpio)
+            : limpio.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        el.innerHTML = `${svg} <span>${textoSeguro}</span>`;
+        el.style.display = 'inline-flex';
+        el.style.alignItems = 'center';
+        el.style.gap = '6px';
+    } else {
+        el.textContent = limpio;
+    }
 }
 
 function removerKeyboardHint() {

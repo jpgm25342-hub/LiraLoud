@@ -325,11 +325,9 @@ async function confirmarGuardarCaptura() {
     // Verificar si el backend ya tiene cargada la función (requiere reinicio si la app estaba abierta)
     if (typeof eel === 'undefined' || typeof eel.guardar_captura_extraccion !== 'function') {
         cerrarModalGuardarCaptura();
-        const msgAviso = "⚠️ Para guardar capturas en el disco, por favor reinicia la aplicación una vez para que Python cargue el nuevo módulo de extracciones.";
+        const msgAviso = "Para guardar capturas en el disco, por favor reinicia la aplicación una vez para que Python cargue el nuevo módulo de extracciones.";
         if (typeof liraAlert === 'function') {
-            liraAlert(msgAviso);
-        } else {
-            alert(msgAviso);
+            await liraAlert(msgAviso, 'advertencia');
         }
         return;
     }
@@ -344,7 +342,7 @@ async function confirmarGuardarCaptura() {
         cerrarModalGuardarCaptura();
 
         if (res && res.success) {
-            mostrarNotificacionToast("¡Captura guardada en el Gestor de Extracción!");
+            mostrarNotificacionToast("¡Captura guardada en el Gestor de Extracción!", 'exito');
             
             // Si el panel de extracción está abierto, actualizarlo en vivo
             const modalExt = document.getElementById('modal-subrayados');
@@ -356,14 +354,14 @@ async function confirmarGuardarCaptura() {
         } else {
             console.error("Error guardando captura en backend:", res?.error);
             if (typeof liraAlert === 'function') {
-                liraAlert("No se pudo guardar la captura: " + (res?.error || "Error desconocido"));
+                liraAlert("No se pudo guardar la captura: " + (res?.error || "Error desconocido"), 'error');
             }
         }
     } catch (e) {
         console.error("Excepción al guardar captura:", e);
         cerrarModalGuardarCaptura();
         if (typeof liraAlert === 'function') {
-            liraAlert("Error de conexión al guardar: " + e.message);
+            liraAlert("Error de conexión al guardar: " + e.message, 'error');
         }
     } finally {
         if (btnGuardar) {
@@ -446,11 +444,14 @@ async function cargarExtraccionesCompletas() {
         container.innerHTML = '';
 
         if (subrayados.length === 0 && capturas.length === 0) {
+            const iconoVacio = (typeof obtenerIconoDialogoSVG === 'function')
+                ? obtenerIconoDialogoSVG('archivo')
+                : '<svg class="lira-svg-icon" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
             container.innerHTML = `
-                <div style="text-align:center; padding:40px 15px; color:#95a5a6; font-size:12px;">
-                    <div style="font-size:28px; margin-bottom:10px;">📂</div>
-                    <div style="font-weight:600; color:#7f8c8d; margin-bottom:4px;">No hay extracciones en este libro</div>
-                    <div style="font-size:11px; line-height:1.4;">Resalta textos con el subrayador o usa la herramienta de recorte (Alt+C) para guardar diagramas y algoritmos.</div>
+                <div class="extraccion-empty-state">
+                    <div class="extraccion-empty-icon">${iconoVacio}</div>
+                    <div class="extraccion-empty-title">No hay extracciones en este libro</div>
+                    <div class="extraccion-empty-sub">Resalta textos con el subrayador o usa la herramienta de recorte (Alt+C) para guardar diagramas y algoritmos.</div>
                 </div>
             `;
             return;
@@ -513,7 +514,7 @@ function renderizarTarjetaCaptura(item, container) {
     titleSpan.innerHTML = `${cameraSvg}${escapeHtml(item.titulo)}`;
 
     const deleteBtn = document.createElement('button');
-    deleteBtn.innerHTML = '✕';
+    deleteBtn.innerHTML = '&times;';
     deleteBtn.title = 'Eliminar captura';
     deleteBtn.style.background = 'none';
     deleteBtn.style.border = 'none';
@@ -658,7 +659,10 @@ function renderizarTarjetaCaptura(item, container) {
  * Elimina una captura con confirmación.
  */
 async function eliminarCaptura(idCaptura) {
-    if (!confirm("¿Deseas eliminar esta captura del Gestor de Extracción?")) return;
+    const confirmado = (typeof liraConfirm === 'function')
+        ? await liraConfirm("¿Deseas eliminar esta captura del Gestor de Extracción?", 'borrar')
+        : false;
+    if (!confirmado) return;
 
     try {
         if (typeof eel !== 'undefined' && typeof eel.eliminar_captura_extraccion === 'function') {
@@ -666,7 +670,7 @@ async function eliminarCaptura(idCaptura) {
             if (res && res.success) {
                 const card = document.getElementById(`card_${idCaptura}`);
                 if (card) card.remove();
-                mostrarNotificacionToast("🗑️ Captura eliminada.");
+                mostrarNotificacionToast("Captura eliminada.", 'borrar');
             }
         }
     } catch (e) {
@@ -693,11 +697,20 @@ function abrirModalVerCaptura(imgSrc, titulo, pagina) {
     if (pagEl) pagEl.innerText = pagina !== undefined ? `Página ${pagina + 1}` : '';
 
     if (btnCopiar) {
-        btnCopiar.innerText = '📋 Copiar Imagen';
+        const setCopiarLabel = (texto) => {
+            const spanTxt = btnCopiar.querySelector('#lightbox-btn-copiar-texto') || btnCopiar.querySelector('span');
+            if (spanTxt) {
+                spanTxt.textContent = texto;
+            } else {
+                const svg = (typeof obtenerIconoDialogoSVG === 'function') ? obtenerIconoDialogoSVG('portapapeles') : '';
+                btnCopiar.innerHTML = `${svg} <span>${escapeHtml(texto)}</span>`;
+            }
+        };
+        setCopiarLabel('Copiar Imagen');
         btnCopiar.onclick = async () => {
             await copiarImagenPortapapeles(imgSrc);
-            btnCopiar.innerText = '¡Copiada al portapapeles!';
-            setTimeout(() => { btnCopiar.innerText = '📋 Copiar Imagen'; }, 2000);
+            setCopiarLabel('¡Copiada al portapapeles!');
+            setTimeout(() => { setCopiarLabel('Copiar Imagen'); }, 2000);
         };
     }
 
@@ -738,19 +751,19 @@ async function copiarImagenPortapapeles(dataUrl) {
             await navigator.clipboard.write([
                 new ClipboardItem({ [blob.type]: blob })
             ]);
-            mostrarNotificacionToast("📋 ¡Imagen copiada al portapapeles!");
+            mostrarNotificacionToast("¡Imagen copiada al portapapeles!", 'portapapeles');
         } else {
             // Fallback: abrir imagen en pestaña nueva si portapapeles no está disponible
             window.open(dataUrl, '_blank');
         }
     } catch (err) {
         console.warn("Fallo al copiar imagen al portapapeles:", err);
-        mostrarNotificacionToast("⚠️ No se pudo copiar al portapapeles automáticamente.");
+        mostrarNotificacionToast("No se pudo copiar al portapapeles automáticamente.", 'advertencia');
     }
 }
 
 /**
- * Gestión de pestañas [ Todas ] [ 📝 Subrayados ] [ 📸 Capturas ]
+ * Gestión de pestañas [ Todas ] [ Subrayados ] [ Capturas ]
  */
 function cambiarTabExtraccion(tipoTab) {
     window.tabExtraccionActual = tipoTab;
@@ -789,37 +802,14 @@ function actualizarContadoresExtraccion(numTextos, numCapturas) {
     if (countCaps) countCaps.innerText = `(${numCapturas})`;
 }
 
-function mostrarNotificacionToast(mensaje) {
-    let toast = document.getElementById('lira-toast-captura');
-    if (!toast) {
-        toast = document.createElement('div');
-        toast.id = 'lira-toast-captura';
-        toast.style.position = 'fixed';
-        toast.style.bottom = '30px';
-        toast.style.right = '30px';
-        toast.style.background = '#2c3e50';
-        toast.style.color = '#ffffff';
-        toast.style.padding = '10px 20px';
-        toast.style.borderRadius = '8px';
-        toast.style.fontSize = '12px';
-        toast.style.fontWeight = '500';
-        toast.style.boxShadow = '0 5px 20px rgba(0,0,0,0.3)';
-        toast.style.zIndex = '999999';
-        toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateY(10px)';
-        toast.style.pointerEvents = 'none';
-        document.body.appendChild(toast);
+function mostrarNotificacionToast(mensaje, icono) {
+    if (typeof window.mostrarToast === 'function') {
+        window.mostrarToast(mensaje, icono);
+        return;
     }
-
-    toast.innerText = mensaje;
-    toast.style.opacity = '1';
-    toast.style.transform = 'translateY(0)';
-
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateY(10px)';
-    }, 2500);
+    if (typeof window.mostrarToastLira === 'function') {
+        window.mostrarToastLira(mensaje, icono);
+    }
 }
 
 function escapeHtml(str) {
