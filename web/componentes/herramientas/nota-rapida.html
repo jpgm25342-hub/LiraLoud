@@ -35,9 +35,9 @@
                     <button class="notas-fmt-btn" id="btn-fmt-underline-rapida" onclick="aplicarFormatoNota('underline', null, 'nota-rapida-editor-content')" title="Subrayado (U)" data-i18n-title="fmt-subrayado"><u>U</u></button>
                     <button class="notas-fmt-btn" id="btn-fmt-strike-rapida" onclick="aplicarFormatoNota('strikeThrough', null, 'nota-rapida-editor-content')" title="Tachado" data-i18n-title="fmt-tachado"><s>S</s></button>
                     <div class="notas-fmt-sep"></div>
-                    <button class="notas-fmt-btn" onclick="aplicarFormatoNota('heading', '<h1>', 'nota-rapida-editor-content')" title="Encabezado 1" data-i18n-title="fmt-h1">H1</button>
-                    <button class="notas-fmt-btn" onclick="aplicarFormatoNota('heading', '<h2>', 'nota-rapida-editor-content')" title="Encabezado 2" data-i18n-title="fmt-h2">H2</button>
-                    <button class="notas-fmt-btn" onclick="aplicarFormatoNota('heading', '<h3>', 'nota-rapida-editor-content')" title="Encabezado 3" data-i18n-title="fmt-h3">H3</button>
+                    <button class="notas-fmt-btn" id="btn-fmt-h1-rapida" onmousedown="event.preventDefault()" onclick="aplicarFormatoNota('heading', '<h1>', 'nota-rapida-editor-content')" title="Encabezado 1" data-i18n-title="fmt-h1">H1</button>
+                    <button class="notas-fmt-btn" id="btn-fmt-h2-rapida" onmousedown="event.preventDefault()" onclick="aplicarFormatoNota('heading', '<h2>', 'nota-rapida-editor-content')" title="Encabezado 2" data-i18n-title="fmt-h2">H2</button>
+                    <button class="notas-fmt-btn" id="btn-fmt-h3-rapida" onmousedown="event.preventDefault()" onclick="aplicarFormatoNota('heading', '<h3>', 'nota-rapida-editor-content')" title="Encabezado 3" data-i18n-title="fmt-h3">H3</button>
                     <div class="notas-fmt-sep"></div>
                     <button class="notas-fmt-btn" onclick="aplicarFormatoNota('insertUnorderedList', null, 'nota-rapida-editor-content')" title="Lista" data-i18n-title="fmt-lista">•</button>
                     <button class="notas-fmt-btn" onclick="aplicarFormatoNota('highlight', '#fff3cd', 'nota-rapida-editor-content')" title="Resaltador" data-i18n-title="fmt-resaltador" style="background:#fff3cd; color:#856404; font-size:10px;">A</button>

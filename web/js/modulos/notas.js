@@ -507,13 +507,103 @@ function onBuscarNotasInput(valor) {
     }, 250);
 }
 
+window._ultimaSeleccionNotas = window._ultimaSeleccionNotas || {};
+
+function _obtenerBloqueEnEditor(editor, node) {
+    const BLOQUES = new Set(['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE', 'PRE', 'LI']);
+    let cur = node;
+    while (cur && cur !== editor) {
+        if (cur.nodeType === 1 && BLOQUES.has(cur.tagName)) {
+            return cur;
+        }
+        cur = cur.parentNode;
+    }
+    return null;
+}
+
+function _colocarCursorEnElemento(el, alFinal = true) {
+    const sel = window.getSelection();
+    if (!sel || !el) return;
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(!alFinal);
+    sel.removeAllRanges();
+    sel.addRange(range);
+}
+
+function _aplicarToggleEncabezado(editor, tagRaw) {
+    const targetTag = String(tagRaw || 'H1').replace(/[<>]/g, '').toUpperCase();
+    if (!['H1', 'H2', 'H3'].includes(targetTag)) return;
+
+    let sel = window.getSelection();
+    if ((!sel || sel.rangeCount === 0 || !editor.contains(sel.anchorNode)) && window._ultimaSeleccionNotas[editor.id]) {
+        sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(window._ultimaSeleccionNotas[editor.id].cloneRange());
+    }
+
+    // Caso editor vacío
+    if (!editor.childNodes.length || (editor.innerHTML === '<br>' || editor.textContent.trim() === '' && !editor.querySelector('h1,h2,h3,p,div'))) {
+        editor.innerHTML = '';
+        const nuevo = document.createElement(targetTag);
+        nuevo.innerHTML = '<br>';
+        editor.appendChild(nuevo);
+        _colocarCursorEnElemento(nuevo, false);
+        return;
+    }
+
+    const anchor = (sel && sel.rangeCount > 0 && editor.contains(sel.anchorNode)) ? sel.anchorNode : editor.firstChild;
+    const bloque = _obtenerBloqueEnEditor(editor, anchor);
+
+    if (bloque) {
+        const nuevoTag = (bloque.tagName === targetTag) ? 'P' : targetTag;
+        const nuevo = document.createElement(nuevoTag);
+        nuevo.innerHTML = bloque.innerHTML || '<br>';
+        bloque.parentNode.replaceChild(nuevo, bloque);
+        _colocarCursorEnElemento(nuevo, true);
+        return;
+    }
+
+    // Texto suelto / nodo inline directo dentro del editor
+    let nodoBase = anchor;
+    while (nodoBase && nodoBase.parentNode !== editor) {
+        nodoBase = nodoBase.parentNode;
+    }
+    const nuevo = document.createElement(targetTag);
+    if (nodoBase && nodoBase.parentNode === editor) {
+        // Agrupar nodos inline consecutivos de la misma línea (entre <br> o bloques)
+        const inlineNodes = [nodoBase];
+        let prev = nodoBase.previousSibling;
+        while (prev && prev.nodeName !== 'BR' && !(prev.nodeType === 1 && ['P', 'DIV', 'H1', 'H2', 'H3', 'UL', 'OL', 'BLOCKQUOTE'].includes(prev.tagName))) {
+            inlineNodes.unshift(prev);
+            prev = prev.previousSibling;
+        }
+        let next = nodoBase.nextSibling;
+        while (next && next.nodeName !== 'BR' && !(next.nodeType === 1 && ['P', 'DIV', 'H1', 'H2', 'H3', 'UL', 'OL', 'BLOCKQUOTE'].includes(next.tagName))) {
+            inlineNodes.push(next);
+            next = next.nextSibling;
+        }
+        editor.insertBefore(nuevo, inlineNodes[0]);
+        for (const n of inlineNodes) {
+            nuevo.appendChild(n);
+        }
+        if (next && next.nodeName === 'BR') next.remove();
+    } else {
+        nuevo.innerHTML = '<br>';
+        editor.appendChild(nuevo);
+    }
+    _colocarCursorEnElemento(nuevo, true);
+}
+
 // --- FORMATEO EN EDITOR ENRIQUECIDO Y ESTADOS ACTIVOS ---
 function aplicarFormatoNota(comando, valor = null, targetEditorId = 'nota-editor-content') {
     const editor = document.getElementById(targetEditorId);
     if (!editor) return;
     editor.focus();
-    
-    if (comando === 'highlight') {
+
+    if (comando === 'heading') {
+        _aplicarToggleEncabezado(editor, valor);
+    } else if (comando === 'highlight') {
         const sel = window.getSelection();
         if (sel && sel.rangeCount > 0) {
             const parent = sel.anchorNode?.parentElement;
@@ -536,6 +626,7 @@ function aplicarFormatoNota(comando, valor = null, targetEditorId = 'nota-editor
 }
 
 function actualizarEstadosFormato(targetEditorId = 'nota-editor-content') {
+    const editor = document.getElementById(targetEditorId);
     const esRapida = targetEditorId === 'nota-rapida-editor-content';
     const sufijo = esRapida ? '-rapida' : '-general';
 
@@ -553,12 +644,26 @@ function actualizarEstadosFormato(targetEditorId = 'nota-editor-content') {
     if (btnItalic) btnItalic.classList.toggle('activo', !!esItalic);
     if (btnUnderline) btnUnderline.classList.toggle('activo', !!esUnderline);
     if (btnStrike) btnStrike.classList.toggle('activo', !!esStrike);
+
+    const sel = window.getSelection();
+    const bloque = (editor && sel && sel.rangeCount > 0 && editor.contains(sel.anchorNode))
+        ? _obtenerBloqueEnEditor(editor, sel.anchorNode)
+        : null;
+    const tagActual = bloque ? bloque.tagName : '';
+    ['H1', 'H2', 'H3'].forEach(h => {
+        const btnH = document.getElementById(`btn-fmt-${h.toLowerCase()}${sufijo}`);
+        if (btnH) btnH.classList.toggle('activo', tagActual === h);
+    });
 }
 
 // Enlazar listeners para detectar cursor y selección
 document.addEventListener('selectionchange', () => {
     const activeEl = document.activeElement;
     if (activeEl && (activeEl.id === 'nota-editor-content' || activeEl.id === 'nota-rapida-editor-content')) {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0 && activeEl.contains(sel.anchorNode)) {
+            window._ultimaSeleccionNotas[activeEl.id] = sel.getRangeAt(0).cloneRange();
+        }
         actualizarEstadosFormato(activeEl.id);
     }
 });
