@@ -158,11 +158,29 @@
                         <span style="font-size:13px;font-weight:700;color:#3d2d6b;" data-i18n="bienvenida-card-txt-titulo"> Texto libre</span>
                     </div>
                     <textarea id="lira-texto-input" class="lanzador-textarea"
-                        placeholder="Pega aqu&iacute; el texto que quieres escuchar..." data-i18n-placeholder="lanzador-txt-ph"></textarea>
+                        placeholder="Pega aqu&iacute; el texto que quieres escuchar..." data-i18n-placeholder="lanzador-txt-ph"
+                        onkeydown="if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='s'){event.preventDefault(); if(typeof guardarTextoLibre==='function') guardarTextoLibre(false);}"></textarea>
                     <div id="lira-texto-estado" class="lanzador-estado"></div>
-                    <button id="btn-ejecutar-texto" class="lanzador-btn-accion" onclick="ejecutarImportarTexto()" data-i18n="lanzador-btn-leer-txt">
-                        Leer texto
-                    </button>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <button type="button" id="btn-guardar-texto" class="lanzador-btn-accion" onclick="guardarTextoLibre(false)"
+                            style="flex:0 0 auto; padding:10px 14px; background:#0f766e; display:inline-flex; align-items:center; gap:6px;"
+                            title="Guardar texto (Ctrl+S)" data-i18n-title="ttl-guardar-texto">
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                <polyline points="17 21 17 13 7 13 7 21"/>
+                                <polyline points="7 3 7 8 15 8"/>
+                            </svg>
+                            <span data-i18n="btn-guardar-texto">Guardar</span>
+                        </button>
+                        <button type="button" id="btn-guardar-como-texto" class="lanzador-btn-accion" onclick="guardarTextoLibre(true)"
+                            style="display:none; flex:0 0 auto; padding:10px 12px; background:#334155;"
+                            title="Guardar como..." data-i18n-title="ttl-guardar-como-texto">
+                            <span data-i18n="btn-guardar-como-texto">Guardar como</span>
+                        </button>
+                        <button id="btn-ejecutar-texto" class="lanzador-btn-accion" onclick="ejecutarImportarTexto()" style="flex:1;" data-i18n="lanzador-btn-leer-txt">
+                            Leer texto
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

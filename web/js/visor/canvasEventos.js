@@ -418,7 +418,11 @@ canvas.addEventListener('mousemove', (e) => {
         dibujar(); 
         if (window.isDraggingSubrayador && typeof procesarPalabraSubrayado === 'function') {
             if (palabraHover) {
-                window.currentIndexSubrayado = datosPagina.palabras.indexOf(palabraHover);
+                const idxHover = datosPagina.palabras.indexOf(palabraHover);
+                if (window.startIndexSubrayado === -1) {
+                    window.startIndexSubrayado = idxHover;
+                }
+                window.currentIndexSubrayado = idxHover;
             }
             procesarPalabraSubrayado();
         }
@@ -656,8 +660,8 @@ canvas.addEventListener('click', (e) => {
             return;
         }
 
-        // --- 2. LÓGICA DE LECTURA (Solo si los paneles están cerrados) ---
-        else {
+        // --- 2. LÓGICA DE LECTURA (Solo si los paneles están cerrados y NO estamos en Modo Solo Lectura) ---
+        else if (!window.modoSoloLecturaActivo) {
             let idx = buscarOracionPorGeometria(palabraHover);
             if (idx !== -1) {
 

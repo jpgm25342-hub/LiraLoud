@@ -50,6 +50,9 @@ function toggleModoSubrayador(activo) {
     } else {
         restaurarCursorCanvas();
     }
+    if (typeof window.actualizarEstadoInteractivoCapaSoloLectura === 'function') {
+        window.actualizarEstadoInteractivoCapaSoloLectura();
+    }
 }
 
 function toggleModoBorrador(activo) {
@@ -76,6 +79,9 @@ function toggleModoBorrador(activo) {
     } else {
         restaurarCursorCanvas();
     }
+    if (typeof window.actualizarEstadoInteractivoCapaSoloLectura === 'function') {
+        window.actualizarEstadoInteractivoCapaSoloLectura();
+    }
 }
 
 function setSubrayadoColor(colorHex, activar = true) {
@@ -97,6 +103,10 @@ function setSubrayadoColor(colorHex, activar = true) {
     } else if (activar) {
         // Activar el subrayador al elegir un color
         toggleModoSubrayador(true);
+    }
+
+    if (typeof window.actualizarEstadoInteractivoCapaSoloLectura === 'function') {
+        window.actualizarEstadoInteractivoCapaSoloLectura();
     }
     
     if (activar && typeof guardarTodosAjustes === 'function') {

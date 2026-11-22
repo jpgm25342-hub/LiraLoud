@@ -854,5 +854,13 @@ window.LIRA_I18N["hi"] = {
   "lbl-pags-corto": "पृष्ठ",
   "lbl-traduccion-export": "🌐 अनुवाद सहित",
   "opt-trad-solo": "केवल अनुवाद",
-  "opt-trad-bilingue": "मूल + अनुवाद"
+  "opt-trad-bilingue": "मूल + अनुवाद",
+  "btn-solo-lectura": "केवल पढ़ना",
+  "ttl-solo-lectura": "केवल पढ़ना / बिना आवाज़ मोड",
+  "msg-solo-lectura-activo": "केवल पढ़ना मोड सक्रिय है (बिना आवाज़)।",
+  "btn-guardar-texto": "सहेजें",
+  "ttl-guardar-texto": "पाठ सहेजें (Ctrl+S)",
+  "btn-guardar-como-texto": "इस रूप में सहेजें",
+  "ttl-guardar-como-texto": "इस रूप में सहेजें...",
+  "msg-texto-guardado": "सहेजा गया"
 };

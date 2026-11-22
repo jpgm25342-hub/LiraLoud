@@ -854,5 +854,13 @@ window.LIRA_I18N["zh"] = {
   "lbl-pags-corto": "页",
   "lbl-traduccion-export": "🌐 附带翻译",
   "opt-trad-solo": "仅翻译",
-  "opt-trad-bilingue": "原文 + 翻译"
+  "opt-trad-bilingue": "原文 + 翻译",
+  "btn-solo-lectura": "仅阅读",
+  "ttl-solo-lectura": "仅阅读 / 无语音模式",
+  "msg-solo-lectura-activo": "仅阅读模式已激活（无语音）。",
+  "btn-guardar-texto": "保存",
+  "ttl-guardar-texto": "保存文本 (Ctrl+S)",
+  "btn-guardar-como-texto": "另存为",
+  "ttl-guardar-como-texto": "另存为...",
+  "msg-texto-guardado": "已保存"
 };

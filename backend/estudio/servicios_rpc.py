@@ -888,3 +888,44 @@ def rag_contar_tokens_gemini(texto, modelo=None, api_key=None):
     return rag_global.contar_tokens_gemini(
         texto=texto, modelo=modelo, api_key=api_key
     )
+
+
+@eel.expose
+def guardar_texto_libre_disco(texto, ruta=None, guardar_como=False):
+    """Guarda el contenido del modo 'Escribir texto' en disco (.txt/.md, UTF-8) de forma atómica."""
+    try:
+        contenido = "" if texto is None else str(texto)
+        ruta_objetivo = (ruta or "").strip()
+
+        if guardar_como or not ruta_objetivo:
+            if not puente_webview.ventana:
+                return {"ok": False, "error": "Ventana principal no disponible para el diálogo."}
+            import webview
+            nombre_sugerido = os.path.basename(ruta_objetivo) if ruta_objetivo else "texto.txt"
+            dir_sugerido = os.path.dirname(ruta_objetivo) if ruta_objetivo else ""
+            seleccion = puente_webview.ventana.create_file_dialog(
+                webview.SAVE_DIALOG,
+                directory=dir_sugerido,
+                save_filename=nombre_sugerido,
+                file_types=(
+                    "Archivos de texto (*.txt)",
+                    "Markdown (*.md)",
+                    "Todos los archivos (*.*)",
+                ),
+            )
+            if not seleccion:
+                return {"ok": False, "cancelado": True}
+            ruta_objetivo = seleccion[0] if isinstance(seleccion, (list, tuple)) else str(seleccion)
+            if not os.path.splitext(ruta_objetivo)[1]:
+                ruta_objetivo += ".txt"
+
+        dir_dest = os.path.dirname(os.path.abspath(ruta_objetivo)) or "."
+        os.makedirs(dir_dest, exist_ok=True)
+        tmp_path = f"{ruta_objetivo}.tmp"
+        with open(tmp_path, "w", encoding="utf-8", newline="\n") as f:
+            f.write(contenido)
+        os.replace(tmp_path, ruta_objetivo)
+        return {"ok": True, "ruta": ruta_objetivo}
+    except Exception as e:
+        logger.error(f"Error guardando texto libre en disco: {e}", exc_info=True)
+        return {"ok": False, "error": str(e)}

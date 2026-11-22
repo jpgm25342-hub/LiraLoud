@@ -1934,6 +1934,12 @@ function copiarResultadoIA() {
 }
 
 function escucharResultadoIA() {
+    if (window.modoSoloLecturaActivo) {
+        if (typeof window.notificarBloqueoSoloLectura === 'function') {
+            window.notificarBloqueoSoloLectura();
+        }
+        return;
+    }
     const btnId = 'btn-ia-escuchar-solicitud';
     const cuerpo = document.getElementById('ia-resultado-cuerpo');
     if (!cuerpo) return;

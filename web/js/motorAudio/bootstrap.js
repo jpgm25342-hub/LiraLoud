@@ -80,6 +80,7 @@ async function guardarTodosAjustes(forceRamReload = false) {
             "ollama_auto_solicitud": document.getElementById('chk-ollama-auto-solicitud')?.checked ?? false,
             "obra_actual": obraActualTeatro,
             "mostrarKofi": document.getElementById('chk-kofi')?.checked ?? true,
+            "solo_lectura": window.modoSoloLecturaActivo ?? false,
             "auto_avance": document.getElementById('chk-auto-avance')?.checked ?? true,
             "idioma_ui": document.querySelector('input[name="radio-idioma"]:checked')?.value || 'en',
             "pausa_sistema": document.getElementById('chk-pausa-sistema')?.checked ?? false,
@@ -544,6 +545,9 @@ window.onload = async () => {
         if (typeof toggleBotonKofi === 'function') {
             toggleBotonKofi(mostrarKofiActivo);
         }
+        if (typeof toggleModoSoloLectura === 'function') {
+            toggleModoSoloLectura(ajustes?.solo_lectura ?? false, true);
+        }
 
         const hideFiltros = ajustes?.hide_filtros ?? false;
         safeCheck('chk-hide-filtros', hideFiltros);
@@ -741,6 +745,9 @@ window.onload = async () => {
                 if (datosPagina) {
                     canvas.style.width = (datosPagina.ancho_img * nivelZoomPDF) + "px";
                     canvas.style.height = (datosPagina.alto_img * nivelZoomPDF) + "px";
+                    if (typeof window.sincronizarCapaTextoSoloLectura === 'function') {
+                        window.sincronizarCapaTextoSoloLectura();
+                    }
                 }
             } else if (e.altKey) {
                 e.preventDefault();

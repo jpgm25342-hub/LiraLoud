@@ -854,5 +854,13 @@ window.LIRA_I18N["ar"] = {
   "lbl-pags-corto": "صفحات",
   "lbl-traduccion-export": "🌐 مع الترجمة",
   "opt-trad-solo": "الترجمة فقط",
-  "opt-trad-bilingue": "الأصل + الترجمة"
+  "opt-trad-bilingue": "الأصل + الترجمة",
+  "btn-solo-lectura": "للقراءة فقط",
+  "ttl-solo-lectura": "وضع القراءة فقط / بدون صوت",
+  "msg-solo-lectura-activo": "وضع القراءة فقط نشط (بدون صوت).",
+  "btn-guardar-texto": "حفظ",
+  "ttl-guardar-texto": "حفظ النص (Ctrl+S)",
+  "btn-guardar-como-texto": "حفظ باسم",
+  "ttl-guardar-como-texto": "حفظ باسم...",
+  "msg-texto-guardado": "تم الحفظ"
 };

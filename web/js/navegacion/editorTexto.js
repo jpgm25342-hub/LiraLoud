@@ -188,6 +188,9 @@ function toggleModoEditorTexto(activo) {
     document.querySelectorAll('.zen-item-editor-texto').forEach(el => {
         el.classList.toggle('tool-active-underline', activo);
     });
+    if (typeof window.actualizarEstadoInteractivoCapaSoloLectura === 'function') {
+        window.actualizarEstadoInteractivoCapaSoloLectura();
+    }
 
     if (activo) {
         if (capa) capa.classList.add('activo');
@@ -282,7 +285,9 @@ async function renderizarBloquesEditor() {
 }
 
 function calcRectCanvas(bboxPdf) {
-    if (!memoriaLayout[paginaActual.toString()]) return {x:0, y:0, w:0, h:0};
+    const memPag = (typeof memoriaLayout !== 'undefined' && memoriaLayout) ? memoriaLayout[paginaActual.toString()] : null;
+    const baseEscala = memPag?.escala || (typeof datosPagina !== 'undefined' && datosPagina?.factor_zoom) || 0;
+    if (!baseEscala) return {x:0, y:0, w:0, h:0};
 
     const wrapper = document.getElementById('pdf-crop-wrapper');
     const canvas = document.getElementById('lienzo-pdf');
@@ -290,7 +295,7 @@ function calcRectCanvas(bboxPdf) {
 
     if (!wrapper || !canvas || !container) return {x:0, y:0, w:0, h:0};
 
-    const sc = (memoriaLayout[paginaActual.toString()].escala || 1.0) * (typeof nivelZoomPDF !== 'undefined' ? nivelZoomPDF : 1.0);
+    const sc = baseEscala * (typeof nivelZoomPDF !== 'undefined' ? nivelZoomPDF : 1.0);
 
     const wrapperLeft = wrapper.offsetLeft;
     const wrapperTop = wrapper.offsetTop;
@@ -328,7 +333,9 @@ function calcRectCanvas(bboxPdf) {
 }
 
 function pdfRectFromCanvas(rectVisual) {
-    if (!memoriaLayout[paginaActual.toString()]) return [0,0,0,0];
+    const memPag = (typeof memoriaLayout !== 'undefined' && memoriaLayout) ? memoriaLayout[paginaActual.toString()] : null;
+    const baseEscala = memPag?.escala || (typeof datosPagina !== 'undefined' && datosPagina?.factor_zoom) || 0;
+    if (!baseEscala) return [0,0,0,0];
 
     const wrapper = document.getElementById('pdf-crop-wrapper');
     const canvas = document.getElementById('lienzo-pdf');
@@ -336,7 +343,7 @@ function pdfRectFromCanvas(rectVisual) {
 
     if (!wrapper || !canvas || !container) return [0,0,0,0];
 
-    const sc = (memoriaLayout[paginaActual.toString()].escala || 1.0) * (typeof nivelZoomPDF !== 'undefined' ? nivelZoomPDF : 1.0);
+    const sc = baseEscala * (typeof nivelZoomPDF !== 'undefined' ? nivelZoomPDF : 1.0);
 
     const containerRect = container.getBoundingClientRect();
     const wrapperRect = wrapper.getBoundingClientRect();

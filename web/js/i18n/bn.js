@@ -854,5 +854,13 @@ window.LIRA_I18N["bn"] = {
   "lbl-pags-corto": "পৃষ্ঠা",
   "lbl-traduccion-export": "🌐 অনুবাদসহ",
   "opt-trad-solo": "শুধুমাত্র অনুবাদ",
-  "opt-trad-bilingue": "মূল + অনুবাদ"
+  "opt-trad-bilingue": "মূল + অনুবাদ",
+  "btn-solo-lectura": "শুধু পড়া",
+  "ttl-solo-lectura": "শুধু পড়া / ভয়েস ছাড়া মোড",
+  "msg-solo-lectura-activo": "শুধু পড়া মোড সক্রিয় (ভয়েস ছাড়া)।",
+  "btn-guardar-texto": "সংরক্ষণ",
+  "ttl-guardar-texto": "টেক্সট সংরক্ষণ (Ctrl+S)",
+  "btn-guardar-como-texto": "নতুন নামে সংরক্ষণ",
+  "ttl-guardar-como-texto": "নতুন নামে সংরক্ষণ...",
+  "msg-texto-guardado": "সংরক্ষিত"
 };

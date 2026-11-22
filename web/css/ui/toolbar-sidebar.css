@@ -525,6 +525,7 @@ body.ui-dark-mode .text-card-copy-btn:hover {
 .fila-top .btn-secundario,
 .fila-top #btn-abrir-descarga,
 .fila-top #btn-kofi-global,
+.fila-top #btn-solo-lectura,
 .fila-top summary.btn-secundario {
     height: 38px !important;
     padding: 0 16px !important;
@@ -545,6 +546,46 @@ body.ui-dark-mode .text-card-copy-btn:hover {
 
 #btn-kofi-global.hidden-kofi {
     display: none !important;
+}
+
+#btn-solo-lectura {
+    background: #0f172a;
+    color: #f8fafc;
+    border: 1px solid #334155 !important;
+    cursor: pointer;
+    transition: transform 0.2s, background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+#btn-solo-lectura:hover {
+    background: #1e293b;
+    border-color: #475569 !important;
+    transform: translateY(-1px);
+}
+
+#btn-solo-lectura.activo {
+    background: #ffffff;
+    color: #0f172a;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+}
+
+body.ui-dark-mode #btn-solo-lectura {
+    background: #1e293b;
+    color: #f8fafc;
+    border-color: #475569 !important;
+}
+
+body.ui-dark-mode #btn-solo-lectura:hover {
+    background: #334155;
+    color: #ffffff;
+    border-color: #64748b !important;
+}
+
+body.ui-dark-mode #btn-solo-lectura.activo {
+    background: #ffffff;
+    color: #0f172a;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 2px 10px rgba(255, 255, 255, 0.18);
 }
 
 /* Reset specific elements list-style for summary */

@@ -854,5 +854,13 @@ window.LIRA_I18N["de"] = {
   "lbl-pags-corto": "Seiten",
   "lbl-traduccion-export": "🌐 Mit Übersetzung",
   "opt-trad-solo": "Nur Übersetzung",
-  "opt-trad-bilingue": "Original + Übersetzung"
+  "opt-trad-bilingue": "Original + Übersetzung",
+  "btn-solo-lectura": "Nur Lesen",
+  "ttl-solo-lectura": "Nur-Lesen-Modus / Ohne Stimme",
+  "msg-solo-lectura-activo": "Nur-Lesen-Modus aktiv (ohne Stimme).",
+  "btn-guardar-texto": "Speichern",
+  "ttl-guardar-texto": "Text speichern (Ctrl+S)",
+  "btn-guardar-como-texto": "Speichern unter",
+  "ttl-guardar-como-texto": "Speichern unter...",
+  "msg-texto-guardado": "Gespeichert"
 };

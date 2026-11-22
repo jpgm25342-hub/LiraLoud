@@ -178,7 +178,7 @@ function tieneLimitesHActivos(limH, altoPag) {
 window.tieneLimitesHActivos = tieneLimitesHActivos;
 
 function guardarEstadoPaginaActual() {
-    if (!rutaPDFActual || !datosPagina) return;
+    if (!rutaPDFActual || !datosPagina || window.modoSoloLecturaActivo || datosPagina._esSoloLectura) return;
     let pagKey = paginaActual.toString();
     let prevManual = memoriaLayout[pagKey]?.limitesHManual;
     let tieneCortesActivos = tieneLimitesHActivos(limitesH, datosPagina.alto_pagina_pdf);
@@ -223,6 +223,13 @@ function bloquearControlesNavegacion(bloqueado) {
 }
 
 async function cargarPagina(num) {
+    if (window.modoSoloLecturaActivo && typeof window.cargarPaginaSoloLecturaRapida === 'function') {
+        paginaActual = num;
+        const inpPag = document.getElementById('input-pagina-actual');
+        if (inpPag) inpPag.value = num + 1;
+        const ok = await window.cargarPaginaSoloLecturaRapida(num);
+        if (ok) return;
+    }
     detenerLectura();
     if (window._preservarResaltadoEnSalto && window.resaltadoPagina === num) {
         window._preservarResaltadoEnSalto = false;
@@ -851,9 +858,6 @@ async function autoDetectarLayoutActual() {
             };
 
             guardarEstadoPaginaActual();
-        if (typeof window.compilarLibroTeatroPagina === 'function' && data?.oraciones) {
-            window.compilarLibroTeatroPagina(num, data.oraciones);
-        }
             if (typeof dibujar === 'function') dibujar();
             await cargarPagina(paginaActual);
 

@@ -197,6 +197,44 @@ function lanzarAbrirTexto() {
     setTimeout(() => document.getElementById('lira-texto-input')?.focus(), 80);
 }
 
+window.rutaTextoLibreActual = window.rutaTextoLibreActual || null;
+
+async function guardarTextoLibre(guardarComo = false) {
+    const input = document.getElementById('lira-texto-input');
+    if (!input) return;
+    const selStart = input.selectionStart;
+    const selEnd = input.selectionEnd;
+    const texto = input.value || '';
+
+    if (typeof eel === 'undefined' || typeof eel.guardar_texto_libre_disco !== 'function') {
+        _setEstado('lira-texto-estado', 'Servicio de guardado no disponible.', true, 'error');
+        return;
+    }
+
+    try {
+        const res = await eel.guardar_texto_libre_disco(texto, window.rutaTextoLibreActual, Boolean(guardarComo))();
+        if (res && res.ok) {
+            window.rutaTextoLibreActual = res.ruta;
+            const btnComo = document.getElementById('btn-guardar-como-texto');
+            if (btnComo) btnComo.style.display = 'inline-flex';
+            const msgOk = (typeof window.t === 'function') ? window.t('msg-texto-guardado', 'Guardado') : 'Guardado';
+            _setEstado('lira-texto-estado', `${msgOk}: ${res.ruta}`, false, 'exito');
+        } else if (res && res.cancelado) {
+            // Cancelado por el usuario: no mostrar error
+        } else {
+            const msgErr = (res && res.error) ? res.error : 'No se pudo guardar el texto.';
+            _setEstado('lira-texto-estado', msgErr, true, 'error');
+        }
+    } catch (e) {
+        _setEstado('lira-texto-estado', 'Error al guardar: ' + e, true, 'error');
+    } finally {
+        input.focus();
+        if (typeof selStart === 'number' && typeof selEnd === 'number') {
+            input.setSelectionRange(selStart, selEnd);
+        }
+    }
+}
+
 async function ejecutarImportarTexto() {
     const input = document.getElementById('lira-texto-input');
     const texto = (input?.value || '').trim();

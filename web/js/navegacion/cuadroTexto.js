@@ -66,7 +66,10 @@ function activarModoCuadroTexto(activo) {
     }
     
     window.textoEditandoActivo = window.modoCuadroTextoActivo;
-    
+    if (typeof window.actualizarEstadoInteractivoCapaSoloLectura === 'function') {
+        window.actualizarEstadoInteractivoCapaSoloLectura();
+    }
+
     // Save to config
     if (typeof guardarTodosAjustes === 'function') guardarTodosAjustes();
 }

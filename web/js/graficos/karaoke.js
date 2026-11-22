@@ -7,7 +7,83 @@
 // ==========================================
 
 
+window.modoSoloLecturaActivo = window.modoSoloLecturaActivo ?? false;
+
+function notificarBloqueoSoloLectura() {
+    const msg = (typeof window.t === 'function')
+        ? window.t('msg-solo-lectura-activo', 'Modo Solo Lectura activo (sin voz).')
+        : 'Modo Solo Lectura activo (sin voz).';
+    if (typeof mostrarToastLira === 'function') {
+        mostrarToastLira(msg);
+    } else if (typeof actualizarEstado === 'function') {
+        actualizarEstado(msg);
+    }
+}
+window.notificarBloqueoSoloLectura = notificarBloqueoSoloLectura;
+
+function toggleModoSoloLectura(activo, silencioso = false) {
+    const nuevo = Boolean(activo);
+    window.modoSoloLecturaActivo = nuevo;
+    const btn = document.getElementById('btn-solo-lectura');
+    if (btn) {
+        btn.classList.toggle('activo', nuevo);
+        btn.setAttribute('aria-pressed', nuevo ? 'true' : 'false');
+        const iconOn = btn.querySelector('.icon-voz-on');
+        const iconOff = btn.querySelector('.icon-voz-off');
+        if (iconOn) iconOn.style.display = nuevo ? 'none' : 'inline-block';
+        if (iconOff) iconOff.style.display = nuevo ? 'inline-block' : 'none';
+    }
+
+    const boxLimites = document.getElementById('box-limites-toolbar');
+    if (boxLimites) {
+        boxLimites.style.opacity = nuevo ? '0.4' : '';
+        boxLimites.style.pointerEvents = nuevo ? 'none' : '';
+    }
+
+    document.querySelectorAll('.linea-corte-v, .linea-limite-h, #capa-cortes-v, #capa-limites-h').forEach(el => {
+        el.style.display = nuevo ? 'none' : '';
+    });
+
+    if (nuevo) {
+        if (typeof toggleCapturaCorte === 'function' && window.capturandoCorte) {
+            toggleCapturaCorte(false);
+        }
+        if (typeof detenerLectura === 'function') {
+            detenerLectura(true);
+        }
+        const capaKaraoke = document.getElementById('capa-karaoke');
+        if (capaKaraoke) capaKaraoke.style.display = 'none';
+        if (!silencioso && typeof rutaPDFActual !== 'undefined' && rutaPDFActual && typeof cargarPagina === 'function' && typeof paginaActual === 'number') {
+            cargarPagina(paginaActual);
+        }
+    } else {
+        if (typeof window.limpiarCapaTextoSoloLectura === 'function') {
+            window.limpiarCapaTextoSoloLectura();
+        }
+        const capaKaraoke = document.getElementById('capa-karaoke');
+        if (capaKaraoke) capaKaraoke.style.display = '';
+        if (!silencioso) {
+            if (typeof dibujarCortesEnCanvas === 'function') dibujarCortesEnCanvas();
+            if (typeof rutaPDFActual !== 'undefined' && rutaPDFActual && typeof cargarPagina === 'function' && typeof paginaActual === 'number') {
+                if (typeof window.mostrarOverlayCargaAudio === 'function') window.mostrarOverlayCargaAudio(true);
+                Promise.resolve(cargarPagina(paginaActual)).finally(() => {
+                    if (typeof window.mostrarOverlayCargaAudio === 'function') window.mostrarOverlayCargaAudio(false);
+                });
+            }
+        }
+    }
+
+    if (!silencioso && nuevo) {
+        notificarBloqueoSoloLectura();
+    }
+}
+window.toggleModoSoloLectura = toggleModoSoloLectura;
+
 async function hablarTexto(texto, callback, listaPalabrasVisuales = null, vozForzada = null, esTransicionAutomatica = false) {
+    if (window.modoSoloLecturaActivo) {
+        if (!esTransicionAutomatica) notificarBloqueoSoloLectura();
+        return;
+    }
 
     // 🛡️ 1. SEMÁFORO DE ARRANQUE (Debounce)
     // Si hay una orden de lectura pendiente de hace menos de 50ms, la cancelamos.
@@ -513,6 +589,10 @@ function toggleLectura() {
 }
 
 async function iniciarLectura() {
+    if (window.modoSoloLecturaActivo) {
+        notificarBloqueoSoloLectura();
+        return;
+    }
     if (!leyendo) {
         if (typeof bloqueoCambioPagina !== 'undefined' && bloqueoCambioPagina && window._promesaCargaPaginaActual) {
             try {

@@ -389,7 +389,7 @@ def seleccionar_archivo():
 # 3. RENDERIZADO DE PÁGINAS, LAYOUT Y OCR
 # ==========================================
 @eel.expose
-def obtener_vista_rapida_pagina(num):
+def obtener_vista_rapida_pagina(num, incluir_palabras=False):
     """Devuelve rápidamente solo la imagen y dimensiones de la página para dibujarla de inmediato en el visor."""
     doc = estado_app.doc
     if not doc or num < 0 or num >= len(doc):
@@ -399,7 +399,7 @@ def obtener_vista_rapida_pagina(num):
         zoom = 1.5
         pix = pagina.get_pixmap(matrix=fitz.Matrix(zoom, zoom), alpha=False)
         img_data = base64.b64encode(pix.tobytes("jpg", jpg_quality=80)).decode("utf-8")
-        return {
+        res = {
             "imagen": f"data:image/jpeg;base64,{img_data}",
             "ancho_img": int(pagina.rect.width * zoom),
             "alto_img": int(pagina.rect.height * zoom),
@@ -407,6 +407,18 @@ def obtener_vista_rapida_pagina(num):
             "alto_pagina_pdf": pagina.rect.height,
             "total_paginas": len(doc),
         }
+        if incluir_palabras:
+            raw_words = pagina.get_text("words")
+            if not raw_words:
+                doc_path = getattr(doc, "name", "doc_actual")
+                if esta_en_cache_ocr(doc_path, num):
+                    raw_words = obtener_palabras_cache_ocr(doc_path, num) or []
+            res["palabras_rapidas"] = [
+                [round(float(w[0]), 2), round(float(w[1]), 2), round(float(w[2]), 2), round(float(w[3]), 2), str(w[4])]
+                for w in raw_words
+                if len(w) >= 5 and str(w[4]).strip()
+            ]
+        return res
     except Exception as e:
         print(f"⚠️ Error obteniendo vista rápida de página {num}: {e}")
         return None

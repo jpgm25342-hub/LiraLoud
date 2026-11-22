@@ -854,5 +854,13 @@ window.LIRA_I18N["en"] = {
   "lbl-pags-corto": "pages",
   "lbl-traduccion-export": "🌐 With translation",
   "opt-trad-solo": "Translation only",
-  "opt-trad-bilingue": "Original + Translation"
+  "opt-trad-bilingue": "Original + Translation",
+  "btn-solo-lectura": "Read only",
+  "ttl-solo-lectura": "Read Only / No Voice Mode",
+  "msg-solo-lectura-activo": "Read Only mode active (no voice).",
+  "btn-guardar-texto": "Save",
+  "ttl-guardar-texto": "Save text (Ctrl+S)",
+  "btn-guardar-como-texto": "Save as",
+  "ttl-guardar-como-texto": "Save as...",
+  "msg-texto-guardado": "Saved"
 };

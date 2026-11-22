@@ -50,7 +50,7 @@ function dibujar() {
         const offsetH = 1; // Reduce a los lados
 
         // 3. RENDERIZADO DE LA GUÍA (Oración Punto a Punto)
-        if (oracionActiva) {
+        if (!window.modoSoloLecturaActivo && oracionActiva) {
             ctx.fillStyle = hexToRGBA(colorGuia, 0.15); // Fondo sutil
             ctx.strokeStyle = hexToRGBA(colorGuia, 0.30); // Borde guía
             ctx.lineWidth = 1;
@@ -75,7 +75,7 @@ function dibujar() {
         }
 
         // 4. RENDERIZADO DEL KARAOKE (Palabra Activa)
-        if (window.palabraKaraoke && window.palabraKaraoke.bbox) {
+        if (!window.modoSoloLecturaActivo && window.palabraKaraoke && window.palabraKaraoke.bbox) {
             let k = window.palabraKaraoke.bbox;
             const pAudio = (window.partituraActual && window.ultimoIdxAudio !== -1)
                 ? window.partituraActual[window.ultimoIdxAudio] : null;
@@ -111,13 +111,20 @@ function dibujar() {
         }
 
         // 5. HOVER (Amarillo translúcido de sistema)
-        if (palabraHover) {
+        if (palabraHover && (!window.modoSoloLecturaActivo || window.modoSubrayadorActivo)) {
             let b = palabraHover.bbox;
             ctx.fillStyle = "rgba(255, 200, 0, 0.30)";
             ctx.fillRect(b[0] * z, b[1] * z, (b[2] - b[0]) * z, (b[3] - b[1]) * z);
         }
         // Dentro de dibujar(), justo después del Punto 5 (Hover)
         aplicarResaltadoBuscador(ctx, z);
+
+        if (window.modoSoloLecturaActivo) {
+            return;
+        }
+        if (typeof window.limpiarCapaTextoSoloLectura === 'function') {
+            window.limpiarCapaTextoSoloLectura();
+        }
         // 6. Líneas y límites
         const vis = obtenerLimitesVisiblesRecorte();
         // Helper para normalizar cortesV (número plano u objeto con rango vertical)

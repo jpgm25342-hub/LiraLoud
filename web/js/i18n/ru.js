@@ -854,5 +854,13 @@ window.LIRA_I18N["ru"] = {
   "lbl-pags-corto": "стр.",
   "lbl-traduccion-export": "🌐 С переводом",
   "opt-trad-solo": "Только перевод",
-  "opt-trad-bilingue": "Оригинал + Перевод"
+  "opt-trad-bilingue": "Оригинал + Перевод",
+  "btn-solo-lectura": "Только чтение",
+  "ttl-solo-lectura": "Режим только чтения / Без голоса",
+  "msg-solo-lectura-activo": "Режим только чтения активен (без голоса).",
+  "btn-guardar-texto": "Сохранить",
+  "ttl-guardar-texto": "Сохранить текст (Ctrl+S)",
+  "btn-guardar-como-texto": "Сохранить как",
+  "ttl-guardar-como-texto": "Сохранить как...",
+  "msg-texto-guardado": "Сохранено"
 };

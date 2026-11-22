@@ -854,5 +854,13 @@ window.LIRA_I18N["fr"] = {
   "lbl-pags-corto": "p.",
   "lbl-traduccion-export": "🌐 Avec traduction",
   "opt-trad-solo": "Traduction seule",
-  "opt-trad-bilingue": "Original + Traduction"
+  "opt-trad-bilingue": "Original + Traduction",
+  "btn-solo-lectura": "Lecture seule",
+  "ttl-solo-lectura": "Mode Lecture seule / Sans voix",
+  "msg-solo-lectura-activo": "Mode Lecture seule actif (sans voix).",
+  "btn-guardar-texto": "Enregistrer",
+  "ttl-guardar-texto": "Enregistrer le texte (Ctrl+S)",
+  "btn-guardar-como-texto": "Enregistrer sous",
+  "ttl-guardar-como-texto": "Enregistrer sous...",
+  "msg-texto-guardado": "Enregistré"
 };

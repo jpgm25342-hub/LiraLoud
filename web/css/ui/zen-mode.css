@@ -26,12 +26,26 @@ body.modo-minimalista .fila-controles {
     overflow: visible !important;
 }
 
-body.modo-minimalista .fila-top>*:not(.fila-controles):not(.paginacion-container):not(#btn-pdf):not(#btn-config):not(#btn-kofi-global) {
+body.modo-minimalista .fila-top>*:not(.fila-controles):not(.paginacion-container):not(#btn-pdf):not(#btn-config):not(#btn-kofi-global):not(#btn-solo-lectura) {
     display: none !important;
 }
 
 body.modo-minimalista .fila-controles>#btn-stop {
     display: none !important;
+}
+
+/* Botón Solo Lectura Flotante en Modo Minimalista (Extrema izquierda, simétrico con Ko-fi) */
+body.modo-minimalista #btn-solo-lectura {
+    position: fixed !important;
+    top: 27px !important;
+    left: 25px !important;
+    z-index: 1000 !important;
+    margin: 0 !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15) !important;
+}
+
+body.ui-dark-mode.modo-minimalista #btn-solo-lectura {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
 }
 
 /* Botón Ko-fi Flotante en Modo Minimalista (Extrema derecha, centrado con la barra) */
