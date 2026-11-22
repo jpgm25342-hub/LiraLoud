@@ -60,7 +60,9 @@ def _asegurar_doc_abierto(pdf_path):
 def _ejecutar_full_save_seguro(pdf_path, res_original):
     """Realiza el guardado completo protegido por Lock y autocuración de estado_app.doc."""
     with estado_app.lock_edicion_pdf:
+        temp_path = pdf_path + ".tmp"
         try:
+            asegurar_permiso_escritura(pdf_path)
             _asegurar_doc_abierto(pdf_path)
             if estado_app.doc is None:
                 return {
@@ -68,11 +70,11 @@ def _ejecutar_full_save_seguro(pdf_path, res_original):
                     "error": "No se pudo abrir el documento PDF en memoria.",
                 }
 
-            temp_path = pdf_path + ".tmp"
             estado_app.doc.save(temp_path, garbage=1, deflate=True)
             estado_app.doc.close()
             estado_app.doc = None
 
+            asegurar_permiso_escritura(pdf_path)
             shutil.move(temp_path, pdf_path)
             estado_app.doc = fitz.open(pdf_path)
             estado_app.ruta_pdf_actual = pdf_path
@@ -82,6 +84,11 @@ def _ejecutar_full_save_seguro(pdf_path, res_original):
                 salida["id_borrado"] = res_original.get("id_borrado")
             return salida
         except Exception as e:
+            if os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except Exception:
+                    pass
             try:
                 if estado_app.doc is None and pdf_path and os.path.exists(pdf_path):
                     estado_app.doc = fitz.open(pdf_path)

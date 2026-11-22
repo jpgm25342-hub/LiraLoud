@@ -1400,3 +1400,108 @@ body.ui-dark-mode #ia-sub-opciones-notas label {
     color: #c9d1d9 !important;
     border-color: #30363d !important;
 }
+
+/* --- PULIDO P2: CONTRASTE BURBUJAS, FUENTES, PROMPTS, DESCARGAS Y SVGS --- */
+body.ui-dark-mode .ia-mensaje.ai .ia-burbuja h1,
+body.ui-dark-mode .ia-mensaje.ai .ia-burbuja h2,
+body.ui-dark-mode .ia-mensaje.ai .ia-burbuja h3,
+body.ui-dark-mode .ia-mensaje.ai .ia-burbuja h4,
+body.ui-dark-mode #ia-resultado-cuerpo h1,
+body.ui-dark-mode #ia-resultado-cuerpo h2,
+body.ui-dark-mode #ia-resultado-cuerpo h3,
+body.ui-dark-mode #ia-resultado-cuerpo h4 {
+    color: #f1f5f9 !important;
+}
+
+body.ui-dark-mode .ia-mensaje.ai .ia-burbuja strong,
+body.ui-dark-mode .ia-mensaje.ai .ia-burbuja b,
+body.ui-dark-mode #ia-resultado-cuerpo strong,
+body.ui-dark-mode #ia-resultado-cuerpo b {
+    color: #93c5fd !important;
+}
+
+body.ui-dark-mode .ia-mensaje.ai .ia-burbuja mark,
+body.ui-dark-mode #ia-resultado-cuerpo mark {
+    background: rgba(56, 189, 248, 0.22) !important;
+    color: #f8fafc !important;
+    border-radius: 3px;
+    padding: 0 3px;
+}
+
+body.ui-dark-mode .ia-mensaje.ai .ia-burbuja blockquote,
+body.ui-dark-mode #ia-resultado-cuerpo blockquote {
+    color: #cbd5e1 !important;
+    border-left: 3px solid #38bdf8 !important;
+    background: rgba(56, 189, 248, 0.08) !important;
+}
+
+body.ui-dark-mode .ia-mensaje.ai .ia-burbuja span:not(.ia-k-palabra):not(.ia-mini-dot),
+body.ui-dark-mode #ia-resultado-cuerpo span:not(.ia-k-palabra):not(.ia-mini-dot) {
+    color: #e2e8f0;
+}
+
+.ia-fuente-card {
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ia-fuente-card:hover {
+    border-color: #6c5ce7;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(108, 92, 231, 0.1);
+}
+
+body.ui-dark-mode .ia-fuente-card:hover,
+body.ui-dark-mode .ia-card-solicitud:hover {
+    background: #1e293b !important;
+    border-color: #58a6ff !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35) !important;
+}
+
+body.ui-dark-mode .ia-fuente-card h4 {
+    color: #f8fafc !important;
+}
+
+body.ui-dark-mode .ia-prompts-box {
+    background: #161b22 !important;
+    border-color: #30363d !important;
+    color: #e6edf3 !important;
+}
+
+body.ui-dark-mode .ia-prompts-label {
+    color: #94a3b8 !important;
+}
+
+body.ui-dark-mode #ia-prompt-titulo {
+    background: #0d1117 !important;
+    color: #f0f6fc !important;
+    border-color: #30363d !important;
+}
+
+body.ui-dark-mode .ia-prompt-saved-card {
+    background: #1e293b !important;
+    border-color: #30363d !important;
+}
+
+body.ui-dark-mode .ia-prompt-saved-title {
+    color: #f8fafc !important;
+}
+
+body.ui-dark-mode .ia-prompt-saved-desc {
+    color: #94a3b8 !important;
+}
+
+body.ui-dark-mode #ollama-descargas-panel {
+    background: #161b22 !important;
+    border-color: #30363d !important;
+    color: #cbd5e1 !important;
+}
+
+body.ui-dark-mode #panel-ia .ia-card-icon svg[fill="none"],
+body.ui-dark-mode #panel-ia .ia-config-card svg[fill="none"],
+body.ui-dark-mode #panel-ia .ia-resultado-titulo svg[fill="none"] {
+    stroke: #e2e8f0 !important;
+}
+
+body.ui-dark-mode #panel-ia .ia-fuente-card svg[fill="currentColor"] {
+    color: #e2e8f0 !important;
+}

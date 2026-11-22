@@ -182,7 +182,12 @@ function abrirModalNotas() {
     
     const libroActual = obtenerNombreLibroActivo();
     const badgeLibro = document.getElementById('notas-header-libro-badge');
-    if (badgeLibro) badgeLibro.innerText = libroActual ? `📖 ${libroActual}` : '🌐 Todas las notas';
+    if (badgeLibro) {
+        const svgBadge = libroActual
+            ? '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>'
+            : '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
+        badgeLibro.innerHTML = `${svgBadge}<span>${libroActual || 'Todas las notas'}</span>`;
+    }
     
     cargarNotasDesdeBackend();
 }
@@ -304,9 +309,11 @@ async function renderizarSidebarFiltros() {
         let clasifs = (res && res.exito) ? res.clasificaciones : [];
         if (!clasifs.includes('General')) clasifs.unshift('General');
         
+        const svgAllAreas = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>';
+        const svgTag = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>';
         container.innerHTML = `
             <button class="notas-clasif-item ${window.filtroNotasClasificacion === 'TODAS' ? 'activo' : ''}" onclick="filtrarNotasPorClasificacion('TODAS')">
-                <span>📁 Todas las áreas</span>
+                <span style="display:inline-flex; align-items:center; gap:6px;">${svgAllAreas}<span>Todas las áreas</span></span>
                 <span class="notas-badge">${window.notasLista.length}</span>
             </button>
         `;
@@ -317,7 +324,7 @@ async function renderizarSidebarFiltros() {
             btn.className = `notas-clasif-item ${window.filtroNotasClasificacion.toLowerCase() === c.toLowerCase() ? 'activo' : ''}`;
             btn.onclick = () => filtrarNotasPorClasificacion(c);
             btn.innerHTML = `
-                <span>🏷️ ${c}</span>
+                <span style="display:inline-flex; align-items:center; gap:6px;">${svgTag}<span>${c}</span></span>
                 <span class="notas-badge">${count}</span>
             `;
             container.appendChild(btn);
@@ -338,13 +345,14 @@ function renderizarListaNotas() {
     if (window.notasLista.length === 0) {
         container.innerHTML = `
             <div style="text-align: center; color: #94a3b8; padding: 30px 10px; font-size: 13px;">
-                <p>📝 No hay notas con este filtro.</p>
+                <p style="display:inline-flex; align-items:center; gap:6px; justify-content:center;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span>No hay notas con este filtro.</span></p>
                 <button class="notas-btn-crear" onclick="crearNuevaNota()" style="margin: 10px auto;">+ Crear Primera Nota</button>
             </div>
         `;
         return;
     }
     
+    const svgTagCard = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>';
     window.notasLista.forEach(n => {
         const card = document.createElement('div');
         const esActiva = window.notaSeleccionadaActual && window.notaSeleccionadaActual.ruta_absoluta === n.ruta_absoluta;
@@ -360,7 +368,7 @@ function renderizarListaNotas() {
             </div>
             <div class="nota-card-snippet">${snippetLimpio || 'Nota vacía...'}</div>
             <div class="nota-card-meta">
-                <span>🏷️ ${n.clasificacion || 'General'}</span>
+                <span style="display:inline-flex; align-items:center; gap:4px;">${svgTagCard}<span>${n.clasificacion || 'General'}</span></span>
                 <span>${(n.fecha_modificacion || '').split(' ')[0]}</span>
             </div>
         `;
@@ -748,7 +756,7 @@ async function ejecutarAccionIANota(accion, editorId, tituloInputId) {
         instruccion = peticion.trim();
     }
 
-    const textoBotonOriginal = btnIA ? btnIA.innerHTML : "✨ IA";
+    const textoBotonOriginal = btnIA ? btnIA.innerHTML : '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9L12 2zm7 12l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3zM5 15l.8 2.2L8 18l-2.2.8L5 21l-.8-2.2L2 18l2.2-.8L5 15z"/></svg><span>IA</span>';
     if (btnIA) {
         btnIA.innerHTML = `⏳ Procesando...`;
         btnIA.disabled = true;

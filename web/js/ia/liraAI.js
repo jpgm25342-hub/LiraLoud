@@ -11,8 +11,8 @@
 
 const PROVEEDORES_CLOUD = {
     gemini: {
-        nombre: 'Google Gemini',
-        cardTitulo: '🌐 Conexión Google Gemini',
+        nombre: 'Gemini',
+        cardTitulo: '✨ Conexión Gemini',
         linkKey: 'https://aistudio.google.com/app/apikey',
         linkTexto: '🔑 Obtener Gemini API Key gratis ↗',
         placeholder: 'Pega tu clave AIzaSy... aquí',
@@ -24,8 +24,8 @@ const PROVEEDORES_CLOUD = {
         defaultModelo: 'gemini-1.5-flash'
     },
     groq: {
-        nombre: 'Groq Cloud',
-        cardTitulo: '⚡ Conexión Groq Cloud (Ultra Rápido)',
+        nombre: 'Groq',
+        cardTitulo: '∅ Conexión Groq',
         linkKey: 'https://console.groq.com/keys',
         linkTexto: '🔑 Obtener Groq API Key gratis ↗',
         placeholder: 'Pega tu clave gsk_... aquí',
@@ -39,7 +39,7 @@ const PROVEEDORES_CLOUD = {
     },
     openrouter: {
         nombre: 'OpenRouter',
-        cardTitulo: '🌐 Conexión OpenRouter (Modelos Gratis & Premium)',
+        cardTitulo: '⭕ Conexión OpenRouter',
         linkKey: 'https://openrouter.ai/keys',
         linkTexto: '🔑 Obtener OpenRouter API Key ↗',
         placeholder: 'Pega tu clave sk-or-... aquí',
@@ -54,8 +54,8 @@ const PROVEEDORES_CLOUD = {
         defaultModelo: 'meta-llama/llama-3.3-70b-instruct:free'
     },
     openai: {
-        nombre: 'OpenAI ChatGPT',
-        cardTitulo: '🤖 Conexión OpenAI (ChatGPT)',
+        nombre: 'ChatGPT',
+        cardTitulo: '֎ Conexión ChatGPT',
         linkKey: 'https://platform.openai.com/api-keys',
         linkTexto: '🔑 Obtener OpenAI API Key ↗',
         placeholder: 'Pega tu clave sk-... aquí',
@@ -67,8 +67,8 @@ const PROVEEDORES_CLOUD = {
         defaultModelo: 'gpt-4o-mini'
     },
     deepseek: {
-        nombre: 'DeepSeek Oficial',
-        cardTitulo: '🐋 Conexión DeepSeek API',
+        nombre: 'DeepSeek',
+        cardTitulo: '◉ Conexión DeepSeek',
         linkKey: 'https://platform.deepseek.com/api_keys',
         linkTexto: '🔑 Obtener DeepSeek API Key ↗',
         placeholder: 'Pega tu clave sk-... aquí',
@@ -330,31 +330,31 @@ function actualizarBadgeEstadoIA(proveedor) {
         badgeDot.style.background = '';
         if (estadoIA.ollamaOnline) {
             badgeDot.className = 'ia-status-dot';
-            badgeTexto.innerText = 'Local (Ollama)';
+            badgeTexto.innerText = 'Local';
         } else {
             badgeDot.className = 'ia-status-dot offline';
-            badgeTexto.innerText = 'Local Desconectado';
+            badgeTexto.innerText = 'Local (Offline)';
         }
     } else if (proveedor === 'gemini') {
         badgeDot.className = 'ia-status-dot';
         badgeDot.style.background = '#4285F4';
-        badgeTexto.innerText = 'Google Gemini (Nube)';
+        badgeTexto.innerText = 'Gemini';
     } else if (proveedor === 'groq') {
         badgeDot.className = 'ia-status-dot';
         badgeDot.style.background = '#F55036';
-        badgeTexto.innerText = 'Groq Cloud (Nube)';
+        badgeTexto.innerText = 'Groq';
     } else if (proveedor === 'openrouter') {
         badgeDot.className = 'ia-status-dot';
         badgeDot.style.background = '#6366F1';
-        badgeTexto.innerText = 'OpenRouter (Nube)';
+        badgeTexto.innerText = 'OpenRouter';
     } else if (proveedor === 'openai') {
         badgeDot.className = 'ia-status-dot';
         badgeDot.style.background = '#10A37F';
-        badgeTexto.innerText = 'OpenAI (Nube)';
+        badgeTexto.innerText = 'ChatGPT';
     } else if (proveedor === 'deepseek') {
         badgeDot.className = 'ia-status-dot';
         badgeDot.style.background = '#4D6BFE';
-        badgeTexto.innerText = 'DeepSeek (Nube)';
+        badgeTexto.innerText = 'DeepSeek';
     }
 }
 
