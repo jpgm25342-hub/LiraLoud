@@ -42,6 +42,10 @@ from backend.documento.edicion_pdf import (
     obtener_bloques_texto_pagina as _obtener_bloques_texto_pagina,
     editar_texto_pdf as _editar_texto_pdf,
 )
+from backend.documento.gestor_fuentes import (
+    listar_fuentes_editor as _listar_fuentes_editor,
+    descargar_fuente_editor as _descargar_fuente_editor,
+)
 
 
 def _asegurar_doc_abierto(pdf_path):
@@ -219,7 +223,19 @@ def crear_cuadro_texto_pdf(pdf_path, pagina_idx, bbox):
             res = _ejecutar_full_save_seguro(pdf_path, res)
         invalidar_layout_pagina(pagina_idx)
         return res
-        return res
+
+
+@eel.expose
+def listar_fuentes_editor():
+    """Lista las fuentes instaladas (local/sistema) y descargables del catálogo para el editor PDF."""
+    return _listar_fuentes_editor()
+
+
+@eel.expose
+def descargar_fuente_editor(nombre_familia):
+    """Descarga una familia tipográfica oficial a recursos/fuentes/ y refresca la caché de fuentes."""
+    with estado_app.lock_edicion_pdf:
+        return _descargar_fuente_editor(nombre_familia)
 
 
 # ==========================================
