@@ -1,4 +1,4 @@
-/* LiraLoud - i18n (bn) */
+﻿/* LiraLoud - i18n (bn) */
 window.LIRA_I18N = window.LIRA_I18N || {};
 window.LIRA_I18N["bn"] = {
     "btn-pdf": "PDF",
@@ -145,7 +145,7 @@ window.LIRA_I18N["bn"] = {
     "opt-motor-online": "🌐 অনলাইন (Google Translate / দ্রুত)",
     "opt-motor-offline": "💻 অফলাইন (স্থানীয় / ইন্টারনেট ছাড়া)",
     "opt-modo-subtitulos": "📺 অনুবাদিত সাবটাইটেল (মূল ভয়েস + সাবটাইটেল)",
-    "opt-modo-aprendizaje": "🎓 শেখার মোড (মূল পড়া + অনুবাদ পড়া)",
+    "opt-modo-aprendizaje": "শেখার মোড (মূল পড়া + অনুবাদ পড়া)",
     "opt-modo-directo": "🔊 শুধুমাত্র অনুবাদ (সরাসরি অনুবাদ পড়ুন)",
     "btn-tutorial-open": "টিউটোরিয়াল ও ক্যালিব্রেশন",
     "btn-saltar-tutorial": "এড়িয়ে যান",
@@ -364,7 +364,7 @@ window.LIRA_I18N["bn"] = {
     "lbl-idioma-destino-corto": "লক্ষ্য ভাষা:",
     "opt-modo-solo-trad": "🔊 শুধু অনুবাদ",
     "opt-modo-subtitulos-corto": "📺 অনূদিত সাবটাইটেল",
-    "opt-modo-aprendizaje-corto": "🎓 শিক্ষণ মোড",
+    "opt-modo-aprendizaje-corto": "শিক্ষণ মোড",
     "lbl-ocr-hud-titulo": "পৃষ্ঠা প্রক্রিয়া করা হচ্ছে...",
     "lbl-ocr-hud-texto": "RapidOCR দিয়ে টেক্সট শনাক্ত করা হচ্ছে...",
     "bienvenida-subtitulo": "আজ আপনি কী শুনতে চান?",

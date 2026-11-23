@@ -58,12 +58,15 @@ class PuenteWebview:
             return None
         try:
             args_json = ", ".join(json.dumps(a, ensure_ascii=False) for a in args)
+            nombre_json = json.dumps(nombre_fn, ensure_ascii=False)
             codigo_js = (
-                f"if (typeof window.{nombre_fn} === 'function') {{ "
-                f"window.{nombre_fn}({args_json}); "
-                f"}} else if (typeof {nombre_fn} === 'function') {{ "
-                f"{nombre_fn}({args_json}); "
-                f"}}"
+                f"(function() {{ "
+                f"var fn = (typeof window[{nombre_json}] === 'function') ? window[{nombre_json}] : "
+                f"((window.eel && window.eel._exposed_functions && typeof window.eel._exposed_functions[{nombre_json}] === 'function') "
+                f"? window.eel._exposed_functions[{nombre_json}] : null); "
+                f"if (fn) {{ fn({args_json}); return true; }} "
+                f"return false; "
+                f"}})();"
             )
             self.ventana.evaluate_js(codigo_js)
         except Exception as e:

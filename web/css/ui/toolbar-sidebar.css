@@ -549,7 +549,7 @@ body.ui-dark-mode .text-card-copy-btn:hover {
 }
 
 #btn-solo-lectura {
-    background: #0f172a;
+    background: #2c3e50;
     color: #f8fafc;
     border: 1px solid #334155 !important;
     cursor: pointer;
@@ -557,15 +557,14 @@ body.ui-dark-mode .text-card-copy-btn:hover {
 }
 
 #btn-solo-lectura:hover {
-    background: #1e293b;
-    border-color: #475569 !important;
-    transform: translateY(-1px);
+    background-color: #658cb2 !important;
+    transform: translateY(-2px);
+    border-color: #4a6a8a;
 }
 
 #btn-solo-lectura.activo {
     background: #ffffff;
     color: #0f172a;
-    border: 1px solid #cbd5e1 !important;
     box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
 }
 

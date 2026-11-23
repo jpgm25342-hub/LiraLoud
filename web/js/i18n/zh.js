@@ -1,4 +1,4 @@
-/* LiraLoud - i18n (zh) */
+﻿/* LiraLoud - i18n (zh) */
 window.LIRA_I18N = window.LIRA_I18N || {};
 window.LIRA_I18N["zh"] = {
     "btn-pdf": "PDF",
@@ -145,7 +145,7 @@ window.LIRA_I18N["zh"] = {
     "opt-motor-online": "🌐 在线 (Google 翻译 / 快速)",
     "opt-motor-offline": "💻 离线 (本地 / 无需网络)",
     "opt-modo-subtitulos": "📺 翻译字幕 (原声 + 字幕)",
-    "opt-modo-aprendizaje": "🎓 学习模式 (朗读原文 + 朗读译文)",
+    "opt-modo-aprendizaje": "学习模式 (朗读原文 + 朗读译文)",
     "opt-modo-directo": "🔊 仅翻译 (直接朗读译文)",
     "btn-tutorial-open": "教程与校准",
     "btn-saltar-tutorial": "跳过",
@@ -364,7 +364,7 @@ window.LIRA_I18N["zh"] = {
     "lbl-idioma-destino-corto": "目标语言：",
     "opt-modo-solo-trad": "🔊 仅译文",
     "opt-modo-subtitulos-corto": "📺 翻译字幕",
-    "opt-modo-aprendizaje-corto": "🎓 学习模式",
+    "opt-modo-aprendizaje-corto": "学习模式",
     "lbl-ocr-hud-titulo": "正在处理页面...",
     "lbl-ocr-hud-texto": "正在使用 RapidOCR 识别文本...",
     "bienvenida-subtitulo": "今天想听点什么？",

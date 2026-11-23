@@ -1,4 +1,4 @@
-/* LiraLoud - i18n (de) */
+﻿/* LiraLoud - i18n (de) */
 window.LIRA_I18N = window.LIRA_I18N || {};
 window.LIRA_I18N["de"] = {
     "btn-pdf": "PDF",
@@ -145,7 +145,7 @@ window.LIRA_I18N["de"] = {
     "opt-motor-online": "🌐 Online (Google Translate / Schnell)",
     "opt-motor-offline": "💻 Offline (Lokal / Kein Internet)",
     "opt-modo-subtitulos": "📺 Übersetzte Untertitel (Originalstimme + Untertitel)",
-    "opt-modo-aprendizaje": "🎓 Lernmodus (Liest Original + Liest Übersetzung)",
+    "opt-modo-aprendizaje": "Lernmodus (Liest Original + Liest Übersetzung)",
     "opt-modo-directo": "🔊 Nur Übersetzung (Liest direkt die Übersetzung)",
     "btn-tutorial-open": "Tutorial & Kalibrierung",
     "btn-saltar-tutorial": "Überspringen",
@@ -364,7 +364,7 @@ window.LIRA_I18N["de"] = {
     "lbl-idioma-destino-corto": "Zielsprache:",
     "opt-modo-solo-trad": "🔊 Nur Übersetzung",
     "opt-modo-subtitulos-corto": "📺 Übersetzte Untertitel",
-    "opt-modo-aprendizaje-corto": "🎓 Lernmodus",
+    "opt-modo-aprendizaje-corto": "Lernmodus",
     "lbl-ocr-hud-titulo": "Seite wird verarbeitet...",
     "lbl-ocr-hud-texto": "Texterkennung mit RapidOCR...",
     "bienvenida-subtitulo": "Was möchtest du heute anhören?",

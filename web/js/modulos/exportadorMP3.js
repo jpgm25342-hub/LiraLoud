@@ -158,7 +158,138 @@ function inicializarOpcionesTraduccionMp3() {
     actualizarUIControlesTraduccionMp3();
 }
 
-function abrirModalDescarga() {
+function cambiarTabModalDescarga(modo = 'mp3') {
+    const tabMp3 = document.getElementById('tab-btn-export-mp3');
+    const tabPdf = document.getElementById('tab-btn-export-pdf');
+    const contentMp3 = document.getElementById('tab-content-export-mp3');
+    const contentPdf = document.getElementById('tab-content-export-pdf');
+
+    const esPdf = (modo === 'pdf');
+    if (tabMp3) tabMp3.classList.toggle('active', !esPdf);
+    if (tabPdf) tabPdf.classList.toggle('active', esPdf);
+    if (contentMp3) contentMp3.style.display = esPdf ? 'none' : 'block';
+    if (contentPdf) contentPdf.style.display = esPdf ? 'block' : 'none';
+
+    if (esPdf) {
+        const inpIni = document.getElementById('pdf-export-pag-ini');
+        const inpFin = document.getElementById('pdf-export-pag-fin');
+        const maxP = (typeof totalPaginas === 'number' && totalPaginas > 0) ? totalPaginas : 1;
+        if (inpIni && (!inpIni.value || parseInt(inpIni.value, 10) < 1)) inpIni.value = 1;
+        if (inpFin && (!inpFin.value || parseInt(inpFin.value, 10) < 1 || parseInt(inpFin.value, 10) > maxP)) inpFin.value = maxP;
+        actualizarUIControlesCortePdfExport();
+        previsualizarPaginaPdfExport('ini');
+        previsualizarPaginaPdfExport('fin');
+    }
+}
+
+function actualizarUIControlesCortePdfExport() {
+    const modo = document.getElementById('pdf-corte-modo')?.value || 'unico';
+    const pagWrap = document.getElementById('pdf-corte-pag-wrap');
+    if (pagWrap) pagWrap.style.display = modo === 'pagina' ? 'inline-flex' : 'none';
+}
+
+function aplicarTodoRangoPdfExport() {
+    const maxP = (typeof totalPaginas === 'number' && totalPaginas > 0) ? totalPaginas : 1;
+    const inpIni = document.getElementById('pdf-export-pag-ini');
+    const inpFin = document.getElementById('pdf-export-pag-fin');
+    if (inpIni) inpIni.value = 1;
+    if (inpFin) inpFin.value = maxP;
+    previsualizarPaginaPdfExport('ini');
+    previsualizarPaginaPdfExport('fin');
+}
+
+async function previsualizarPaginaPdfExport(tipo) {
+    const suf = (tipo === 'fin') ? 'fin' : 'ini';
+    const input = document.getElementById(`pdf-export-pag-${suf}`);
+    if (!input) return;
+
+    const num = parseInt(input.value, 10) - 1;
+    if (isNaN(num) || num < 0 || (typeof totalPaginas === 'number' && totalPaginas > 0 && num >= totalPaginas)) return;
+
+    try {
+        const data = (typeof eel !== 'undefined' && typeof eel.obtener_vista_rapida_pagina === 'function')
+            ? await eel.obtener_vista_rapida_pagina(num)()
+            : await eel.obtener_pagina_data(num, null, null, null)();
+
+        if (data && data.imagen) {
+            const imgPreview = document.getElementById(`img-preview-pdf-${suf}`);
+            const txtPreview = document.getElementById(`txt-preview-pdf-${suf}`);
+            if (imgPreview) {
+                imgPreview.src = data.imagen;
+                imgPreview.style.display = 'block';
+            }
+            if (txtPreview) txtPreview.style.display = 'none';
+        }
+    } catch (e) {
+        console.error("Error en vista previa PDF export:", e);
+    }
+}
+
+async function iniciarExportacionPdfConfigurado() {
+    const txtEstado = document.getElementById('txt-estado-export-pdf');
+    const btnGuardar = document.getElementById('btn-iniciar-export-pdf');
+    try {
+        const ini = parseInt(document.getElementById('pdf-export-pag-ini')?.value || '1', 10);
+        const fin = parseInt(document.getElementById('pdf-export-pag-fin')?.value || '1', 10);
+        const maxPags = (typeof totalPaginas === 'number' && totalPaginas > 0) ? totalPaginas : fin;
+
+        if (!ini || !fin || ini < 1 || fin < ini || fin > maxPags) {
+            const msgErr = (typeof window.t === 'function')
+                ? window.t('msg-pdf-rango-invalido', 'Por favor verifica el rango de páginas antes de guardar el PDF.')
+                : 'Por favor verifica el rango de páginas antes de guardar el PDF.';
+            await liraAlert(msgErr, 'advertencia');
+            return;
+        }
+
+        const opciones = {
+            pag_ini: ini,
+            pag_fin: fin,
+            incluir_subrayados: document.getElementById('pdf-chk-subrayados')?.checked ?? true,
+            aplanar_anotaciones: document.getElementById('pdf-chk-aplanar')?.checked ?? false,
+            optimizar_peso: document.getElementById('pdf-chk-optimizar')?.checked ?? true,
+            corte_modo: document.getElementById('pdf-corte-modo')?.value || 'unico',
+            corte_paginas: Math.max(1, parseInt(document.getElementById('pdf-corte-paginas')?.value || '1', 10) || 1)
+        };
+
+        if (btnGuardar) btnGuardar.disabled = true;
+        if (txtEstado) {
+            txtEstado.innerText = (typeof window.t === 'function')
+                ? window.t('msg-pdf-exportando', 'Preparando documento PDF...')
+                : 'Preparando documento PDF...';
+            txtEstado.style.color = '#d35400';
+        }
+
+        const res = await eel.exportar_pdf_configurado(opciones)();
+        if (btnGuardar) btnGuardar.disabled = false;
+
+        if (res && res.cancelado) {
+            if (txtEstado) txtEstado.innerText = '';
+            return;
+        }
+
+        if (res && res.ok) {
+            if (txtEstado) {
+                txtEstado.innerText = res.mensaje || 'PDF guardado con éxito.';
+                txtEstado.style.color = '#27ae60';
+            }
+            await liraAlert(res.mensaje || 'PDF guardado con éxito.', 'exito');
+            cerrarModalDescarga();
+        } else {
+            const err = (res && res.error) || 'No se pudo guardar el PDF.';
+            if (txtEstado) {
+                txtEstado.innerText = err;
+                txtEstado.style.color = '#e74c3c';
+            }
+            await liraAlert(err, 'error');
+        }
+    } catch (e) {
+        if (btnGuardar) btnGuardar.disabled = false;
+        if (txtEstado) txtEstado.innerText = '';
+        await liraAlert('Error al exportar PDF: ' + e, 'error');
+    }
+}
+
+function abrirModalDescarga(tabInicial = 'mp3') {
     // Lógica de exclusión mutua universal
     if (typeof cerrarOtrasFuncionesPrincipales === 'function') {
         cerrarOtrasFuncionesPrincipales('mp3');
@@ -170,10 +301,15 @@ function abrirModalDescarga() {
 
         const inpIni = document.getElementById('modal-pag-ini');
         const inpFin = document.getElementById('modal-pag-fin');
+        const pdfIni = document.getElementById('pdf-export-pag-ini');
+        const pdfFin = document.getElementById('pdf-export-pag-fin');
         const maxP = (typeof totalPaginas === 'number' && totalPaginas > 0) ? totalPaginas : 1;
         if (inpIni && (!inpIni.value || parseInt(inpIni.value, 10) < 1)) inpIni.value = 1;
         if (inpFin && (!inpFin.value || parseInt(inpFin.value, 10) < 1 || parseInt(inpFin.value, 10) > maxP)) inpFin.value = maxP;
+        if (pdfIni) pdfIni.value = 1;
+        if (pdfFin) pdfFin.value = maxP;
 
+        cambiarTabModalDescarga(tabInicial === 'pdf' ? 'pdf' : 'mp3');
         actualizarUIControlesCorteMp3();
         inicializarOpcionesTraduccionMp3();
         previsualizarPagina('ini');

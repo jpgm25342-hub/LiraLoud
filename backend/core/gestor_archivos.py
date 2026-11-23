@@ -21,6 +21,7 @@ ARCHIVO_BIBLIOTECA = os.path.join(BASE_DIR, "biblioteca.json")
 ARCHIVO_FAVORITOS = os.path.join(BASE_DIR, "favoritos.json")
 ARCHIVO_CONFIG_VOZ = os.path.join(BASE_DIR, "voz_default.json")
 ARCHIVO_AJUSTES_LECTURA = os.path.join(BASE_DIR, "ajustes_lectura.json")
+ARCHIVO_TUTORIAL = os.path.join(BASE_DIR, "tutorial_estado.json")
 TEATRO_JSON = os.path.join(BASE_DIR, "teatro.json")
 ARCHIVO_KOKORO_BLENDS = os.path.join(BASE_DIR, "kokoro_blends.json")
 def validar_json(ruta, default_tipo=dict):
@@ -205,6 +206,9 @@ def guardar_ajustes_lectura(data):
                         merged_mods[k] = str(v).strip()
                 data["ia_cloud_modelos"] = merged_mods
 
+            if previos.get("tutorial_completado") is True:
+                data["tutorial_completado"] = True
+
         with open(ARCHIVO_AJUSTES_LECTURA, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=4, ensure_ascii=False)
         return True
@@ -370,4 +374,39 @@ def guardar_prompts_personalizados(lista):
         return {"exito": True}
     except Exception as e:
         return {"exito": False, "error": str(e)}
+
+
+@eel.expose
+def cargar_estado_tutorial():
+    """
+    Carga el estado del tutorial desde su archivo aislado tutorial_estado.json.
+    Si el archivo no existe todavía (primera ejecución), lo crea con {"completado": False}
+    para que el tutorial se muestre la primera vez que se abre la aplicación.
+    """
+    try:
+        if os.path.exists(ARCHIVO_TUTORIAL):
+            with open(ARCHIVO_TUTORIAL, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict) and "completado" in data:
+                    return {"completado": bool(data["completado"])}
+
+        estado = {"completado": False}
+        with open(ARCHIVO_TUTORIAL, "w", encoding="utf-8") as f:
+            json.dump(estado, f, ensure_ascii=False, indent=4)
+        return estado
+    except Exception:
+        return {"completado": False}
+
+
+@eel.expose
+def guardar_estado_tutorial(completado=True):
+    """Guarda de forma atómica y aislada el estado del tutorial en tutorial_estado.json."""
+    try:
+        estado = {"completado": bool(completado)}
+        with open(ARCHIVO_TUTORIAL, "w", encoding="utf-8") as f:
+            json.dump(estado, f, ensure_ascii=False, indent=4)
+        return {"ok": True, "completado": estado["completado"]}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
 

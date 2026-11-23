@@ -135,9 +135,22 @@ body.ui-dark-mode #panel-descarga div[style*="background:#f8f9fa"] {
 }
 
 body.ui-dark-mode #panel-descarga div[style*="background: #f0f0f0"],
-body.ui-dark-mode #panel-descarga div[style*="background:#f0f0f0"] {
+body.ui-dark-mode #panel-descarga div[style*="background:#f0f0f0"],
+body.ui-dark-mode #panel-descarga div[style*="background: #eef6fc"],
+body.ui-dark-mode #panel-descarga div[style*="background:#eef6fc"],
+body.ui-dark-mode #panel-descarga div[style*="background: #f8fafc"],
+body.ui-dark-mode #panel-descarga div[style*="background:#f8fafc"],
+body.ui-dark-mode #mp3-box-teatro,
+body.ui-dark-mode #mp3-box-traduccion,
+body.ui-dark-mode #mp3-trad-wrap {
     background: #21262d !important;
     border-color: #30363d !important;
+    color: #e6edf3 !important;
+}
+
+body.ui-dark-mode #mp3-box-teatro span,
+body.ui-dark-mode #mp3-box-traduccion span {
+    color: #e6edf3 !important;
 }
 
 body.ui-dark-mode #panel-descarga input[type="text"],
@@ -148,23 +161,39 @@ body.ui-dark-mode #panel-descarga select {
     border-color: #30363d !important;
 }
 
-body.ui-dark-mode #btn-cancelar-exportacion {
-    background: #374151 !important;
-    color: #e5e7eb !important;
+body.ui-dark-mode #btn-cancelar-exportacion,
+body.ui-dark-mode #btn-cancelar-export-pdf {
+    background: #21262d !important;
+    color: #c9d1d9 !important;
+    border: 1px solid #30363d !important;
 }
 
-body.ui-dark-mode #btn-cancelar-exportacion:hover {
-    background: #4b5563 !important;
-}
-
-body.ui-dark-mode #btn-iniciar-descarga {
-    background: linear-gradient(135deg, #238636, #2ea043) !important;
+body.ui-dark-mode #btn-cancelar-exportacion:hover,
+body.ui-dark-mode #btn-cancelar-export-pdf:hover {
+    background: #30363d !important;
     color: #ffffff !important;
-    box-shadow: 0 3px 10px rgba(35, 134, 54, 0.35) !important;
+    border-color: #484f58 !important;
+    box-shadow: none !important;
 }
 
-body.ui-dark-mode #btn-iniciar-descarga:hover {
-    background: linear-gradient(135deg, #2ea043, #3fb950) !important;
+body.ui-dark-mode #btn-iniciar-descarga,
+body.ui-dark-mode #btn-iniciar-export-pdf {
+    background: #30363d !important;
+    color: #f0f6fc !important;
+    border: 1px solid #484f58 !important;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35) !important;
+}
+
+body.ui-dark-mode #btn-iniciar-descarga:hover,
+body.ui-dark-mode #btn-iniciar-export-pdf:hover {
+    background: #3d444d !important;
+    border-color: #8b949e !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45) !important;
+}
+
+body.ui-dark-mode .tabs-descarga-header {
+    border-bottom-color: #30363d !important;
 }
 
 body.ui-dark-mode #txt-preview-mp3 {

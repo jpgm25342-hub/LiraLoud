@@ -21,16 +21,13 @@ import json
 import subprocess
 import threading
 import requests
+from backend.core.estado_global import estado_app
 from backend.core.webview_bridge import eel
 import pymupdf as fitz
 from html.parser import HTMLParser
 from urllib.parse import urlparse
 
-if getattr(sys, "frozen", False):
-    BASE_DIR = os.path.dirname(sys.executable)
-else:
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+BASE_DIR = estado_app.base_dir
 TEMP_DIR = os.path.join(BASE_DIR, "temp_converted")
 os.makedirs(TEMP_DIR, exist_ok=True)
 
@@ -247,15 +244,54 @@ def _generar_pdf(titulo, url_origen, parrafos, ruta_salida):
 # MOTOR DE CONVERSIÓN URL→PDF
 # ──────────────────────────────────────────────
 
-def _procesar_url(url, parsed, ruta_pdf):
+def _fallback_html_a_pdf(url, parsed, ruta_pdf, html_provisto="", titulo_sugerido=""):
     """
-    Estilo Ctrl+P: Playwright en subprocess aislado de gevent.
-    Fallback a trafilatura + PyMuPDF si Playwright falla.
+    Fallback ligero sin Playwright: descarga el HTML con requests (o usa el HTML
+    enviado directamente por la extensión del navegador) y genera un PDF limpio con PyMuPDF.
+    """
+    try:
+        html_text = html_provisto
+        if not html_text:
+            headers = {
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/127.0.0.0 Safari/537.36"
+                )
+            }
+            resp = requests.get(url, headers=headers, timeout=25)
+            resp.raise_for_status()
+            resp.encoding = resp.apparent_encoding or "utf-8"
+            html_text = resp.text
+
+        titulo, parrafos = _extraer_contenido_html(html_text)
+        if titulo_sugerido and (not titulo or titulo == "Página Web"):
+            titulo = titulo_sugerido
+
+        if not parrafos:
+            return {"ok": False, "error": "No se encontró texto legible en la página web."}
+
+        _generar_pdf(titulo, url, parrafos, ruta_pdf)
+        if os.path.exists(ruta_pdf) and os.path.getsize(ruta_pdf) > 0:
+            _log(f"[FALLBACK] PDF generado con éxito via PyMuPDF: {ruta_pdf}")
+            return {"ok": True, "ruta": os.path.abspath(ruta_pdf), "titulo": titulo, "tipo": "web"}
+        return {"ok": False, "error": "No se pudo generar el archivo PDF de respaldo."}
+    except Exception as e:
+        _log(f"[FALLBACK] Error en fallback HTML->PDF: {e}")
+        return {"ok": False, "error": f"No se pudo procesar la página web: {str(e)[:120]}"}
+
+
+def _procesar_url(url, parsed, ruta_pdf, html_fallback="", titulo_sugerido=""):
+    """
+    Estilo Ctrl+P: Playwright en subprocess aislado.
+    Fallback automático a extractor HTML + PyMuPDF si Playwright falla o no está disponible.
     """
     # Resolver rutas del worker y del interprete
     if getattr(sys, "frozen", False):
         python_exe = os.path.join(os.path.dirname(sys.executable), "python.exe")
-        worker_path = os.path.join(os.path.dirname(sys.executable), "backend", "estudio", "playwright_worker.py")
+        worker_path = os.path.join(estado_app.bundle_dir, "backend", "estudio", "playwright_worker.py")
+        if not os.path.exists(worker_path):
+            worker_path = os.path.join(BASE_DIR, "backend", "estudio", "playwright_worker.py")
     else:
         python_exe = sys.executable
         worker_path = os.path.join(BASE_DIR, "backend", "estudio", "playwright_worker.py")
@@ -263,17 +299,21 @@ def _procesar_url(url, parsed, ruta_pdf):
     _log(f"[PROC] python_exe={python_exe}")
     _log(f"[PROC] worker_path={worker_path} exists={os.path.exists(worker_path)}")
 
+    error_playwright = None
+
     # -- INTENTO 1: Playwright via subprocess --------------------------------
-    if os.path.exists(worker_path):
+    if os.path.exists(worker_path) and os.path.exists(python_exe):
         proc = None
         try:
             _log("[PROC] Lanzando subprocess Playwright...")
+            creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
             proc = subprocess.Popen(
                 [python_exe, worker_path, url, ruta_pdf],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 encoding="utf-8",
                 errors="replace",
+                creationflags=creationflags,
             )
             _log(f"[PROC] subprocess PID={proc.pid} lanzado, esperando (timeout=75s)...")
             try:
@@ -287,30 +327,45 @@ def _procesar_url(url, parsed, ruta_pdf):
                 proc.communicate()  # limpiar buffers
                 _log("[PROC] subprocess TIMEOUT (75s) -> kill() -> fallback")
                 proc = None
+                error_playwright = "El renderizado superó el límite de tiempo (75s)."
 
             if proc is not None:
                 salida = stdout.strip()
                 if salida:
-                    datos = json.loads(salida)
-                    if datos.get("ok"):
+                    try:
+                        lineas_json = [ln.strip() for ln in salida.splitlines() if ln.strip().startswith("{")]
+                        datos = json.loads(lineas_json[-1] if lineas_json else salida)
+                    except Exception:
+                        datos = {}
+                    if datos.get("ok") and os.path.exists(ruta_pdf) and os.path.getsize(ruta_pdf) > 0:
                         _log(f"[PROC] Playwright OK -> titulo={datos.get('titulo','?')[:60]}")
-                        return {"ok": True, "ruta": ruta_pdf, "titulo": datos.get("titulo", parsed.netloc)}
+                        return {"ok": True, "ruta": os.path.abspath(ruta_pdf), "titulo": datos.get("titulo", parsed.netloc), "tipo": "web"}
                     else:
-                        error_msg = datos.get('error', '?')
-                        _log(f"[PROC] Playwright error en worker: {error_msg}")
-                        return {"ok": False, "error": f"Error de renderizado: {error_msg}"}
+                        error_playwright = datos.get("error", "Error desconocido en Playwright")
+                        _log(f"[PROC] Playwright error en worker: {error_playwright} -> intentando fallback HTML")
                 else:
                     stderr_txt = (stderr or "")[:300] or "(sin stdout ni stderr)"
-                    _log(f"[PROC] Playwright sin stdout. stderr={stderr_txt!r}")
-                    return {"ok": False, "error": f"El navegador externo falló: {stderr_txt}"}
-            else:
-                return {"ok": False, "error": "El renderizado de la página web superó el límite de tiempo (75s)."}
+                    _log(f"[PROC] Playwright sin stdout. stderr={stderr_txt!r} -> intentando fallback HTML")
+                    error_playwright = f"El navegador externo falló: {stderr_txt}"
         except Exception as e:
             if proc:
-                try: proc.kill()
-                except Exception: pass
-            _log(f"[PROC] EXCEPCION en subprocess: {e}")
-            return {"ok": False, "error": f"Fallo al iniciar el renderizado: {str(e)[:100]}"}
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+            _log(f"[PROC] EXCEPCION en subprocess: {e} -> intentando fallback HTML")
+            error_playwright = str(e)[:120]
+
+    # -- INTENTO 2: Fallback con extractor HTML + PyMuPDF --------------------
+    _log("[PROC] Ejecutando fallback HTML -> PDF con PyMuPDF...")
+    res_fb = _fallback_html_a_pdf(url, parsed, ruta_pdf, html_provisto=html_fallback, titulo_sugerido=titulo_sugerido)
+    if res_fb.get("ok"):
+        return res_fb
+
+    return {
+        "ok": False,
+        "error": error_playwright or res_fb.get("error", "No se pudo convertir la página web a PDF.")
+    }
 
 
 # ──────────────────────────────────────────────

@@ -39,8 +39,7 @@ button#btn-dicc.btn-secundario {
     background-color: #8e44ad;
     transition: all 0.2s ease-in-out;
 }
-button.btn-secundario
-{background-color: #f000}
+
 
 button#btn-dicc.btn-secundario:hover {
     /* En lugar de cambiar a azul, se aclara el morado original */

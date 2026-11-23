@@ -1,4 +1,4 @@
-/* LiraLoud - i18n (ru) */
+﻿/* LiraLoud - i18n (ru) */
 window.LIRA_I18N = window.LIRA_I18N || {};
 window.LIRA_I18N["ru"] = {
     "btn-pdf": "PDF",
@@ -145,7 +145,7 @@ window.LIRA_I18N["ru"] = {
     "opt-motor-online": "🌐 Онлайн (Google Translate / Быстро)",
     "opt-motor-offline": "💻 Офлайн (Локально / Без интернета)",
     "opt-modo-subtitulos": "📺 Переведенные субтитры (Оригинальный голос + Субтитры)",
-    "opt-modo-aprendizaje": "🎓 Режим обучения (Читает оригинал + Читает перевод)",
+    "opt-modo-aprendizaje": "Режим обучения (Читает оригинал + Читает перевод)",
     "opt-modo-directo": "🔊 Только перевод (Читает напрямую перевод)",
     "btn-tutorial-open": "Обучение и калибровка",
     "btn-saltar-tutorial": "Пропустить",
@@ -364,7 +364,7 @@ window.LIRA_I18N["ru"] = {
     "lbl-idioma-destino-corto": "Язык перевода:",
     "opt-modo-solo-trad": "🔊 Только перевод",
     "opt-modo-subtitulos-corto": "📺 Переведённые субтитры",
-    "opt-modo-aprendizaje-corto": "🎓 Режим обучения",
+    "opt-modo-aprendizaje-corto": "Режим обучения",
     "lbl-ocr-hud-titulo": "Обработка страницы...",
     "lbl-ocr-hud-texto": "Распознавание текста с RapidOCR...",
     "bienvenida-subtitulo": "Что бы вы хотели послушать сегодня?",

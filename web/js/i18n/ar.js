@@ -1,4 +1,4 @@
-/* LiraLoud - i18n (ar) */
+﻿/* LiraLoud - i18n (ar) */
 window.LIRA_I18N = window.LIRA_I18N || {};
 window.LIRA_I18N["ar"] = {
     "btn-pdf": "PDF",
@@ -145,7 +145,7 @@ window.LIRA_I18N["ar"] = {
     "opt-motor-online": "🌐 عبر الإنترنت (Google Translate / سريع)",
     "opt-motor-offline": "💻 بدون إنترنت (محلي / بدون شبكة)",
     "opt-modo-subtitulos": "📺 ترجمات مصاحبة (صوت أصلي + ترجمة)",
-    "opt-modo-aprendizaje": "🎓 وضع التعلم (قراءة الأصل + قراءة الترجمة)",
+    "opt-modo-aprendizaje": "وضع التعلم (قراءة الأصل + قراءة الترجمة)",
     "opt-modo-directo": "🔊 ترجمة فقط (قراءة الترجمة مباشرة)",
     "btn-tutorial-open": "الدليل التعليمي والمعايرة",
     "btn-saltar-tutorial": "تخطي",
@@ -364,7 +364,7 @@ window.LIRA_I18N["ar"] = {
     "lbl-idioma-destino-corto": "لغة الهدف:",
     "opt-modo-solo-trad": "🔊 الترجمة فقط",
     "opt-modo-subtitulos-corto": "📺 ترجمة نصية مترجمة",
-    "opt-modo-aprendizaje-corto": "🎓 وضع التعلم",
+    "opt-modo-aprendizaje-corto": "وضع التعلم",
     "lbl-ocr-hud-titulo": "جارٍ معالجة الصفحة...",
     "lbl-ocr-hud-texto": "جارٍ التعرف على النص عبر RapidOCR...",
     "bienvenida-subtitulo": "ماذا تود أن تسمع اليوم؟",

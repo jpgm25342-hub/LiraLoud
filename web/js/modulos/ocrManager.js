@@ -391,10 +391,10 @@ if (typeof eel !== 'undefined') {
         cargarPagina(paginaActual);
     }
 
-    eel.expose(abrir_desde_extension);
-    function abrir_desde_extension(ruta) {
+    eel.expose(abrir_desde_extension, 'abrir_desde_extension');
+    function abrir_desde_extension(ruta, tipo = 'pdf') {
         if (!ruta) return false;
-        console.log("[EXTENSIÓN] Solicitud recibida para cargar:", ruta);
+        console.log("[EXTENSIÓN] Solicitud recibida para cargar:", ruta, "tipo:", tipo);
         setTimeout(async () => {
             try {
                 if (typeof detenerLectura === 'function') detenerLectura();
@@ -403,7 +403,9 @@ if (typeof eel !== 'undefined') {
                 }
                 if (typeof _destruirBienvenida === 'function') _destruirBienvenida();
                 if (typeof cerrarLanzador === 'function') cerrarLanzador();
-                await abrirDocumentoDesdeRuta(ruta, true);
+                const esTemporal = (tipo === 'web' || tipo === 'texto_escrito');
+                const tipoDoc = (tipo === 'web') ? 'web' : ((tipo === 'texto_escrito') ? 'texto_escrito' : 'pdf');
+                await abrirDocumentoDesdeRuta(ruta, esTemporal, false, { tipoDocumento: tipoDoc });
                 if (typeof mostrarToastLira === 'function') {
                     mostrarToastLira("Documento cargado desde el navegador", 'archivo');
                 }
@@ -413,6 +415,7 @@ if (typeof eel !== 'undefined') {
         }, 20);
         return true;
     }
+    window.abrir_desde_extension = abrir_desde_extension;
 }
 
 // ==========================================

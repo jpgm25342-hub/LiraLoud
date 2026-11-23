@@ -259,6 +259,19 @@ window.onload = async () => {
     }, 8000);
 
     try {
+        // 🛑 FASE 0: Lectura prioritaria y aislada de tutorial_estado.json
+        if (typeof eel !== 'undefined' && typeof eel.cargar_estado_tutorial === 'function') {
+            try {
+                const estTut = await eel.cargar_estado_tutorial()();
+                window.tutorialCompletado = Boolean(estTut && estTut.completado === true);
+                if (typeof localStorage !== 'undefined') {
+                    localStorage.setItem('liraloud_tutorial_completado', window.tutorialCompletado ? 'true' : 'false');
+                }
+            } catch (eTut) {
+                window.tutorialCompletado = false;
+            }
+        }
+
         logCarga("Preparando modales de interfaz...");
         document.getElementById('modal-descarga').style.display = 'none';
         document.getElementById('modalConfig').style.display = 'none';
@@ -704,19 +717,16 @@ window.onload = async () => {
         sincronizarVolumen(volumenPorcentaje);
         // (Recorte y Zoom se restauran más abajo via safeUI + aplicarRecorteDinamico/aplicarZoomDinamico)
 
-        // Modo Tutorial y Calibración Inicial (Doble verificación: localStorage + backend)
-        const tutorialLocal = (typeof localStorage !== 'undefined') && localStorage.getItem('liraloud_tutorial_completado') === 'true';
-        const tutorialRemoto = (ajustes?.tutorial_completado === true);
-        window.tutorialCompletado = tutorialLocal || tutorialRemoto;
-
-        if (window.tutorialCompletado) {
-            try {
-                if (typeof localStorage !== 'undefined') localStorage.setItem('liraloud_tutorial_completado', 'true');
-            } catch (e) {}
-        } else {
+        // Modo Tutorial y Calibración Inicial (controlado exclusivamente por tutorial_estado.json cargado en Fase 0)
+        // En la primera apertura de LiraLoud, primero muestra el selector de idioma y solo inicia el tutorial tras elegir idioma.
+        if (!window.tutorialCompletado) {
             setTimeout(() => {
-                if (!window.tutorialCompletado && typeof abrirTutorial === 'function') {
-                    abrirTutorial(0, { auto: true });
+                if (!window.tutorialCompletado) {
+                    if (typeof window.mostrarSelectorIdiomaInicial === 'function') {
+                        window.mostrarSelectorIdiomaInicial();
+                    } else if (typeof abrirTutorial === 'function') {
+                        abrirTutorial(0, { auto: true });
+                    }
                 }
             }, 1200);
         }

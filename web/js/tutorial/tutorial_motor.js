@@ -8,8 +8,7 @@
 // ============================================================================
 
 if (typeof window.tutorialCompletado === 'undefined') {
-    const tutorialLocalInit = (typeof localStorage !== 'undefined') && localStorage.getItem('liraloud_tutorial_completado') === 'true';
-    window.tutorialCompletado = tutorialLocalInit;
+    window.tutorialCompletado = false;
 }
 window.tutorialActivo = false;
 window.tutorialPasoActual = 0;
@@ -138,11 +137,332 @@ function asegurarModalConfigAbiertoEnTab(tabId) {
 }
 
 // ============================================================================
+// SELECTOR DE IDIOMA INICIAL (PRE-TUTORIAL — SOLO PRIMERA APERTURA)
+// ============================================================================
+
+window.mostrarSelectorIdiomaInicial = function() {
+    if (window.tutorialCompletado || window.tutorialActivo) return;
+    if (document.getElementById('lira-modal-idioma-inicial')) return;
+
+    const IDIOMAS_DISPONIBLES = [
+        { code: 'es', label: 'Español (América Latina)' },
+        { code: 'en', label: 'English (United States)' },
+        { code: 'fr', label: 'Français (France)' },
+        { code: 'de', label: 'Deutsch (Deutschland)' },
+        { code: 'pt', label: 'Português (Brasil)' },
+        { code: 'zh', label: '中文 (China)' },
+        { code: 'ru', label: 'Русский (Россия)' },
+        { code: 'ar', label: 'العربية (Arabic)' },
+        { code: 'hi', label: 'हिन्दी (Hindi)' },
+        { code: 'bn', label: 'বাংলা (Bengali)' }
+    ];
+
+    // Si existen los radios del menú Configuración (#tab-idioma), sincronizar etiquetas desde ahí
+    const radiosMenu = Array.from(document.querySelectorAll('#tab-idioma input[name="radio-idioma"]'));
+    const listaIdiomas = radiosMenu.length > 0
+        ? radiosMenu.map(r => ({
+            code: r.value,
+            label: (r.parentElement ? r.parentElement.textContent : r.value).trim()
+        }))
+        : IDIOMAS_DISPONIBLES;
+
+    let idiomaSeleccionado = (typeof currentLanguage !== 'undefined' && currentLanguage)
+        ? currentLanguage
+        : (document.querySelector('input[name="radio-idioma"]:checked')?.value || 'es');
+
+    if (!document.getElementById('lira-idioma-inicial-styles')) {
+        const st = document.createElement('style');
+        st.id = 'lira-idioma-inicial-styles';
+        st.textContent = `
+            #lira-modal-idioma-inicial {
+                position: fixed;
+                inset: 0;
+                z-index: 98000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(15, 23, 42, 0.62);
+                backdrop-filter: blur(6px);
+                -webkit-backdrop-filter: blur(6px);
+                animation: liraFadeInIdioma 0.22s ease-out;
+            }
+            @keyframes liraFadeInIdioma {
+                from { opacity: 0; transform: scale(0.97); }
+                to { opacity: 1; transform: scale(1); }
+            }
+            .lira-idioma-card {
+                width: 500px;
+                max-width: calc(100vw - 32px);
+                background: #ffffff;
+                color: #1e293b;
+                border-radius: 14px;
+                border: 1px solid #e2e8f0;
+                box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+                padding: 24px;
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+            }
+            .lira-idioma-header {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 12px;
+            }
+            .lira-idioma-icon {
+                width: 40px;
+                height: 40px;
+                border-radius: 10px;
+                background: #f1f5f9;
+                color: #334155;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+            }
+            .lira-idioma-title {
+                margin: 0;
+                font-size: 17px;
+                font-weight: 700;
+                color: #0f172a;
+            }
+            .lira-idioma-desc {
+                margin: 3px 0 0 0;
+                font-size: 12px;
+                color: #64748b;
+                line-height: 1.4;
+            }
+            .lira-idioma-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+                max-height: 310px;
+                overflow-y: auto;
+                padding-right: 2px;
+            }
+            .lira-idioma-item {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 10px 12px;
+                border-radius: 8px;
+                border: 1px solid #cbd5e1;
+                background: #f8fafc;
+                color: #1e293b;
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.16s ease;
+                user-select: none;
+            }
+            .lira-idioma-item:hover {
+                background: #f1f5f9;
+                border-color: #94a3b8;
+            }
+            .lira-idioma-item.activo {
+                background: #eff6ff;
+                border-color: #3b82f6;
+                color: #1d4ed8;
+                box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+            }
+            .lira-idioma-radio-dot {
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                border: 2px solid #94a3b8;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+            }
+            .lira-idioma-item.activo .lira-idioma-radio-dot {
+                border-color: #2563eb;
+            }
+            .lira-idioma-item.activo .lira-idioma-radio-dot::after {
+                content: '';
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: #2563eb;
+            }
+            .lira-idioma-footer {
+                display: flex;
+                justify-content: flex-end;
+                padding-top: 8px;
+                border-top: 1px solid #e2e8f0;
+            }
+            .lira-idioma-btn-continuar {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                padding: 10px 22px;
+                border-radius: 8px;
+                border: 1px solid transparent;
+                background: #2563eb;
+                color: #ffffff;
+                font-size: 13px;
+                font-weight: 700;
+                cursor: pointer;
+                transition: all 0.18s ease;
+            }
+            .lira-idioma-btn-continuar:hover {
+                background: #1d4ed8;
+                transform: translateY(-1px);
+            }
+            /* Dark Mode */
+            body.ui-dark-mode .lira-idioma-card {
+                background: #161b22;
+                color: #e6edf3;
+                border-color: #30363d;
+                box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+            }
+            body.ui-dark-mode .lira-idioma-header,
+            body.ui-dark-mode .lira-idioma-footer {
+                border-color: #30363d;
+            }
+            body.ui-dark-mode .lira-idioma-icon {
+                background: #21262d;
+                color: #e6edf3;
+                border: 1px solid #30363d;
+            }
+            body.ui-dark-mode .lira-idioma-title {
+                color: #f0f6fc;
+            }
+            body.ui-dark-mode .lira-idioma-desc {
+                color: #8b949e;
+            }
+            body.ui-dark-mode .lira-idioma-item {
+                background: #0d1117;
+                border-color: #30363d;
+                color: #c9d1d9;
+            }
+            body.ui-dark-mode .lira-idioma-item:hover {
+                background: #21262d;
+                border-color: #484f58;
+                color: #f0f6fc;
+            }
+            body.ui-dark-mode .lira-idioma-item.activo {
+                background: #21262d;
+                border-color: #58a6ff;
+                color: #ffffff;
+                box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.3);
+            }
+            body.ui-dark-mode .lira-idioma-item.activo .lira-idioma-radio-dot {
+                border-color: #58a6ff;
+            }
+            body.ui-dark-mode .lira-idioma-item.activo .lira-idioma-radio-dot::after {
+                background: #58a6ff;
+            }
+            body.ui-dark-mode .lira-idioma-btn-continuar {
+                background: #21262d;
+                color: #f0f6fc;
+                border-color: #484f58;
+            }
+            body.ui-dark-mode .lira-idioma-btn-continuar:hover {
+                background: #30363d;
+                border-color: #8b949e;
+                color: #ffffff;
+            }
+        `;
+        document.head.appendChild(st);
+    }
+
+    const overlay = document.createElement('div');
+    overlay.id = 'lira-modal-idioma-inicial';
+
+    const limpiarEmojiTitulo = (txt) => String(txt || '').replace(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\s]+/u, '').trim();
+
+    overlay.innerHTML = `
+        <div class="lira-idioma-card" role="dialog" aria-modal="true">
+            <div class="lira-idioma-header">
+                <div class="lira-idioma-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 id="lira-idioma-inicial-titulo" class="lira-idioma-title">Idioma de la Interfaz</h3>
+                    <p id="lira-idioma-inicial-desc" class="lira-idioma-desc">Selecciona el idioma con el que deseas utilizar la aplicación.</p>
+                </div>
+            </div>
+            <div id="lira-idioma-inicial-grid" class="lira-idioma-grid"></div>
+            <div class="lira-idioma-footer">
+                <button type="button" id="lira-idioma-btn-confirmar" class="lira-idioma-btn-continuar">
+                    <span id="lira-idioma-btn-texto">Listo</span>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const grid = overlay.querySelector('#lira-idioma-inicial-grid');
+    const elTitulo = overlay.querySelector('#lira-idioma-inicial-titulo');
+    const elDesc = overlay.querySelector('#lira-idioma-inicial-desc');
+    const elBtnTxt = overlay.querySelector('#lira-idioma-btn-texto');
+
+    const actualizarTextosModal = () => {
+        const tFn = (typeof window.t === 'function') ? window.t : ((k, fb) => fb);
+        if (elTitulo) elTitulo.textContent = limpiarEmojiTitulo(tFn('lbl-idioma-titulo', 'Idioma de la Interfaz')) || 'Idioma de la Interfaz';
+        if (elDesc) elDesc.textContent = tFn('lbl-idioma-desc', 'Selecciona el idioma con el que deseas utilizar la aplicación.');
+        if (elBtnTxt) elBtnTxt.textContent = tFn('btn-listo', 'Listo');
+    };
+
+    const aplicarIdiomaElegido = (code) => {
+        idiomaSeleccionado = code;
+        const radio = document.querySelector(`input[name="radio-idioma"][value="${code}"]`);
+        if (radio) radio.checked = true;
+        if (typeof toggleIdiomaDrop === 'function') {
+            toggleIdiomaDrop(code);
+        }
+        if (typeof window.sincronizarVozConIdiomaUI === 'function') {
+            window.sincronizarVozConIdiomaUI(code);
+        }
+        grid.querySelectorAll('.lira-idioma-item').forEach(btn => {
+            btn.classList.toggle('activo', btn.dataset.lang === code);
+        });
+        actualizarTextosModal();
+    };
+
+    listaIdiomas.forEach(item => {
+        const btn = document.createElement('div');
+        btn.className = 'lira-idioma-item' + (item.code === idiomaSeleccionado ? ' activo' : '');
+        btn.dataset.lang = item.code;
+        btn.innerHTML = `<span class="lira-idioma-radio-dot"></span><span>${item.label}</span>`;
+        btn.addEventListener('click', () => aplicarIdiomaElegido(item.code));
+        grid.appendChild(btn);
+    });
+
+    actualizarTextosModal();
+
+    const btnConfirmar = overlay.querySelector('#lira-idioma-btn-confirmar');
+    if (btnConfirmar) {
+        btnConfirmar.addEventListener('click', () => {
+            aplicarIdiomaElegido(idiomaSeleccionado);
+            overlay.remove();
+            window.abrirTutorial(0, { auto: true, desdeSelectorIdioma: true });
+        });
+    }
+};
+
+// ============================================================================
 // FUNCIONES DE CONTROL DEL TOUR
 // ============================================================================
 
-window.abrirTutorial = function(pasoInicial = 0, { auto = false } = {}) {
+window.abrirTutorial = function(pasoInicial = 0, { auto = false, desdeSelectorIdioma = false } = {}) {
     if (auto && window.tutorialCompletado) return;
+    if (auto && !desdeSelectorIdioma) {
+        window.mostrarSelectorIdiomaInicial();
+        return;
+    }
     const overlay = document.getElementById('tour-guia-overlay');
     const card = document.getElementById('tour-card');
     if (!overlay) return;
@@ -247,22 +567,19 @@ window.cerrarTutorial = async function(completado = true) {
             localStorage.setItem('liraloud_tutorial_completado', 'true');
         } catch (e) {}
 
+        if (typeof eel !== 'undefined' && typeof eel.guardar_estado_tutorial === 'function') {
+            try {
+                await eel.guardar_estado_tutorial(true)();
+            } catch (err) {
+                console.warn("⚠️ No se pudo guardar tutorial_estado.json:", err);
+            }
+        }
+
         if (typeof guardarTodosAjustes === 'function') {
             try {
                 await guardarTodosAjustes(false);
             } catch (err) {
                 console.warn("⚠️ No se pudo ejecutar guardarTodosAjustes:", err);
-            }
-        }
-        if (typeof eel !== 'undefined' && eel.guardar_ajustes_lectura) {
-            try {
-                let ajustesActuales = await eel.cargar_ajustes_lectura()();
-                if (typeof ajustesActuales === 'object' && ajustesActuales) {
-                    ajustesActuales.tutorial_completado = true;
-                    await eel.guardar_ajustes_lectura(ajustesActuales)();
-                }
-            } catch (err) {
-                console.warn("⚠️ No se pudo guardar tutorial_completado:", err);
             }
         }
     }
