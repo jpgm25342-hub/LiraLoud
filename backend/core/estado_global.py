@@ -16,11 +16,14 @@ class EstadoApp:
             self.bundle_dir = self.base_dir
 
         self.directorio_piper = os.path.join(self.base_dir, "piper_voices")
-        self.icono_path = os.path.join(self.base_dir, "web", "LiraLoud.ico")
+        icono_base = os.path.join(self.base_dir, "web", "LiraLoud.ico")
+        icono_bundle = os.path.join(self.bundle_dir, "web", "LiraLoud.ico")
+        self.icono_path = icono_base if os.path.exists(icono_base) else icono_bundle
 
         self.lock_edicion_pdf = threading.RLock()
         self.doc = None
         self.ruta_pdf_actual = ""
+        self.archivo_inicial = ""
         self.tipo_documento = "pdf"
         self.pagina_actual_global = 0
 

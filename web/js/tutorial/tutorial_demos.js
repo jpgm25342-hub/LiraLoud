@@ -476,19 +476,59 @@ function obtenerParVocesTeatroTutorial(langIso = 'es') {
         filtrarVocesTeatroClon();
     }
 
+    const esVozEdge = (v) => {
+        const low = String(v || '').toLowerCase();
+        return low.includes('neural') && !low.includes('kokoro') && !low.includes('pocket');
+    };
+    const esVozPiper = (v) => {
+        const low = String(v || '').toLowerCase();
+        return low.endsWith('.onnx') && !low.includes('kokoro') && !low.includes('pocket');
+    };
+    const esVozRapidaEdge = (v) => esVozEdge(v) || esVozPiper(v);
+
     const selVoz = document.getElementById('select-voz-teatro');
     const opcionesTeatro = selVoz ? Array.from(selVoz.options).map(o => o.value).filter(Boolean) : [];
+    const opcionesEdge = opcionesTeatro.filter(esVozEdge);
+    const opcionesPiper = opcionesTeatro.filter(esVozPiper);
+    const opcionesRapidas = opcionesEdge.length > 0 ? opcionesEdge : opcionesPiper;
+
     const selLive = document.getElementById('selector-voz-live') || document.getElementById('modal-voz');
-    const vozBase = (selLive && selLive.value) ? selLive.value : (opcionesTeatro[0] || '');
+    const todasLive = selLive ? Array.from(selLive.options).map(o => o.value).filter(Boolean) : [];
+    const todasLiveEdge = todasLive.filter(esVozEdge);
+    const todasLivePiper = todasLive.filter(esVozPiper);
+    const todasLiveRapidas = todasLiveEdge.length > 0 ? todasLiveEdge : todasLivePiper;
 
-    let vozNarrador = vozBase || opcionesTeatro[0] || '';
-    let vozPersonaje = opcionesTeatro.find(v => v !== vozNarrador) || '';
+    const edgeFallbacks = {
+        es: ['es-MX-DaliaNeural', 'es-ES-AlvaroNeural', 'es-CL-LorenzoNeural'],
+        en: ['en-US-JennyNeural', 'en-US-GuyNeural'],
+        fr: ['fr-FR-DeniseNeural', 'fr-FR-HenriNeural'],
+        pt: ['pt-BR-FranciscaNeural', 'pt-BR-AntonioNeural'],
+        de: ['de-DE-KatjaNeural', 'de-DE-ConradNeural'],
+        zh: ['zh-CN-XiaoxiaoNeural', 'zh-CN-YunxiNeural'],
+        ru: ['ru-RU-SvetlanaNeural', 'ru-RU-DmitryNeural'],
+        ar: ['ar-SA-ZariyahNeural', 'ar-SA-HamedNeural'],
+        hi: ['hi-IN-SwaraNeural', 'hi-IN-MadhurNeural'],
+        bn: ['bn-IN-TanishaaNeural', 'bn-IN-BashkarNeural']
+    };
+    const fallbackPar = edgeFallbacks[langIso] || edgeFallbacks.es;
 
-    if (!vozPersonaje && selLive) {
-        const todas = Array.from(selLive.options).map(o => o.value).filter(Boolean);
-        vozPersonaje = todas.find(v => v !== vozNarrador && v.toLowerCase().includes(langIso)) ||
-                       todas.find(v => v !== vozNarrador) ||
-                       vozNarrador;
+    const poolCombinado = [...new Set([...opcionesRapidas, ...todasLiveRapidas, ...fallbackPar])];
+    const vozBaseRaw = (selLive && selLive.value) ? selLive.value : '';
+    const vozNarrador = esVozRapidaEdge(vozBaseRaw) ? vozBaseRaw : (poolCombinado[0] || fallbackPar[0]);
+    const vozPersonaje = poolCombinado.find(v => v !== vozNarrador && v.toLowerCase().startsWith(langIso)) ||
+                         poolCombinado.find(v => v !== vozNarrador) ||
+                         fallbackPar.find(v => v !== vozNarrador) ||
+                         vozNarrador;
+
+    // Si vozPersonaje no existe aún como opción en #select-voz-teatro, inyectarla para que pueda seleccionarse en la UI
+    if (selVoz && vozPersonaje && !Array.from(selVoz.options).some(o => o.value === vozPersonaje)) {
+        const opt = document.createElement('option');
+        opt.value = vozPersonaje;
+        opt.textContent = `🌐 ${vozPersonaje}`;
+        selVoz.appendChild(opt);
+    }
+    if (selVoz && vozPersonaje && (!esVozRapidaEdge(selVoz.value) || selVoz.value === vozNarrador)) {
+        selVoz.value = vozPersonaje;
     }
 
     return {
@@ -544,7 +584,16 @@ function asegurarEstadoTeatroTutorial(incluirActorEjemplo = true, eliminarActorE
             delete actorsObj[cfg.actorEjemplo];
         } else if (incluirActorEjemplo) {
             const selVoz = document.getElementById('select-voz-teatro');
-            const vozElegida = (selVoz && selVoz.value && selVoz.value !== vozNarrador) ? selVoz.value : (vozPersonaje || vozNarrador);
+            const esValida = (v) => {
+                const low = String(v || '').toLowerCase();
+                return (low.includes('neural') || low.endsWith('.onnx')) && !low.includes('kokoro') && !low.includes('pocket');
+            };
+            const vozElegida = (selVoz && selVoz.value && selVoz.value !== vozNarrador && esValida(selVoz.value))
+                ? selVoz.value
+                : (vozPersonaje || vozNarrador);
+            if (selVoz && vozElegida) {
+                selVoz.value = vozElegida;
+            }
             if (vozElegida) {
                 actorsObj[cfg.actorEjemplo] = {
                     voz: vozElegida,

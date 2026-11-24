@@ -157,7 +157,7 @@ const PASOS_LECTURA = [
                 } else if (subEtapaPaso2 === 1) {
                     return getTourText("tour-paso2-idioma", "Lo que se encuentra señalado es el <b>filtro de idioma</b>; con él podrás filtrar las voces que correspondan al idioma que quieres escuchar. Haz clic en el botón y escoge el idioma de tu elección.");
                 } else if (subEtapaPaso2 === 2) {
-                    return getTourText("tour-paso2-voz", "Ahora escoge la <b>voz</b> con la que deseas escuchar tu lectura. Actualmente hay 2 tipos de voz: las voces <b>offline</b>, señaladas con un rayo (⚡), son procesadas por tu equipo y puedes descargar las que desees; y las voces <b>online</b>, con el símbolo de internet (🌐), que son procesadas de manera externa a tu computadora.");
+                    return getTourText("tour-paso2-voz", "En el apartado de selección de voz puedes escoger la voz que deseas escuchar en tu lectura. LiraLoud cuenta con modelos que requieren internet, identificados con el símbolo del globo terráqueo (🌐), y modelos locales con el símbolo de una computadora (💻). Como los modelos locales se ejecutan directamente en tu equipo, su velocidad para generar el audio dependerá de la potencia de tu computadora. Dentro de estos, los que tienen el símbolo de la flauta (🪈) son los más rápidos, aunque primero debes descargarlos desde el apartado de avanzados, en la opción de añadir más voces. Por otro lado, las voces con el símbolo de corazón (❤️) o de bolsillo (👝) ya vienen instaladas, pero al ser más pesadas pueden tardar varios segundos en generar cada oración según la capacidad de tu equipo.");
                 } else {
                     return getTourText("tour-paso2-zen-avanzado", "A continuación puedes ajustar la <b>velocidad de lectura</b>, y en <b>'Avanzados'</b> puedes calibrar la duración de las pausas y el tono de la voz.");
                 }
@@ -165,7 +165,7 @@ const PASOS_LECTURA = [
                 if (subEtapaPaso2 <= 1) {
                     return getTourText("tour-paso2-idioma", "¡Buen trabajo! Es momento de que escojas la voz que desees utilizar.<br><br>Lo que se encuentra señalado es el <b>filtro de idioma</b>; con él podrás filtrar las voces que correspondan al idioma que quieres escuchar. Haz clic en el botón y escoge el idioma de tu elección.");
                 } else if (subEtapaPaso2 === 2) {
-                    return getTourText("tour-paso2-voz", "Ahora escoge la <b>voz</b> con la que deseas escuchar tu lectura. Actualmente hay 2 tipos de voz: las voces <b>offline</b>, señaladas con un rayo (⚡), son procesadas por tu equipo y puedes descargar las que desees; y las voces <b>online</b>, con el símbolo de internet (🌐), que son procesadas de manera externa a tu computadora.");
+                    return getTourText("tour-paso2-voz", "En el apartado de selección de voz puedes escoger la voz que deseas escuchar en tu lectura. LiraLoud cuenta con modelos que requieren internet, identificados con el símbolo del globo terráqueo (🌐), y modelos locales con el símbolo de una computadora (💻). Como los modelos locales se ejecutan directamente en tu equipo, su velocidad para generar el audio dependerá de la potencia de tu computadora. Dentro de estos, los que tienen el símbolo de la flauta (🪈) son los más rápidos, aunque primero debes descargarlos desde el apartado de avanzados, en la opción de añadir más voces. Por otro lado, las voces con el símbolo de corazón (❤️) o de bolsillo (👝) ya vienen instaladas, pero al ser más pesadas pueden tardar varios segundos en generar cada oración según la capacidad de tu equipo.");
                 } else {
                     return getTourText("tour-paso2-normal-velocidad", "A continuación puedes ajustar la <b>velocidad de lectura</b>, y en <b>'Avanzados'</b> puedes calibrar la duración de las pausas y el tono de la voz.");
                 }
@@ -177,7 +177,7 @@ const PASOS_LECTURA = [
                 return `<div id="tour-contador-10s" style="font-weight:bold; color:#38bdf8;">${txtCont}</div>`;
             }
             if (subEtapaPaso2 === 2) {
-                return getTourText("tour-paso2-det-voces", "• <b>Voces Online:</b> Gran entonación y variedad de acentos.<br>• <b>Voces Offline (⚡):</b> Sin internet, procesamiento local ultra rápido.");
+                return getTourText("tour-paso2-det-voces", "• 🌐 <b>Voces Online (Globo):</b> Requieren internet; gran entonación y variedad de acentos.<br>• 💻 <b>Voces Offline (Locales):</b> Sin internet (🪈 <b>Flauta:</b> ultra rápidas en Avanzados · ❤️ <b>Corazón</b> y 👝 <b>Bolsillo:</b> ya instaladas, más pesadas).");
             }
             if (subEtapaPaso2 === 1) {
                 return getTourText("tour-paso2-det-idioma", "💡 El catálogo de voces se actualizará en tiempo real mostrando solo las opciones del idioma elegido.");
@@ -208,24 +208,49 @@ const PASOS_LECTURA = [
                     btnZenVoz.addEventListener('click', listenerCondicionalActivo, { once: true });
                 }
             } else if (subEtapaPaso2 === 1) {
-                // ETAPA: FILTRO DE IDIOMA
+                // ETAPA: FILTRO DE IDIOMA (aparece vacío para elegir en 1 solo clic sin recliquear)
                 const selectIdioma = document.getElementById('filtro-idioma');
                 const inputIdioma = document.getElementById('busqueda-idioma-live');
 
+                if (selectIdioma && selectIdioma.value) {
+                    window._tourPrevIdiomaVal = selectIdioma.value;
+                }
+                if (inputIdioma && inputIdioma.value) {
+                    window._tourPrevIdiomaTxt = inputIdioma.value;
+                }
+                if (inputIdioma) {
+                    inputIdioma.value = "";
+                }
+                if (selectIdioma) {
+                    selectIdioma.selectedIndex = -1;
+                }
+
+                let yaAvanzoIdioma = false;
                 const avanzarAVoz = () => {
-                    document.removeEventListener('mousedown', onDocClickFueraIdioma);
-                    if (listenerMouseDownActivo === onDocClickFueraIdioma) listenerMouseDownActivo = null;
-                    if (window.tutorialPasoActual !== 1) return;
+                    if (yaAvanzoIdioma || window.tutorialPasoActual !== 1 || subEtapaPaso2 !== 1) return;
+                    if (selectIdioma && selectIdioma.selectedIndex < 0 && (!inputIdioma || !inputIdioma.value.trim())) return;
+                    yaAvanzoIdioma = true;
+                    window.removeEventListener('lira:combo-live-seleccionado', onComboIdiomaSel);
+                    if (selectIdioma && selectIdioma.selectedIndex >= 0 && inputIdioma) {
+                        const opt = selectIdioma.options[selectIdioma.selectedIndex];
+                        if (opt && !inputIdioma.value) inputIdioma.value = opt.text;
+                    }
                     setTimeout(() => {
-                        if (window.tutorialPasoActual === 1) transicionarSubEtapa(2);
-                    }, 250);
+                        if (window.tutorialPasoActual === 1 && subEtapaPaso2 === 1) transicionarSubEtapa(2);
+                    }, 220);
                 };
 
-                // Si selecciona un idioma
+                const onComboIdiomaSel = (ev) => {
+                    if (ev?.detail?.tipo === 'idioma') avanzarAVoz();
+                };
+                window.addEventListener('lira:combo-live-seleccionado', onComboIdiomaSel);
+
+                // Si selecciona un idioma por change o click en la lista
                 if (selectIdioma) {
                     targetCondicionalActivo = selectIdioma;
                     listenerCondicionalActivo = avanzarAVoz;
-                    selectIdioma.addEventListener('change', listenerCondicionalActivo, { once: true });
+                    selectIdioma.addEventListener('change', avanzarAVoz);
+                    selectIdioma.addEventListener('click', avanzarAVoz);
                 }
 
                 if (inputIdioma) {
@@ -234,44 +259,50 @@ const PASOS_LECTURA = [
                     });
                 }
 
-                // SENSOR DE SALIDA: Si el usuario ya está conforme con el idioma por defecto y hace clic fuera
-                const onDocClickFueraIdioma = (e) => {
-                    if (!window.tutorialActivo || window.tutorialPasoActual !== 1 || subEtapaPaso2 !== 1) {
-                        document.removeEventListener('mousedown', onDocClickFueraIdioma);
-                        if (listenerMouseDownActivo === onDocClickFueraIdioma) listenerMouseDownActivo = null;
-                        return;
-                    }
-                    const dentro = e.target.closest('#filtro-idioma') || e.target.closest('#busqueda-idioma-live') || e.target.closest('#tour-card');
-                    if (!dentro) {
-                        console.log("👉 [TUTORIAL] Idioma conservado por defecto al hacer clic fuera.");
-                        document.removeEventListener('mousedown', onDocClickFueraIdioma);
-                        if (listenerMouseDownActivo === onDocClickFueraIdioma) listenerMouseDownActivo = null;
-                        avanzarAVoz();
-                    }
-                };
-                listenerMouseDownActivo = onDocClickFueraIdioma;
-                document.addEventListener('mousedown', onDocClickFueraIdioma);
-
             } else if (subEtapaPaso2 === 2) {
-                // ETAPA: SELECCIÓN DE VOZ
+                // ETAPA: SELECCIÓN DE VOZ (aparece vacío para elegir en 1 solo clic sin recliquear)
                 const selectVoz = document.getElementById('selector-voz-live');
                 const inputVoz = document.getElementById('busqueda-voz-live');
 
+                if (selectVoz && selectVoz.value) {
+                    window._tourPrevVozVal = selectVoz.value;
+                }
+                if (inputVoz && inputVoz.value) {
+                    window._tourPrevVozTxt = inputVoz.value;
+                }
+                if (inputVoz) {
+                    inputVoz.value = "";
+                }
+                if (selectVoz) {
+                    selectVoz.selectedIndex = -1;
+                }
+
+                let yaAvanzoVoz = false;
                 const avanzarAVelocidad = () => {
-                    document.removeEventListener('mousedown', onDocClickFueraVoz);
-                    if (listenerMouseDownActivo === onDocClickFueraVoz) listenerMouseDownActivo = null;
-                    if (window.tutorialPasoActual !== 1) return;
+                    if (yaAvanzoVoz || window.tutorialPasoActual !== 1 || subEtapaPaso2 !== 2) return;
+                    if (selectVoz && selectVoz.selectedIndex < 0 && (!inputVoz || !inputVoz.value.trim())) return;
+                    yaAvanzoVoz = true;
+                    window.removeEventListener('lira:combo-live-seleccionado', onComboVozSel);
+                    if (selectVoz && selectVoz.selectedIndex >= 0 && inputVoz) {
+                        const opt = selectVoz.options[selectVoz.selectedIndex];
+                        if (opt && !inputVoz.value) inputVoz.value = opt.text;
+                    }
                     setTimeout(() => {
-                        if (window.tutorialPasoActual === 1) transicionarSubEtapa(3);
-                    }, 250);
+                        if (window.tutorialPasoActual === 1 && subEtapaPaso2 === 2) transicionarSubEtapa(3);
+                    }, 220);
                 };
 
-                // Si selecciona una voz
+                const onComboVozSel = (ev) => {
+                    if (ev?.detail?.tipo === 'voz') avanzarAVelocidad();
+                };
+                window.addEventListener('lira:combo-live-seleccionado', onComboVozSel);
+
+                // Si selecciona una voz por change o click en la lista
                 if (selectVoz) {
                     targetCondicionalActivo = selectVoz;
                     listenerCondicionalActivo = avanzarAVelocidad;
-                    selectVoz.addEventListener('change', listenerCondicionalActivo, { once: true });
-                    selectVoz.addEventListener('click', listenerCondicionalActivo, { once: true });
+                    selectVoz.addEventListener('change', avanzarAVelocidad);
+                    selectVoz.addEventListener('click', avanzarAVelocidad);
                 }
 
                 if (inputVoz) {
@@ -279,24 +310,6 @@ const PASOS_LECTURA = [
                         if (typeof abrirComboLive === 'function') abrirComboLive('voz');
                     });
                 }
-
-                // SENSOR DE SALIDA: Si el usuario ya está conforme con la voz por defecto y hace clic fuera
-                const onDocClickFueraVoz = (e) => {
-                    if (!window.tutorialActivo || window.tutorialPasoActual !== 1 || subEtapaPaso2 !== 2) {
-                        document.removeEventListener('mousedown', onDocClickFueraVoz);
-                        if (listenerMouseDownActivo === onDocClickFueraVoz) listenerMouseDownActivo = null;
-                        return;
-                    }
-                    const dentro = e.target.closest('#selector-voz-live') || e.target.closest('#busqueda-voz-live') || e.target.closest('#tour-card');
-                    if (!dentro) {
-                        console.log("👉 [TUTORIAL] Voz conservada por defecto al hacer clic fuera.");
-                        document.removeEventListener('mousedown', onDocClickFueraVoz);
-                        if (listenerMouseDownActivo === onDocClickFueraVoz) listenerMouseDownActivo = null;
-                        avanzarAVelocidad();
-                    }
-                };
-                listenerMouseDownActivo = onDocClickFueraVoz;
-                document.addEventListener('mousedown', onDocClickFueraVoz);
             } else if (subEtapaPaso2 === 3) {
                 // Cuenta regresiva de 10 segundos
                 let segundos = 10;
@@ -330,30 +343,117 @@ const PASOS_LECTURA = [
     {
         id: "paso_3_leer_y_pausar",
         targetSelector: "#visor-container",
+        getTargets: () => {
+            if (subEtapaPaso3 === 2) {
+                const esMinimalista = document.body.classList.contains('modo-minimalista');
+                if (esMinimalista) {
+                    const pMenu = document.getElementById('zen-panel-menu');
+                    const menuAbierto = pMenu && (pMenu.classList.contains('zen-active') || pMenu.style.display === 'block');
+                    if (!menuAbierto) {
+                        const btnZenMenu = document.getElementById('btn-zen-menu');
+                        return btnZenMenu ? [btnZenMenu] : [];
+                    }
+                    const detFiltros = document.getElementById('zen-details-filtros');
+                    if (detFiltros && !detFiltros.open) {
+                        const sumFiltros = detFiltros.querySelector('summary');
+                        return sumFiltros ? [sumFiltros] : [detFiltros];
+                    }
+                    const popup = detFiltros ? detFiltros.querySelector('.zen-dropdown-popup') : null;
+                    const cont = document.getElementById('zen-filtros-container');
+                    return (popup || cont) ? [popup || cont] : [];
+                }
+                const filaFiltros = document.querySelector('.fila-filtros');
+                return filaFiltros ? [filaFiltros] : [];
+            }
+            const visor = document.getElementById('visor-container');
+            return visor ? [visor] : [];
+        },
         posicion: "adaptable-paso-1",
-        sinSpotlightAnim: true,
+        sinSpotlightAnim: () => subEtapaPaso3 < 2,
+        autoAvanzarTrasLectura: () => {
+            if (subEtapaPaso3 !== 2) return false;
+            const esMinimalista = document.body.classList.contains('modo-minimalista');
+            if (!esMinimalista) return true;
+            return Boolean(document.getElementById('zen-details-filtros')?.open);
+        },
         getTitulo: () => {
+            if (subEtapaPaso3 === 2) {
+                return getTourText("tour-paso3-sub3-titulo", "🔎 Paso 3.3: Filtros y Comportamiento de Lectura");
+            }
             const langIso = detectarIdiomaTutorialActivo();
             const cfg = CALIBRACION_POR_IDIOMA[langIso] || CALIBRACION_POR_IDIOMA.es;
-            return subEtapaPaso3 >= 1
+            return subEtapaPaso3 === 1
                 ? getTourText("tour-paso3-sub2-titulo", "🎯 Paso 3.2: Leer desde un Punto Fijo")
                 : getTourText("tour-paso3-titulo", "📖 Paso 3.1: Lectura Punto a Punto");
         },
         getInstruccion: () => {
+            if (subEtapaPaso3 === 2) {
+                const esMinimalista = document.body.classList.contains('modo-minimalista');
+                if (esMinimalista) {
+                    const pMenu = document.getElementById('zen-panel-menu');
+                    const menuAbierto = pMenu && (pMenu.classList.contains('zen-active') || pMenu.style.display === 'block');
+                    if (!menuAbierto) {
+                        return getTourText("tour-paso3-filtros-zen-menu", "Antes de continuar, veamos los <b>Filtros de Lectura</b> (enlaces, paréntesis y superíndices). Haz clic en el <b>Menú (☰)</b> iluminado en azul.");
+                    }
+                    const detFiltros = document.getElementById('zen-details-filtros');
+                    if (detFiltros && !detFiltros.open) {
+                        return getTourText("tour-paso3-filtros-zen-abrir", "Ahora haz clic en el icono de <b>Filtros</b> iluminado en azul.");
+                    }
+                }
+                return getTourText("tour-paso3-filtros-inst", "Las primeras casillas marcadas arriba (<b>No Links</b>, <b>No paréntesis (...)</b>, <b>No corchetes [...]</b>, etc.) sirven para omitir esos elementos durante la lectura.<br><br>Las dos casillas inferiores controlan cómo avanza la lectura: <b>Auto-avance</b> (pasa de página automáticamente al terminar) y <b>Seguir texto</b> (desplaza la vista siguiendo las palabras).");
+            }
             const langIso = detectarIdiomaTutorialActivo();
             const cfg = CALIBRACION_POR_IDIOMA[langIso] || CALIBRACION_POR_IDIOMA.es;
-            return subEtapaPaso3 >= 1
+            return subEtapaPaso3 === 1
                 ? cfg.instruccionSalto
                 : getTourText("tour-paso3-sub1-instruccion", "Para comprobar la lectura, puedes leer de punto a punto utilizando el <b>clic izquierdo</b> de tu ratón. Haz clic izquierdo sobre el texto para probar la función.");
         },
         getDetalleExtra: () => {
+            if (subEtapaPaso3 === 2) {
+                return getTourText("tour-paso3-filtros-det", "💡 <i>Marca lo que quieras que la voz omita (por ejemplo, citas entre paréntesis o notas al pie) y pulsa <b>'Siguiente ➔'</b> cuando estés listo.</i>");
+            }
             const langIso = detectarIdiomaTutorialActivo();
             const cfg = CALIBRACION_POR_IDIOMA[langIso] || CALIBRACION_POR_IDIOMA.es;
-            return subEtapaPaso3 >= 1
+            return subEtapaPaso3 === 1
                 ? cfg.saltoExito
                 : getTourText("tour-paso3-sub1-detalle", "💡 <i>Al hacer clic izquierdo en cualquier palabra, LiraLoud activa la guía de lectura punto a punto y sincroniza el karaoke en tiempo real.</i>");
         },
         accionCondicional: (siguiente) => {
+            if (subEtapaPaso3 === 2) {
+                removerMouseHintPaso3();
+                document.body.classList.remove('tour-paso-lectura');
+                const btnSig = (document.getElementById('btn-tour-next') || document.getElementById('tour-btn-siguiente'));
+                if (btnSig) {
+                    btnSig.style.opacity = '1';
+                    btnSig.style.pointerEvents = 'auto';
+                }
+                const esMinimalista = document.body.classList.contains('modo-minimalista');
+                if (esMinimalista) {
+                    document.body.classList.add('tour-activo-zen-menu');
+                    const pMenu = document.getElementById('zen-panel-menu');
+                    const menuAbierto = pMenu && (pMenu.classList.contains('zen-active') || pMenu.style.display === 'block');
+                    if (!menuAbierto) {
+                        const btnZenMenu = document.getElementById('btn-zen-menu');
+                        if (btnZenMenu) {
+                            targetCondicionalActivo = btnZenMenu;
+                            listenerCondicionalActivo = () => setTimeout(() => renderizarPasoTour(), 180);
+                            btnZenMenu.addEventListener('click', listenerCondicionalActivo, { once: true });
+                        }
+                    } else {
+                        const detFiltros = document.getElementById('zen-details-filtros');
+                        if (detFiltros && !detFiltros.open) {
+                            const onToggleFiltros = () => {
+                                if (detFiltros.open) {
+                                    detFiltros.removeEventListener('toggle', onToggleFiltros);
+                                    setTimeout(() => renderizarPasoTour(), 100);
+                                }
+                            };
+                            detFiltros.addEventListener('toggle', onToggleFiltros);
+                        }
+                    }
+                }
+                return;
+            }
             // Siempre cargamos la hoja de calibración en el idioma activo
             cargarTextoDemoEnVisor();
 
@@ -580,32 +680,43 @@ const PASOS_LECTURA = [
                     if (speechBubble) {
                         speechBubble.innerHTML = getTourText(
                             "tour-paso3-fin-lectura",
-                            "🎉 <b>¡Lectura completada!</b> Avanzando al Paso 4 (Límites y Columnas)..."
+                            "🎉 <b>¡Lectura completada!</b> Ahora revisemos los Filtros de lectura..."
                         );
                     }
                 }
 
-                // Avanzar directamente al Paso 4 (timeout no rastreado: nada puede cancelarlo)
+                // Pasar a subEtapa 2 (Filtros) en lugar de saltar directo al Paso 4
                 setTimeout(() => {
                     if (window.tutorialActivo && window.tutorialPasoActual === 2) {
                         yaAvanzado = false;
-                        avanzarPasoSeguro();
+                        document.removeEventListener('contextmenu', onContextMenuPaso3);
+                        document.removeEventListener('click', onDocClickPaso3, true);
+                        document.removeEventListener('mousemove', onUserInteractionWhileReading);
+                        window.removeEventListener('resize', onResizeMouseHint);
+                        renderizarPasoTour();
                     }
                 }, 700);
             };
 
-            // Escuchar clic en canvas para ocultar ratón de inmediato en Paso 3.1
-            const onCanvasClickSub0 = () => {
-                if (subEtapaPaso3 === 0) {
-                    removerMouseHintPaso3();
-                    if (!lecturaActivaDetectada) {
-                        lecturaActivaDetectada = true;
-                        const bodyEl = document.getElementById('tour-card-body');
-                        if (bodyEl) {
-                            const speechBubble = bodyEl.querySelector('.tutorial-speech-bubble');
-                            if (speechBubble) {
-                                speechBubble.innerHTML = `<span style="color:#38bdf8; font-weight:bold;">🎙️ ¡Excelente!</span> ${getTourText("tour-paso3-escuchando", "Escuchando la lectura punto a punto con karaoke sincronizado...")}`;
-                            }
+            // Escuchar clic en canvas para ocultar ratón solo si hizo clic sobre una palabra válida en Paso 3.1
+            const onCanvasClickSub0 = (e) => {
+                if (subEtapaPaso3 !== 0) return;
+                const canvas = document.getElementById('lienzo-pdf');
+                if (!canvas || !datosPagina || !datosPagina.palabras) return;
+                const r = canvas.getBoundingClientRect();
+                const pdfX = (e.clientX - r.left) * ((datosPagina.ancho_pagina_pdf || 800) / r.width);
+                const pdfY = (e.clientY - r.top) * ((datosPagina.alto_pagina_pdf || 1100) / r.height);
+                const sobrePalabra = datosPagina.palabras.some(p => p.bbox && pdfX >= (p.bbox[0] - 8) && pdfX <= (p.bbox[2] + 8) && pdfY >= (p.bbox[1] - 8) && pdfY <= (p.bbox[3] + 8));
+                if (!sobrePalabra) return;
+
+                removerMouseHintPaso3();
+                if (!lecturaActivaDetectada) {
+                    lecturaActivaDetectada = true;
+                    const bodyEl = document.getElementById('tour-card-body');
+                    if (bodyEl) {
+                        const speechBubble = bodyEl.querySelector('.tutorial-speech-bubble');
+                        if (speechBubble) {
+                            speechBubble.innerHTML = `<span style="color:#38bdf8; font-weight:bold;">🎙️ ¡Excelente!</span> ${getTourText("tour-paso3-escuchando", "Escuchando la lectura punto a punto con karaoke sincronizado...")}`;
                         }
                     }
                 }
@@ -823,14 +934,14 @@ const PASOS_LECTURA = [
             if (subEtapaPaso4a === 0) {
                 if (esMinimalista) {
                     if (subEtapaZenLimites === 0) {
-                        return getTourText("tour-paso4a-zen-menu", "Hemos completado la sección de lectura. Ahora veamos cómo interactuar con documentos que cuentan con varias columnas. Para evitar que se solape la lectura, es necesario establecer los límites de cada columna.<br><br>👉 Haz clic en el botón de <b>Menú</b> (☰) en tu barra flotante para desplegar las herramientas.");
+                        return getTourText("tour-paso4a-zen-menu", "Cuando un PDF tiene <b>varias columnas</b>, LiraLoud intenta detectarlas automáticamente; sin embargo, si necesitas ajustar o modificar esos límites manualmente para evitar que se mezclen los renglones, puedes usar los <b>Límites de Columnas</b>.<br><br>👉 Haz clic en el botón de <b>Menú</b> (☰) en tu barra flotante para desplegar las herramientas.");
                     } else if (subEtapaZenLimites === 1) {
                         return getTourText("tour-paso4a-zen-details", "👉 Ahora haz clic en el icono de <b>Límites</b> para abrir las opciones de columnas.");
                     } else {
                         return getTourText("tour-paso4a-zen-plus", "👉 Por último, haz clic en el botón <b>'+'</b> de Límites para añadir tu primer corte vertical.");
                     }
                 }
-                return getTourText("tour-paso4a-sub1", "Hemos completado la sección de lectura. Ahora veamos cómo interactuar con documentos que cuentan con varias columnas. Para evitar que se solape la lectura, es necesario establecer los límites de cada columna.<br><br>👉 Haz clic en el botón <b>'+'</b> de Límites para añadir tu primer corte vertical.");
+                return getTourText("tour-paso4a-sub1", "Cuando un PDF tiene <b>varias columnas</b>, LiraLoud intenta detectarlas automáticamente; pero si necesitas ajustar o modificar esos límites manualmente para evitar que se mezclen los renglones, puedes usar los <b>Límites de Columnas</b>.<br><br>👉 Haz clic en el botón <b>'+'</b> de Límites para añadir tu primer corte vertical.");
             }
             if (subEtapaPaso4a === 1) return getTourText("tour-paso4a-sub2", "Para acomodar los cortes verticales, mantén presionado el clic sobre la línea roja y <b>arrástrala hacia la izquierda</b>, entre la <b>Columna 1</b> y la <b>Columna 2</b>.");
             if (subEtapaPaso4a === 2) return aplicarAtajoEnTexto(getTourText("tour-paso4a-sub3", "Ahora aprovecha los comandos para establecer los límites: pulsa <b>Ctrl + Espacio</b> en tu teclado para añadir el corte para la <b>tercera columna</b>."));
@@ -1256,7 +1367,7 @@ const PASOS_LECTURA = [
             }
             return getTourText("tour-paso5-instruccion", "¡Bien hecho! Ahora pasemos al Gestor de Abreviaturas. Esta herramienta nos permite hacer que la voz pronuncie el significado completo de cualquier sigla sin modificar tu archivo original.<br><br>👉 Haz clic en el botón de <b>'Abreviaturas'</b> iluminado en azul para abrirlo.");
         },
-        getDetalleExtra: () => getTourText("tour-paso5-detalle", "Enseña a la voz cómo pronunciar siglas y abreviaturas internacionales sin alterar tu archivo PDF original."),
+        getDetalleExtra: () => getTourText("tour-paso5-detalle", "Enseña a la voz cómo pronunciar siglas y abreviaturas sin alterar tu archivo PDF original. 💡 <i>Nota: la pestaña <b>'Este Libro'</b> con el icono del <b>reloj (⏱️)</b> guarda reglas exclusivas para el PDF actual.</i>"),
         accionCondicional: (siguiente) => {
             cargarDemoAbreviaturas();
             // Preparar el diccionario y limpiar los inputs desde este paso (antes de que se abra el modal)

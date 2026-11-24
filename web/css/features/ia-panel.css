@@ -1496,6 +1496,36 @@ body.ui-dark-mode #ollama-descargas-panel {
     color: #cbd5e1 !important;
 }
 
+body.ui-dark-mode #tienda-ollama-recom-panel {
+    background: #161b22 !important;
+    border-color: #30363d !important;
+    color: #e6edf3 !important;
+}
+
+body.ui-dark-mode #btn-consultar-modelos-hw {
+    background: #21262d !important;
+    border-color: #484f58 !important;
+    color: #e6edf3 !important;
+}
+
+body.ui-dark-mode #btn-consultar-modelos-hw:hover {
+    background: #30363d !important;
+    border-color: #8b949e !important;
+    color: #ffffff !important;
+}
+
+body.ui-dark-mode #btn-ia {
+    background: #21262d !important;
+    color: #e6edf3 !important;
+    border-color: #30363d !important;
+}
+
+body.ui-dark-mode #btn-ia:hover {
+    background: #30363d !important;
+    border-color: #484f58 !important;
+    color: #ffffff !important;
+}
+
 body.ui-dark-mode #panel-ia .ia-card-icon svg[fill="none"],
 body.ui-dark-mode #panel-ia .ia-config-card svg[fill="none"],
 body.ui-dark-mode #panel-ia .ia-resultado-titulo svg[fill="none"] {

@@ -225,11 +225,15 @@ function renderizarSidebar() {
         });
 
         const iconoReloj = nombreSec === "Este Libro"
-            ? `<svg width="14" height="14" style="vertical-align:-2px; margin-right:5px;"><use href="assets/icons.svg#icon-clock"></use></svg>`
+            ? `<svg width="14" height="14" style="vertical-align:-2px; margin-right:5px;"><title>Abreviaturas y reglas exclusivas de este PDF</title><use href="assets/icons.svg#icon-clock"></use></svg>`
             : '';
 
+        const tituloTab = nombreSec === "Este Libro"
+            ? "Reglas exclusivas de este PDF (clic derecho o doble clic para cambiar nombre)"
+            : "Clic derecho o doble clic para cambiar nombre";
+
         div.innerHTML = `
-            <span class="tab-nombre-texto" style="flex:1;" title="Clic derecho o doble clic para cambiar nombre">
+            <span class="tab-nombre-texto" style="flex:1;" title="${tituloTab}">
                 ${iconoReloj}${nombreSec}
             </span>
             <div class="tab-acciones">

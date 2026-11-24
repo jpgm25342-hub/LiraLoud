@@ -43,6 +43,9 @@ let intervalPaso5 = null;
 let intervalPaso6 = null;
 let intervalPasoTraductor = null;
 let timeoutMouseHintPaso3 = null;
+let _ultimoHintMouse = null;
+let _ultimoHintKbd = null;
+let _timerResizeTour = null;
 let timeoutSubEtapaPaso3 = null;
 let listenerResizePaso3 = null;
 let listenerMouseMovePaso3 = null;
@@ -70,7 +73,7 @@ function limpiarTimeoutsTutorial() {
 function sincronizarSpotlightPaso1() {
     const overlay = document.getElementById('tour-guia-overlay');
     const tourVisible = overlay && overlay.style.display !== 'none';
-    
+
     // Si el tour no está activo o ya no está en el paso 1, limpiar todo y salir
     if (!window.tutorialActivo || !tourVisible || window.tutorialPasoActual !== 0) {
         quitarResaltadoTour();
@@ -84,9 +87,9 @@ function sincronizarSpotlightPaso1() {
     const bienvenidaVisible = bienvenida && bienvenida.style.display !== 'none' && document.body.contains(bienvenida);
 
     const btnPdf = document.getElementById('btn-pdf');
-    const cardModalPdf = document.getElementById('modal-lanzador-card-pdf') 
+    const cardModalPdf = document.getElementById('modal-lanzador-card-pdf')
         || document.querySelector('#lira-lanzador-overlay .lanzador-card:first-child');
-    const cardBienvenidaPdf = document.getElementById('card-bienvenida-pdf') 
+    const cardBienvenidaPdf = document.getElementById('card-bienvenida-pdf')
         || document.querySelector('#lira-bienvenida .lanzador-card:first-child');
 
     // Apagar focos previos de estos tres elementos
@@ -140,7 +143,7 @@ function asegurarModalConfigAbiertoEnTab(tabId) {
 // SELECTOR DE IDIOMA INICIAL (PRE-TUTORIAL — SOLO PRIMERA APERTURA)
 // ============================================================================
 
-window.mostrarSelectorIdiomaInicial = function() {
+window.mostrarSelectorIdiomaInicial = function () {
     if (window.tutorialCompletado || window.tutorialActivo) return;
     if (document.getElementById('lira-modal-idioma-inicial')) return;
 
@@ -457,7 +460,7 @@ window.mostrarSelectorIdiomaInicial = function() {
 // FUNCIONES DE CONTROL DEL TOUR
 // ============================================================================
 
-window.abrirTutorial = function(pasoInicial = 0, { auto = false, desdeSelectorIdioma = false } = {}) {
+window.abrirTutorial = function (pasoInicial = 0, { auto = false, desdeSelectorIdioma = false } = {}) {
     if (auto && window.tutorialCompletado) return;
     if (auto && !desdeSelectorIdioma) {
         window.mostrarSelectorIdiomaInicial();
@@ -476,7 +479,7 @@ window.abrirTutorial = function(pasoInicial = 0, { auto = false, desdeSelectorId
     renderizarPasoTour();
 };
 
-window.cerrarTutorial = async function(completado = true) {
+window.cerrarTutorial = async function (completado = true) {
     detenerAudioTutorial();
     window.tutorialActivo = false;
     document.body.classList.remove('tour-guia-activo', 'tour-traductor-abierto', 'tour-gestor-abierto', 'tour-notas-abierto', 'tour-activo-zen-menu', 'tour-config-abierto');
@@ -503,6 +506,17 @@ window.cerrarTutorial = async function(completado = true) {
         cerrarPanelNotaRapida();
     }
     desactivarMocksTutorialExtraccion();
+    // Desactivar Modo Teatro al finalizar o saltar el tutorial para evitar bloqueos de voz o lentitud
+    try {
+        const chkTeatro = document.getElementById('chk-teatro-global');
+        if (chkTeatro && chkTeatro.checked) {
+            chkTeatro.checked = false;
+            if (typeof toggleModoTeatroGlobal === 'function') {
+                toggleModoTeatroGlobal(false);
+            }
+        }
+        window.modoTeatroActivo = false;
+    } catch (eTeatro) { }
     if (typeof configurarTraduccionTutorial === 'function') {
         configurarTraduccionTutorial(false);
     }
@@ -565,7 +579,7 @@ window.cerrarTutorial = async function(completado = true) {
         window.tutorialCompletado = true;
         try {
             localStorage.setItem('liraloud_tutorial_completado', 'true');
-        } catch (e) {}
+        } catch (e) { }
 
         if (typeof eel !== 'undefined' && typeof eel.guardar_estado_tutorial === 'function') {
             try {
@@ -590,7 +604,7 @@ window.cerrarTutorial = async function(completado = true) {
     }, 120);
 };
 
-window.saltarTutorial = async function() {
+window.saltarTutorial = async function () {
     detenerAudioTutorial();
     if (typeof liraConfirm === 'function') {
         const confirmar = await liraConfirm(getTourText("tour-msg-confirmar-salir", "¿Deseas salir del tour guiado? Podrás volver a consultarlo en cualquier momento desde Configuración."), "graduacion");
@@ -599,9 +613,28 @@ window.saltarTutorial = async function() {
     await window.cerrarTutorial(true);
 };
 
-window.avanzarPasoTutorial = function() {
+window.avanzarPasoTutorial = function () {
     detenerAudioTutorial();
     if (window.tutorialPasoActual === 1 && subEtapaPaso2 < 3) {
+        if (subEtapaPaso2 === 1) {
+            const selId = document.getElementById('filtro-idioma');
+            const inpId = document.getElementById('busqueda-idioma-live');
+            if (selId && selId.selectedIndex < 0 && window._tourPrevIdiomaVal) {
+                selId.value = window._tourPrevIdiomaVal;
+            }
+            if (inpId && !inpId.value && window._tourPrevIdiomaTxt) {
+                inpId.value = window._tourPrevIdiomaTxt;
+            }
+        } else if (subEtapaPaso2 === 2) {
+            const selV = document.getElementById('selector-voz-live');
+            const inpV = document.getElementById('busqueda-voz-live');
+            if (selV && selV.selectedIndex < 0 && window._tourPrevVozVal) {
+                selV.value = window._tourPrevVozVal;
+            }
+            if (inpV && !inpV.value && window._tourPrevVozTxt) {
+                inpV.value = window._tourPrevVozTxt;
+            }
+        }
         subEtapaPaso2++;
         renderizarPasoTour();
         return;
@@ -617,6 +650,16 @@ window.avanzarPasoTutorial = function() {
         subEtapaPaso3 = 1;
         renderizarPasoTour();
         return;
+    }
+    if (window.tutorialPasoActual === 2 && subEtapaPaso3 === 2) {
+        const detFiltros = document.getElementById('zen-details-filtros');
+        if (detFiltros) detFiltros.open = false;
+        const pMenu = document.getElementById('zen-panel-menu');
+        if (pMenu) {
+            pMenu.classList.remove('zen-active');
+            pMenu.style.display = 'none';
+        }
+        document.body.classList.remove('tour-activo-zen-menu');
     }
     if (window.tutorialPasoActual === 3) {
         const esMinimalista = document.body.classList.contains('modo-minimalista');
@@ -909,7 +952,7 @@ window.avanzarPasoTutorial = function() {
     }
 };
 
-window.retrocederPasoTutorial = function() {
+window.retrocederPasoTutorial = function () {
     detenerAudioTutorial();
     if (window.tutorialPasoActual === 1 && subEtapaPaso2 > 0) {
         const esMinimalista = document.body.classList.contains('modo-minimalista');
@@ -1389,7 +1432,7 @@ function renderizarPasoTour() {
     if (badge) badge.innerText = getTourText("tour-progreso-paso", "Paso {actual} de {total}")
         .replace("{actual}", window.tutorialPasoActual + 1)
         .replace("{total}", PASOS_TOUR_GUI.length);
-    
+
     const titulo = typeof paso.getTitulo === 'function' ? paso.getTitulo() : paso.titulo;
     const instruccion = _limpiarEmojisTourHtml(typeof paso.getInstruccion === 'function' ? paso.getInstruccion() : paso.instruccion);
     const detalleExtraRaw = typeof paso.getDetalleExtra === 'function' ? paso.getDetalleExtra() : paso.detalleExtra;
@@ -1501,8 +1544,49 @@ function renderizarPasoTour() {
         document.body.classList.add('tour-activo-lanzador');
     }
 
-    const rect = targetEl.getBoundingClientRect();
-    const cardWidth = 420;
+    _posicionarCardTour(card, paso, targetEl);
+
+    // Quitar escuchas previas activas antes de renderizar y montar la nueva acción condicional
+    if (listenerMouseDownActivo) {
+        document.removeEventListener('mousedown', listenerMouseDownActivo);
+        listenerMouseDownActivo = null;
+    }
+    if (targetCondicionalActivo && listenerCondicionalActivo) {
+        targetCondicionalActivo.removeEventListener('click', listenerCondicionalActivo);
+        targetCondicionalActivo.removeEventListener('change', listenerCondicionalActivo);
+        targetCondicionalActivo.removeEventListener('input', listenerCondicionalActivo);
+        targetCondicionalActivo = null;
+        listenerCondicionalActivo = null;
+    }
+
+    // Activar escucha condicional de la acción del usuario
+    if (typeof paso.accionCondicional === 'function') {
+        // Token de renderizado: los listeners de renders anteriores (sub-etapas viejas) quedan anulados
+        // y cada render solo puede avanzar una vez, evitando saltos dobles de paso.
+        window.tutorialRenderToken = (window.tutorialRenderToken || 0) + 1;
+        const tokenRender = window.tutorialRenderToken;
+        const pasoRender = window.tutorialPasoActual;
+        let yaAvanzoRender = false;
+        paso.accionCondicional(() => {
+            if (yaAvanzoRender) return;
+            if (tokenRender !== window.tutorialRenderToken || pasoRender !== window.tutorialPasoActual) return;
+            yaAvanzoRender = true;
+            window.avanzarPasoTutorial();
+        });
+    }
+
+    // Narrar el paso actual con síntesis de voz y token de cancelación (sin concatenar detalleExtra para evitar redundancia)
+    const textoParaNarrar = typeof paso.getLocucion === 'function' ? paso.getLocucion() : (paso.locucion || instruccion || "");
+    const autoAvanzarEfectivo = typeof paso.autoAvanzarTrasLectura === 'function'
+        ? paso.autoAvanzarTrasLectura()
+        : Boolean(paso.autoAvanzarTrasLectura);
+    narrarPasoTutorial(textoParaNarrar, autoAvanzarEfectivo);
+}
+
+function _posicionarCardTour(card, paso, targetEl) {
+    if (!card || !paso) return;
+    const rect = (targetEl || document.body).getBoundingClientRect();
+    const cardWidth = Math.min(420, Math.max(280, window.innerWidth - 24));
     const cardHeight = card.offsetHeight || 260;
 
     let top = 80;
@@ -1512,7 +1596,7 @@ function renderizarPasoTour() {
 
     const posEfectiva = typeof paso.posicion === 'function' ? paso.posicion() : paso.posicion;
 
-    if (posEfectiva === "top-left" || paso.id === "paso_10q_nota_rapida" || (paso.id === "paso_10r_cuaderno_apuntes" && (!document.getElementById('modal-notas') || (document.getElementById('modal-notas').style.display !== 'flex' && document.getElementById('modal-notas').style.display !== 'block')))) {
+    if (posEfectiva === "top-left" || (paso.id === "paso_3_leer_y_pausar" && typeof subEtapaPaso3 !== 'undefined' && subEtapaPaso3 === 2) || paso.id === "paso_10q_nota_rapida" || (paso.id === "paso_10r_cuaderno_apuntes" && (!document.getElementById('modal-notas') || (document.getElementById('modal-notas').style.display !== 'flex' && document.getElementById('modal-notas').style.display !== 'block')))) {
         card.style.bottom = "auto";
         card.style.transform = "none";
         if (window.innerWidth >= 760) {
@@ -1526,8 +1610,6 @@ function renderizarPasoTour() {
             card.style.bottom = "16px";
         }
     } else if (posEfectiva === "adaptable-paso-1" || posEfectiva === "adaptable-paso-2" || paso.id === "paso_10a_abrir_ia") {
-        // Desplazar la tarjeta al lateral derecho para no sobreponerse nunca con los 
-        // paneles centrales ni con la barra de navegación superior o menú Zen ("Funciones Principales")
         card.style.bottom = "auto";
         card.style.transform = "none";
 
@@ -1535,29 +1617,24 @@ function renderizarPasoTour() {
         const pMenuRect = (pMenu && (pMenu.classList.contains('zen-active') || pMenu.style.display === 'flex' || pMenu.style.display === 'block')) ? pMenu.getBoundingClientRect() : null;
 
         if (window.innerWidth >= 1050) {
-            // Lateral derecho despejado con margen limpio
             card.style.left = "auto";
             card.style.right = "28px";
             card.style.top = "90px";
         } else if (window.innerWidth >= 760 && pMenuRect && (window.innerWidth - pMenuRect.right) >= 440) {
-            // Cabe a la derecha del menú Zen sin tocar 'Funciones Principales'
             card.style.left = `${Math.round(pMenuRect.right + 20)}px`;
             card.style.right = "auto";
             card.style.top = "85px";
         } else if (window.innerWidth >= 720 && !pMenuRect) {
-            // Pantallas medianas sin menú Zen: lateral derecho compacto
             card.style.left = "auto";
             card.style.right = "16px";
             card.style.top = "85px";
         } else {
-            // En resoluciones compactas, ubicar abajo para que el menú superior y 'Funciones Principales' queden 100% visibles
             card.style.left = "12px";
             card.style.right = "12px";
             card.style.top = "auto";
             card.style.bottom = "16px";
         }
     } else if (posEfectiva === "bottom-center" || paso.posicion === "bottom-center") {
-        // Debajo de la pantalla de bienvenida o en la parte inferior centrada
         card.style.top = "auto";
         card.style.bottom = "28px";
         card.style.left = "50%";
@@ -1568,10 +1645,9 @@ function renderizarPasoTour() {
         card.style.left = "50%";
         card.style.transform = "translate(-50%, -50%)";
     } else if (paso.posicion === "below-offset") {
-        // Debajo del input pero desplazado a la derecha para no tapar el dropdown
         card.style.bottom = "auto";
-        top = rect.bottom + 15;
-        left = Math.min(window.innerWidth - cardWidth - 25, rect.left + 80);
+        top = Math.min(window.innerHeight - cardHeight - 16, rect.bottom + 15);
+        left = Math.max(16, Math.min(window.innerWidth - cardWidth - 25, rect.left + 80));
         card.style.transform = "none";
         card.style.top = `${top}px`;
         card.style.left = `${left}px`;
@@ -1625,12 +1701,11 @@ function renderizarPasoTour() {
             document.body.classList.remove('tour-ia-abierto');
             document.body.classList.remove('tour-gestor-abierto');
             document.body.classList.remove('tour-config-abierto');
-            // Si el target es un elemento pequeño dentro del panel (input, botón), posicionamos respecto al panel contenedor
             const panelContenedor = targetEl.closest('#panel-diccionario, #panel-teatro, #panel-ia') || targetEl;
             const pRect = panelContenedor.getBoundingClientRect();
             card.style.bottom = "auto";
             card.style.right = "auto";
-            top = Math.max(20, pRect.top);
+            top = Math.max(20, Math.min(window.innerHeight - cardHeight - 20, pRect.top));
             left = Math.min(window.innerWidth - cardWidth - 20, pRect.right + 20);
             if (left + cardWidth > window.innerWidth - 10) {
                 left = Math.max(10, pRect.left - cardWidth - 20);
@@ -1640,9 +1715,8 @@ function renderizarPasoTour() {
             card.style.left = `${left}px`;
         }
     } else if (paso.posicion === "left-panel") {
-        // Al costado izquierdo del panel lateral
         card.style.bottom = "auto";
-        top = Math.max(30, rect.top);
+        top = Math.max(30, Math.min(window.innerHeight - cardHeight - 20, rect.top));
         left = Math.max(16, rect.left - cardWidth - 25);
         card.style.transform = "none";
         card.style.top = `${top}px`;
@@ -1650,7 +1724,7 @@ function renderizarPasoTour() {
     } else if (paso.posicion === "top-right") {
         card.style.bottom = "auto";
         top = 70;
-        left = window.innerWidth - cardWidth - 30;
+        left = Math.max(16, window.innerWidth - cardWidth - 30);
         card.style.transform = "none";
         card.style.top = `${top}px`;
         card.style.left = `${left}px`;
@@ -1663,8 +1737,8 @@ function renderizarPasoTour() {
         card.style.left = `${left}px`;
     } else if (paso.posicion === "below-left") {
         card.style.bottom = "auto";
-        top = rect.bottom + 15;
-        left = Math.max(16, rect.left);
+        top = Math.min(window.innerHeight - cardHeight - 16, rect.bottom + 15);
+        left = Math.max(16, Math.min(rect.left, window.innerWidth - cardWidth - 20));
         card.style.transform = "none";
         card.style.top = `${top}px`;
         card.style.left = `${left}px`;
@@ -1679,46 +1753,183 @@ function renderizarPasoTour() {
         card.style.top = `${top}px`;
         card.style.left = `${left}px`;
     }
+}
 
-    // Quitar escuchas previas activas antes de renderizar y montar la nueva acción condicional
-    if (listenerMouseDownActivo) {
-        document.removeEventListener('mousedown', listenerMouseDownActivo);
-        listenerMouseDownActivo = null;
-    }
-    if (targetCondicionalActivo && listenerCondicionalActivo) {
-        targetCondicionalActivo.removeEventListener('click', listenerCondicionalActivo);
-        targetCondicionalActivo.removeEventListener('change', listenerCondicionalActivo);
-        targetCondicionalActivo.removeEventListener('input', listenerCondicionalActivo);
-        targetCondicionalActivo = null;
-        listenerCondicionalActivo = null;
-    }
+function _posicionarCardTour(card, paso, targetEl) {
+    if (!card || !paso) return;
+    const rect = (targetEl || document.body).getBoundingClientRect();
+    const cardWidth = Math.min(420, Math.max(280, window.innerWidth - 24));
+    const cardHeight = card.offsetHeight || 260;
 
-    // Activar escucha condicional de la acción del usuario
-    if (typeof paso.accionCondicional === 'function') {
-        // Token de renderizado: los listeners de renders anteriores (sub-etapas viejas) quedan anulados
-        // y cada render solo puede avanzar una vez, evitando saltos dobles de paso.
-        window.tutorialRenderToken = (window.tutorialRenderToken || 0) + 1;
-        const tokenRender = window.tutorialRenderToken;
-        const pasoRender = window.tutorialPasoActual;
-        let yaAvanzoRender = false;
-        paso.accionCondicional(() => {
-            if (yaAvanzoRender) return;
-            if (tokenRender !== window.tutorialRenderToken || pasoRender !== window.tutorialPasoActual) return;
-            yaAvanzoRender = true;
-            window.avanzarPasoTutorial();
-        });
-    }
+    let top = 80;
+    let left = 40;
+    card.style.right = "auto";
+    card.style.bottom = "auto";
 
-    // Narrar el paso actual con síntesis de voz y token de cancelación (sin concatenar detalleExtra para evitar redundancia)
-    const textoParaNarrar = typeof paso.getLocucion === 'function' ? paso.getLocucion() : (paso.locucion || instruccion || "");
-    const autoAvanzarEfectivo = typeof paso.autoAvanzarTrasLectura === 'function'
-        ? paso.autoAvanzarTrasLectura()
-        : Boolean(paso.autoAvanzarTrasLectura);
-    narrarPasoTutorial(textoParaNarrar, autoAvanzarEfectivo);
+    const posEfectiva = typeof paso.posicion === 'function' ? paso.posicion() : paso.posicion;
+
+    if (posEfectiva === "top-left" || (paso.id === "paso_3_leer_y_pausar" && typeof subEtapaPaso3 !== 'undefined' && subEtapaPaso3 === 2) || paso.id === "paso_10q_nota_rapida" || (paso.id === "paso_10r_cuaderno_apuntes" && (!document.getElementById('modal-notas') || (document.getElementById('modal-notas').style.display !== 'flex' && document.getElementById('modal-notas').style.display !== 'block')))) {
+        card.style.bottom = "auto";
+        card.style.transform = "none";
+        if (window.innerWidth >= 760) {
+            card.style.right = "auto";
+            card.style.left = "28px";
+            card.style.top = "90px";
+        } else {
+            card.style.left = "12px";
+            card.style.right = "12px";
+            card.style.top = "auto";
+            card.style.bottom = "16px";
+        }
+    } else if (posEfectiva === "adaptable-paso-1" || posEfectiva === "adaptable-paso-2" || paso.id === "paso_10a_abrir_ia") {
+        card.style.bottom = "auto";
+        card.style.transform = "none";
+
+        const pMenu = document.getElementById('zen-panel-menu');
+        const pMenuRect = (pMenu && (pMenu.classList.contains('zen-active') || pMenu.style.display === 'flex' || pMenu.style.display === 'block')) ? pMenu.getBoundingClientRect() : null;
+
+        if (window.innerWidth >= 1050) {
+            card.style.left = "auto";
+            card.style.right = "28px";
+            card.style.top = "90px";
+        } else if (window.innerWidth >= 760 && pMenuRect && (window.innerWidth - pMenuRect.right) >= 440) {
+            card.style.left = `${Math.round(pMenuRect.right + 20)}px`;
+            card.style.right = "auto";
+            card.style.top = "85px";
+        } else if (window.innerWidth >= 720 && !pMenuRect) {
+            card.style.left = "auto";
+            card.style.right = "16px";
+            card.style.top = "85px";
+        } else {
+            card.style.left = "12px";
+            card.style.right = "12px";
+            card.style.top = "auto";
+            card.style.bottom = "16px";
+        }
+    } else if (posEfectiva === "bottom-center" || paso.posicion === "bottom-center") {
+        card.style.top = "auto";
+        card.style.bottom = "28px";
+        card.style.left = "50%";
+        card.style.transform = "translateX(-50%)";
+    } else if (paso.posicion === "center" || targetEl === document.body) {
+        card.style.bottom = "auto";
+        card.style.top = "50%";
+        card.style.left = "50%";
+        card.style.transform = "translate(-50%, -50%)";
+    } else if (paso.posicion === "below-offset") {
+        card.style.bottom = "auto";
+        top = Math.min(window.innerHeight - cardHeight - 16, rect.bottom + 15);
+        left = Math.max(16, Math.min(window.innerWidth - cardWidth - 25, rect.left + 80));
+        card.style.transform = "none";
+        card.style.top = `${top}px`;
+        card.style.left = `${left}px`;
+    } else if (paso.posicion === "right-panel") {
+        const esPasoDiccionario = paso.id && (paso.id.startsWith("paso_7") || paso.id === "paso_8b_desactivar_abreviatura");
+        const esPasoTeatroModal = paso.id && (paso.id === "paso_9b_explicar_dos_puntos" || paso.id === "paso_9c_asignar_voz_teatro");
+        const esPasoIAModal = paso.id && (paso.id === 'paso_10b_chat_ia' || paso.id === 'paso_10c_solicitudes_ia' || paso.id === 'paso_10d_fuentes_ia' || paso.id === 'paso_10e_modelos_ia');
+        const esPasoGestorModal = paso.id === "paso_10p_explorar_gestor";
+        const esPasoConfigModal = paso.id && (paso.id === "paso_11b_tab_teclado" || paso.id === "paso_11c_tab_audio" || paso.id === "paso_11d_tab_estilo" || paso.id === "paso_11e_tab_rendimiento" || paso.id === "paso_11f_tab_idioma");
+        if (esPasoDiccionario || esPasoTeatroModal || esPasoIAModal || esPasoGestorModal || esPasoConfigModal) {
+            if (esPasoDiccionario) {
+                document.body.classList.add('tour-diccionario-abierto');
+                document.body.classList.remove('tour-teatro-abierto', 'tour-ia-abierto', 'tour-gestor-abierto', 'tour-config-abierto');
+            } else if (esPasoTeatroModal) {
+                document.body.classList.add('tour-teatro-abierto');
+                document.body.classList.remove('tour-diccionario-abierto', 'tour-ia-abierto', 'tour-gestor-abierto', 'tour-config-abierto');
+            } else if (esPasoGestorModal) {
+                document.body.classList.add('tour-gestor-abierto');
+                document.body.classList.remove('tour-diccionario-abierto', 'tour-teatro-abierto', 'tour-ia-abierto', 'tour-config-abierto');
+            } else if (esPasoConfigModal) {
+                document.body.classList.add('tour-config-abierto');
+                document.body.classList.remove('tour-diccionario-abierto', 'tour-teatro-abierto', 'tour-ia-abierto', 'tour-gestor-abierto');
+            } else {
+                document.body.classList.add('tour-ia-abierto');
+                document.body.classList.remove('tour-diccionario-abierto', 'tour-teatro-abierto', 'tour-gestor-abierto', 'tour-config-abierto');
+            }
+            card.style.bottom = "auto";
+            card.style.transform = "none";
+            if (window.innerWidth >= 720) {
+                card.style.right = "auto";
+                card.style.left = "24px";
+                if (esPasoConfigModal) {
+                    const modalBox = document.querySelector('#modalConfig .modal-content');
+                    const mRect = modalBox ? modalBox.getBoundingClientRect() : null;
+                    top = mRect && mRect.top > 0
+                        ? Math.max(80, Math.min(window.innerHeight - cardHeight - 24, Math.round(mRect.top + 20)))
+                        : Math.max(120, Math.min(window.innerHeight - cardHeight - 24, Math.round(window.innerHeight * 0.25)));
+                } else {
+                    top = Math.max(250, Math.min(window.innerHeight - cardHeight - 24, Math.round(window.innerHeight * 0.36)));
+                }
+                card.style.top = `${top}px`;
+            } else {
+                card.style.left = "12px";
+                card.style.right = "12px";
+                card.style.top = "auto";
+                card.style.bottom = "16px";
+            }
+        } else {
+            document.body.classList.remove('tour-diccionario-abierto');
+            document.body.classList.remove('tour-teatro-abierto');
+            document.body.classList.remove('tour-ia-abierto');
+            document.body.classList.remove('tour-gestor-abierto');
+            document.body.classList.remove('tour-config-abierto');
+            const panelContenedor = targetEl.closest('#panel-diccionario, #panel-teatro, #panel-ia') || targetEl;
+            const pRect = panelContenedor.getBoundingClientRect();
+            card.style.bottom = "auto";
+            card.style.right = "auto";
+            top = Math.max(20, Math.min(window.innerHeight - cardHeight - 20, pRect.top));
+            left = Math.min(window.innerWidth - cardWidth - 20, pRect.right + 20);
+            if (left + cardWidth > window.innerWidth - 10) {
+                left = Math.max(10, pRect.left - cardWidth - 20);
+            }
+            card.style.transform = "none";
+            card.style.top = `${top}px`;
+            card.style.left = `${left}px`;
+        }
+    } else if (paso.posicion === "left-panel") {
+        card.style.bottom = "auto";
+        top = Math.max(30, Math.min(window.innerHeight - cardHeight - 20, rect.top));
+        left = Math.max(16, rect.left - cardWidth - 25);
+        card.style.transform = "none";
+        card.style.top = `${top}px`;
+        card.style.left = `${left}px`;
+    } else if (paso.posicion === "top-right") {
+        card.style.bottom = "auto";
+        top = 70;
+        left = Math.max(16, window.innerWidth - cardWidth - 30);
+        card.style.transform = "none";
+        card.style.top = `${top}px`;
+        card.style.left = `${left}px`;
+    } else if (paso.posicion === "above-right") {
+        card.style.bottom = "auto";
+        top = Math.max(16, rect.top - cardHeight - 15);
+        left = Math.max(16, Math.min(rect.right + 10, window.innerWidth - cardWidth - 20));
+        card.style.transform = "none";
+        card.style.top = `${top}px`;
+        card.style.left = `${left}px`;
+    } else if (paso.posicion === "below-left") {
+        card.style.bottom = "auto";
+        top = Math.min(window.innerHeight - cardHeight - 16, rect.bottom + 15);
+        left = Math.max(16, Math.min(rect.left, window.innerWidth - cardWidth - 20));
+        card.style.transform = "none";
+        card.style.top = `${top}px`;
+        card.style.left = `${left}px`;
+    } else {
+        card.style.bottom = "auto";
+        top = rect.bottom + 12;
+        left = Math.max(16, Math.min(rect.left, window.innerWidth - cardWidth - 20));
+        if (top + cardHeight > window.innerHeight - 20) {
+            top = Math.max(16, rect.top - cardHeight - 12);
+        }
+        card.style.transform = "none";
+        card.style.top = `${top}px`;
+        card.style.left = `${left}px`;
+    }
 }
 
 function posicionarMouseHintEnElemento(el, textoBadge = null, tipoClick = 'izquierdo') {
     if (!el || !window.tutorialActivo) return;
+    _ultimoHintMouse = { tipo: 'elemento', el, textoBadge, tipoClick };
     const r = el.getBoundingClientRect();
     if (r.width === 0 && r.height === 0) return;
 
@@ -1765,6 +1976,7 @@ function posicionarMouseHintEnCoordenadas(pdfX, pdfY, textoBadge = null, tipoCli
         removerMouseHintPaso3();
         return;
     }
+    _ultimoHintMouse = { tipo: 'coordenadas', pdfX, pdfY, textoBadge, tipoClick };
     const menuCtx = document.getElementById('menu-contextual');
     if (menuCtx && menuCtx.style.display === 'block') {
         removerMouseHintPaso3();
@@ -1792,8 +2004,8 @@ function posicionarMouseHintEnCoordenadas(pdfX, pdfY, textoBadge = null, tipoCli
 
     // Si la lectura del documento está activa en cualquier momento, nunca mostrar el ratón
     const isReading = (typeof leyendo !== 'undefined' && leyendo) ||
-                      (typeof isPlayingPiper !== 'undefined' && isPlayingPiper) ||
-                      (typeof window.palabraKaraoke !== 'undefined' && window.palabraKaraoke !== null);
+        (typeof isPlayingPiper !== 'undefined' && isPlayingPiper) ||
+        (typeof window.palabraKaraoke !== 'undefined' && window.palabraKaraoke !== null);
     if (isReading) {
         removerMouseHintPaso3();
         return;
@@ -1903,6 +2115,7 @@ function posicionarKeyboardHint(pdfX = 390, pdfY = 220, textoBadge = null, onCli
         removerKeyboardHint();
         return;
     }
+    _ultimoHintKbd = { pdfX, pdfY, textoBadge, onClickCallback };
 
     const keysHtml = teclasDelAtajo()
         .map(k => `<span class="tour-kbd-btn">${k}</span>`)
@@ -1983,12 +2196,49 @@ function _renderizarTourHintBadge(el, textoRaw, claveIcono) {
 }
 
 function removerKeyboardHint() {
+    _ultimoHintKbd = null;
     document.querySelectorAll('#tour-keyboard-hint, .tour-keyboard-box').forEach(el => el.remove());
 }
 
 function removerMouseHintPaso3() {
+    _ultimoHintMouse = null;
     document.querySelectorAll('#tour-mouse-hint, .tour-mouse-box').forEach(el => el.remove());
 }
+
+function _reposicionarTutorialEnResize() {
+    if (!window.tutorialActivo) return;
+    const paso = PASOS_TOUR_GUI[window.tutorialPasoActual];
+    const card = document.getElementById('tour-card');
+    if (paso && card) {
+        let targets = [];
+        if (typeof paso.getTargets === 'function') {
+            targets = paso.getTargets().filter(Boolean);
+        } else if (paso.targetSelector) {
+            const el = document.querySelector(paso.targetSelector);
+            if (el) targets = [el];
+        }
+        const targetEl = targets[0] || document.body;
+        _posicionarCardTour(card, paso, targetEl);
+    }
+    if (_ultimoHintMouse && document.getElementById('tour-mouse-hint')) {
+        const m = _ultimoHintMouse;
+        if (m.tipo === 'elemento' && m.el && document.body.contains(m.el)) {
+            posicionarMouseHintEnElemento(m.el, m.textoBadge, m.tipoClick);
+        } else if (m.tipo === 'coordenadas') {
+            posicionarMouseHintEnCoordenadas(m.pdfX, m.pdfY, m.textoBadge, m.tipoClick);
+        }
+    }
+    if (_ultimoHintKbd && document.getElementById('tour-keyboard-hint')) {
+        const k = _ultimoHintKbd;
+        posicionarKeyboardHint(k.pdfX, k.pdfY, k.textoBadge, k.onClickCallback);
+    }
+}
+
+window.addEventListener('resize', () => {
+    if (!window.tutorialActivo) return;
+    if (_timerResizeTour) clearTimeout(_timerResizeTour);
+    _timerResizeTour = setTimeout(_reposicionarTutorialEnResize, 75);
+});
 
 function quitarResaltadoTour() {
     document.querySelectorAll('.tour-spotlight-active').forEach(el => {

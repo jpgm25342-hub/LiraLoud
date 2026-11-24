@@ -533,6 +533,11 @@ function loopKaraokeAltaPrecision() {
 
     // 2. RELOJ DE HARDWARE: Tiempo exacto relativo al inicio de la frase
     const _tiempoReal = audioCtx.currentTime - window.ultimoMomentoInicioPiper;
+    if (_tiempoReal < 0) {
+        window.progresoFraccional = 0;
+        window.requestID_Karaoke = requestAnimationFrame(loopKaraokeAltaPrecision);
+        return;
+    }
     // La partitura de Python fue calculada a velocidad 1.0. Si alteramos el tono con
     // playbackRate, el audio avanza más rápido o más lento, así que debemos escalar el
     // tiempo real para que coincida con los timestamps de la partitura.

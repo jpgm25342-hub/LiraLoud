@@ -20,8 +20,9 @@ import urllib.parse
 import hashlib
 import time
 import threading
+from backend.core.estado_global import estado_app
 
-RUTA_CACHE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "traducciones_cache.json")
+RUTA_CACHE = os.path.join(estado_app.base_dir, "traducciones_cache.json")
 
 # Catálogo estándar de idiomas compatibles (autónimo al inicio)
 IDIOMAS_SOPORTADOS = [

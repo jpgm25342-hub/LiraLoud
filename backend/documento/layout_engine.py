@@ -4,9 +4,15 @@ import cv2
 import numpy as np
 import onnxruntime as ort
 import pymupdf as fitz
+from backend.core.estado_global import estado_app
 from backend.core.logger_config import logger
 
-MODELO_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "layout_models", "doclayout_yolo_docstructbench_imgsz1024.onnx")
+_MODELO_REL = os.path.join("layout_models", "doclayout_yolo_docstructbench_imgsz1024.onnx")
+MODELO_PATH = (
+    os.path.join(estado_app.base_dir, _MODELO_REL)
+    if os.path.exists(os.path.join(estado_app.base_dir, _MODELO_REL))
+    else os.path.join(estado_app.bundle_dir, _MODELO_REL)
+)
 
 _session = None
 _names = None

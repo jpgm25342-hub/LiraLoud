@@ -184,7 +184,8 @@ class LiraRAG:
         chat_model: str = "gemma4:12b",
         host: str = "http://127.0.0.1:11434"
     ):
-        base_proyecto = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from backend.core.estado_global import estado_app
+        base_proyecto = estado_app.base_dir
         if db_path == "./lira_db" or not db_path:
             self.db_path = os.path.join(base_proyecto, "lira_db")
         else:
@@ -406,7 +407,8 @@ class LiraRAG:
     def _cargar_ajustes_guardados(self):
         """Carga automáticamente las claves de API y modelos guardados en ajustes_lectura.json."""
         try:
-            ruta_ajustes = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "ajustes_lectura.json")
+            from backend.core.estado_global import estado_app
+            ruta_ajustes = os.path.join(estado_app.base_dir, "ajustes_lectura.json")
             if os.path.exists(ruta_ajustes):
                 with open(ruta_ajustes, "r", encoding="utf-8") as f:
                     ajustes = json.load(f)

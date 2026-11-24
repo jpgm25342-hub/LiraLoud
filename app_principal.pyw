@@ -36,6 +36,24 @@ except Exception:
 from backend.core.estado_global import estado_app
 from backend.core.webview_bridge import eel, puente_webview
 
+if len(sys.argv) > 1:
+    _arg_archivo = os.path.abspath(sys.argv[1])
+    if os.path.isfile(_arg_archivo):
+        try:
+            import pathlib
+            import requests
+            _r_ping = requests.get("http://127.0.0.1:54321/ping", timeout=0.4)
+            if _r_ping.ok:
+                requests.post(
+                    "http://127.0.0.1:54321/abrir",
+                    json={"url": pathlib.Path(_arg_archivo).as_uri(), "titulo": os.path.basename(_arg_archivo)},
+                    timeout=5,
+                )
+                sys.exit(0)
+        except Exception:
+            pass
+        estado_app.archivo_inicial = _arg_archivo
+
 if getattr(sys, "frozen", False):
     os.environ["ESPEAK_DATA_PATH"] = os.path.join(estado_app.bundle_dir, "piper", "espeak-ng-data")
     print("🚀 [SISTEMA] Modo EXE: Baipás de fonemas activo.")
@@ -80,7 +98,9 @@ except Exception as e_ext:
     logger.warning(f"No se pudo iniciar el receptor de la extensión: {e_ext}")
 
 # 6. Crear e iniciar la ventana principal nativa con pywebview
-ruta_index_html = os.path.join(estado_app.base_dir, "web", "index.html")
+ruta_index_html = os.path.join(estado_app.bundle_dir, "web", "index.html")
+if not os.path.exists(ruta_index_html):
+    ruta_index_html = os.path.join(estado_app.base_dir, "web", "index.html")
 ventana_principal = webview.create_window(
     title="LiraLoud",
     url=ruta_index_html,

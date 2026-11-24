@@ -11,6 +11,13 @@ de JavaScript desde Python (`eel.nombre_funcion_js(arg1, arg2)`).
 
 import json
 import logging
+import socketserver
+import wsgiref.simple_server
+
+# Aumentar la cola TCP (backlog) del servidor HTTP interno de pywebview/Bottle (por defecto es 5 en Windows).
+# Con 50+ scripts/CSS y XHR síncronos de componentes al inicio, un backlog de 5 provoca net::ERR_CONNECTION_REFUSED.
+socketserver.TCPServer.request_queue_size = 256
+wsgiref.simple_server.WSGIServer.request_queue_size = 256
 
 logger = logging.getLogger("LiraLoud")
 

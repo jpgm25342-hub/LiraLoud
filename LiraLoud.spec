@@ -9,7 +9,17 @@ from PyInstaller.utils.hooks import collect_all, collect_data_files
 
 RUTA_RAIZ = os.path.abspath('.')
 
-datas = [('web', 'web')]        # Interfaz servida por Eel (va a _internal/web)
+datas = [('web', 'web')]        # Interfaz servida por pywebview (va a _internal/web)
+for extra_src, extra_dst in [
+    ('layout_models', 'layout_models'),
+    ('cache_tutorial_audio', 'cache_tutorial_audio'),
+    ('recursos', 'recursos'),
+    ('CREDITS.txt', '.'),
+    ('backend/estudio/playwright_worker.py', 'backend/estudio'),
+]:
+    if os.path.exists(os.path.join(RUTA_RAIZ, extra_src)):
+        datas.append((extra_src, extra_dst))
+
 binaries = []
 hiddenimports = []
 
@@ -26,6 +36,11 @@ def colectar(modulo):
 # Paquetes que requieren datos/binarios adicionales empaquetados
 for m in [
     'rapidocr_onnxruntime',   # Modelos ONNX de OCR
+    'onnxruntime',            # Motor ONNX (DocLayout-YOLO / Kokoro / OCR)
+    'kokoro_onnx',            # Motor Kokoro TTS
+    'espeakng_loader',        # Fonemizador Kokoro
+    'phonemizer',
+    'dlinfo',
     'chromadb',               # Vector DB persistente
     'argostranslate',         # Traduccion offline
     'ctranslate2',            # Motor de Argos

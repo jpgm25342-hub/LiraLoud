@@ -543,11 +543,13 @@ function renderizarSidebarTeatro() {
         div.className = `tab-item tab-teatro ${obraActualTeatro === obra ? 'active' : ''}`;
 
         const iconoObra = obra === "Este Libro"
-            ? `<svg width="14" height="14" style="vertical-align:-2px; margin-right:5px;"><use href="assets/icons.svg#icon-clock"></use></svg>`
+            ? `<svg width="14" height="14" style="vertical-align:-2px; margin-right:5px;"><title>Personajes y reglas exclusivas de este PDF</title><use href="assets/icons.svg#icon-clock"></use></svg>`
             : (typeof window.obtenerIconoDialogoSVG === 'function' ? window.obtenerIconoDialogoSVG('teatro', 'lira-inline-svg') + ' ' : '');
 
+        const tituloObra = obra === "Este Libro" ? "Reglas exclusivas de este PDF" : obra;
+
         div.innerHTML = `
-            <span onclick="seleccionarObraTeatro('${obra}')" style="flex:1; cursor:pointer;">
+            <span onclick="seleccionarObraTeatro('${obra}')" style="flex:1; cursor:pointer;" title="${tituloObra}">
                 ${iconoObra}${obra}
             </span>
             <span onclick="eliminarObraTeatro('${obra}'); event.stopPropagation();" 
@@ -575,4 +577,99 @@ async function crearObraTeatro() {
         seleccionarObraTeatro(nombre);
     }
 }
+
+function sincronizarIndicadorTeatroZen() {
+    const chk = document.getElementById('chk-teatro-global');
+    const activo = Boolean(chk && chk.checked);
+    document.body.classList.toggle('teatro-activo', activo);
+
+    const btnAviso = document.getElementById('btn-zen-teatro-aviso');
+    const btnSolo = document.getElementById('btn-solo-lectura');
+    if (btnAviso && btnSolo && document.body.classList.contains('modo-minimalista') && activo) {
+        const rectSolo = btnSolo.getBoundingClientRect();
+        if (rectSolo.width > 0) {
+            btnAviso.style.left = `${Math.round(rectSolo.right + 8)}px`;
+        }
+    }
+}
+
+function mostrarAvisoModoTeatro() {
+    const existente = document.getElementById('modal-aviso-teatro-zen');
+    if (existente) {
+        existente.remove();
+        return;
+    }
+
+    const esc = (typeof window.escapeHtml === 'function')
+        ? window.escapeHtml
+        : (s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+    const txtTitulo = (typeof window.t === 'function') ? window.t('ttl-teatro-activo-aviso', 'Modo Teatro activo') : 'Modo Teatro activo';
+    const txtMsg = (typeof window.t === 'function')
+        ? window.t('msg-teatro-activo-aviso', 'Tienes el modo teatro activo. Puede que para lecturas que no busquen cambiar de voces te dé problemas; apaga el modo teatro si no lo estás utilizando.')
+        : 'Tienes el modo teatro activo. Puede que para lecturas que no busquen cambiar de voces te dé problemas; apaga el modo teatro si no lo estás utilizando.';
+    const txtApagar = (typeof window.t === 'function') ? window.t('btn-apagar-teatro', 'Apagar Modo Teatro') : 'Apagar Modo Teatro';
+    const txtEntendido = (typeof window.t === 'function') ? window.t('btn-entendido', 'Entendido') : 'Entendido';
+
+    const btnAviso = document.getElementById('btn-zen-teatro-aviso');
+    const r = btnAviso ? btnAviso.getBoundingClientRect() : null;
+    const topPos = r && r.bottom > 0 ? Math.round(r.bottom + 8) : 68;
+    const leftPos = r && r.left > 0 ? Math.max(16, Math.round(r.left - 40)) : 25;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'modal-aviso-teatro-zen';
+    overlay.className = 'teatro-aviso-popover-backdrop';
+    overlay.innerHTML = `
+        <div class="teatro-aviso-popup-card" role="dialog" aria-modal="false" style="top:${topPos}px; left:${leftPos}px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                <div style="display:flex; align-items:center; gap:6px; color:#8e44ad; font-weight:700; font-size:13.5px;">
+                    <svg viewBox="0 -64 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                        <path d="M206.86 245.15c-35.88 10.45-59.95 41.2-57.53 74.1 11.4-12.72 28.81-23.7 49.9-30.92l7.63-43.18zM95.81 295L64.08 115.49c-.29-1.62.28-2.62.24-2.65 57.76-32.06 123.12-49.01 189.01-49.01 1.61 0 3.23.17 4.85.19 13.95-13.47 31.73-22.83 51.59-26 18.89-3.02 38.05-4.55 57.18-5.32-9.99-13.95-24.48-24.23-41.77-27C301.27 1.89 277.24 0 253.32 0 176.66 0 101.02 19.42 33.2 57.06 9.03 70.48-3.92 98.48 1.05 126.58l31.73 179.51c14.23 80.52 136.33 142.08 204.45 142.08 3.59 0 6.75-.46 10.01-.8-13.52-17.08-28.94-40.48-39.5-67.58-47.61-12.98-106.06-51.62-111.93-84.79zm97.55-137.46c-.73-4.12-2.23-7.87-4.07-11.4-8.25 8.91-20.67 15.75-35.32 18.32-14.65 2.58-28.67.4-39.48-5.17-.52 3.94-.64 7.98.09 12.1 3.84 21.7 24.58 36.19 46.34 32.37 21.75-3.82 36.28-24.52 32.44-46.22zM606.8 120.9c-88.98-49.38-191.43-67.41-291.98-51.35-27.31 4.36-49.08 26.26-54.04 54.36l-31.73 179.51c-15.39 87.05 95.28 196.27 158.31 207.35 63.03 11.09 204.47-53.79 219.86-140.84l31.73-179.51c4.97-28.11-7.98-56.11-32.15-69.52zm-273.24 96.8c3.84-21.7 24.58-36.19 46.34-32.36 21.76 3.83 36.28 24.52 32.45 46.22-.73 4.12-2.23 7.87-4.07 11.4-8.25-8.91-20.67-15.75-35.32-18.32-14.65-2.58-28.67-.4-39.48 5.17-.53-3.95-.65-7.99.08-12.11zm70.47 198.76c-55.68-9.79-93.52-59.27-89.04-112.9 20.6 25.54 56.21 46.17 99.49 53.78 43.28 7.61 83.82.37 111.93-16.6-14.18 51.94-66.71 85.51-122.38 75.72zm130.3-151.34c-8.25-8.91-20.68-15.75-35.33-18.32-14.65-2.58-28.67-.4-39.48 5.17-.52-3.94-.64-7.98.09-12.1 3.84-21.7 24.58-36.19 46.34-32.37 21.75 3.83 36.28 24.52 32.45 46.22-.73 4.13-2.23 7.88-4.07 11.4z"/>
+                    </svg>
+                    <span>${esc(txtTitulo)}</span>
+                </div>
+                <button type="button" id="btn-cerrar-aviso-teatro-x" class="btn-cerrar-x" style="font-size:13px; padding:2px 6px;">✕</button>
+            </div>
+            <p style="margin:0; font-size:12.5px; line-height:1.45;">${esc(txtMsg)}</p>
+            <div style="display:flex; justify-content:flex-end; gap:6px;">
+                <button type="button" id="btn-aviso-apagar-teatro" class="btn-principal" style="background:#e74c3c; font-size:12px; padding:5px 10px;">${esc(txtApagar)}</button>
+                <button type="button" id="btn-aviso-entendido-teatro" class="btn-principal" style="background:#3498db; font-size:12px; padding:5px 10px;">${esc(txtEntendido)}</button>
+            </div>
+        </div>
+    `;
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+    document.body.appendChild(overlay);
+
+    const btnCerrarX = document.getElementById('btn-cerrar-aviso-teatro-x');
+    const btnEntendido = document.getElementById('btn-aviso-entendido-teatro');
+    const btnApagar = document.getElementById('btn-aviso-apagar-teatro');
+    if (btnCerrarX) btnCerrarX.addEventListener('click', () => overlay.remove());
+    if (btnEntendido) btnEntendido.addEventListener('click', () => overlay.remove());
+    if (btnApagar) {
+        btnApagar.addEventListener('click', () => {
+            const c = document.getElementById('chk-teatro-global');
+            if (c) {
+                c.checked = false;
+                c.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            sincronizarIndicadorTeatroZen();
+            if (typeof guardarTodosAjustes === 'function') guardarTodosAjustes();
+            overlay.remove();
+        });
+    }
+}
+
+window.sincronizarIndicadorTeatroZen = sincronizarIndicadorTeatroZen;
+window.mostrarAvisoModoTeatro = mostrarAvisoModoTeatro;
+
+document.addEventListener('change', (e) => {
+    if (e.target && e.target.id === 'chk-teatro-global') {
+        sincronizarIndicadorTeatroZen();
+    }
+});
+document.addEventListener('DOMContentLoaded', sincronizarIndicadorTeatroZen);
+window.addEventListener('resize', sincronizarIndicadorTeatroZen);
+window.addEventListener('lira:idioma-cambiado', () => setTimeout(sincronizarIndicadorTeatroZen, 60));
+setTimeout(sincronizarIndicadorTeatroZen, 600);
 

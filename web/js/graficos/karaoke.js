@@ -119,7 +119,15 @@ async function hablarTexto(texto, callback, listaPalabrasVisuales = null, vozFor
     window.piperJsCompensacion = 1.0;
 
     readingSessionID++;
-    window.palabraKaraoke = null;
+    if (window.requestID_Karaoke) {
+        cancelAnimationFrame(window.requestID_Karaoke);
+        window.requestID_Karaoke = null;
+    }
+    window.partituraActual = null;
+    window.progresoFraccional = 0;
+    window.palabraKaraoke = (Array.isArray(listaPalabrasVisuales) && listaPalabrasVisuales.length > 0)
+        ? listaPalabrasVisuales[0]
+        : null;
     dibujar();
 
     let textoLimpio = "";
@@ -185,6 +193,11 @@ async function hablarTexto(texto, callback, listaPalabrasVisuales = null, vozFor
             detenerLectura(false);
         }
         if (piperQueueTimer) clearInterval(piperQueueTimer);
+    if (window.requestID_Karaoke) {
+        cancelAnimationFrame(window.requestID_Karaoke);
+        window.requestID_Karaoke = null;
+    }
+    window.partituraActual = null;
         isPlayingPiper = false;
         eel.detener_streaming_backend(false)();
 
@@ -336,6 +349,12 @@ async function reproducirSecuencia(idx, esAutomatico = false) {
     }
     indiceOracion = idx;
     oracionActiva = datosPagina.oraciones[idx];
+    if (window.requestID_Karaoke) {
+        cancelAnimationFrame(window.requestID_Karaoke);
+        window.requestID_Karaoke = null;
+    }
+    window.partituraActual = null;
+    window.progresoFraccional = 0;
     window.palabraKaraoke = null;
 
     // --- ESCUDO ANTI-CRASH: Objeto nulo ---
@@ -350,6 +369,11 @@ async function reproducirSecuencia(idx, esAutomatico = false) {
     // Preparación Visual + Filtrado de paréntesis/referencias/URLs
     const resultado = aplicarMascaraParentesis(oracionActiva.palabras || []);
     window.listaPalabrasActuales = resultado.listaVisual;
+    if (Array.isArray(window.listaPalabrasActuales) && window.listaPalabrasActuales.length > 0) {
+        window.listaPalabrasActuales.forEach(p => { p.yaLeida = false; });
+        window.palabraKaraoke = window.listaPalabrasActuales[0];
+        dibujar();
+    }
 
     // textoClean = texto ya sin paréntesis, URLs, referencias (según opciones del usuario)
     // Es el que debe ir al traductor para no traducir ruido tipográfico
@@ -654,6 +678,11 @@ function detenerLectura(resetUI = true) {
     if (resetUI === false && leyendo === true) {
         // Solo limpiamos el timer para evitar solapamientos
         if (piperQueueTimer) clearInterval(piperQueueTimer);
+    if (window.requestID_Karaoke) {
+        cancelAnimationFrame(window.requestID_Karaoke);
+        window.requestID_Karaoke = null;
+    }
+    window.partituraActual = null;
         return;
     }
 
@@ -666,6 +695,11 @@ function detenerLectura(resetUI = true) {
     if (window.speechSynthesis) window.speechSynthesis.cancel();
 
     if (piperQueueTimer) clearInterval(piperQueueTimer);
+    if (window.requestID_Karaoke) {
+        cancelAnimationFrame(window.requestID_Karaoke);
+        window.requestID_Karaoke = null;
+    }
+    window.partituraActual = null;
 
     // 3. LA GUILLOTINA DE AUDIO (Matar sonidos pendientes)
     if (window.activeAudioSources && window.activeAudioSources.length > 0) {

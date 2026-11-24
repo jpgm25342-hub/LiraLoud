@@ -569,22 +569,117 @@ body.ui-dark-mode .text-card-copy-btn:hover {
 }
 
 body.ui-dark-mode #btn-solo-lectura {
-    background: #1e293b;
-    color: #f8fafc;
-    border-color: #475569 !important;
+    background: #21262d !important;
+    color: #e6edf3 !important;
+    border-color: #363e48 !important;
+}
+
+body.ui-dark-mode #btn-solo-lectura span,
+body.ui-dark-mode #btn-solo-lectura svg {
+    color: #e6edf3 !important;
+    stroke: #e6edf3 !important;
 }
 
 body.ui-dark-mode #btn-solo-lectura:hover {
-    background: #334155;
-    color: #ffffff;
-    border-color: #64748b !important;
+    background: #30363d !important;
+    color: #ffffff !important;
+    border-color: #484f58 !important;
+}
+
+body.ui-dark-mode #btn-solo-lectura:hover span,
+body.ui-dark-mode #btn-solo-lectura:hover svg {
+    color: #ffffff !important;
+    stroke: #ffffff !important;
 }
 
 body.ui-dark-mode #btn-solo-lectura.activo {
-    background: #ffffff;
-    color: #0f172a;
+    background: #ffffff !important;
+    color: #0f172a !important;
     border-color: #e2e8f0 !important;
     box-shadow: 0 2px 10px rgba(255, 255, 255, 0.18);
+}
+
+body.ui-dark-mode #btn-solo-lectura.activo span,
+body.ui-dark-mode #btn-solo-lectura.activo svg {
+    color: #0f172a !important;
+    stroke: #0f172a !important;
+}
+
+.btn-zen-teatro-aviso {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 8px;
+    border: 1px solid rgba(142, 68, 173, 0.45);
+    background: rgba(142, 68, 173, 0.14);
+    color: #8e44ad;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+body.modo-minimalista.teatro-activo .btn-zen-teatro-aviso {
+    display: inline-flex;
+    animation: teatroAvisoBlink 1.8s ease-in-out infinite;
+}
+
+.btn-zen-teatro-aviso:hover {
+    background: rgba(142, 68, 173, 0.25);
+    transform: translateY(-1px);
+}
+
+body.ui-dark-mode .btn-zen-teatro-aviso {
+    color: #c084fc;
+    background: rgba(168, 85, 247, 0.18);
+    border-color: rgba(192, 132, 252, 0.45);
+}
+
+@keyframes teatroAvisoBlink {
+    0%, 100% {
+        opacity: 1;
+        box-shadow: 0 0 0 0 rgba(142, 68, 173, 0.35);
+    }
+    50% {
+        opacity: 0.55;
+        box-shadow: 0 0 8px 2px rgba(142, 68, 173, 0.4);
+    }
+}
+
+.teatro-aviso-popover-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 4000;
+    background: transparent;
+    pointer-events: auto;
+}
+
+.teatro-aviso-popup-card {
+    position: fixed;
+    top: 68px;
+    left: 25px;
+    z-index: 4001;
+    background: #ffffff;
+    color: #2c3e50;
+    border-radius: 10px;
+    padding: 12px 14px;
+    max-width: 320px;
+    width: max-content;
+    height: fit-content;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+    border: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: auto;
+}
+
+body.ui-dark-mode .teatro-aviso-popup-card {
+    background: #161b22;
+    color: #e6edf3;
+    border-color: #30363d;
 }
 
 /* Reset specific elements list-style for summary */

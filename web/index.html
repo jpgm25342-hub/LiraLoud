@@ -154,6 +154,13 @@
             <div class="tour-card-header">
                 <span id="tour-step-badge" class="tour-step-badge" data-i18n="tut-progreso">Paso 1 de 8</span>
                 <div style="display:flex; align-items:center; gap:6px;">
+                    <button id="btn-tour-repeat" class="tour-btn-skip" onclick="repetirAudioTutorial()" title="Repetir audio del paso" data-i18n-title="tour-btn-repetir-title" style="display:inline-flex; align-items:center; gap:4px;">
+                        <svg class="lira-svg-icon" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <polyline points="1 4 1 10 7 10"></polyline>
+                            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+                        </svg>
+                        <span data-i18n="tour-btn-repetir">Repetir</span>
+                    </button>
                     <button id="btn-tour-audio-toggle" class="tour-btn-skip" onclick="toggleAudioTutorial()" title="Voz del tutorial" data-i18n-title="tour-btn-voz-title" style="display:inline-flex; align-items:center; gap:4px;">
                         <svg class="lira-svg-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>

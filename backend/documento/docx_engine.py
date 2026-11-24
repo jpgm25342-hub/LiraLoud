@@ -24,10 +24,12 @@ import zipfile
 import xml.etree.ElementTree as ET
 from typing import Optional, List, Dict, Any
 
+from backend.core.estado_global import estado_app
+
 logger = logging.getLogger("LiraWordEngine")
 
 # Directorio de caché temporal para PDFs convertidos
-BASE_PROYECTO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+BASE_PROYECTO = estado_app.base_dir
 DIR_TEMP_CONVERTED = os.path.join(BASE_PROYECTO, "temp_converted")
 os.makedirs(DIR_TEMP_CONVERTED, exist_ok=True)
 

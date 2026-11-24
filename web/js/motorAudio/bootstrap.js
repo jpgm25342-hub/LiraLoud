@@ -478,6 +478,7 @@ window.onload = async () => {
         }
         safeCheck('chk-buffer-extendido', ajustes?.buffer_extendido ?? false);
         safeCheck('chk-teatro-global', ajustes?.teatro_activo ?? false);
+        if (typeof sincronizarIndicadorTeatroZen === 'function') sincronizarIndicadorTeatroZen();
         safeCheck('chk-auto-avance', ajustes?.auto_avance ?? true);
         safeCheck('chk-pausa-sistema', ajustes?.pausa_sistema ?? false);
         safeCheck('chk-ducking-volumen', ajustes?.ducking_volumen ?? false);
@@ -626,7 +627,7 @@ window.onload = async () => {
         const lblWG = document.getElementById('val-sub-wordgap');
         if (lblWG) lblWG.innerText = subWordGap + 'px';
         if (typeof aplicarSubtituloEspaciado === 'function') aplicarSubtituloEspaciado();
-        
+
         // Restaurar estado del Cuaderno de Notas
         window.rutaNotasPersonalizada = ajustes?.ruta_carpeta_notas || "";
         window.filtroNotasModo = ajustes?.notas_filtro_modo || "pagina_actual";
@@ -645,7 +646,7 @@ window.onload = async () => {
         safeCheck('chk-ollama-auto-solicitud', ollamaAutoSolicitud);
         window.ollamaAutoSolicitud = ollamaAutoSolicitud;
         if (ollamaAutoInicio && typeof eel !== 'undefined' && typeof eel.iniciar_ollama_local === 'function') {
-            eel.iniciar_ollama_local()().catch(() => {});
+            eel.iniciar_ollama_local()().catch(() => { });
         }
 
         // Restaurar estado de modelos de LiraAI y opciones de lectura
@@ -749,15 +750,18 @@ window.onload = async () => {
         visorContainer.addEventListener('wheel', function (e) {
             if (e.ctrlKey) {
                 e.preventDefault();
-                nivelZoomPDF += (e.deltaY < 0 ? 0.1 : -0.1);
-                if (nivelZoomPDF < 0.2) nivelZoomPDF = 0.2;
-                if (nivelZoomPDF > 5.0) nivelZoomPDF = 5.0;
-                if (datosPagina) {
-                    canvas.style.width = (datosPagina.ancho_img * nivelZoomPDF) + "px";
-                    canvas.style.height = (datosPagina.alto_img * nivelZoomPDF) + "px";
-                    if (typeof window.sincronizarCapaTextoSoloLectura === 'function') {
-                        window.sincronizarCapaTextoSoloLectura();
+                const nuevoZoomPct = Math.max(50, Math.min(250, Math.round((nivelZoomPDF * 100) + (e.deltaY < 0 ? 10 : -10))));
+                if (typeof aplicarZoomDinamico === 'function') {
+                    aplicarZoomDinamico(nuevoZoomPct);
+                } else {
+                    nivelZoomPDF = nuevoZoomPct / 100;
+                    if (datosPagina) {
+                        canvas.style.width = (datosPagina.ancho_img * nivelZoomPDF) + "px";
+                        canvas.style.height = (datosPagina.alto_img * nivelZoomPDF) + "px";
                     }
+                }
+                if (typeof window.sincronizarCapaTextoSoloLectura === 'function') {
+                    window.sincronizarCapaTextoSoloLectura();
                 }
             } else if (e.altKey) {
                 e.preventDefault();
@@ -800,6 +804,22 @@ window.onload = async () => {
         console.log(`[⏱️ ${performance.now().toFixed(0)}ms] 🪓 Ejecutando guillotina final (retirarPantallaCarga).`);
         clearTimeout(seguroDeVida);
         retirarPantallaCarga();
+
+        // Abrir archivo pasado por línea de comandos ("Abrir con..." / doble clic en PDF)
+        if (typeof eel !== 'undefined' && typeof eel.obtener_archivo_inicial === 'function') {
+            try {
+                const rutaInicial = await eel.obtener_archivo_inicial()();
+                if (rutaInicial && typeof rutaInicial === 'string') {
+                    if (typeof _destruirBienvenida === 'function') _destruirBienvenida();
+                    if (typeof cerrarLanzador === 'function') cerrarLanzador();
+                    if (typeof abrirDocumentoDesdeRuta === 'function') {
+                        await abrirDocumentoDesdeRuta(rutaInicial, false);
+                    }
+                }
+            } catch (eInitFile) {
+                console.warn("⚠️ No se pudo abrir el archivo inicial:", eInitFile);
+            }
+        }
     }
 }; // Fin del window.onload
 

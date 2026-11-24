@@ -238,6 +238,14 @@ def descargar_fuente_editor(nombre_familia):
         return _descargar_fuente_editor(nombre_familia)
 
 
+@eel.expose
+def obtener_archivo_inicial():
+    """Devuelve y consume la ruta pasada por línea de comandos al abrir LiraLoud (ej. doble clic en PDF)."""
+    ruta = getattr(estado_app, "archivo_inicial", "") or ""
+    estado_app.archivo_inicial = ""
+    return ruta
+
+
 # ==========================================
 # 2. CARGA Y SELECCIÓN DE DOCUMENTOS (PDF / EPUB / WORD / IMÁGENES)
 # ==========================================

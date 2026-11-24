@@ -10,7 +10,7 @@
 function obtenerAtajoAgregarLimite() {
     try {
         if (typeof misAtajos !== 'undefined' && misAtajos && misAtajos.add_limit) return misAtajos.add_limit;
-    } catch (e) {}
+    } catch (e) { }
     return 'control+ ';
 }
 
@@ -600,7 +600,7 @@ const DEMO_IA_POR_IDIOMA = {
         "fuentesInstruccion": "El apartado de <b>'Fuentes'</b> sirve para que puedas escoger de dónde tomará la información la IA: del documento completo, de tus subrayados o de tus apuntes.<br><br>Puedes combinar entre activar y desactivar las opciones según lo necesites.",
         "fuentesDetalle": "💡 <i>Al terminar la explicación pasarás automáticamente a los Modelos, o puedes pulsar <b>'Siguiente ➔'</b>.</i>",
         "modelosTitulo": "🧠 Paso 7.4: Modelos de IA",
-        "modelosInstruccion": "LiraLoud no cuenta con un servicio propio de inteligencia artificial de pago; sin embargo, puedes usar modelos locales gratuitos en tu equipo o bien servicios en la nube.<br><br>Para utilizar los servicios en la nube solo debes colocar tu <b>API Key</b>, la cual puedes obtener accediendo al sitio oficial de cada modelo desde el enlace <b>'Obtener API Key gratis'</b>.",
+        "modelosInstruccion": "LiraLoud no cuenta con un servicio propio de inteligencia artificial de pago; sin embargo, puedes descargar e instalar <b>Ollama</b> para usar modelos locales gratuitos en tu equipo, o bien conectar servicios en la nube.<br><br>Para usar servicios en la nube solo necesitas tu <b>API Key</b>. La API Key es una clave secreta (una serie de letras y números) que funciona como contraseña para conectar esta aplicación con tu cuenta de inteligencia artificial en internet; puedes obtenerla desde el enlace <b>'Obtener API Key gratis'</b>.",
         "modelosDetalle": "👉 <b>¡Listo el recorrido de IA!</b> Haz clic en la <b>'✕'</b> (iluminada en azul) o en <b>'Siguiente ➔'</b> para continuar."
     },
     "en": {
@@ -1722,8 +1722,8 @@ const DEMO_EXTRACCION_POR_IDIOMA = {
 function detectarIdiomaTutorialActivo() {
     // 1. Idioma de la interfaz de la aplicación (currentLanguage)
     // Si la interfaz del usuario está en inglés, francés, etc., todo el tutorial y documentos deben sincronizarse con ese idioma
-    const langUI = (typeof currentLanguage !== 'undefined' && currentLanguage) 
-        ? currentLanguage.toLowerCase().trim().slice(0, 2) 
+    const langUI = (typeof currentLanguage !== 'undefined' && currentLanguage)
+        ? currentLanguage.toLowerCase().trim().slice(0, 2)
         : 'es';
 
     if (langUI !== 'es' && CALIBRACION_POR_IDIOMA[langUI]) {
@@ -1776,7 +1776,7 @@ function getTourText(key, defaultEs, vars = null) {
         try {
             const txt = translateDynamicText(key);
             if (txt && txt !== key) resolved = txt;
-        } catch (e) {}
+        } catch (e) { }
     }
 
     if (typeof resolved !== 'string') return resolved;

@@ -51,20 +51,22 @@ def sintetizar_audio_tutorial(texto, voz_edge="es-MX-DaliaNeural", lang_iso=None
 
     clave_sha1 = hashlib.sha1(f"{voz_edge}|{texto_limpio}".encode("utf-8")).hexdigest()
     ruta_mp3 = os.path.join(dir_idioma, f"{clave_sha1}.mp3")
+    ruta_mp3_bundle = os.path.join(estado_app.bundle_dir, "cache_tutorial_audio", lang_dir, f"{clave_sha1}.mp3")
 
-    # 1. Hit de caché en disco (instantáneo y funcional en modo offline)
-    if os.path.isfile(ruta_mp3) and os.path.getsize(ruta_mp3) > 0:
-        try:
-            with open(ruta_mp3, "rb") as f:
-                audio_bytes = f.read()
-            return {
-                "ok": True,
-                "audio_b64": base64.b64encode(audio_bytes).decode("utf-8"),
-                "mime": "audio/mpeg",
-                "cached": True,
-            }
-        except Exception:
-            pass
+    # 1. Hit de caché en disco o en bundle empaquetado (instantáneo y funcional en modo offline)
+    for ruta_candidata in (ruta_mp3, ruta_mp3_bundle):
+        if os.path.isfile(ruta_candidata) and os.path.getsize(ruta_candidata) > 0:
+            try:
+                with open(ruta_candidata, "rb") as f:
+                    audio_bytes = f.read()
+                return {
+                    "ok": True,
+                    "audio_b64": base64.b64encode(audio_bytes).decode("utf-8"),
+                    "mime": "audio/mpeg",
+                    "cached": True,
+                }
+            except Exception:
+                pass
 
     # 2. Miss de caché: bloquear solo la descarga externa si el modo privacidad está activo
     if getattr(estado_app, "modo_privacidad", False):

@@ -21,7 +21,7 @@ const PASOS_HERRAMIENTAS = [
                     return btnZenMenu ? [btnZenMenu] : [];
                 } else {
                     const btnZenIA = document.getElementById('btn-zen-ia') ||
-                                     document.querySelector('#zen-panel-menu button[onclick*="abrirModalIA"]');
+                        document.querySelector('#zen-panel-menu button[onclick*="abrirModalIA"]');
                     return btnZenIA ? [btnZenIA] : [];
                 }
             } else {
@@ -84,7 +84,7 @@ const PASOS_HERRAMIENTAS = [
                     }
                 } else {
                     const btnZenIA = document.getElementById('btn-zen-ia') ||
-                                     document.querySelector('#zen-panel-menu button[onclick*="abrirModalIA"]');
+                        document.querySelector('#zen-panel-menu button[onclick*="abrirModalIA"]');
                     if (btnZenIA) {
                         targetCondicionalActivo = btnZenIA;
                         listenerCondicionalActivo = () => {
@@ -238,7 +238,7 @@ const PASOS_HERRAMIENTAS = [
             return targets;
         },
         posicion: "right-panel",
-        autoAvanzarTrasLectura: false,
+        autoAvanzarTrasLectura: true,
         getTitulo: () => {
             const langIso = detectarIdiomaTutorialActivo();
             const cfg = DEMO_IA_POR_IDIOMA[langIso] || DEMO_IA_POR_IDIOMA.es;
@@ -343,6 +343,12 @@ const PASOS_HERRAMIENTAS = [
             return cfg.detallePaso1;
         },
         accionCondicional: (siguiente) => {
+            const modalIA = document.getElementById('modal-ia');
+            if (modalIA && modalIA.style.display === 'flex') {
+                if (typeof cerrarModalIA === 'function') cerrarModalIA();
+                else modalIA.style.display = 'none';
+                document.body.classList.remove('tour-ia-abierto');
+            }
             const esMinimalista = document.body.classList.contains('modo-minimalista');
             const langIso = detectarIdiomaTutorialActivo();
             const cfg = DEMO_TRADUCCION_POR_IDIOMA[langIso] || DEMO_TRADUCCION_POR_IDIOMA.es;
@@ -635,8 +641,8 @@ const PASOS_HERRAMIENTAS = [
 
             const isReproduciendo = () => {
                 return (typeof leyendo !== 'undefined' && leyendo) ||
-                       (typeof isPlayingPiper !== 'undefined' && isPlayingPiper) ||
-                       (typeof window.palabraKaraoke !== 'undefined' && window.palabraKaraoke !== null);
+                    (typeof isPlayingPiper !== 'undefined' && isPlayingPiper) ||
+                    (typeof window.palabraKaraoke !== 'undefined' && window.palabraKaraoke !== null);
             };
 
             const avanzarATrabajo9 = () => {
@@ -763,7 +769,7 @@ const PASOS_HERRAMIENTAS = [
             const cfg = DEMO_EXTRACCION_POR_IDIOMA[langIso] || DEMO_EXTRACCION_POR_IDIOMA.es;
             if (langIso === 'es') {
                 if (subEtapaEdicionAzul === 0) {
-                    return "¡Muy bien! Ahora veamos las herramientas de estudio. Vamos a marcar el texto de color azul; para eso, abre el botón de <b>'Herramientas de Edición'</b> iluminado en azul.";
+                    return "¡Muy bien! Ahora veamos las herramientas de estudio. La primera función que probaremos es el marcatextos; empezaremos marcando primero la oración de color azul. Para eso, abre el botón de <b>'Herramientas de Edición'</b> iluminado en azul.";
                 }
                 if (subEtapaEdicionAzul === 1) {
                     return "Ahora selecciona el color <b>Azul</b> en la paleta.";
@@ -1171,7 +1177,16 @@ const PASOS_HERRAMIENTAS = [
                 }
                 setTimeoutTutorial(() => {
                     cargarDemoExtraccion(true, true);
-                    posicionarMouseHintEnCoordenadas(400, 310, cfg.badgeMouseRecorte, 'izquierdo');
+                    posicionarMouseHintEnCoordenadas(195, 310, "Mantén clic izquierdo aquí (izquierda)", 'izquierdo');
+                    const canvasRecorte = document.getElementById('lienzo-pdf');
+                    if (canvasRecorte) {
+                        const onMouseDownRecorte = () => {
+                            if (window.tutorialActivo && PASOS_TOUR_GUI[window.tutorialPasoActual]?.id === 'paso_10n_capturar_recorte' && subEtapaEdicionRecorte === 2) {
+                                posicionarMouseHintEnCoordenadas(585, 430, "Arrastra y suelta aquí (derecha/abajo)", 'izquierdo');
+                            }
+                        };
+                        canvasRecorte.addEventListener('mousedown', onMouseDownRecorte, { once: true });
+                    }
                 }, 80);
             }
 
@@ -1332,7 +1347,7 @@ const PASOS_HERRAMIENTAS = [
 
             // Interceptar llamada directa a mostrarPanelSubrayados para detección garantizada
             const origMostrarPanel = window.mostrarPanelSubrayados;
-            window.mostrarPanelSubrayados = function(...args) {
+            window.mostrarPanelSubrayados = function (...args) {
                 if (typeof origMostrarPanel === 'function') {
                     origMostrarPanel.apply(this, args);
                 }
@@ -1344,7 +1359,7 @@ const PASOS_HERRAMIENTAS = [
                 const modal = document.getElementById('modal-subrayados');
                 const panel = document.getElementById('panel-subrayados');
                 const estaAbierto = (modal && (modal.style.display === 'block' || window.getComputedStyle(modal).display === 'block')) ||
-                                    (panel && (panel.style.right === '0px' || parseInt(window.getComputedStyle(panel).right) >= 0));
+                    (panel && (panel.style.right === '0px' || parseInt(window.getComputedStyle(panel).right) >= 0));
                 if (estaAbierto) {
                     abrirYContinuar();
                 }
@@ -1597,16 +1612,16 @@ const PASOS_HERRAMIENTAS = [
             }
 
             // 2. Interceptar llamadas a funciones de apertura y cierre
-            window.abrirPanelNotaRapida = function(...args) {
+            window.abrirPanelNotaRapida = function (...args) {
                 if (typeof origAbrir === 'function') origAbrir.apply(this, args);
                 onPanelAbierto();
             };
-            window.togglePanelNotaRapida = function(...args) {
+            window.togglePanelNotaRapida = function (...args) {
                 if (typeof origToggle === 'function') origToggle.apply(this, args);
                 if (estaAbierto()) onPanelAbierto();
                 else if (panelEstuvoAbierto) avanzarAlSiguiente();
             };
-            window.cerrarPanelNotaRapida = function(...args) {
+            window.cerrarPanelNotaRapida = function (...args) {
                 if (typeof origCerrar === 'function') origCerrar.apply(this, args);
                 if (panelEstuvoAbierto) avanzarAlSiguiente();
             };
@@ -1935,16 +1950,16 @@ const PASOS_HERRAMIENTAS = [
             }
 
             // 2. Interceptar llamadas a funciones de apertura y cierre
-            window.abrirModalNotas = function(...args) {
+            window.abrirModalNotas = function (...args) {
                 if (typeof origAbrir === 'function') origAbrir.apply(this, args);
                 onModalAbierto();
             };
-            window.toggleModalNotas = function(...args) {
+            window.toggleModalNotas = function (...args) {
                 if (typeof origToggle === 'function') origToggle.apply(this, args);
                 if (estaAbierto()) onModalAbierto();
                 else if (modalEstuvoAbierto) avanzarAlSiguiente();
             };
-            window.cerrarModalNotas = function(...args) {
+            window.cerrarModalNotas = function (...args) {
                 if (typeof origCerrar === 'function') origCerrar.apply(this, args);
                 if (modalEstuvoAbierto) avanzarAlSiguiente();
             };
@@ -2426,12 +2441,12 @@ const PASOS_HERRAMIENTAS = [
         },
         posicion: "right-panel",
         autoAvanzarTrasLectura: true,
-        getTitulo: () => getTourText("tour-paso10-3-titulo", "🔊 Paso 10.3: Pestaña de Audio, Ducking y Segmentación"),
-        getInstruccion: () => getTourText("tour-paso10-3-inst", "En el apartado de <b>'Audio'</b> encontrarás las opciones de volúmenes, la función <b>Audio Ducking</b> (que permite pausar o controlar la multimedia de fondo) y la <b>Segmentación</b> (que permite determinar cómo la herramienta reconoce los saltos de párrafo y sangría, muy útil cuando el interlineado se confunde con un salto de párrafo)."),
+        getTitulo: () => getTourText("tour-paso10-3-titulo", "🔊 Paso 10.3: Audio, Ecualizador, Clonación y Mezclador"),
+        getInstruccion: () => getTourText("tour-paso10-3-inst", "En el apartado de <b>'Audio'</b> encontrarás el control de volúmenes, <b>Audio Ducking</b> (para atenuar música o videos de fondo), el <b>Ecualizador</b>, la <b>Clonación de voz</b>, el <b>Mezclador de voces</b> (compatible con los modelos <b>Kokoro</b> y <b>Pocket</b>) y la <b>Segmentación</b> de párrafos.<br><br>⏳ <i>Nota:</i> los modelos locales como Kokoro y Pocket son más pesados, por lo que pueden tardar un poco más en generar el audio."),
         getDetalleExtra: () => getTourText("tour-paso10-3-det", `<div style="line-height:1.45;">
-            • <b>🎚️ Volúmenes:</b> Ajusta la ganancia de lectura.<br>
-            • <b>🎧 Audio Ducking:</b> Controla Spotify, YouTube o música de fondo.<br>
-            • <b>✂️ Segmentación:</b> Calibra la detección de saltos de párrafo y sangría.
+            • <b>🎚️ Volúmenes y Ecualizador:</b> Ajusta la ganancia y frecuencias de la voz.<br>
+            • <b>🧬 Clonación y Mezclador (Kokoro / Pocket):</b> Crea o combina voces (su procesamiento local es más pesado y demora un poco más).<br>
+            • <b>🎧 Audio Ducking y ✂️ Segmentación:</b> Controla multimedia de fondo y saltos de párrafo/sangría.
         </div>`),
         accionCondicional: (siguiente) => {
             asegurarModalConfigAbiertoEnTab('tab-karaoke');
@@ -2478,8 +2493,8 @@ const PASOS_HERRAMIENTAS = [
         },
         posicion: "right-panel",
         autoAvanzarTrasLectura: true,
-        getTitulo: () => getTourText("tour-paso10-5-titulo", "⚡ Paso 10.5: Pestaña de Rendimiento"),
-        getInstruccion: () => getTourText("tour-paso10-5-inst", "En el apartado de <b>'Rendimiento'</b> podrás jugar con los ajustes para mejorar la velocidad de lectura y la experiencia; considera que algunas de estas funciones pueden ser pesadas para tu equipo."),
+        getTitulo: () => getTourText("tour-paso10-5-titulo", "⚡ Paso 10.5: Pestaña de Avanzado"),
+        getInstruccion: () => getTourText("tour-paso10-5-inst", "En el apartado de <b>'Avanzado'</b> podrás jugar con los ajustes para mejorar la velocidad de lectura y la experiencia; considera que algunas de estas funciones pueden ser pesadas para tu equipo."),
         getDetalleExtra: () => getTourText("tour-paso10-5-det", "⚠️ Aquí puedes gestionar la precarga en RAM, hilos de CPU y motores de IA u OCR."),
         accionCondicional: (siguiente) => {
             asegurarModalConfigAbiertoEnTab('tab-rendimiento');

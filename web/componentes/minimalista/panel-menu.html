@@ -291,19 +291,19 @@
                             <div style="display:flex; justify-content:center; gap:6px; padding:4px;">
                                 <button type="button" class="btn-accion-ia" title="Alejar (-)" data-i18n-title="ttl-zoom-out"
                                     onmouseover="this.style.background='#dfe6e9'" onmouseout="this.style.background='#f1f2f6'"
-                                    onclick="const v = Math.max(50, Math.round(((typeof nivelZoomPDF === 'number' ? nivelZoomPDF : 1) * 100) - 15)); if(typeof aplicarZoomDinamico==='function') aplicarZoomDinamico(v); const r=document.getElementById('rng-zoom-pdf'); if(r) r.value=v; const b=document.getElementById('btn-zen-zoom-reset'); if(b) b.innerText=v+'%';"
+                                    onclick="const v = Math.max(50, Math.round(((typeof nivelZoomPDF === 'number' ? nivelZoomPDF : 1) * 100) - 15)); if(typeof aplicarZoomDinamico==='function') aplicarZoomDinamico(v); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes();"
                                     style="padding:6px 10px; display:flex; align-items:center; justify-content:center; background:#f1f2f6; color:#2c3e50; border:1px solid #ced6e0; border-radius:6px; transition:background 0.15s;">
                                     <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#2c3e50" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
                                 </button>
                                 <button type="button" id="btn-zen-zoom-reset" class="btn-accion-ia" title="Restablecer al 100%" data-i18n-title="ttl-zoom-reset"
                                     onmouseover="this.style.background='#dfe6e9'" onmouseout="this.style.background='#f1f2f6'"
-                                    onclick="if(typeof aplicarZoomDinamico==='function') aplicarZoomDinamico(100); const r=document.getElementById('rng-zoom-pdf'); if(r) r.value=100; this.innerText='100%';"
+                                    onclick="if(typeof aplicarZoomDinamico==='function') aplicarZoomDinamico(100); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes();"
                                     style="padding:6px 10px; min-width:52px; font-size:11.5px; font-weight:700; background:#f1f2f6; color:#2c3e50; border:1px solid #ced6e0; border-radius:6px; transition:background 0.15s;">
                                     100%
                                 </button>
                                 <button type="button" class="btn-accion-ia" title="Acercar (+)" data-i18n-title="ttl-zoom-in"
                                     onmouseover="this.style.background='#dfe6e9'" onmouseout="this.style.background='#f1f2f6'"
-                                    onclick="const v = Math.min(250, Math.round(((typeof nivelZoomPDF === 'number' ? nivelZoomPDF : 1) * 100) + 15)); if(typeof aplicarZoomDinamico==='function') aplicarZoomDinamico(v); const r=document.getElementById('rng-zoom-pdf'); if(r) r.value=v; const b=document.getElementById('btn-zen-zoom-reset'); if(b) b.innerText=v+'%';"
+                                    onclick="const v = Math.min(250, Math.round(((typeof nivelZoomPDF === 'number' ? nivelZoomPDF : 1) * 100) + 15)); if(typeof aplicarZoomDinamico==='function') aplicarZoomDinamico(v); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes();"
                                     style="padding:6px 10px; display:flex; align-items:center; justify-content:center; background:#f1f2f6; color:#2c3e50; border:1px solid #ced6e0; border-radius:6px; transition:background 0.15s;">
                                     <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#2c3e50" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
                                 </button>

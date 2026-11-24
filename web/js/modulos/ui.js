@@ -229,9 +229,14 @@ function aplicarRecorteDinamico(valor) {
 
 // Zoom Dinámico: ajusta el nivel de zoom del canvas y redibuja
 function aplicarZoomDinamico(valor) {
-    const z = parseInt(valor) || 100;
+    const num = Number(valor);
+    const z = Number.isFinite(num) && num > 0 ? Math.max(50, Math.min(250, Math.round(num))) : 100;
     const spanVal = document.getElementById('val-zoom-pdf');
     if (spanVal) spanVal.innerText = z + '%';
+    const btnZenZoom = document.getElementById('btn-zen-zoom-reset');
+    if (btnZenZoom) btnZenZoom.innerText = z + '%';
+    const rngZoom = document.getElementById('rng-zoom-pdf');
+    if (rngZoom && Number(rngZoom.value) !== z) rngZoom.value = z;
     nivelZoomPDF = z / 100;
     dibujar();
 }

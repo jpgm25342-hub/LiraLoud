@@ -1,11 +1,5 @@
 function _vincularBackdropTiendaVoces() {
-    const modal = document.getElementById('modal-tienda-voces');
-    if (modal && !modal.dataset.backdropBound) {
-        modal.dataset.backdropBound = 'true';
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) window.cerrarTiendaVoces();
-        });
-    }
+    // La tienda de voces solo debe cerrarse mediante el botón de tache (×) para evitar cierres accidentales al hacer clic fuera.
 }
 
 function _iconoTiendaSVG(clave) {

@@ -2,6 +2,34 @@
 // BUSCADOR DE TEXTO EN PDF Y RESALTADO
 // ==========================================
 
+function _scrollAResultadoBusqueda(coords) {
+    if (!coords) return;
+    let rect = null;
+    if (Array.isArray(coords)) {
+        rect = Array.isArray(coords[0]) ? coords[0] : (coords.length >= 4 ? coords : null);
+    } else if (coords && Array.isArray(coords.rects) && coords.rects.length > 0) {
+        rect = coords.rects[0];
+    }
+    if (!rect || rect.length < 4) return;
+
+    const intentarScroll = (intentos) => {
+        const visor = document.getElementById('visor-container');
+        const canvas = document.getElementById('lienzo-pdf');
+        if (!visor || !canvas || canvas.offsetHeight === 0) {
+            if (intentos > 0) setTimeout(() => intentarScroll(intentos - 1), 80);
+            return;
+        }
+        const altoPdf = (typeof datosPagina !== 'undefined' && datosPagina && datosPagina.alto_pagina_pdf) ? datosPagina.alto_pagina_pdf : canvas.offsetHeight;
+        const anchoPdf = (typeof datosPagina !== 'undefined' && datosPagina && datosPagina.ancho_pagina_pdf) ? datosPagina.ancho_pagina_pdf : canvas.offsetWidth;
+        const scaleY = canvas.offsetHeight / altoPdf;
+        const scaleX = canvas.offsetWidth / anchoPdf;
+        const targetTop = Math.max(0, canvas.offsetTop + (rect[1] * scaleY) - (visor.clientHeight * 0.35));
+        const targetLeft = Math.max(0, canvas.offsetLeft + (rect[0] * scaleX) - (visor.clientWidth * 0.35));
+        visor.scrollTo({ top: targetTop, left: targetLeft, behavior: 'smooth' });
+    };
+    setTimeout(() => intentarScroll(6), 120);
+}
+
 function cerrarBuscadorPDF() {
     document.getElementById('panel-busqueda').style.display = 'none';
     window.busquedaResultadosPorPagina = null;
@@ -80,6 +108,7 @@ async function ejecutarBusquedaPDF() {
 
                 document.getElementById('input-pagina-actual').value = res.pagina;
                 irAPaginaDirecta();
+                _scrollAResultadoBusqueda(res.coords);
             };
 
             const lblPagina = (typeof window.t === 'function') ? window.t('lbl-pagina-num', 'Página {num}', { num: res.pagina }) : `Página ${res.pagina}`;
@@ -117,6 +146,7 @@ function navegarBusquedaPDF(delta) {
     const inpPag = document.getElementById('input-pagina-actual');
     if (inpPag) inpPag.value = res.pagina;
     if (typeof irAPaginaDirecta === 'function') irAPaginaDirecta();
+    _scrollAResultadoBusqueda(res.coords);
 }
 
 function limpiarResaltadoBusqueda(redibujar = false) {

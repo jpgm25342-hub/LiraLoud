@@ -68,7 +68,7 @@ const PROVEEDORES_CLOUD = {
     },
     deepseek: {
         nombre: 'DeepSeek',
-        cardTitulo: '◉ Conexión DeepSeek',
+        cardTitulo: '🐋 Conexión DeepSeek',
         linkKey: 'https://platform.deepseek.com/api_keys',
         linkTexto: '🔑 Obtener DeepSeek API Key ↗',
         placeholder: 'Pega tu clave sk-... aquí',

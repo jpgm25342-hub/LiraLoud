@@ -9,8 +9,9 @@ from ctypes import wintypes
 import threading
 import tkinter as tk
 from PIL import ImageGrab, ImageTk
+from backend.core.estado_global import estado_app
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+BASE_DIR = estado_app.base_dir
 TEMP_DIR = os.path.join(BASE_DIR, "temp_converted")
 os.makedirs(TEMP_DIR, exist_ok=True)
 

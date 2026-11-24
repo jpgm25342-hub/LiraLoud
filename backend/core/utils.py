@@ -95,11 +95,15 @@ def abrir_archivo_legal(nombre_archivo):
     import platform
     import subprocess
 
-    # Intentar buscarlo en la raíz o dentro de la carpeta web
-    ruta_raiz = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), nombre_archivo)
-    ruta_web = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "web", nombre_archivo)
-    
-    ruta_final = ruta_web if os.path.exists(ruta_web) else ruta_raiz
+    # Intentar buscarlo en la raíz o dentro de la carpeta web (base_dir o bundle_dir)
+    from backend.core.estado_global import estado_app
+    candidatos = [
+        os.path.join(estado_app.base_dir, "web", nombre_archivo),
+        os.path.join(estado_app.base_dir, nombre_archivo),
+        os.path.join(estado_app.bundle_dir, "web", nombre_archivo),
+        os.path.join(estado_app.bundle_dir, nombre_archivo),
+    ]
+    ruta_final = next((r for r in candidatos if os.path.exists(r)), candidatos[0])
 
     if os.path.exists(ruta_final):
         if platform.system() == "Windows":

@@ -25,7 +25,10 @@ if sys.stderr is not None and hasattr(sys.stderr, "reconfigure"):
         pass
 
 # Ruta del archivo de log principal
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if getattr(sys, "frozen", False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 LOG_FILE = os.path.join(BASE_DIR, "app.log")
 
 # Fallback a %LOCALAPPDATA%/LiraLoud/app.log si el directorio no tiene permisos de escritura

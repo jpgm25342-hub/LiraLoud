@@ -95,17 +95,21 @@ function seleccionarComboLive(tipo) {
         const valorNuevo = opt.text;
 
         sel.style.display = 'none';
-        if (inp.value === valorNuevo) return;
-
+        const yaTeniaMismoTexto = (inp.value === valorNuevo);
         inp.value = valorNuevo;
 
-        if (tipo === 'idioma') {
-            sel.value = opt.value;
-            filtrarVocesPorIdiomaLive();
-            guardarTodosAjustes();
-        } else {
-            cambiarVozLive();
+        if (!yaTeniaMismoTexto) {
+            if (tipo === 'idioma') {
+                sel.value = opt.value;
+                filtrarVocesPorIdiomaLive();
+                guardarTodosAjustes();
+            } else {
+                cambiarVozLive();
+            }
         }
+        window.dispatchEvent(new CustomEvent('lira:combo-live-seleccionado', {
+            detail: { tipo, valor: opt.value, texto: valorNuevo }
+        }));
     }
 }
 

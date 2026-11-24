@@ -376,11 +376,15 @@ body.ui-dark-mode .notas-search-input:focus {
 }
 
 body.ui-dark-mode .notas-btn-crear {
-    background: #238636;
+    background: #21262d !important;
+    color: #f0f6fc !important;
+    border: 1px solid #30363d !important;
 }
 
 body.ui-dark-mode .notas-btn-crear:hover {
-    background: #2ea043;
+    background: #30363d !important;
+    border-color: #484f58 !important;
+    color: #ffffff !important;
 }
 
 .notas-cards-container {
@@ -667,6 +671,20 @@ body.ui-dark-mode .notas-fmt-sep {
     transform: translateY(-1px);
 }
 
+body.ui-dark-mode .notas-btn-ia {
+    background: #21262d !important;
+    color: #f0f6fc !important;
+    border: 1px solid #30363d !important;
+    box-shadow: none !important;
+}
+
+body.ui-dark-mode .notas-btn-ia:hover {
+    background: #30363d !important;
+    border-color: #484f58 !important;
+    color: #ffffff !important;
+    filter: none;
+}
+
 /* Menú Emergente de Acciones de IA para Notas */
 .menu-ia-nota-popup {
     position: absolute;
@@ -905,13 +923,15 @@ body.ui-dark-mode .notas-editor-footer {
 }
 
 body.ui-dark-mode .notas-btn-delete {
-    border-color: rgba(248, 81, 73, 0.4);
-    color: #f85149;
+    background: #21262d !important;
+    border: 1px solid #30363d !important;
+    color: #e6edf3 !important;
 }
 
 body.ui-dark-mode .notas-btn-delete:hover {
-    background: #da3633;
-    color: #ffffff;
+    background: #30363d !important;
+    border-color: #f85149 !important;
+    color: #f85149 !important;
 }
 
 .notas-btn-save {
@@ -935,11 +955,15 @@ body.ui-dark-mode .notas-btn-delete:hover {
 }
 
 body.ui-dark-mode .notas-btn-save {
-    background: #238636;
+    background: #30363d !important;
+    color: #f0f6fc !important;
+    border: 1px solid #484f58 !important;
 }
 
 body.ui-dark-mode .notas-btn-save:hover {
-    background: #2ea043;
+    background: #3d444d !important;
+    border-color: #8b949e !important;
+    color: #ffffff !important;
 }
 
 

@@ -52,12 +52,59 @@ async function abrirTiendaOllama() {
     const svgBox = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>';
 
     const vramTxt = (info.vram_gb && info.vram_gb > 0) ? ` &nbsp;|&nbsp; <b>VRAM:</b> ${info.vram_gb} GB` : '';
+    window._ollamaHardwareInfo = info;
+    const btnConsultar = `<button type="button" id="btn-consultar-modelos-hw" onclick="toggleRecomendacionHardwareOllama()" title="Consultar qué modelos soporta tu equipo" style="display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:6px; border:1px solid #6366f1; background:rgba(99,102,241,0.1); color:#4f46e5; font-size:11.5px; font-weight:700; cursor:pointer;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span>Escoge modelos</span></button>`;
     hwBox.innerHTML = info.ollama_activo
-        ? `${svgCpu} <b>RAM:</b> ${info.ram_gb} GB${vramTxt} &nbsp;|&nbsp; ${svgStar} <b>Sugerido:</b> <code>${info.recomendado}</code> &nbsp;|&nbsp; ${svgBox} <b>Instalados:</b> ${_ollamaInstaladosCache.length}`
-        : `<b>Ollama no detectado en localhost:11434.</b> Descarga Ollama desde ollama.com para acceder a los modelos locales.`;
+        ? `${svgCpu} <b>RAM:</b> ${info.ram_gb} GB${vramTxt} &nbsp;|&nbsp; ${svgStar} ${btnConsultar} &nbsp;|&nbsp; ${svgBox} <b>Instalados:</b> ${_ollamaInstaladosCache.length}`
+        : `<b>Ollama no detectado en localhost:11434.</b> Descarga Ollama desde ollama.com para acceder a los modelos locales. &nbsp; ${btnConsultar}`;
+
+    const recomPanel = document.getElementById('tienda-ollama-recom-panel');
+    if (recomPanel) recomPanel.style.display = 'none';
 
     await cargarCatalogoHF();
 }
+
+function toggleRecomendacionHardwareOllama() {
+    const panel = document.getElementById('tienda-ollama-recom-panel');
+    if (!panel) return;
+    if (panel.style.display === 'block') {
+        panel.style.display = 'none';
+        return;
+    }
+    const info = window._ollamaHardwareInfo || {};
+    const esp = info.especificacion || {};
+    const q4 = Array.isArray(esp.rango_parametros_q4) ? esp.rango_parametros_q4 : [2, 4];
+    const gpuTxt = info.gpu_nombre ? `<div style="font-size:11px; opacity:0.8; margin-bottom:6px;">GPU detectada: <b>${info.gpu_nombre}</b> (${info.vram_gb || 0} GB VRAM) · RAM: <b>${info.ram_gb || 8} GB</b> · Núcleos físicos: <b>${info.nucleos_fisicos || 4}</b></div>` : '';
+    panel.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <strong style="font-size:12.5px;">Recomendación según tu equipo</strong>
+            <button type="button" onclick="toggleRecomendacionHardwareOllama()" style="background:none; border:none; cursor:pointer; font-size:15px; line-height:1; color:inherit;">&times;</button>
+        </div>
+        ${gpuTxt}
+        <ul style="margin:0 0 8px 16px; padding:0;">
+            <li><b>Modo recomendado:</b> ${esp.modo || 'Híbrido'}</li>
+            <li><b>Peso máximo del archivo:</b> ~${esp.peso_max_gb || 4.0} GB</li>
+            <li><b>Opción equilibrada (Recomendada):</b> Modelos de <b>${q4[0]}B a ${q4[1]}B</b> parámetros en <code>Q4_K_M</code></li>
+            <li><b>Opción máxima precisión:</b> Modelos de hasta <b>${esp.params_q8_max || 3}B</b> parámetros en <code>Q8_0</code></li>
+            <li><b>Hilos sugeridos (num_thread):</b> ${esp.num_thread || info.nucleos_fisicos || 4}</li>
+        </ul>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" onclick="aplicarFiltroCuantizacionHF('Q4_K_M')" style="padding:4px 10px; border-radius:6px; border:1px solid #6366f1; background:#6366f1; color:#fff; font-size:11px; font-weight:600; cursor:pointer;">Buscar Q4_K_M</button>
+            <button type="button" onclick="aplicarFiltroCuantizacionHF('Q8_0')" style="padding:4px 10px; border-radius:6px; border:1px solid #64748b; background:transparent; color:inherit; font-size:11px; font-weight:600; cursor:pointer;">Buscar Q8_0</button>
+        </div>
+    `;
+    panel.style.display = 'block';
+}
+window.toggleRecomendacionHardwareOllama = toggleRecomendacionHardwareOllama;
+
+function aplicarFiltroCuantizacionHF(qTag) {
+    const inp = document.getElementById('txt-hf-buscar');
+    if (inp) {
+        inp.value = qTag;
+        if (typeof cargarCatalogoHF === 'function') cargarCatalogoHF();
+    }
+}
+window.aplicarFiltroCuantizacionHF = aplicarFiltroCuantizacionHF;
 
 async function cargarCatalogoHF() {
     const lista = document.getElementById('tienda-ollama-lista');
@@ -183,34 +230,57 @@ function _actualizarControlesTarjetaTienda(nombre, mostrar, estaPausado) {
 function renderizarPanelDescargasOllama(nombre, pct, estado, completado, esError) {
     const panel = document.getElementById('ollama-descargas-panel');
     if (!panel) return;
-    if (!nombre || completado || (esError && estado === 'Cancelado')) {
+
+    window._ollamaDescargasActivas = window._ollamaDescargasActivas || {};
+    if (nombre) {
+        if (completado || (esError && estado === 'Cancelado')) {
+            delete window._ollamaDescargasActivas[nombre];
+        } else {
+            window._ollamaDescargasActivas[nombre] = {
+                pct: Number(pct) || 0,
+                estado: String(estado || 'Descargando...'),
+                pausado: estado === 'Pausado',
+                esError: Boolean(esError)
+            };
+        }
+    }
+
+    const claves = Object.keys(window._ollamaDescargasActivas);
+    if (claves.length === 0) {
         panel.innerHTML = 'No hay modelos con descarga pendiente';
-        panel.dataset.modeloActivo = '';
-        panel.dataset.pausado = '';
+        panel.dataset.modelosActivos = '';
         return;
     }
-    const estaPausado = (estado === 'Pausado');
 
-    // Solo reconstruir el DOM si cambió el modelo o el estado pausado, para no destruir el botón durante el clic
-    if (panel.dataset.modeloActivo !== nombre || panel.dataset.pausado !== String(estaPausado)) {
-        panel.dataset.modeloActivo = nombre;
-        panel.dataset.pausado = String(estaPausado);
-        panel.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-                <div style="flex:1; min-width:0;">
-                    <div style="font-weight:600; color:#2c3e50; word-break:break-all; font-size:11.5px;">${nombre}</div>
-                    <div id="ollama-panel-status" style="font-size:11px; color:${esError ? '#d63031' : '#0984e3'}; margin-top:2px;"></div>
-                </div>
-                <div style="display:flex; gap:6px; flex-shrink:0;">
-                    ${_renderBotonesControlOllama(nombre, estaPausado, 'panel')}
-                </div>
-            </div>`;
+    // Reconstruir filas solo si cambió la lista de modelos o su estado pausado
+    const firma = claves.map(k => `${k}:${window._ollamaDescargasActivas[k].pausado}`).join('|');
+    if (panel.dataset.modelosActivos !== firma) {
+        panel.dataset.modelosActivos = firma;
+        panel.innerHTML = `<div style="display:flex; flex-direction:column; gap:8px;">` + claves.map(mod => {
+            const safeId = mod.replace(/[^a-zA-Z0-9]/g, '_');
+            const infoM = window._ollamaDescargasActivas[mod];
+            return `
+                <div id="ollama-panel-row-${safeId}" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding-bottom:6px; border-bottom:1px solid rgba(148,163,184,0.2);">
+                    <div style="flex:1; min-width:0;">
+                        <div style="font-weight:600; color:inherit; word-break:break-all; font-size:11.5px;">${mod}</div>
+                        <div id="ollama-panel-status-${safeId}" style="font-size:11px; color:${infoM.esError ? '#d63031' : '#0984e3'}; margin-top:2px;"></div>
+                    </div>
+                    <div style="display:flex; gap:6px; flex-shrink:0;">
+                        ${_renderBotonesControlOllama(mod, infoM.pausado, 'panel-' + safeId)}
+                    </div>
+                </div>`;
+        }).join('') + `</div>`;
     }
-    const stEl = document.getElementById('ollama-panel-status');
-    if (stEl) {
-        stEl.style.color = esError ? '#d63031' : '#0984e3';
-        stEl.textContent = esError ? estado : `${estado} (${pct}%)`;
-    }
+
+    claves.forEach(mod => {
+        const safeId = mod.replace(/[^a-zA-Z0-9]/g, '_');
+        const infoM = window._ollamaDescargasActivas[mod];
+        const stEl = document.getElementById(`ollama-panel-status-${safeId}`);
+        if (stEl) {
+            stEl.style.color = infoM.esError ? '#d63031' : (infoM.pausado ? '#e67e22' : '#0984e3');
+            stEl.textContent = infoM.esError ? infoM.estado : `${infoM.estado} (${infoM.pct}%)`;
+        }
+    });
 }
 
 async function pausarDescargaOllama(nombre) {
@@ -243,7 +313,7 @@ async function cancelarDescargaOllama(nombre) {
     window._ollamaEstadoDescarga[nombre] = 'cancelado';
     window._ollamaUltimoPct[nombre] = 0;
 
-    renderizarPanelDescargasOllama(null);
+    renderizarPanelDescargasOllama(nombre, 0, 'Cancelado', false, true);
     const safeId = nombre.replace(/[^a-zA-Z0-9]/g, '_');
     const prog = document.getElementById(`ollama-prog-${safeId}`);
     const btn = document.getElementById(`btn-ollama-${safeId}`);

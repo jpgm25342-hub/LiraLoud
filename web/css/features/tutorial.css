@@ -522,6 +522,22 @@ body.tour-guia-activo .zen-dropdown-popup {
     z-index: 99999 !important;
 }
 
+.zen-dropdown-popup.tour-spotlight-active {
+    position: absolute !important;
+    z-index: 99999 !important;
+}
+
+body.tour-guia-activo .fila-filtros.tour-spotlight-active {
+    background: rgba(255, 255, 255, 0.96);
+    padding: 6px 10px;
+    border-radius: 8px;
+    z-index: 95000 !important;
+}
+
+body.ui-dark-mode.tour-guia-activo .fila-filtros.tour-spotlight-active {
+    background: rgba(22, 27, 34, 0.96);
+}
+
 /* Subtítulos de traducción siempre por encima de cualquier capa del tutorial */
 .subtitulo-traduccion-overlay {
     z-index: 105000 !important;

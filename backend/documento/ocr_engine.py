@@ -40,11 +40,11 @@ from typing import List, Tuple, Dict, Any, Optional
 
 
 
+from backend.core.estado_global import estado_app
+
 logger = logging.getLogger("LiraOCREngine")
 
-
-
-BASE_PROYECTO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+BASE_PROYECTO = estado_app.base_dir
 
 DIR_OCR_CACHE = os.path.join(BASE_PROYECTO, "lira_db", "ocr_cache")
 
