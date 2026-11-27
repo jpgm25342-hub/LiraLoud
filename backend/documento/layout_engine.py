@@ -6,6 +6,20 @@ import onnxruntime as ort
 import pymupdf as fitz
 from backend.core.estado_global import estado_app
 from backend.core.logger_config import logger
+from backend.documento.layout_cortes import (  # noqa: F401
+    _calcular_semillas_verticales_corte,
+    _palabras_en_corredor_vertical,
+    _proyectar_corte_raycasting,
+    _buscar_candidatos_corte_histograma,
+    _es_candidato_corte_yolo_valido,
+    _detectar_cortes_yolo_raycasting,
+    _banda_separa_columnas,
+    _evaluar_bandas_corte_palabras,
+    _buscar_brechas_palabras_histograma,
+    _detectar_cortes_por_palabras,
+    _filtrar_palabras_utiles_horizontales,
+    _calcular_limites_horizontales,
+)
 
 _MODELO_REL = os.path.join("layout_models", "doclayout_yolo_docstructbench_imgsz1024.onnx")
 MODELO_PATH = (
@@ -57,6 +71,133 @@ def scale_boxes(boxes, orig_shape, r, pad):
     boxes[:, [0, 2]] = np.clip(boxes[:, [0, 2]], 0, orig_shape[1])
     boxes[:, [1, 3]] = np.clip(boxes[:, [1, 3]], 0, orig_shape[0])
     return boxes
+
+
+def _es_bloque_columna_valido(caja, words_raw, orig_w):
+    """Indica si una caja YOLO es candidata a columna (etiqueta, dimensiones y contenido real)."""
+    if (
+        caja["label"] not in ("plain text", "title", "table", "table_caption", "table_footnote", "figure")
+        or (caja["x2"] - caja["x1"]) >= (orig_w * 0.62)
+        or (caja["y2"] - caja["y1"]) <= 15
+    ):
+        return False
+    if caja["label"] == "figure":
+        return True
+    return any(
+        max(caja["x1"], w[0]) < min(caja["x2"], w[2]) and max(caja["y1"], w[1]) < min(caja["y2"], w[3])
+        for w in words_raw
+    )
+
+
+def _detectar_pares_columnas_solapadas(cajas_pdf, words_raw, orig_w):
+    """Identifica bloques candidatos a columna izquierda/derecha con contenido real y solapamiento vertical."""
+    left_cols = []
+    right_cols = []
+    mitad_x = orig_w * 0.50
+    for c in cajas_pdf:
+        if not _es_bloque_columna_valido(c, words_raw, orig_w):
+            continue
+        if (c["x1"] + c["x2"]) / 2.0 < mitad_x:
+            left_cols.append(c)
+        else:
+            right_cols.append(c)
+
+    overlapping_left = []
+    overlapping_right = []
+    for l in left_cols:
+        for r in right_cols:
+            if min(l["y2"], r["y2"]) - max(l["y1"], r["y1"]) > 15:
+                if l not in overlapping_left:
+                    overlapping_left.append(l)
+                if r not in overlapping_right:
+                    overlapping_right.append(r)
+
+    return overlapping_left, overlapping_right
+
+
+def _filtrar_zonas_y_bloques_yolo(cajas_pdf, orig_w, orig_h):
+    """Clasifica cajas YOLO en zonas excluidas, bloques de lectura y bandera de tabla dominante."""
+    zonas_excluidas = []
+    cajas_tablas = [c for c in cajas_pdf if c["label"] == "table"]
+
+    for c in cajas_pdf:
+        if c["label"] in ["figure", "abandon"]:
+            w_box = c["x2"] - c["x1"]
+            h_box = c["y2"] - c["y1"]
+            if w_box < 15 and h_box < 15:
+                continue
+            if (w_box * h_box) > (orig_w * orig_h * 0.50):
+                continue
+            zonas_excluidas.append([
+                int(max(0, c["x1"] - 2)),
+                int(max(0, c["y1"] - 2)),
+                int(min(orig_w, c["x2"] + 2)),
+                int(min(orig_h, c["y2"] + 2)),
+            ])
+
+    bloques_lectura = [
+        c for c in cajas_pdf
+        if c["label"] in ["plain text", "title", "table", "figure_caption"]
+        and (c["y2"] - c["y1"]) > 10
+    ]
+
+    tablas_anchas = [t for t in cajas_tablas if (t["x2"] - t["x1"]) > (orig_w * 0.65)]
+    alto_tablas_anchas = sum((t["y2"] - t["y1"]) for t in tablas_anchas)
+    tabla_completa_dominante = alto_tablas_anchas > (orig_h * 0.70)
+    return zonas_excluidas, bloques_lectura, tabla_completa_dominante
+
+
+def _extraer_zonas_y_contexto_pagina(page, cajas_pdf, orig_w, orig_h):
+    """Calcula zonas excluidas, palabras/bloques de lectura y si domina una tabla ancha."""
+    zonas_excluidas, bloques_lectura, tabla_completa_dominante = _filtrar_zonas_y_bloques_yolo(
+        cajas_pdf, orig_w, orig_h
+    )
+    words_raw = page.get_text("words")
+    words_reading = [w for w in words_raw if not (w[1] < 40 or w[3] > orig_h - 40)]
+    blocks_text = [b for b in page.get_text("blocks") if 40 < b[1] < (orig_h - 40) and len(b[4].strip()) > 30]
+    narrow_blocks = [b for b in blocks_text if (b[2] - b[0]) < (orig_w * 0.52)]
+
+    return (
+        zonas_excluidas,
+        words_raw,
+        words_reading,
+        blocks_text,
+        narrow_blocks,
+        bloques_lectura,
+        tabla_completa_dominante,
+    )
+
+
+def _resolver_cortes_verticales_pagina(
+    cajas_pdf,
+    words_raw,
+    words_reading,
+    blocks_text,
+    narrow_blocks,
+    tabla_completa_dominante,
+    orig_w,
+    orig_h,
+):
+    """Determina los cortes verticales de columna vía YOLO raycasting (Modo 1) o palabras (Modo 2)."""
+    cortes_v = []
+    overlapping_left, overlapping_right = _detectar_pares_columnas_solapadas(cajas_pdf, words_raw, orig_w)
+
+    es_multicolumna_yolo = (
+        len(overlapping_left) >= 1
+        and len(overlapping_right) >= 1
+        and not tabla_completa_dominante
+        and (len(narrow_blocks) >= 1 or len(words_reading) > 80)
+    )
+    if es_multicolumna_yolo:
+        cortes_v = _detectar_cortes_yolo_raycasting(
+            overlapping_left, overlapping_right, words_reading, words_raw, blocks_text, orig_w, orig_h
+        )
+
+    wide_dominante = len([b for b in blocks_text if (b[2] - b[0]) > (orig_w * 0.60)]) >= 2
+    if not cortes_v and not tabla_completa_dominante and not wide_dominante and len(words_reading) >= 60 and len(narrow_blocks) >= 2:
+        cortes_v = _detectar_cortes_por_palabras(words_reading, orig_w, orig_h)
+    return cortes_v
+
 
 def analizar_layout_pagina(pdf_doc, num_pagina, conf_umbral=0.28):
     """
@@ -126,277 +267,31 @@ def analizar_layout_pagina(pdf_doc, num_pagina, conf_umbral=0.28):
             "y2": round(float(by1) * scale_y, 1)
         })
         
-    # 1. Zonas Excluidas (Figuras, abandon / decoraciones)
-    # NOTA CRÍTICA: Las tablas ('table') NUNCA deben excluirse, ya que contienen texto importante
-    # y recomendaciones que el usuario desea que el lector de voz lea.
-    zonas_excluidas = []
-    cajas_tablas = [c for c in cajas_pdf if c["label"] == "table"]
-    
-    for c in cajas_pdf:
-        if c["label"] in ["figure", "abandon"]:
-            w_box = c["x2"] - c["x1"]
-            h_box = c["y2"] - c["y1"]
-            # Filtrar artefactos minúsculos (números de capítulo, viñetas, caracteres aislados)
-            if w_box < 15 and h_box < 15:
-                continue
-            # Salvaguarda: Evitar que una caja anómala cubra más del 50% de la página entera
-            if (w_box * h_box) > (orig_w * orig_h * 0.50):
-                continue
-            zonas_excluidas.append([
-                int(max(0, c["x1"] - 2)),
-                int(max(0, c["y1"] - 2)),
-                int(min(orig_w, c["x2"] + 2)),
-                int(min(orig_h, c["y2"] + 2))
-            ])
-            
-    # Extraer palabras reales de la página y filtrar aquellas que caigan dentro de zonas excluidas
-    words_raw = page.get_text("words")
-    def dentro_zona_excluida(w):
-        return any(not (w[2] < z[0] or w[0] > z[2] or w[3] < z[1] or w[1] > z[3]) for z in zonas_excluidas)
-    words_validas = [w for w in words_raw if not dentro_zona_excluida(w)]
-
-    # Palabras del cuerpo de lectura (descartando encabezados y pies de página extremos)
-    words_reading = [w for w in words_raw if not (w[1] < 40 or w[3] > orig_h - 40)]
-
-    # Bloques de texto reales con contenido
-    blocks_text = [b for b in page.get_text("blocks") if 40 < b[1] < (orig_h - 40) and len(b[4].strip()) > 30]
-    narrow_blocks = [b for b in blocks_text if (b[2] - b[0]) < (orig_w * 0.52)]
-
-    # 2. Análisis de Columnas y Franjas
-    # En documentos maquetados, tanto 'plain text' como 'title', 'table' y 'figure_caption' forman bloques de lectura
-    bloques_lectura = [
-        c for c in cajas_pdf 
-        if c["label"] in ["plain text", "title", "table", "figure_caption"]
-        and (c["y2"] - c["y1"]) > 10
-    ]
-    
-    cortes_v = []
-    limites_h = {}
-    
-    # Comprobar si hay tablas anchas (que ocupen más del 65% del ancho de página)
-    tablas_anchas = [t for t in cajas_tablas if (t["x2"] - t["x1"]) > (orig_w * 0.65)]
-    alto_tablas_anchas = sum((t["y2"] - t["y1"]) for t in tablas_anchas)
-    tabla_completa_dominante = (alto_tablas_anchas > (orig_h * 0.70))
-
-    # Candidatos a columnas según DocLayout (< 62% del ancho de página)
-    # Incluimos también 'figure' como posible componente visual de una columna (ej. atlas de anatomía)
-    # y descartamos bloques fantasma de texto que no contengan palabras reales
-    def tiene_contenido_real(c):
-        if c["label"] == "figure":
-            return True
-        # Verificar que el bloque tenga al menos una palabra real dentro
-        return any(max(c["x1"], w[0]) < min(c["x2"], w[2]) and max(c["y1"], w[1]) < min(c["y2"], w[3]) for w in words_raw)
-
-    bloques_col = [
-        c for c in cajas_pdf 
-        if c["label"] in ["plain text", "title", "table", "table_caption", "table_footnote", "figure"]
-        and (c["x2"] - c["x1"]) < (orig_w * 0.62)
-        and (c["y2"] - c["y1"]) > 15
-        and tiene_contenido_real(c)
-    ]
-    left_cols = [c for c in bloques_col if (c["x1"] + c["x2"]) / 2.0 < (orig_w * 0.50)]
-    right_cols = [c for c in bloques_col if (c["x1"] + c["x2"]) / 2.0 >= (orig_w * 0.50)]
-
-    # Determinar si existen pares de bloques a izquierda y derecha con solapamiento vertical real
-    # (Evita que una cita arriba a la derecha y un título abajo a la izquierda parezcan dos columnas)
-    overlapping_left = []
-    overlapping_right = []
-    for l in left_cols:
-        for r in right_cols:
-            if min(l["y2"], r["y2"]) - max(l["y1"], r["y1"]) > 15:
-                if l not in overlapping_left:
-                    overlapping_left.append(l)
-                if r not in overlapping_right:
-                    overlapping_right.append(r)
-
-    # MODO 1: Detección primaria mediante cajas YOLO (con columnas izquierda y derecha que coexisten)
-    # Requiere que la página no sea portada/portadilla de una sola columna (debe tener bloques angostos si hay texto denso)
-    es_multicolumna_yolo = (
-        len(overlapping_left) >= 1 and 
-        len(overlapping_right) >= 1 and 
-        not tabla_completa_dominante and
-        (len(narrow_blocks) >= 1 or len(words_reading) > 80)
+    # 1. Zonas Excluidas y contexto de palabras/bloques de la página
+    (
+        zonas_excluidas,
+        words_raw,
+        words_reading,
+        blocks_text,
+        narrow_blocks,
+        bloques_lectura,
+        tabla_completa_dominante,
+    ) = _extraer_zonas_y_contexto_pagina(page, cajas_pdf, orig_w, orig_h)
+    cortes_v = _resolver_cortes_verticales_pagina(
+        cajas_pdf,
+        words_raw,
+        words_reading,
+        blocks_text,
+        narrow_blocks,
+        tabla_completa_dominante,
+        orig_w,
+        orig_h,
     )
 
-    if es_multicolumna_yolo:
-        # La franja vertical se restringe a donde efectivamente coexisten las columnas
-        y_col_min = min(min(c["y1"] for c in overlapping_left), min(c["y1"] for c in overlapping_right))
-        y_col_max = max(max(c["y2"] for c in overlapping_left), max(c["y2"] for c in overlapping_right))
-        
-        # Histograma de palabras dentro de la franja vertical de las columnas
-        words_in_col = [w for w in words_reading if (y_col_min - 15) <= w[1] and w[3] <= (y_col_max + 15)]
-        hist_x = np.zeros(int(orig_w) + 1, dtype=np.int32)
-        for w in words_in_col:
-            x0, x1 = max(0, int(w[0])), min(int(orig_w), int(w[2]))
-            hist_x[x0:x1] += 1
-            
-        zona_busqueda_min = int(orig_w * 0.30)
-        zona_busqueda_max = int(orig_w * 0.70)
-        
-        # Buscar brechas intercolumnares (gaps) agrupadas por canal
-        gaps = [x for x in range(zona_busqueda_min, zona_busqueda_max) if hist_x[x] == 0]
-        cut_candidates = []
-        if gaps:
-            g_start = gaps[0]
-            g_prev = gaps[0]
-            for gx in gaps[1:]:
-                if gx - g_prev > 15:
-                    cut_candidates.append((g_start + g_prev) // 2)
-                    g_start = gx
-                g_prev = gx
-            cut_candidates.append((g_start + g_prev) // 2)
-        else:
-            sub_hist = hist_x[zona_busqueda_min:zona_busqueda_max]
-            if len(sub_hist) > 0:
-                cut_candidates.append(zona_busqueda_min + int(np.argmin(sub_hist)))
-
-        for cut_x in cut_candidates:
-            # Salvaguarda: Verificar que no cruce párrafos anchos del cuerpo
-            vis_left = [c for c in overlapping_left if c["x2"] < (cut_x + 10)]
-            vis_right = [c for c in overlapping_right if c["x1"] > (cut_x - 10)]
-            candidato_valido = (len(vis_left) >= 1 and len(vis_right) >= 1)
-            if candidato_valido:
-                for b in blocks_text:
-                    inter_y = max(b[1], y_col_min) < min(b[3], y_col_max)
-                    w_b = b[2] - b[0]
-                    if inter_y and w_b > (orig_w * 0.55) and (b[0] < cut_x - 15) and (b[2] > cut_x + 15):
-                        candidato_valido = False
-                        break
-                    
-            if candidato_valido:
-                # Algoritmo Láser / Raycasting:
-                # Proyectamos el corte vertical hacia arriba y hacia abajo desde la zona de columnas
-                # hasta topar con una palabra que cruce el corte (o el margen de página).
-                w_left_col = [w for w in words_reading if w[2] < cut_x - 10 and max(w[1], y_col_min) < min(w[3], y_col_max)]
-                w_right_col = [w for w in words_reading if w[0] > cut_x + 10 and max(w[1], y_col_min) < min(w[3], y_col_max)]
-                top_seed_y = min((min(w[1] for w in w_left_col), min(w[1] for w in w_right_col))) if (w_left_col and w_right_col) else y_col_min
-                bot_seed_y = max((max(w[3] for w in w_left_col), max(w[3] for w in w_right_col))) if (w_left_col and w_right_col) else y_col_max
-
-                # Disparo láser hacia arriba
-                obs_up = [w for w in words_raw if w[3] <= top_seed_y and w[0] < cut_x + 8 and w[2] > cut_x - 8 and w[3] > 35]
-                if obs_up:
-                    laser_y_min = max(w[3] for w in obs_up) + 4.0
-                else:
-                    laser_y_min = 40.0
-
-                # Disparo láser hacia abajo
-                obs_down = [w for w in words_raw if w[1] >= bot_seed_y and w[0] < cut_x + 8 and w[2] > cut_x - 8 and w[1] < orig_h - 35]
-                if obs_down:
-                    laser_y_max = min(w[1] for w in obs_down) - 4.0
-                else:
-                    laser_y_max = orig_h - 40.0
-
-                laser_y_min = max(0.0, float(laser_y_min))
-                laser_y_max = min(float(orig_h), float(laser_y_max))
-
-                es_hibrida = (laser_y_min > 85.0) or (laser_y_max < (orig_h - 85.0))
-                if es_hibrida:
-                    cortes_v.append({
-                        "x": int(cut_x),
-                        "yMin": round(laser_y_min, 1),
-                        "yMax": round(laser_y_max, 1)
-                    })
-                else:
-                    cortes_v.append(int(cut_x))
-
-    # MODO 2: Detección secundaria por distribución real de palabras (salvaguarda ante falsos negativos de YOLO
-    # cuando hay listas, viñetas continuas o tablas que YOLO unificó como un único bloque grande)
-    # Requiere que la página no esté dominada por párrafos de ancho completo
-    wide_dominante = len([b for b in blocks_text if (b[2] - b[0]) > (orig_w * 0.60)]) >= 2
-    if not cortes_v and not tabla_completa_dominante and not wide_dominante and len(words_reading) >= 60 and len(narrow_blocks) >= 2:
-        hist_w = np.zeros(int(orig_w) + 1, dtype=np.int32)
-        for w in words_reading:
-            x0, x1 = max(0, int(w[0])), min(int(orig_w), int(w[2]))
-            hist_w[x0:x1] += 1
-            
-        z_min, z_max = int(orig_w * 0.25), int(orig_w * 0.75)
-        cand_cuts = []
-        en_gap = False
-        g_start = 0
-        for x in range(z_min, z_max):
-            if hist_w[x] == 0:
-                if not en_gap:
-                    en_gap = True
-                    g_start = x
-            else:
-                if en_gap:
-                    en_gap = False
-                    if (x - g_start) >= 5:
-                        cand_cuts.append((g_start + x) // 2)
-        if en_gap and (z_max - g_start) >= 5:
-            cand_cuts.append((g_start + z_max) // 2)
-            
-        if not cand_cuts:
-            sub_w = hist_w[z_min:z_max]
-            if len(sub_w) > 0 and np.min(sub_w) <= 4:
-                val_min = np.min(sub_w)
-                xs = [z_min + i for i, v in enumerate(sub_w) if v == val_min]
-                cand_cuts.append(xs[len(xs) // 2])
-                
-        for cand_x in cand_cuts:
-            col_bands = 0
-            band_y_starts = []
-            y_min = min(w[1] for w in words_reading)
-            y_max = max(w[3] for w in words_reading)
-            cur_y = y_min
-            while cur_y < y_max:
-                bw = [w for w in words_reading if max(cur_y, w[1]) < min(cur_y + 35, w[3])]
-                has_l = any(w[2] < (cand_x - 5) for w in bw)
-                has_r = any(w[0] > (cand_x + 5) for w in bw)
-                has_cross = any(w[0] < cand_x and w[2] > cand_x for w in bw)
-                if has_l and has_r and not has_cross:
-                    col_bands += 1
-                    band_y_starts.append(cur_y)
-                cur_y += 20
-                
-            if col_bands >= 4:
-                # Evitar cortes duplicados en el mismo canal (distancia mínima 40px)
-                ya_existe = any(
-                    abs((c["x"] if isinstance(c, dict) else c) - int(cand_x)) < 40
-                    for c in cortes_v
-                )
-                if ya_existe:
-                    continue
-                y_col_min = min(band_y_starts)
-                y_col_max = max(band_y_starts) + 35
-                es_hibrida = (y_col_min > 90) or (y_col_max < (orig_h - 100))
-                if es_hibrida:
-                    cortes_v.append({
-                        "x": int(cand_x),
-                        "yMin": round(max(0, y_col_min - 10), 1),
-                        "yMax": round(min(orig_h, y_col_max + 10), 1)
-                    })
-                else:
-                    cortes_v.append(int(cand_x))
-
-        if len(cortes_v) > 1:
-            cortes_v.sort(key=lambda c: c["x"] if isinstance(c, dict) else c)
-
     # 3. Límites Horizontales
-    w_valid = [w for w in words_raw if not dentro_zona_excluida(w) and not (w[1] < 40 and w[3] < 40)]
-    if cortes_v:
-        if w_valid:
-            y_p_min = max(0, min(w[1] for w in w_valid) - 14)
-            y_p_max = min(orig_h, max(w[3] for w in w_valid) + 14)
-        elif bloques_lectura:
-            y_p_min = max(0, min(b["y1"] for b in bloques_lectura) - 14)
-            y_p_max = min(orig_h, max(b["y2"] for b in bloques_lectura) + 14)
-        else:
-            y_p_min, y_p_max = 0, orig_h
-
-        limites_h["0"] = [round(y_p_min, 1), round(y_p_max, 1)]
-        limites_h["1"] = [round(y_p_min, 1), round(y_p_max, 1)]
-    else:
-        # Página continua de una sola columna (portadas, resúmenes o tablas completas)
-        if w_valid:
-            y_min = max(0, min(w[1] for w in w_valid) - 14)
-            y_max = min(orig_h, max(w[3] for w in w_valid) + 14)
-        elif bloques_lectura:
-            y_min = max(0, min(b["y1"] for b in bloques_lectura) - 14)
-            y_max = min(orig_h, max(b["y2"] for b in bloques_lectura) + 14)
-        else:
-            y_min, y_max = 0, orig_h
-        limites_h["0"] = [round(y_min, 1), round(y_max, 1)]
+    limites_h = _calcular_limites_horizontales(
+        words_raw, bloques_lectura, zonas_excluidas, cortes_v, orig_h
+    )
         
     # Clasificación de bloques estructurales (titulo / subtitulo / parrafo)
     estructura = _clasificar_bloques_estructura(page, cajas_pdf)
@@ -413,8 +308,8 @@ def analizar_layout_pagina(pdf_doc, num_pagina, conf_umbral=0.28):
     }
 
 
-def _clasificar_bloques_estructura(page, cajas_pdf):
-    """Clasifica cajas de DocLayout-YOLO en titulo, subtitulo o parrafo usando tamaños de fuente de PyMuPDF."""
+def _extraer_spans_y_tamano_base(page):
+    """Extrae lista de spans (x1, y1, x2, y2, size) y la mediana del tamaño de fuente del cuerpo."""
     spans_info = []
     tamanios_cuerpo = []
     try:
@@ -434,8 +329,13 @@ def _clasificar_bloques_estructura(page, cajas_pdf):
                         tamanios_cuerpo.append(sz)
     except Exception:
         pass
-
     base_size = float(np.median(tamanios_cuerpo)) if tamanios_cuerpo else 11.0
+    return spans_info, base_size
+
+
+def _clasificar_bloques_estructura(page, cajas_pdf):
+    """Clasifica cajas de DocLayout-YOLO en titulo, subtitulo o parrafo usando tamaños de fuente de PyMuPDF."""
+    spans_info, base_size = _extraer_spans_y_tamano_base(page)
     estructura = []
     for c in cajas_pdf:
         lbl = c.get("label")

@@ -44,40 +44,49 @@ def _obtener_hash_archivo(ruta_archivo: str) -> str:
         return hashlib.md5(ruta_archivo.encode("utf-8")).hexdigest()[:16]
 
 
-def _extraer_parrafos_docx_nativo(ruta_docx: str) -> List[Dict[str, Any]]:
-    """
-    Extrae párrafos estructurados de un .docx utilizando python-docx o fallback a zipfile XML.
-    Devuelve lista de objetos: [{'texto': '...', 'tipo': 'titulo'|'parrafo'|'item'}]
-    """
-    elementos = []
+def _clasificar_parrafo_docx(parrafo) -> Optional[Dict[str, Any]]:
+    """Convierte un párrafo de python-docx en un elemento tipado o None si está vacío."""
+    texto = parrafo.text.strip()
+    if not texto:
+        return None
+    style_name = parrafo.style.name.lower() if parrafo.style else ""
+    if "heading" in style_name or "título" in style_name or "titulo" in style_name:
+        return {"texto": texto, "tipo": "titulo"}
+    if "list" in style_name or "bullet" in style_name:
+        return {"texto": f"• {texto}", "tipo": "item"}
+    return {"texto": texto, "tipo": "parrafo"}
 
-    # 1. Intentar con python-docx si está instalado
+
+def _extraer_parrafos_con_python_docx(ruta_docx: str) -> List[Dict[str, Any]]:
+    """Extrae párrafos y tablas de un .docx usando python-docx si está disponible."""
+    elementos: List[Dict[str, Any]] = []
     try:
         import docx
         doc = docx.Document(ruta_docx)
         for p in doc.paragraphs:
-            texto = p.text.strip()
-            if not texto:
-                continue
-            style_name = p.style.name.lower() if p.style else ""
-            if "heading" in style_name or "título" in style_name or "titulo" in style_name:
-                elementos.append({"texto": texto, "tipo": "titulo"})
-            elif "list" in style_name or "bullet" in style_name:
-                elementos.append({"texto": f"• {texto}", "tipo": "item"})
-            else:
-                elementos.append({"texto": texto, "tipo": "parrafo"})
+            elem = _clasificar_parrafo_docx(p)
+            if elem:
+                elementos.append(elem)
 
-        # Procesar tablas si existen
         for table in doc.tables:
             for row in table.rows:
                 celdas = [cell.text.strip() for cell in row.cells if cell.text.strip()]
                 if celdas:
                     elementos.append({"texto": " | ".join(celdas), "tipo": "parrafo"})
-
-        if elementos:
-            return elementos
     except Exception as e:
         logger.debug(f"[WordEngine] python-docx no disponible o fallo menor ({e}), usando parser XML nativo.")
+    return elementos
+
+
+def _extraer_parrafos_docx_nativo(ruta_docx: str) -> List[Dict[str, Any]]:
+    """
+    Extrae párrafos estructurados de un .docx utilizando python-docx o fallback a zipfile XML.
+    Devuelve lista de objetos: [{'texto': '...', 'tipo': 'titulo'|'parrafo'|'item'}]
+    """
+    # 1. Intentar con python-docx si está instalado
+    elementos = _extraer_parrafos_con_python_docx(ruta_docx)
+    if elementos:
+        return elementos
 
     # 2. Fallback portable 100% puro estándar Python: descomprimir word/document.xml
     try:
@@ -198,6 +207,30 @@ def _generar_pdf_desde_parrafos(elementos: List[Dict[str, Any]], ruta_pdf_salida
     return ruta_pdf_salida
 
 
+def _intentar_convertir_word_a_pdf(ruta_archivo_word: str, ruta_pdf_salida: str, ext: str, nombre_base: str) -> bool:
+    """Ejecuta las estrategias de conversión Word -> PDF (MS Word COM y generador portable PyMuPDF)."""
+    # ESTRATEGIA 1: Conversión nativa mediante Microsoft Word (docx2pdf / COM) si está en Windows
+    if sys.platform == "win32":
+        try:
+            import docx2pdf
+            docx2pdf.convert(ruta_archivo_word, ruta_pdf_salida)
+            if os.path.exists(ruta_pdf_salida) and os.path.getsize(ruta_pdf_salida) > 0:
+                logger.info(f"✅ [WordEngine] Conversión nativa exitosa vía MS Word: {ruta_pdf_salida}")
+                return True
+        except Exception as e:
+            logger.debug(f"[WordEngine] Conversión con MS Word COM no disponible ({e}). Pasando a generador portable.")
+
+    # ESTRATEGIA 2: Generador Portable de Alto Rendimiento
+    if ext == ".docx":
+        elementos = _extraer_parrafos_docx_nativo(ruta_archivo_word)
+        _generar_pdf_desde_parrafos(elementos, ruta_pdf_salida, titulo_doc=nombre_base)
+        if os.path.exists(ruta_pdf_salida) and os.path.getsize(ruta_pdf_salida) > 0:
+            logger.info(f"✅ [WordEngine] Generación portable exitosa con PyMuPDF: {ruta_pdf_salida}")
+            return True
+
+    return False
+
+
 def convertir_word_a_pdf(ruta_archivo_word: str) -> str:
     """
     Punto de entrada principal. Convierte un documento .docx o .doc a un archivo .pdf.
@@ -223,24 +256,8 @@ def convertir_word_a_pdf(ruta_archivo_word: str) -> str:
 
     logger.info(f"🔄 [WordEngine] Convirtiendo '{os.path.basename(ruta_archivo_word)}' a PDF...")
 
-    # ESTRATEGIA 1: Conversión nativa mediante Microsoft Word (docx2pdf / COM) si está en Windows
-    if sys.platform == "win32":
-        try:
-            import docx2pdf
-            docx2pdf.convert(ruta_archivo_word, ruta_pdf_salida)
-            if os.path.exists(ruta_pdf_salida) and os.path.getsize(ruta_pdf_salida) > 0:
-                logger.info(f"✅ [WordEngine] Conversión nativa exitosa vía MS Word: {ruta_pdf_salida}")
-                return ruta_pdf_salida
-        except Exception as e:
-            logger.debug(f"[WordEngine] Conversión con MS Word COM no disponible ({e}). Pasando a generador portable.")
-
-    # ESTRATEGIA 2: Generador Portable de Alto Rendimiento
-    if ext == ".docx":
-        elementos = _extraer_parrafos_docx_nativo(ruta_archivo_word)
-        _generar_pdf_desde_parrafos(elementos, ruta_pdf_salida, titulo_doc=nombre_base)
-        if os.path.exists(ruta_pdf_salida) and os.path.getsize(ruta_pdf_salida) > 0:
-            logger.info(f"✅ [WordEngine] Generación portable exitosa con PyMuPDF: {ruta_pdf_salida}")
-            return ruta_pdf_salida
+    if _intentar_convertir_word_a_pdf(ruta_archivo_word, ruta_pdf_salida, ext, nombre_base):
+        return ruta_pdf_salida
 
     raise RuntimeError(f"No fue posible convertir el documento Word '{ruta_archivo_word}' a PDF.")
 

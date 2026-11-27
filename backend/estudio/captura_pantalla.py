@@ -136,6 +136,25 @@ class MultiMonitorSnipper:
             pass
 
 
+def _capturar_escritorio_virtual():
+    """Enumera monitores y captura el lienzo completo del escritorio virtual."""
+    monitores = _enumerar_monitores()
+    if not monitores:
+        img_single = ImageGrab.grab()
+        monitores = [(0, 0, img_single.width, img_single.height)]
+
+    vx = min(m[0] for m in monitores)
+    vy = min(m[1] for m in monitores)
+    vr = max(m[2] for m in monitores)
+    vb = max(m[3] for m in monitores)
+
+    try:
+        full_img = ImageGrab.grab(bbox=(vx, vy, vr, vb), all_screens=True)
+    except Exception:
+        full_img = ImageGrab.grab(all_screens=True)
+    return full_img, vx, vy, monitores
+
+
 def iniciar_captura_pantalla():
     """
     Oculta pywebview, captura todos los monitores, despliega un overlay nativo por
@@ -151,20 +170,7 @@ def iniciar_captura_pantalla():
         except Exception:
             pass
 
-    monitores = _enumerar_monitores()
-    if not monitores:
-        img_single = ImageGrab.grab()
-        monitores = [(0, 0, img_single.width, img_single.height)]
-
-    vx = min(m[0] for m in monitores)
-    vy = min(m[1] for m in monitores)
-    vr = max(m[2] for m in monitores)
-    vb = max(m[3] for m in monitores)
-
-    try:
-        full_img = ImageGrab.grab(bbox=(vx, vy, vr, vb), all_screens=True)
-    except Exception:
-        full_img = ImageGrab.grab(all_screens=True)
+    full_img, vx, vy, monitores = _capturar_escritorio_virtual()
 
     resultado = {"bbox": None}
 

@@ -281,6 +281,72 @@ def _fallback_html_a_pdf(url, parsed, ruta_pdf, html_provisto="", titulo_sugerid
         return {"ok": False, "error": f"No se pudo procesar la página web: {str(e)[:120]}"}
 
 
+def _interpretar_salida_playwright(stdout, stderr, parsed, ruta_pdf):
+    """Interpreta stdout/stderr del worker Playwright y retorna (resultado_ok_o_None, error_msg)."""
+    salida = stdout.strip()
+    if salida:
+        try:
+            lineas_json = [ln.strip() for ln in salida.splitlines() if ln.strip().startswith("{")]
+            datos = json.loads(lineas_json[-1] if lineas_json else salida)
+        except Exception:
+            datos = {}
+        if datos.get("ok") and os.path.exists(ruta_pdf) and os.path.getsize(ruta_pdf) > 0:
+            _log(f"[PROC] Playwright OK -> titulo={datos.get('titulo','?')[:60]}")
+            return {
+                "ok": True,
+                "ruta": os.path.abspath(ruta_pdf),
+                "titulo": datos.get("titulo", parsed.netloc),
+                "tipo": "web",
+            }, None
+        error_playwright = datos.get("error", "Error desconocido en Playwright")
+        _log(f"[PROC] Playwright error en worker: {error_playwright} -> intentando fallback HTML")
+        return None, error_playwright
+
+    stderr_txt = (stderr or "")[:300] or "(sin stdout ni stderr)"
+    _log(f"[PROC] Playwright sin stdout. stderr={stderr_txt!r} -> intentando fallback HTML")
+    return None, f"El navegador externo falló: {stderr_txt}"
+
+
+def _ejecutar_playwright_subprocess(python_exe, worker_path, url, parsed, ruta_pdf):
+    """Ejecuta el worker Playwright en subproceso aislado; retorna (resultado_ok_o_None, error_msg)."""
+    error_playwright = None
+    proc = None
+    try:
+        _log("[PROC] Lanzando subprocess Playwright...")
+        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
+        proc = subprocess.Popen(
+            [python_exe, worker_path, url, ruta_pdf],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            encoding="utf-8",
+            errors="replace",
+            creationflags=creationflags,
+        )
+        _log(f"[PROC] subprocess PID={proc.pid} lanzado, esperando (timeout=75s)...")
+        try:
+            stdout, stderr = proc.communicate(timeout=75)
+            _log(f"[PROC] subprocess terminó con returncode={proc.returncode}")
+            _log(f"[PROC] stdout={stdout[:200].strip()!r}")
+            if stderr:
+                _log(f"[PROC] stderr={stderr[:200].strip()!r}")
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.communicate()  # limpiar buffers
+            _log("[PROC] subprocess TIMEOUT (75s) -> kill() -> fallback")
+            return None, "El renderizado superó el límite de tiempo (75s)."
+
+        return _interpretar_salida_playwright(stdout, stderr, parsed, ruta_pdf)
+    except Exception as e:
+        if proc:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+        _log(f"[PROC] EXCEPCION en subprocess: {e} -> intentando fallback HTML")
+        error_playwright = str(e)[:120]
+    return None, error_playwright
+
+
 def _procesar_url(url, parsed, ruta_pdf, html_fallback="", titulo_sugerido=""):
     """
     Estilo Ctrl+P: Playwright en subprocess aislado.
@@ -303,58 +369,11 @@ def _procesar_url(url, parsed, ruta_pdf, html_fallback="", titulo_sugerido=""):
 
     # -- INTENTO 1: Playwright via subprocess --------------------------------
     if os.path.exists(worker_path) and os.path.exists(python_exe):
-        proc = None
-        try:
-            _log("[PROC] Lanzando subprocess Playwright...")
-            creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
-            proc = subprocess.Popen(
-                [python_exe, worker_path, url, ruta_pdf],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                encoding="utf-8",
-                errors="replace",
-                creationflags=creationflags,
-            )
-            _log(f"[PROC] subprocess PID={proc.pid} lanzado, esperando (timeout=75s)...")
-            try:
-                stdout, stderr = proc.communicate(timeout=75)
-                _log(f"[PROC] subprocess terminó con returncode={proc.returncode}")
-                _log(f"[PROC] stdout={stdout[:200].strip()!r}")
-                if stderr:
-                    _log(f"[PROC] stderr={stderr[:200].strip()!r}")
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.communicate()  # limpiar buffers
-                _log("[PROC] subprocess TIMEOUT (75s) -> kill() -> fallback")
-                proc = None
-                error_playwright = "El renderizado superó el límite de tiempo (75s)."
-
-            if proc is not None:
-                salida = stdout.strip()
-                if salida:
-                    try:
-                        lineas_json = [ln.strip() for ln in salida.splitlines() if ln.strip().startswith("{")]
-                        datos = json.loads(lineas_json[-1] if lineas_json else salida)
-                    except Exception:
-                        datos = {}
-                    if datos.get("ok") and os.path.exists(ruta_pdf) and os.path.getsize(ruta_pdf) > 0:
-                        _log(f"[PROC] Playwright OK -> titulo={datos.get('titulo','?')[:60]}")
-                        return {"ok": True, "ruta": os.path.abspath(ruta_pdf), "titulo": datos.get("titulo", parsed.netloc), "tipo": "web"}
-                    else:
-                        error_playwright = datos.get("error", "Error desconocido en Playwright")
-                        _log(f"[PROC] Playwright error en worker: {error_playwright} -> intentando fallback HTML")
-                else:
-                    stderr_txt = (stderr or "")[:300] or "(sin stdout ni stderr)"
-                    _log(f"[PROC] Playwright sin stdout. stderr={stderr_txt!r} -> intentando fallback HTML")
-                    error_playwright = f"El navegador externo falló: {stderr_txt}"
-        except Exception as e:
-            if proc:
-                try:
-                    proc.kill()
-                except Exception:
-                    pass
-            _log(f"[PROC] EXCEPCION en subprocess: {e} -> intentando fallback HTML")
-            error_playwright = str(e)[:120]
+        res_pw, error_playwright = _ejecutar_playwright_subprocess(
+            python_exe, worker_path, url, parsed, ruta_pdf
+        )
+        if res_pw is not None:
+            return res_pw
 
     # -- INTENTO 2: Fallback con extractor HTML + PyMuPDF --------------------
     _log("[PROC] Ejecutando fallback HTML -> PDF con PyMuPDF...")

@@ -220,11 +220,13 @@ function aplicarRecorteDinamico(valor) {
 
     // Debounce para sincronizar oraciones y omitir el texto recortado de la lectura
     if (window.timerDebounceRecorte) clearTimeout(window.timerDebounceRecorte);
-    window.timerDebounceRecorte = setTimeout(() => {
-        if (typeof cargarPagina === 'function' && typeof paginaActual !== 'undefined' && !window.bloqueoCambioPagina) {
-            cargarPagina(paginaActual);
-        }
-    }, 400);
+    if (typeof rutaPDFActual === 'string' && rutaPDFActual) {
+        window.timerDebounceRecorte = setTimeout(() => {
+            if (typeof cargarPagina === 'function' && typeof paginaActual !== 'undefined' && !window.bloqueoCambioPagina && typeof rutaPDFActual === 'string' && rutaPDFActual) {
+                cargarPagina(paginaActual);
+            }
+        }, 400);
+    }
 }
 
 // Zoom Dinámico: ajusta el nivel de zoom del canvas y redibuja
@@ -240,6 +242,38 @@ function aplicarZoomDinamico(valor) {
     nivelZoomPDF = z / 100;
     dibujar();
 }
+window.aplicarZoomDinamico = aplicarZoomDinamico;
+
+// Márgenes Laterales Dinámicos: ajusta el padding horizontal del visor de PDF
+function aplicarMargenDinamico(valor) {
+    const num = Number(valor);
+    const m = Number.isFinite(num) ? Math.max(0, Math.min(150, Math.round(num))) : 20;
+    const spanVal = document.getElementById('val-margen-pdf');
+    if (spanVal) spanVal.innerText = m + 'px';
+    const rngMargen = document.getElementById('rng-margen-pdf');
+    if (rngMargen && Number(rngMargen.value) !== m) rngMargen.value = m;
+    const visor = document.getElementById('visor-container');
+    if (visor) {
+        visor.style.paddingLeft = m + 'px';
+        visor.style.paddingRight = m + 'px';
+    }
+}
+window.aplicarMargenDinamico = aplicarMargenDinamico;
+
+function toggleVisibilidadElemento(selector, isHidden) {
+    const el = document.querySelector(selector);
+    if (el) {
+        if (isHidden) {
+            if (!el.dataset.displayOriginal) {
+                el.dataset.displayOriginal = el.style.display || getComputedStyle(el).display;
+            }
+            el.style.setProperty('display', 'none', 'important');
+        } else {
+            el.style.display = el.dataset.displayOriginal || '';
+        }
+    }
+}
+window.toggleVisibilidadElemento = toggleVisibilidadElemento;
 
 function toggleBotonKofi(mostrar) {
     if (typeof mostrar === 'undefined') {
@@ -794,7 +828,11 @@ function toggleDarkMode(forzarActivo = null, guardar = true) {
 window.toggleDarkMode = toggleDarkMode;
 
 
-function abrirLegalExterno(nombre_archivo) {
+function abrirLegalExterno(nombre_archivo, forzarExterno = false) {
+    if (!forzarExterno && nombre_archivo === 'CREDITS.txt' && typeof abrirModalCreditos === 'function') {
+        abrirModalCreditos();
+        return;
+    }
     if (typeof eel !== 'undefined' && eel.abrir_documento_legal) {
         eel.abrir_documento_legal(nombre_archivo)();
     } else {

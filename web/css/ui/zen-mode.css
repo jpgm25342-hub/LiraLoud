@@ -58,6 +58,39 @@ body.ui-dark-mode.modo-minimalista #btn-solo-lectura {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
 }
 
+/* Opción: Unir botón Solo Lectura al menú principal (sin flotar ni sombra) */
+body.modo-minimalista.zen-unir-solo-lectura #btn-solo-lectura {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    z-index: auto !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    order: 3;
+}
+
+body.modo-minimalista.zen-unir-solo-lectura .fila-top #btn-pdf {
+    order: 1;
+}
+
+body.modo-minimalista.zen-unir-solo-lectura .fila-top .paginacion-container {
+    order: 2;
+}
+
+body.modo-minimalista.zen-unir-solo-lectura .fila-top #btn-config {
+    order: 4;
+}
+
+body.modo-minimalista.zen-unir-solo-lectura #btn-solo-lectura.activo,
+body.ui-dark-mode.modo-minimalista.zen-unir-solo-lectura #btn-solo-lectura,
+body.ui-dark-mode.modo-minimalista.zen-unir-solo-lectura #btn-solo-lectura.activo {
+    box-shadow: none !important;
+}
+
+body.modo-minimalista.zen-unir-solo-lectura.teatro-activo #btn-zen-teatro-aviso {
+    left: 25px;
+}
+
 /* Botón Ko-fi Flotante en Modo Minimalista (Extrema derecha, centrado con la barra) */
 body.modo-minimalista #btn-kofi-global {
     position: fixed !important;

@@ -18,6 +18,9 @@ function toggleModoPrivacidad(activo) {
         if (chkPretrad && chkPretrad.checked) {
             chkPretrad.checked = false;
         }
+        if (typeof actualizarVisibilidadPrecargaHojas === 'function') {
+            actualizarVisibilidadPrecargaHojas();
+        }
 
         // 3. Forzar proveedor de IA a Ollama (local) si estaba en cloud
         const selIaProv = document.getElementById('sel-ia-proveedor');

@@ -472,6 +472,15 @@ window.abrirTutorial = function (pasoInicial = 0, { auto = false, desdeSelectorI
 
     window.tutorialActivo = true;
     document.body.classList.add('tour-guia-activo');
+    // Pausar temporalmente Solo Lectura durante el tutorial para que la lectura y el resaltado karaoke funcionen
+    window._soloLecturaPrevioTutorial = !!window.modoSoloLecturaActivo;
+    if (window.modoSoloLecturaActivo) {
+        if (typeof toggleModoSoloLectura === 'function') {
+            toggleModoSoloLectura(false, true);
+        } else {
+            window.modoSoloLecturaActivo = false;
+        }
+    }
     window.tutorialPasoActual = Math.max(0, Math.min(pasoInicial, PASOS_TOUR_GUI.length - 1));
     overlay.style.display = 'block';
     if (card) card.style.display = 'block';
@@ -587,6 +596,15 @@ window.cerrarTutorial = async function (completado = true) {
             } catch (err) {
                 console.warn("⚠️ No se pudo guardar tutorial_estado.json:", err);
             }
+        }
+
+        if (window._soloLecturaPrevioTutorial) {
+            if (typeof toggleModoSoloLectura === 'function') {
+                toggleModoSoloLectura(true, true);
+            } else {
+                window.modoSoloLecturaActivo = true;
+            }
+            window._soloLecturaPrevioTutorial = false;
         }
 
         if (typeof guardarTodosAjustes === 'function') {

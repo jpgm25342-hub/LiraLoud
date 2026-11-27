@@ -325,6 +325,9 @@ function inicializarExclusividadZen() {
         detail.addEventListener('toggle', function () {
             if (this.open) {
                 const tipo = this.id.replace('zen-details-', '');
+                if (tipo === 'limites' && window.modoMoverElementosActivo && typeof window.toggleModoMoverElementos === 'function') {
+                    window.toggleModoMoverElementos(false);
+                }
                 cerrarOtrasFuncionesPrincipales(tipo);
             }
         });
@@ -432,5 +435,13 @@ function toggleEtiquetasZen(mostrar) {
         }
     }
 }
+
+function toggleUnirSoloLecturaZen(unir) {
+    document.body.classList.toggle('zen-unir-solo-lectura', !!unir);
+    if (typeof sincronizarIndicadorTeatroZen === 'function') {
+        sincronizarIndicadorTeatroZen();
+    }
+}
+window.toggleUnirSoloLecturaZen = toggleUnirSoloLecturaZen;
 
 

@@ -55,6 +55,8 @@ class EstadoApp:
         self.abortar_batch_ocr = False
         self.hilo_batch_ocr = None
         self.pre_cache_ocr_token = 0
+        self.ocr_alta_precision = False
+        self.ocr_idioma = "latin"
         self.exportacion_activa = False
         self.modo_privacidad_estricta = False
         self.voz_teatro_persistente = None

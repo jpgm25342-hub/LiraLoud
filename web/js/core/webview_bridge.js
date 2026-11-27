@@ -9,9 +9,67 @@
     let _puenteListo = false;
     const _colaEspera = [];
 
+    const _wrappedCallbackMaps = new WeakSet();
+
+    function _envolverMapaCallbacks(mapa) {
+        if (!mapa || typeof mapa !== 'object' || _wrappedCallbackMaps.has(mapa)) {
+            return mapa;
+        }
+        const proxyMapa = new Proxy(mapa, {
+            get(target, prop) {
+                if (typeof prop === 'symbol') return Reflect.get(target, prop);
+                const val = target[prop];
+                if (typeof val === 'function') return val;
+                if (val === undefined) {
+                    return function () {};
+                }
+                return val;
+            },
+            set(target, prop, value) {
+                target[prop] = value;
+                return true;
+            }
+        });
+        _wrappedCallbackMaps.add(proxyMapa);
+        return proxyMapa;
+    }
+
+    function _protegerReturnValuesCallbacks() {
+        if (!window.pywebview || typeof window.pywebview !== 'object') return;
+        const actual = window.pywebview._returnValuesCallbacks;
+        if (!actual || typeof actual !== 'object' || _wrappedCallbackMaps.has(actual)) return;
+
+        for (const k of Object.keys(actual)) {
+            if (actual[k] && typeof actual[k] === 'object') {
+                actual[k] = _envolverMapaCallbacks(actual[k]);
+            }
+        }
+
+        const proxyRoot = new Proxy(actual, {
+            get(target, fnName) {
+                if (typeof fnName === 'symbol') return Reflect.get(target, fnName);
+                const entry = target[fnName];
+                if (entry && typeof entry === 'object') {
+                    return _envolverMapaCallbacks(entry);
+                }
+                if (entry === undefined) {
+                    return _envolverMapaCallbacks({});
+                }
+                return entry;
+            },
+            set(target, fnName, val) {
+                target[fnName] = (val && typeof val === 'object') ? _envolverMapaCallbacks(val) : val;
+                return true;
+            }
+        });
+        _wrappedCallbackMaps.add(proxyRoot);
+        window.pywebview._returnValuesCallbacks = proxyRoot;
+    }
+
     // Detectar si pywebview ya inyectó su API o esperar al evento 'pywebviewready'
     function verificarDisponibilidadApi() {
-        if (window.pywebview && window.pywebview.api) {
+        _protegerReturnValuesCallbacks();
+        if (window.pywebview && window.pywebview.api && Object.keys(window.pywebview.api).length > 0) {
             _puenteListo = true;
             while (_colaEspera.length > 0) {
                 const resolver = _colaEspera.shift();
@@ -26,6 +84,10 @@
         window.addEventListener('pywebviewready', () => {
             console.log("🚀 [PYWEBVIEW BRIDGE] Canal nativo C++/WebView2 enlazado (<1ms).");
             verificarDisponibilidadApi();
+        });
+    } else {
+        window.addEventListener('pywebviewready', () => {
+            _protegerReturnValuesCallbacks();
         });
     }
 

@@ -41,6 +41,21 @@ from typing import List, Tuple, Dict, Any, Optional
 
 
 from backend.core.estado_global import estado_app
+from backend.documento.ocr_modelos import (
+    IDIOMA_OCR_DEFECTO,
+    normalizar_idioma_ocr,
+    obtener_rutas_modelo_ocr,
+)
+from backend.documento.ocr_layout import (
+    _ordenar_lineas_dos_columnas,
+    _detectar_gutter_dos_columnas,
+    _ordenar_lineas_una_columna,
+    ordenar_lineas_ocr_lectura,
+    _extraer_palabras_desde_char_boxes,
+    _peso_char_ocr,
+    _extraer_palabras_ponderadas_linea,
+    _convertir_lineas_ocr_a_palabras,
+)
 
 logger = logging.getLogger("LiraOCREngine")
 
@@ -54,41 +69,128 @@ COORD_VERSION = 2
 
 
 
-_rapid_ocr_instance = None
-
+_rapid_ocr_instances: Dict[Tuple[str, str], Any] = {}
 _ocr_lock = threading.Lock()
 
 
+def es_ocr_alta_precision() -> bool:
+    """Devuelve True si el modo OCR Alta Precisión está activo en el estado global."""
+    return bool(getattr(estado_app, "ocr_alta_precision", False))
 
 
+def establecer_ocr_alta_precision(activo: bool) -> bool:
+    """Actualiza el modo OCR Alta Precisión en el estado global."""
+    estado_app.ocr_alta_precision = bool(activo)
+    logger.info(
+        f"🎯 [OCREngine] Modo OCR actualizado: {'ALTA PRECISIÓN' if estado_app.ocr_alta_precision else 'RÁPIDO'}"
+    )
+    return estado_app.ocr_alta_precision
 
-def _get_ocr_engine():
 
-    """Inicialización bajo demanda (Lazy Loading) para no ralentizar el inicio de LiraLoud."""
+def obtener_idioma_ocr() -> str:
+    """Devuelve el código de idioma OCR activo en el estado global."""
+    return normalizar_idioma_ocr(getattr(estado_app, "ocr_idioma", IDIOMA_OCR_DEFECTO))
 
-    global _rapid_ocr_instance
 
-    if _rapid_ocr_instance is None:
+def establecer_idioma_ocr(idioma: str) -> str:
+    """Actualiza el idioma OCR activo en el estado global."""
+    idioma_norm = normalizar_idioma_ocr(idioma)
+    estado_app.ocr_idioma = idioma_norm
+    logger.info(f"🌐 [OCREngine] Idioma OCR actualizado: {idioma_norm}")
+    return idioma_norm
+
+
+def obtener_dpi_ocr(alta_precision: Optional[bool] = None) -> int:
+    """DPI recomendado para renderizar páginas antes de RapidOCR."""
+    usar_precision = es_ocr_alta_precision() if alta_precision is None else bool(alta_precision)
+    return 220 if usar_precision else 165
+
+
+def renderizar_pixmap_ocr(pagina, alta_precision: Optional[bool] = None):
+    """Helper reutilizable para renderizar una página PyMuPDF al DPI adecuado para OCR."""
+    return pagina.get_pixmap(dpi=obtener_dpi_ocr(alta_precision), alpha=False)
+
+
+def _construir_instancia_rapidocr(
+    usar_precision: bool,
+    rec_model_path: Optional[str],
+    rec_keys_path: Optional[str],
+):
+    """Instancia RapidOCR ONNX con los parámetros calibrados para el modo solicitado."""
+    from rapidocr_onnxruntime import RapidOCR
+
+    kwargs = {
+        "use_cls": False,
+        "det_limit_side_len": 2400 if usar_precision else 1920,
+        "det_db_thresh": 0.2,
+        "det_db_box_thresh": 0.25,
+        "det_db_unclip_ratio": 1.5,
+        "text_score": 0.3,
+        "rec_batch_num": 12,
+        "intra_op_num_threads": min(8, os.cpu_count() or 4),
+    }
+    if rec_model_path and rec_keys_path:
+        kwargs["rec_model_path"] = rec_model_path
+        kwargs["rec_keys_path"] = rec_keys_path
+
+    try:
+        return RapidOCR(**kwargs)
+    except TypeError:
+        return RapidOCR()
+
+
+def _get_ocr_engine(alta_precision: Optional[bool] = None, idioma: Optional[str] = None):
+    """Inicialización bajo demanda (Lazy Loading) de RapidOCR por (modo, idioma)."""
+    usar_precision = es_ocr_alta_precision() if alta_precision is None else bool(alta_precision)
+    clave_modo = "precision" if usar_precision else "rapido"
+    idioma_norm = obtener_idioma_ocr() if idioma is None else normalizar_idioma_ocr(idioma)
+    cache_key = (clave_modo, idioma_norm)
+
+    if _rapid_ocr_instances.get(cache_key) is None:
+        # Descargar modelo fuera del lock de inferencia si hace falta
+        rec_model_path, rec_keys_path = obtener_rutas_modelo_ocr(idioma_norm)
 
         with _ocr_lock:
-
-            if _rapid_ocr_instance is None:
-
+            if _rapid_ocr_instances.get(cache_key) is None:
                 try:
+                    _rapid_ocr_instances[cache_key] = _construir_instancia_rapidocr(
+                        usar_precision, rec_model_path, rec_keys_path
+                    )
 
-                    from rapidocr_onnxruntime import RapidOCR
+                    # Mantener acotada la RAM si el usuario cambia entre muchos idiomas
+                    if len(_rapid_ocr_instances) > 4:
+                        for k_vieja in list(_rapid_ocr_instances.keys()):
+                            if k_vieja != cache_key:
+                                _rapid_ocr_instances.pop(k_vieja, None)
+                                break
 
-                    _rapid_ocr_instance = RapidOCR()
-
-                    logger.info("✅ [OCREngine] RapidOCR ONNX cargado exitosamente.")
-
+                    logger.info(
+                        f"✅ [OCREngine] RapidOCR ONNX ({clave_modo}, {idioma_norm}) cargado exitosamente."
+                    )
                 except Exception as e:
+                    logger.error(f"❌ [OCREngine] No se pudo cargar RapidOCR ({clave_modo}, {idioma_norm}): {e}")
+                    _rapid_ocr_instances[cache_key] = None
 
-                    logger.error(f"❌ [OCREngine] No se pudo cargar RapidOCR: {e}")
+    return _rapid_ocr_instances.get(cache_key)
 
-                    _rapid_ocr_instance = None
 
-    return _rapid_ocr_instance
+def _preparar_imagen_ocr(img, alta_precision: bool):
+    """Reescala la imagen preservando su nitidez original sin sobre-procesarla."""
+    import cv2
+
+    orig_h, orig_w = img.shape[:2]
+    max_dim = 2600 if alta_precision else 2200
+
+    if max(orig_w, orig_h) > max_dim:
+        ratio = max_dim / float(max(orig_w, orig_h))
+        opt_w = max(32, int(orig_w * ratio))
+        opt_h = max(32, int(orig_h * ratio))
+        img_opt = cv2.resize(img, (opt_w, opt_h), interpolation=cv2.INTER_AREA)
+    else:
+        img_opt = img
+        opt_w, opt_h = orig_w, orig_h
+
+    return img_opt, opt_w, opt_h
 
 
 
@@ -105,8 +207,21 @@ def _generar_clave_cache(doc_path: str, num_pagina: int) -> str:
     return f"ocr_{doc_hash}_p{num_pagina}.json"
 
 
-def esta_en_cache_ocr(doc_path: str, num_pagina: int) -> bool:
-    """Comprueba si una página ya cuenta con reconocimiento OCR guardado con coord_version vigente."""
+def _cache_cumple_modo(
+    data: dict, alta_precision: Optional[bool] = None, idioma: Optional[str] = None
+) -> bool:
+    """Valida que la caché corresponda al idioma OCR vigente y al nivel de precisión."""
+    idioma_esperado = obtener_idioma_ocr() if idioma is None else normalizar_idioma_ocr(idioma)
+    if data.get("idioma_ocr") != idioma_esperado:
+        return False
+    usar_precision = es_ocr_alta_precision() if alta_precision is None else bool(alta_precision)
+    if not usar_precision:
+        return True
+    return data.get("modo_ocr") == "precision"
+
+
+def esta_en_cache_ocr(doc_path: str, num_pagina: int, alta_precision: Optional[bool] = None) -> bool:
+    """Comprueba si una página ya cuenta con reconocimiento OCR guardado con coord_version y modo vigente."""
     if not doc_path:
         return False
     cache_file = os.path.join(DIR_OCR_CACHE, _generar_clave_cache(doc_path, num_pagina))
@@ -115,13 +230,20 @@ def esta_en_cache_ocr(doc_path: str, num_pagina: int) -> bool:
     try:
         with open(cache_file, "r", encoding="utf-8") as f:
             data = json.load(f)
-        return isinstance(data, dict) and data.get("coord_version") == COORD_VERSION and isinstance(data.get("palabras"), list)
+        return (
+            isinstance(data, dict)
+            and data.get("coord_version") == COORD_VERSION
+            and isinstance(data.get("palabras"), list)
+            and _cache_cumple_modo(data, alta_precision)
+        )
     except Exception:
         return False
 
 
-def obtener_palabras_cache_ocr(doc_path: str, num_pagina: int) -> Optional[List[Tuple[float, float, float, float, str, int, int, int]]]:
-    """Obtiene las palabras guardadas en la caché OCR para una página si tienen coord_version vigente."""
+def obtener_palabras_cache_ocr(
+    doc_path: str, num_pagina: int, alta_precision: Optional[bool] = None
+) -> Optional[List[Tuple[float, float, float, float, str, int, int, int]]]:
+    """Obtiene las palabras guardadas en la caché OCR para una página si tienen coord_version y modo vigente."""
     if not doc_path:
         return None
     cache_file = os.path.join(DIR_OCR_CACHE, _generar_clave_cache(doc_path, num_pagina))
@@ -130,7 +252,11 @@ def obtener_palabras_cache_ocr(doc_path: str, num_pagina: int) -> Optional[List[
     try:
         with open(cache_file, "r", encoding="utf-8") as f:
             cached_data = json.load(f)
-        if not isinstance(cached_data, dict) or cached_data.get("coord_version") != COORD_VERSION:
+        if (
+            not isinstance(cached_data, dict)
+            or cached_data.get("coord_version") != COORD_VERSION
+            or not _cache_cumple_modo(cached_data, alta_precision)
+        ):
             return None
         return [tuple(item) for item in cached_data.get("palabras", [])]
     except Exception as e:
@@ -138,18 +264,76 @@ def obtener_palabras_cache_ocr(doc_path: str, num_pagina: int) -> Optional[List[
         return None
 
 
-def guardar_palabras_cache_ocr(doc_path: str, num_pagina: int, palabras: List[Tuple]) -> bool:
-    """Guarda una lista de palabras en la caché OCR de una página con coord_version."""
+def guardar_palabras_cache_ocr(
+    doc_path: str,
+    num_pagina: int,
+    palabras: List[Tuple],
+    modo_ocr: Optional[str] = None,
+    idioma_ocr: Optional[str] = None,
+) -> bool:
+    """Guarda una lista de palabras en la caché OCR de una página con coord_version, modo_ocr e idioma_ocr."""
     if not doc_path or not palabras:
         return False
     cache_file = os.path.join(DIR_OCR_CACHE, _generar_clave_cache(doc_path, num_pagina))
+    modo_final = modo_ocr or ("precision" if es_ocr_alta_precision() else "rapido")
+    idioma_final = obtener_idioma_ocr() if idioma_ocr is None else normalizar_idioma_ocr(idioma_ocr)
     try:
         with open(cache_file, "w", encoding="utf-8") as f:
-            json.dump({"coord_version": COORD_VERSION, "palabras": palabras}, f, ensure_ascii=False)
+            json.dump(
+                {
+                    "coord_version": COORD_VERSION,
+                    "modo_ocr": modo_final,
+                    "idioma_ocr": idioma_final,
+                    "palabras": palabras,
+                },
+                f,
+                ensure_ascii=False,
+            )
         return True
     except Exception as e:
         logger.warning(f"⚠️ [OCREngine] Error guardando caché OCR para página {num_pagina}: {e}")
         return False
+
+
+def _generar_palabras_ocr_linea(nuevo_texto: str, bbox_original: list, nuevo_bbox: list, target_idx: int) -> list:
+    """Distribuye las palabras de nuevo_texto dentro del bbox de la línea editada para caché OCR."""
+    texto_limpio = nuevo_texto.strip()
+    if not texto_limpio:
+        return []
+    partes = texto_limpio.split()
+    if not partes:
+        return []
+
+    if bbox_original and len(bbox_original) == 4:
+        bx0, by0, bx1, by1 = float(bbox_original[0]), float(bbox_original[1]), float(bbox_original[2]), float(bbox_original[3])
+    elif nuevo_bbox and len(nuevo_bbox) == 4:
+        bx0, by0, bx1, by1 = float(nuevo_bbox[0]), float(nuevo_bbox[1]), float(nuevo_bbox[2]), float(nuevo_bbox[3])
+    else:
+        bx0, by0, bx1, by1 = 50.0, 50.0, 200.0, 70.0
+
+    total_chars = sum(len(w) for w in partes)
+    ancho_total = max(10.0, bx1 - bx0)
+    curr_x = bx0
+    nuevas_palabras = []
+
+    for w_idx, w in enumerate(partes):
+        frac = len(w) / max(1, total_chars)
+        ancho_w = ancho_total * frac
+        w_x0 = curr_x
+        w_x1 = min(bx1, curr_x + ancho_w)
+        curr_x = w_x1 + (ancho_total * 0.05 / max(1, len(partes)))
+
+        nuevas_palabras.append((
+            round(w_x0, 2),
+            round(by0, 2),
+            round(w_x1, 2),
+            round(by1, 2),
+            w,
+            target_idx,
+            target_idx,
+            w_idx,
+        ))
+    return nuevas_palabras
 
 
 def actualizar_linea_cache_ocr(doc_path: str, num_pagina: int, id_linea: str, bbox_original: list, nuevo_texto: str, nuevo_bbox: list) -> bool:
@@ -181,41 +365,7 @@ def actualizar_linea_cache_ocr(doc_path: str, num_pagina: int, id_linea: str, bb
 
     # Si hay nuevo texto, generar palabras dentro de las coordenadas de bbox_original
     target_idx = line_idx if line_idx is not None else 0
-    nuevas_palabras = []
-    texto_limpio = nuevo_texto.strip()
-    if texto_limpio:
-        partes = texto_limpio.split()
-        if partes:
-            if bbox_original and len(bbox_original) == 4:
-                bx0, by0, bx1, by1 = float(bbox_original[0]), float(bbox_original[1]), float(bbox_original[2]), float(bbox_original[3])
-            elif nuevo_bbox and len(nuevo_bbox) == 4:
-                bx0, by0, bx1, by1 = float(nuevo_bbox[0]), float(nuevo_bbox[1]), float(nuevo_bbox[2]), float(nuevo_bbox[3])
-            else:
-                bx0, by0, bx1, by1 = 50.0, 50.0, 200.0, 70.0
-
-            total_chars = sum(len(w) for w in partes)
-            ancho_total = max(10.0, bx1 - bx0)
-            curr_x = bx0
-
-            for w_idx, w in enumerate(partes):
-                frac = len(w) / max(1, total_chars)
-                ancho_w = ancho_total * frac
-                w_x0 = curr_x
-                w_x1 = min(bx1, curr_x + ancho_w)
-                w_y0 = by0
-                w_y1 = by1
-                curr_x = w_x1 + (ancho_total * 0.05 / max(1, len(partes)))
-
-                nuevas_palabras.append((
-                    round(w_x0, 2),
-                    round(w_y0, 2),
-                    round(w_x1, 2),
-                    round(w_y1, 2),
-                    w,
-                    target_idx,
-                    target_idx,
-                    w_idx
-                ))
+    nuevas_palabras = _generar_palabras_ocr_linea(nuevo_texto, bbox_original, nuevo_bbox, target_idx)
 
     todas = palabras_restantes + nuevas_palabras
     # Ordenar por orden de lectura
@@ -224,89 +374,37 @@ def actualizar_linea_cache_ocr(doc_path: str, num_pagina: int, id_linea: str, bb
     return guardar_palabras_cache_ocr(doc_path, num_pagina, todas)
 
 
-def ordenar_lineas_ocr_lectura(ocr_items, scale_x: float, scale_y: float, ancho_pdf: float, alto_pdf: float):
-    """
-    Ordena las líneas de OCR en orden natural de lectura respetando estructuras
-    de 1 o 2 columnas (artículos científicos, libros, periódicos).
-    """
-    if not ocr_items:
-        return []
-
-    lineas = []
-    for item in ocr_items:
-        box = item[0]
-        texto_linea = str(item[1]).strip()
-        if not texto_linea:
-            continue
-        xs = [pt[0] * scale_x for pt in box]
-        ys = [pt[1] * scale_y for pt in box]
-        x0, y0, x1, y1 = min(xs), min(ys), max(xs), max(ys)
-        lineas.append({
-            "item": item,
-            "x0": x0,
-            "y0": y0,
-            "x1": x1,
-            "y1": y1,
-            "cx": (x0 + x1) / 2.0,
-            "cy": (y0 + y1) / 2.0,
-            "w": x1 - x0,
-            "h": y1 - y0,
-        })
-
-    if not lineas:
-        return []
-
-    min_x = min(l["x0"] for l in lineas)
-    max_x = max(l["x1"] for l in lineas)
-    ancho_contenido = max_x - min_x
-
-    mejor_gutter = None
-    if ancho_contenido > 80 and len(lineas) >= 4:
-        centro_x = (min_x + max_x) / 2.0
-        # Tolerancia del canal central
-        margen = ancho_contenido * 0.08
-        izq = [l for l in lineas if l["x1"] <= centro_x + margen]
-        der = [l for l in lineas if l["x0"] >= centro_x - margen]
-
-        # Si al menos el 65% de las líneas caen limpiamente a la izquierda o derecha
-        if len(izq) >= 2 and len(der) >= 2 and (len(izq) + len(der)) / len(lineas) >= 0.65:
-            mejor_gutter = centro_x
-
-    if mejor_gutter is not None:
-        min_y_cols = min([l["y0"] for l in lineas if l["x1"] <= mejor_gutter or l["x0"] >= mejor_gutter] or [0])
-        max_y_cols = max([l["y1"] for l in lineas if l["x1"] <= mejor_gutter or l["x0"] >= mejor_gutter] or [alto_pdf])
-
-        top_headers = []
-        bottom_footers = []
-        col_izq = []
-        col_der = []
-
-        for l in lineas:
-            if l["x1"] <= mejor_gutter + 5:
-                col_izq.append(l)
-            elif l["x0"] >= mejor_gutter - 5:
-                col_der.append(l)
-            elif l["cy"] < min_y_cols + 12:
-                top_headers.append(l)
-            elif l["cy"] > max_y_cols - 12:
-                bottom_footers.append(l)
-            elif l["cx"] < mejor_gutter:
-                col_izq.append(l)
-            else:
-                col_der.append(l)
-
-        top_headers.sort(key=lambda l: l["y0"])
-        col_izq.sort(key=lambda l: l["y0"])
-        col_der.sort(key=lambda l: l["y0"])
-        bottom_footers.sort(key=lambda l: l["y0"])
-
-        lineas_ordenadas = top_headers + col_izq + col_der + bottom_footers
+def _ejecutar_inferencia_ocr_con_lock(
+    engine,
+    pixmap_bytes: bytes,
+    img,
+    ancho_px: int,
+    alto_px: int,
+    doc_path: str,
+    num_pagina: int,
+    forzar: bool,
+    usar_precision: bool,
+):
+    """Ejecuta inferencia RapidOCR bajo `_ocr_lock` con doble verificación de caché."""
+    if img is None:
+        entrada = pixmap_bytes
+        opt_w, opt_h = ancho_px, alto_px
     else:
-        # 1 sola columna: ordenar de arriba a abajo agrupando por líneas horizontales
-        lineas.sort(key=lambda l: (int(l["y0"] / 12), l["x0"]))
-        lineas_ordenadas = lineas
+        entrada, opt_w, opt_h = _preparar_imagen_ocr(img, usar_precision)
 
-    return [l["item"] for l in lineas_ordenadas]
+    with _ocr_lock:
+        if not forzar and doc_path:
+            palabras_cached = obtener_palabras_cache_ocr(doc_path, num_pagina, alta_precision=usar_precision)
+            if palabras_cached is not None:
+                return None, palabras_cached, opt_w, opt_h
+        if img is None:
+            ocr_result, _ = engine(entrada)
+        else:
+            try:
+                ocr_result, _ = engine(entrada, return_word_box=True)
+            except TypeError:
+                ocr_result, _ = engine(entrada)
+    return ocr_result, None, opt_w, opt_h
 
 
 def procesar_ocr_pagina(
@@ -325,7 +423,9 @@ def procesar_ocr_pagina(
 
     num_pagina: int = 0,
 
-    forzar: bool = False
+    forzar: bool = False,
+
+    alta_precision: Optional[bool] = None
 
 ) -> List[Tuple[float, float, float, float, str, int, int, int]]:
 
@@ -338,80 +438,40 @@ def procesar_ocr_pagina(
     en coordenadas de puntos del PDF.
 
     """
+    usar_precision = es_ocr_alta_precision() if alta_precision is None else bool(alta_precision)
+    modo_ocr = "precision" if usar_precision else "rapido"
+    idioma_ocr = obtener_idioma_ocr()
 
-    cache_file = os.path.join(DIR_OCR_CACHE, _generar_clave_cache(doc_path, num_pagina)) if doc_path else None
-
-
-
-    # 1. Verificar si ya está en caché con coord_version vigente
+    # 1. Verificar si ya está en caché con coord_version, idioma y modo vigente
     if not forzar and doc_path:
-        palabras_cached = obtener_palabras_cache_ocr(doc_path, num_pagina)
+        palabras_cached = obtener_palabras_cache_ocr(doc_path, num_pagina, alta_precision=usar_precision)
         if palabras_cached is not None:
             logger.info(f"⚡ [OCREngine] Página {num_pagina} recuperada desde caché OCR ({len(palabras_cached)} palabras).")
             return palabras_cached
 
-
-
-    engine = _get_ocr_engine()
+    engine = _get_ocr_engine(alta_precision=usar_precision, idioma=idioma_ocr)
 
     if engine is None:
-
         logger.warning("⚠️ [OCREngine] RapidOCR no está disponible.")
-
         return []
 
-
-
-    logger.info(f"🔍 [OCREngine] Ejecutando reconocimiento OCR en página {num_pagina} ({ancho_px}x{alto_px}px)...")
-
-
+    logger.info(
+        f"🔍 [OCREngine] Ejecutando RapidOCR ({modo_ocr}, {idioma_ocr}) en página {num_pagina} ({ancho_px}x{alto_px}px)..."
+    )
 
     try:
-
         import numpy as np
-
         import cv2
 
-
-
         # Decodificar imagen para optimización de resolución
-
         nparr = np.frombuffer(pixmap_bytes, np.uint8)
-
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-
-
-        if img is None:
-
-            # Fallback a bytes directos
-
-            with _ocr_lock:
-
-                ocr_result, _ = engine(pixmap_bytes)
-
-            opt_w, opt_h = ancho_px, alto_px
-
-        else:
-
-            orig_h, orig_w = img.shape[:2]
-
-            # Downscaling inteligente: límite máximo de 1800px para preservar espaciado y precisión
-            MAX_DIM = 1800
-            if max(orig_w, orig_h) > MAX_DIM:
-                ratio = MAX_DIM / float(max(orig_w, orig_h))
-                opt_w = max(32, int(orig_w * ratio))
-                opt_h = max(32, int(orig_h * ratio))
-                img_opt = cv2.resize(img, (opt_w, opt_h), interpolation=cv2.INTER_AREA)
-            else:
-                img_opt = img
-                opt_w, opt_h = orig_w, orig_h
-
-            with _ocr_lock:
-                try:
-                    ocr_result, _ = engine(img_opt, return_word_box=True)
-                except TypeError:
-                    ocr_result, _ = engine(img_opt)
+        ocr_result, palabras_cached, opt_w, opt_h = _ejecutar_inferencia_ocr_con_lock(
+            engine, pixmap_bytes, img, ancho_px, alto_px, doc_path, num_pagina, forzar, usar_precision
+        )
+        if palabras_cached is not None:
+            return palabras_cached
 
 
 
@@ -433,124 +493,15 @@ def procesar_ocr_pagina(
 
 
 
-        palabras_finales = []
-
-
-
-        def _peso_char(c: str) -> float:
-            if c.isspace():
-                return 0.35
-            if c in "iIljtfr.,;:!|'\"`":
-                return 0.45
-            if c in "mwMW@":
-                return 1.45
-            return 1.0
-
-        for line_idx, item in enumerate(ocr_result_ordenado):
-            box = item[0]
-            texto_linea = str(item[1]).strip()
-            if not texto_linea:
-                continue
-
-            xs = [pt[0] for pt in box]
-            ys = [pt[1] for pt in box]
-            x_min_pt = min(xs) * scale_x
-            x_max_pt = max(xs) * scale_x
-            y_min_pt = min(ys) * scale_y
-            y_max_pt = max(ys) * scale_y
-
-            char_boxes = item[3] if len(item) > 3 and isinstance(item[3], list) else None
-            char_list = item[4] if len(item) > 4 and isinstance(item[4], list) else None
-
-            # Priorizar cajas nativas por carácter de RapidOCR (return_word_box=True)
-            if char_boxes and char_list and len(char_boxes) == len(char_list):
-                word_idx = 0
-                cur_chars = []
-                cur_boxes = []
-                for ch, cbox in zip(char_list, char_boxes):
-                    if str(ch).isspace():
-                        if cur_chars:
-                            w_txt = "".join(cur_chars)
-                            cxs = [pt[0] for b in cur_boxes for pt in b]
-                            cys = [pt[1] for b in cur_boxes for pt in b]
-                            wx0 = max(0.0, min(cxs) * scale_x - 0.4)
-                            wy0 = min(cys) * scale_y
-                            wx1 = max(cxs) * scale_x + 0.4
-                            wy1 = max(cys) * scale_y
-                            h_w = max(1.0, wy1 - wy0)
-                            wy0 = max(0.0, wy0 - h_w * 0.065)
-                            wy1 = max(wy0 + 1.0, wy1 - h_w * 0.075)
-                            palabras_finales.append((
-                                round(wx0, 2),
-                                round(wy0, 2),
-                                round(wx1, 2),
-                                round(wy1, 2),
-                                w_txt,
-                                line_idx,
-                                line_idx,
-                                word_idx,
-                            ))
-                            word_idx += 1
-                            cur_chars, cur_boxes = [], []
-                    else:
-                        cur_chars.append(str(ch))
-                        cur_boxes.append(cbox)
-                if cur_chars:
-                    w_txt = "".join(cur_chars)
-                    cxs = [pt[0] for b in cur_boxes for pt in b]
-                    cys = [pt[1] for b in cur_boxes for pt in b]
-                    wx0 = max(0.0, min(cxs) * scale_x - 0.4)
-                    wy0 = min(cys) * scale_y
-                    wx1 = max(cxs) * scale_x + 0.4
-                    wy1 = max(cys) * scale_y
-                    h_w = max(1.0, wy1 - wy0)
-                    wy0 = max(0.0, wy0 - h_w * 0.065)
-                    wy1 = max(wy0 + 1.0, wy1 - h_w * 0.075)
-                    palabras_finales.append((
-                        round(wx0, 2),
-                        round(wy0, 2),
-                        round(wx1, 2),
-                        round(wy1, 2),
-                        w_txt,
-                        line_idx,
-                        line_idx,
-                        word_idx,
-                    ))
-                continue
-
-            # Fallback ponderado sin deriva acumulada
-            palabras_linea = texto_linea.split()
-            if not palabras_linea:
-                continue
-
-            pesos_palabras = [sum(_peso_char(c) for c in w) for w in palabras_linea]
-            peso_espacio = 0.35
-            peso_total = sum(pesos_palabras) + peso_espacio * max(0, len(palabras_linea) - 1)
-            ancho_total_linea_pt = max(10.0, x_max_pt - x_min_pt)
-            curr_x = x_min_pt
-
-            for word_idx, (w, pw) in enumerate(zip(palabras_linea, pesos_palabras)):
-                ancho_w_pt = ancho_total_linea_pt * (pw / max(1e-6, peso_total))
-                w_x0 = curr_x
-                w_x1 = min(x_max_pt, curr_x + ancho_w_pt)
-                curr_x = w_x1 + ancho_total_linea_pt * (peso_espacio / max(1e-6, peso_total))
-
-                palabras_finales.append((
-                    round(w_x0, 2),
-                    round(y_min_pt, 2),
-                    round(w_x1, 2),
-                    round(y_max_pt, 2),
-                    w,
-                    line_idx,
-                    line_idx,
-                    word_idx,
-                ))
+        palabras_finales = _convertir_lineas_ocr_a_palabras(ocr_result_ordenado, scale_x, scale_y)
 
         logger.info(f"✅ [OCREngine] OCR completado en página {num_pagina}: {len(palabras_finales)} palabras detectadas.")
 
-        # Guardar en caché con coord_version vigente
+        # Guardar en caché con coord_version, modo_ocr e idioma_ocr vigente
         if doc_path and palabras_finales:
-            guardar_palabras_cache_ocr(doc_path, num_pagina, palabras_finales)
+            guardar_palabras_cache_ocr(
+                doc_path, num_pagina, palabras_finales, modo_ocr=modo_ocr, idioma_ocr=idioma_ocr
+            )
 
 
 

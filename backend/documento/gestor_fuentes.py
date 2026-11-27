@@ -9,6 +9,7 @@ import fitz
 
 from backend.core.estado_global import estado_app
 from backend.documento.edicion_pdf import (
+    _dir_fuentes_locales,
     clasificar_familia,
     invalidar_cache_fuentes,
     normalizar_clave_familia,
@@ -56,10 +57,6 @@ for _fam, _cat, _src in _DEFINICION_CATALOGO:
         "categoria": _cat,
         "fuente_descarga": _src,
     }
-
-
-def _dir_fuentes_locales():
-    return os.path.join(estado_app.base_dir, "recursos", "fuentes")
 
 
 def validar_buffer_fuente(buffer):
@@ -120,6 +117,30 @@ def _variante_desde_css_y_font(style_str, weight_str, font_obj):
     return "Regular"
 
 
+def _extraer_descargas_google_css2(css_text):
+    """Extrae tuplas deduplicadas (style, weight, url) de bloques @font-face .ttf/.otf."""
+    bloques = re.findall(r"@font-face\s*\{([^}]+)\}", css_text, flags=re.IGNORECASE | re.DOTALL)
+    descargas = []
+    vistas = set()
+    for blk in bloques:
+        m_url = re.search(r"url\((https://[^)]+\.(?:ttf|otf))\)", blk, flags=re.IGNORECASE)
+        if not m_url:
+            continue
+        font_url = m_url.group(1).strip("'\" ")
+        if font_url in vistas:
+            continue
+        vistas.add(font_url)
+
+        m_style = re.search(r"font-style\s*:\s*([a-zA-Z]+)", blk, flags=re.IGNORECASE)
+        m_weight = re.search(r"font-weight\s*:\s*(\d+)", blk, flags=re.IGNORECASE)
+        descargas.append((
+            m_style.group(1) if m_style else "normal",
+            m_weight.group(1) if m_weight else "400",
+            font_url,
+        ))
+    return descargas
+
+
 def _descargar_google_css2(entry, archivos_escritos=None):
     fam = entry["familia"]
     q = urllib.parse.quote_plus(fam)
@@ -143,26 +164,7 @@ def _descargar_google_css2(entry, archivos_escritos=None):
     if not css_text or "@font-face" not in css_text:
         raise RuntimeError(f"No se pudo obtener CSS2 para '{fam}': {ultimo_error}")
 
-    bloques = re.findall(r"@font-face\s*\{([^}]+)\}", css_text, flags=re.IGNORECASE | re.DOTALL)
-    descargas = []
-    vistas = set()
-    for blk in bloques:
-        m_url = re.search(r"url\((https://[^)]+\.(?:ttf|otf))\)", blk, flags=re.IGNORECASE)
-        if not m_url:
-            continue
-        font_url = m_url.group(1).strip("'\" ")
-        if font_url in vistas:
-            continue
-        vistas.add(font_url)
-
-        m_style = re.search(r"font-style\s*:\s*([a-zA-Z]+)", blk, flags=re.IGNORECASE)
-        m_weight = re.search(r"font-weight\s*:\s*(\d+)", blk, flags=re.IGNORECASE)
-        descargas.append((
-            m_style.group(1) if m_style else "normal",
-            m_weight.group(1) if m_weight else "400",
-            font_url,
-        ))
-
+    descargas = _extraer_descargas_google_css2(css_text)
     if not descargas:
         raise RuntimeError(f"Google Fonts no devolvió URLs .ttf/.otf estáticas para '{fam}'.")
 

@@ -5,11 +5,45 @@
 import os
 import sys
 import io
+import re
 import logging
 from logging.handlers import RotatingFileHandler
 import threading
 import atexit
 import datetime
+
+_RE_SENSITIVE_QUERY = re.compile(r'([?&](?:key|api_key|apikey|token)=)([^&\s"\'\)]+)', re.IGNORECASE)
+
+
+def redactar_secretos(texto: str) -> str:
+    """Redacta parámetros sensibles (ej. ?key=...) en URLs antes de escribir en consola o app.log."""
+    if not texto or not isinstance(texto, str):
+        return texto
+    return _RE_SENSITIVE_QUERY.sub(r'\1***REDACTED***', texto)
+
+
+class RedactingApiKeyFilter(logging.Filter):
+    """Filtro de logging que oculta API keys en URLs tanto en mensajes como en args."""
+    def filter(self, record):
+        if isinstance(record.msg, str):
+            record.msg = redactar_secretos(record.msg)
+        if record.args:
+            if isinstance(record.args, tuple):
+                record.args = tuple(
+                    redactar_secretos(a) if isinstance(a, str) else a
+                    for a in record.args
+                )
+            elif isinstance(record.args, dict):
+                record.args = {
+                    k: (redactar_secretos(v) if isinstance(v, str) else v)
+                    for k, v in record.args.items()
+                }
+        return True
+
+
+# Silenciar logs INFO de clientes HTTP que imprimen URLs con query params (ej. ?key= de Gemini)
+for _noisy_http_logger in ("httpx", "httpcore"):
+    logging.getLogger(_noisy_http_logger).setLevel(logging.WARNING)
 
 # Reconfigurar codificación de consola si está disponible
 if sys.stdout is not None and hasattr(sys.stdout, "reconfigure"):
@@ -73,6 +107,7 @@ if not logger.handlers:
     file_handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] [%(threadName)s] %(message)s", "%Y-%m-%d %H:%M:%S")
     file_handler.setFormatter(formatter)
+    file_handler.addFilter(RedactingApiKeyFilter())
     logger.addHandler(file_handler)
 else:
     for h in logger.handlers:
@@ -118,14 +153,15 @@ class SafeStreamToLogger:
             return
         self._in_write = True
         try:
+            buf_seguro = redactar_secretos(buf)
             # Escribir en la consola original de forma segura (reemplazando caracteres no imprimibles)
             if self.original_stream and hasattr(self.original_stream, "write"):
                 try:
-                    self.original_stream.write(buf)
+                    self.original_stream.write(buf_seguro)
                     self.original_stream.flush()
                 except UnicodeEncodeError:
                     try:
-                        safe_buf = buf.encode('ascii', errors='backslashreplace').decode('ascii')
+                        safe_buf = buf_seguro.encode('ascii', errors='backslashreplace').decode('ascii')
                         self.original_stream.write(safe_buf)
                         self.original_stream.flush()
                     except Exception:
@@ -133,7 +169,7 @@ class SafeStreamToLogger:
                 except Exception:
                     pass
 
-            self.buffer += buf
+            self.buffer += buf_seguro
             while "\n" in self.buffer:
                 line, self.buffer = self.buffer.split("\n", 1)
                 line = line.strip()

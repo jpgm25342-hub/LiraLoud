@@ -11,12 +11,19 @@
 
 // ─── HELPERS INTERNOS ───────────────────────────────────────
 
+let _timerBienvenida = null;
+
 function _destruirBienvenida() {
     const bienvenida = document.getElementById('lira-bienvenida');
     if (bienvenida) {
+        if (_timerBienvenida) {
+            clearTimeout(_timerBienvenida);
+            _timerBienvenida = null;
+        }
         bienvenida.style.transition = 'opacity 0.25s ease';
         bienvenida.style.opacity = '0';
-        setTimeout(() => {
+        _timerBienvenida = setTimeout(() => {
+            _timerBienvenida = null;
             bienvenida.style.display = 'none';
         }, 260);
     }
@@ -25,6 +32,10 @@ function _destruirBienvenida() {
 function _mostrarBienvenida() {
     const bienvenida = document.getElementById('lira-bienvenida');
     if (bienvenida) {
+        if (_timerBienvenida) {
+            clearTimeout(_timerBienvenida);
+            _timerBienvenida = null;
+        }
         bienvenida.style.display = 'flex';
         void bienvenida.offsetWidth; // Forzar reflujo de layout
         bienvenida.style.transition = 'opacity 0.25s ease';
@@ -235,7 +246,11 @@ async function ejecutarImportarTexto() {
 
 // ─── OPCION 4: CAPTURA / OCR ─────────────────────────────────
 
+let _capturaEnCurso = false;
+
 async function lanzarCaptura() {
+    if (_capturaEnCurso) return;
+    _capturaEnCurso = true;
     const estabaBienvenidaVisible = document.getElementById('lira-bienvenida')?.style.display !== 'none';
     cerrarLanzador();
     
@@ -250,6 +265,10 @@ async function lanzarCaptura() {
             if (typeof rutaPDFActual !== 'undefined' && rutaPDFActual) guardarEstadoPaginaActual();
             // Abre el PDF temporal generado por la captura, indicando esTemporal=true, esCaptura=true
             await abrirDocumentoDesdeRuta(resultado.ruta, true, true);
+            if (typeof rutaPDFActual === 'undefined' || rutaPDFActual !== resultado.ruta) {
+                if (estabaBienvenidaVisible) _mostrarBienvenida();
+                else if (typeof rutaPDFActual === 'undefined' || !rutaPDFActual) abrirLanzador();
+            }
         } else {
             console.warn('[WebReader] Captura cancelada o con error:', resultado?.error);
             if (typeof rutaPDFActual === 'undefined' || !rutaPDFActual) {
@@ -261,6 +280,8 @@ async function lanzarCaptura() {
         console.error('[WebReader] Error de comunicación al intentar capturar pantalla:', e);
         if (typeof rutaPDFActual === 'undefined' || !rutaPDFActual) _mostrarBienvenida();
         if (typeof liraAlert === 'function') liraAlert('Error al iniciar la herramienta de captura.', 'error');
+    } finally {
+        _capturaEnCurso = false;
     }
 }
 

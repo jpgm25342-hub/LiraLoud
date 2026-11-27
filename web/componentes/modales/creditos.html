@@ -1,0 +1,34 @@
+<div id="modal-creditos" class="overlay-bloqueante modal-creditos-overlay" style="display:none;"
+    onclick="if(event.target === this) cerrarModalCreditos()">
+    <div class="modal-creditos-card" onclick="event.stopPropagation()">
+        <div class="modal-creditos-header">
+            <div class="modal-creditos-title-wrap">
+                <span class="modal-creditos-badge" aria-hidden="true">
+                    <svg class="lira-svg-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                </span>
+                <div>
+                    <h3 class="modal-creditos-title" data-i18n="lbl-credits">Créditos y Aviso Legal</h3>
+                    <span class="modal-creditos-sub">LiraLoud 2.0 • GNU GPL v3</span>
+                </div>
+            </div>
+            <button type="button" class="modal-creditos-close" onclick="cerrarModalCreditos()" title="Cerrar" aria-label="Cerrar">✕</button>
+        </div>
+
+        <div id="creditos-contenido" class="modal-creditos-body">
+            <div class="modal-creditos-loading">Cargando créditos...</div>
+        </div>
+
+        <div class="modal-creditos-footer">
+            <button type="button" class="modal-creditos-btn-sec" onclick="abrirLegalExterno('CREDITS.txt', true)">
+                Abrir CREDITS.txt
+            </button>
+            <button type="button" class="btn-principal btn-listo-config" onclick="cerrarModalCreditos()" data-i18n="btn-listo">
+                Listo
+            </button>
+        </div>
+    </div>
+</div>

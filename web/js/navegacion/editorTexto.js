@@ -199,6 +199,8 @@ function toggleModoEditorTexto(activo) {
         if (typeof toggleModoBorrador === 'function' && window.modoBorradorActivo) toggleModoBorrador(false);
         if (typeof toggleModoSubrayador === 'function' && window.modoSubrayadorActivo) toggleModoSubrayador(false);
         if (typeof activarModoCuadroTexto === 'function' && window.modoCuadroTextoActivo) activarModoCuadroTexto(false);
+        if (typeof toggleModoRecorteExtraccion === 'function' && window.modoRecorteActivo) toggleModoRecorteExtraccion(false);
+        if (typeof toggleModoMoverElementos === 'function' && window.modoMoverElementosActivo) toggleModoMoverElementos(false);
         if (typeof toggleCapturaCorte === 'function' && window.capturandoCorte) toggleCapturaCorte(false);
         const chkLimites = document.getElementById('chk-dibujar-limites');
         if (chkLimites && chkLimites.checked) {
@@ -347,11 +349,11 @@ function pdfRectFromCanvas(rectVisual) {
 
     const containerRect = container.getBoundingClientRect();
     const wrapperRect = wrapper.getBoundingClientRect();
-    const canvasLeft = parseFloat(canvas.style.left) || 0;
-    const canvasTop = parseFloat(canvas.style.top) || 0;
+    const canvasLeft = (typeof canvas.offsetLeft === 'number') ? canvas.offsetLeft : (parseFloat(canvas.style.left) || 0);
+    const canvasTop = (typeof canvas.offsetTop === 'number') ? canvas.offsetTop : (parseFloat(canvas.style.top) || 0);
 
-    const wrapperLeft = wrapperRect.left - containerRect.left;
-    const wrapperTop = wrapperRect.top - containerRect.top;
+    const wrapperLeft = wrapperRect.left - containerRect.left + (container.scrollLeft || 0) - (container.clientLeft || 0);
+    const wrapperTop = wrapperRect.top - containerRect.top + (container.scrollTop || 0) - (container.clientTop || 0);
 
     const x0 = (rectVisual.x - wrapperLeft - canvasLeft) / sc;
     const y0 = (rectVisual.y - wrapperTop - canvasTop) / sc;

@@ -112,6 +112,24 @@
                                 </svg>
                                 <span data-i18n="btn-auto-ocr">Auto-OCR al navegar</span>
                             </button>
+                            <button type="button" class="zen-ocr-item" id="zen-btn-toggle-ocr-precision"
+                                data-ocr-precision-btn aria-pressed="false"
+                                onclick="toggleOcrAltaPrecisionClic();"
+                                title="Mayor resolución y precisión para texto pequeño o denso (tarda un poco más)" data-i18n-title="ttl-ocr-alta-precision">
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/>
+                                    <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.8"/>
+                                    <circle cx="12" cy="12" r="1.6" fill="currentColor"/>
+                                </svg>
+                                <span data-i18n="btn-ocr-alta-precision">Alta precisión</span>
+                            </button>
+                            <div class="ocr-menu-lang-box" onclick="event.stopPropagation()">
+                                <label for="zen-sel-ocr-idioma" data-i18n="lbl-ocr-idioma">Idioma OCR</label>
+                                <select id="zen-sel-ocr-idioma" class="ocr-lang-select" data-ocr-idioma-select
+                                    onchange="cambiarIdiomaOCR(this.value)">
+                                    <option value="latin" selected>Latino (ES, EN, FR, DE, PT...)</option>
+                                </select>
+                            </div>
                         </div>
                     </details>
                     <span class="zen-btn-label">OCR</span>

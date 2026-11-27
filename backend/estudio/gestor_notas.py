@@ -25,6 +25,29 @@ def limpiar_nombre_carpeta(nombre):
     limpio = re.sub(r'[\\/*?:"<>|]', "", nombre).strip()
     return limpio if limpio else "General"
 
+def _extraer_frontmatter_md(contenido_raw, metadatos):
+    """Parsea el bloque Frontmatter YAML (--- ... ---) actualizando metadatos y retorna el cuerpo."""
+    if not contenido_raw.startswith("---"):
+        return contenido_raw
+    partes = contenido_raw.split("---", 2)
+    if len(partes) < 3:
+        return contenido_raw
+    yaml_raw = partes[1]
+    for linea in yaml_raw.splitlines():
+        if ":" in linea:
+            k, v = linea.split(":", 1)
+            k = k.strip().lower()
+            v = v.strip().strip('"').strip("'")
+            if k == "pagina":
+                try:
+                    metadatos["pagina"] = int(v)
+                except (ValueError, TypeError):
+                    metadatos["pagina"] = 1
+            elif k in metadatos:
+                metadatos[k] = v
+    return partes[2].strip()
+
+
 def parsear_archivo_md(ruta_completa, ruta_base):
     """Lee un archivo Markdown y extrae sus metadatos del Frontmatter YAML y su contenido."""
     try:
@@ -43,37 +66,15 @@ def parsear_archivo_md(ruta_completa, ruta_base):
             "ruta_absoluta": ruta_completa
         }
 
-        # Comprobar si tiene Frontmatter YAML (--- ... ---)
-        cuerpo = contenido_raw
-        if contenido_raw.startswith("---"):
-            partes = contenido_raw.split("---", 2)
-            if len(partes) >= 3:
-                yaml_raw = partes[1]
-                cuerpo = partes[2].strip()
-                for linea in yaml_raw.splitlines():
-                    if ":" in linea:
-                        k, v = linea.split(":", 1)
-                        k = k.strip().lower()
-                        v = v.strip().strip('"').strip("'")
-                        if k == "pagina":
-                            try:
-                                metadatos["pagina"] = int(v)
-                            except:
-                                metadatos["pagina"] = 1
-                        elif k in metadatos:
-                            metadatos[k] = v
+        cuerpo = _extraer_frontmatter_md(contenido_raw, metadatos)
 
         # Inferir libro y etiqueta/clasificación desde la estructura de carpetas si no vienen en frontmatter
         rel_dir = os.path.dirname(os.path.relpath(ruta_completa, ruta_base))
         partes_dir = [p for p in rel_dir.replace("\\", "/").split("/") if p and p != "."]
-        if len(partes_dir) >= 2:
-            if metadatos["libro"] == "Sin libro" or not metadatos["libro"]:
-                metadatos["libro"] = partes_dir[0]
-            if metadatos["clasificacion"] == "General" or not metadatos["clasificacion"]:
-                metadatos["clasificacion"] = partes_dir[1]
-        elif len(partes_dir) == 1:
-            if metadatos["libro"] == "Sin libro" or not metadatos["libro"]:
-                metadatos["libro"] = partes_dir[0]
+        if len(partes_dir) >= 1 and (metadatos["libro"] == "Sin libro" or not metadatos["libro"]):
+            metadatos["libro"] = partes_dir[0]
+        if len(partes_dir) >= 2 and (metadatos["clasificacion"] == "General" or not metadatos["clasificacion"]):
+            metadatos["clasificacion"] = partes_dir[1]
 
         metadatos["contenido"] = cuerpo
         return metadatos
@@ -103,6 +104,39 @@ def notas_obtener_ruta_base(config_ruta=""):
     asegurar_directorio(DIR_BASE_DEFAULT)
     return os.path.abspath(DIR_BASE_DEFAULT)
 
+def _coincide_filtro_texto(valor_nota, filtro, centinela):
+    """Compara un campo textual normalizado de la nota contra un filtro opcional con valor centinela."""
+    if not filtro or filtro == centinela:
+        return True
+    return valor_nota.lower().strip() == filtro.lower().strip()
+
+
+def _coincide_busqueda_nota(nota, busqueda):
+    """Evalúa si la nota coincide con el término de búsqueda en título, contenido o clasificación."""
+    q = (busqueda or "").lower().strip()
+    if not q:
+        return True
+    return any(q in nota.get(campo, "").lower() for campo in ("titulo", "contenido", "clasificacion"))
+
+
+def _nota_cumple_filtros(nota, filtro_libro, filtro_pagina, filtro_clasificacion, busqueda):
+    """Evalúa si una nota cumple los filtros opcionales de libro, página, clasificación y búsqueda."""
+    if not _coincide_filtro_texto(nota.get("libro", ""), filtro_libro, "TODOS"):
+        return False
+
+    if filtro_pagina is not None and filtro_pagina not in (0, "TODAS"):
+        try:
+            if int(nota.get("pagina", 1)) != int(filtro_pagina):
+                return False
+        except (ValueError, TypeError):
+            pass
+
+    if not _coincide_filtro_texto(nota.get("clasificacion", ""), filtro_clasificacion, "TODAS"):
+        return False
+
+    return _coincide_busqueda_nota(nota, busqueda)
+
+
 @eel.expose
 def notas_listar(config_ruta="", filtro_libro=None, filtro_pagina=None, filtro_clasificacion=None, busqueda=""):
     """
@@ -120,35 +154,8 @@ def notas_listar(config_ruta="", filtro_libro=None, filtro_pagina=None, filtro_c
                     nota = parsear_archivo_md(ruta_completa, ruta_base)
                     if not nota:
                         continue
-                    
-                    # Aplicar filtro por libro
-                    if filtro_libro and filtro_libro != "TODOS":
-                        if nota.get("libro", "").lower().strip() != filtro_libro.lower().strip():
-                            continue
-                    
-                    # Aplicar filtro por página
-                    if filtro_pagina is not None and filtro_pagina != 0 and filtro_pagina != "TODAS":
-                        try:
-                            if int(nota.get("pagina", 1)) != int(filtro_pagina):
-                                continue
-                        except:
-                            pass
-                    
-                    # Aplicar filtro por clasificación
-                    if filtro_clasificacion and filtro_clasificacion != "TODAS":
-                        if nota.get("clasificacion", "").lower().strip() != filtro_clasificacion.lower().strip():
-                            continue
-                    
-                    # Aplicar filtro por texto de búsqueda
-                    if busqueda and busqueda.strip():
-                        q = busqueda.lower().strip()
-                        en_titulo = q in nota.get("titulo", "").lower()
-                        en_contenido = q in nota.get("contenido", "").lower()
-                        en_clasif = q in nota.get("clasificacion", "").lower()
-                        if not (en_titulo or en_contenido or en_clasif):
-                            continue
-                    
-                    lista_notas.append(nota)
+                    if _nota_cumple_filtros(nota, filtro_libro, filtro_pagina, filtro_clasificacion, busqueda):
+                        lista_notas.append(nota)
         
         # Ordenar por fecha de modificación descendente
         lista_notas.sort(key=lambda x: x.get("fecha_modificacion", ""), reverse=True)
@@ -156,6 +163,30 @@ def notas_listar(config_ruta="", filtro_libro=None, filtro_pagina=None, filtro_c
     except Exception as e:
         logger.error(f"[Notas] Error al listar notas: {e}", exc_info=True)
         return {"exito": False, "error": str(e), "notas": []}
+
+def _construir_markdown_nota(nota_data, titulo, ahora):
+    """Construye el texto Markdown completo de la nota con frontmatter YAML compatible con Obsidian."""
+    fecha_creacion = nota_data.get("fecha_creacion") or ahora
+    pagina = nota_data.get("pagina") or 1
+    try:
+        pagina = int(pagina)
+    except (ValueError, TypeError):
+        pagina = 1
+
+    contenido_md = nota_data.get("contenido") or ""
+    return (
+        f"---\n"
+        f"id: \"{limpiar_nombre_carpeta(titulo)}\"\n"
+        f"titulo: \"{titulo}\"\n"
+        f"libro: \"{nota_data.get('libro') or 'General'}\"\n"
+        f"pagina: {pagina}\n"
+        f"clasificacion: \"{nota_data.get('clasificacion') or 'General'}\"\n"
+        f"fecha_creacion: \"{fecha_creacion}\"\n"
+        f"fecha_modificacion: \"{ahora}\"\n"
+        f"---\n\n"
+        f"{contenido_md}\n"
+    )
+
 
 @eel.expose
 def notas_guardar(nota_data, config_ruta=""):
@@ -192,28 +223,7 @@ def notas_guardar(nota_data, config_ruta=""):
                 logger.warning(f"[Notas] No se pudo eliminar archivo anterior '{ruta_anterior}': {e_del}")
 
         ahora = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        fecha_creacion = nota_data.get("fecha_creacion") or ahora
-        pagina = nota_data.get("pagina") or 1
-        try:
-            pagina = int(pagina)
-        except:
-            pagina = 1
-
-        contenido_md = nota_data.get("contenido") or ""
-
-        # Construir contenido con Frontmatter YAML estructurado compatible con Obsidian
-        frontmatter = (
-            f"---\n"
-            f"id: \"{limpiar_nombre_carpeta(titulo)}\"\n"
-            f"titulo: \"{titulo}\"\n"
-            f"libro: \"{nota_data.get('libro') or 'General'}\"\n"
-            f"pagina: {pagina}\n"
-            f"clasificacion: \"{nota_data.get('clasificacion') or 'General'}\"\n"
-            f"fecha_creacion: \"{fecha_creacion}\"\n"
-            f"fecha_modificacion: \"{ahora}\"\n"
-            f"---\n\n"
-            f"{contenido_md}\n"
-        )
+        frontmatter = _construir_markdown_nota(nota_data, titulo, ahora)
 
         with open(ruta_nueva, 'w', encoding='utf-8') as f:
             f.write(frontmatter)

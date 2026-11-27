@@ -217,20 +217,30 @@ function dibujar() {
             let x = objCV.x * z;
             let y0_vis = Math.max(vis.minY, objCV.yMin * z);
             let y1_vis = Math.min(vis.maxY, objCV.yMax * z);
+            let estaSeleccionado = (window.corteVSeleccionado === i) ||
+                (typeof arrastre !== 'undefined' && arrastre &&
+                    (arrastre.tipo === 'V' || arrastre.tipo === 'V_TOP' || arrastre.tipo === 'V_BOTTOM') &&
+                    arrastre.index === i);
 
             // Dibujar la línea roja segmentada
-            dibujarLinea(x, y0_vis, x, y1_vis, "rgba(255,0,0,0.75)", true);
+            dibujarLinea(x, y0_vis, x, y1_vis, estaSeleccionado ? "rgba(255,40,40,0.95)" : "rgba(255,0,0,0.75)", true);
 
-            // Manija superior (para arrastrar altura yMin)
-            ctx.fillStyle = "red";
-            ctx.fillRect(x - 9, y0_vis, 18, 14);
-
-            // Manija central (para mover la línea horizontalmente x)
+            // Manijas superior, central e inferior
             let y_mid = (y0_vis + y1_vis) / 2;
+            ctx.fillStyle = estaSeleccionado ? "#ff1f1f" : "red";
+            ctx.fillRect(x - 9, y0_vis, 18, 14);
             ctx.fillRect(x - 8, y_mid - 8, 16, 16);
-
-            // Manija inferior (para arrastrar altura yMax)
             ctx.fillRect(x - 9, y1_vis - 14, 18, 14);
+
+            if (estaSeleccionado) {
+                ctx.save();
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x - 9, y0_vis, 18, 14);
+                ctx.strokeRect(x - 8, y_mid - 8, 16, 16);
+                ctx.strokeRect(x - 9, y1_vis - 14, 18, 14);
+                ctx.restore();
+            }
         }
         let numCols = cortesV.length > 0 ? cortesV.length + 1 : 1;
         for (let i = 0; i < numCols; i++) {

@@ -40,6 +40,7 @@ function toggleModoRecorteExtraccion(forzarEstado) {
         if (typeof toggleModoBorrador === 'function' && window.modoBorradorActivo) toggleModoBorrador(false);
         if (typeof toggleModoEditorTexto === 'function' && window.modoEditorTextoActivo) toggleModoEditorTexto(false);
         if (typeof activarModoCuadroTexto === 'function' && window.modoCuadroTextoActivo) activarModoCuadroTexto(false);
+        if (typeof toggleModoMoverElementos === 'function' && window.modoMoverElementosActivo) toggleModoMoverElementos(false);
 
         if (visorContainer) visorContainer.style.cursor = 'crosshair';
         if (canvas) canvas.style.cursor = 'crosshair';

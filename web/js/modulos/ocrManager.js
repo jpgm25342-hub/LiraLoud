@@ -79,6 +79,7 @@ function ocultarHUDScannerOCR() {
 let ocrBatchEnCurso = false;
 
 function abrirModalOCRDecision() {
+    poblarSelectoresIdiomaOCR();
     const modal = document.getElementById('modal-ocr-decision');
     if (modal) modal.style.display = 'flex';
 }
@@ -90,6 +91,102 @@ function cerrarModalOCRDecision() {
 
 window.autoOCRActivo = true;
 window.autoLayoutActivo = true;
+window.ocrAltaPrecisionActivo = false;
+window.ocrIdiomaActual = 'latin';
+
+const IDIOMAS_OCR_CATALOGO = [
+    { id: 'latin', nombre: 'Latino (ES, EN, FR, DE, PT...)' },
+    { id: 'english', nombre: 'Inglés (EN)' },
+    { id: 'chinese', nombre: 'Chino / Integrado (ZH)' },
+    { id: 'eslav', nombre: 'Cirílico (RU, UK, BG...)' },
+    { id: 'arabic', nombre: 'Árabe (AR, FA, UR)' },
+    { id: 'hindi', nombre: 'Devanagari (HI, MR, NE)' },
+    { id: 'korean', nombre: 'Coreano (KO)' },
+    { id: 'greek', nombre: 'Griego (EL)' },
+    { id: 'thai', nombre: 'Tailandés (TH)' }
+];
+
+function poblarSelectoresIdiomaOCR() {
+    document.querySelectorAll('[data-ocr-idioma-select]').forEach(sel => {
+        if (sel.dataset.ocrPopulated === '1') {
+            sel.value = window.ocrIdiomaActual;
+            return;
+        }
+        sel.innerHTML = '';
+        IDIOMAS_OCR_CATALOGO.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item.id;
+            opt.textContent = item.nombre;
+            sel.appendChild(opt);
+        });
+        sel.dataset.ocrPopulated = '1';
+        sel.value = window.ocrIdiomaActual;
+    });
+}
+
+function cambiarIdiomaOCR(idioma, guardar = true) {
+    const valido = IDIOMAS_OCR_CATALOGO.some(i => i.id === idioma) ? idioma : 'latin';
+    window.ocrIdiomaActual = valido;
+
+    poblarSelectoresIdiomaOCR();
+    document.querySelectorAll('[data-ocr-idioma-select]').forEach(sel => {
+        if (sel.value !== valido) sel.value = valido;
+    });
+
+    if (typeof eel !== 'undefined' && typeof eel.establecer_idioma_ocr_rpc === 'function') {
+        try {
+            eel.establecer_idioma_ocr_rpc(valido)();
+        } catch (e) {
+            console.warn('⚠️ [OCR] No se pudo sincronizar idioma OCR con backend:', e);
+        }
+    }
+
+    if (guardar && typeof guardarTodosAjustes === 'function') {
+        guardarTodosAjustes(false);
+    }
+}
+window.poblarSelectoresIdiomaOCR = poblarSelectoresIdiomaOCR;
+window.cambiarIdiomaOCR = cambiarIdiomaOCR;
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', poblarSelectoresIdiomaOCR);
+} else {
+    poblarSelectoresIdiomaOCR();
+}
+
+function toggleOcrAltaPrecisionClic() {
+    toggleOcrAltaPrecision(!window.ocrAltaPrecisionActivo, true);
+}
+
+function toggleOcrAltaPrecision(activo, guardar = true) {
+    if (activo === undefined) activo = !window.ocrAltaPrecisionActivo;
+    window.ocrAltaPrecisionActivo = !!activo;
+
+    document.querySelectorAll('[data-ocr-precision-toggle]').forEach(chk => {
+        if (chk.checked !== window.ocrAltaPrecisionActivo) {
+            chk.checked = window.ocrAltaPrecisionActivo;
+        }
+    });
+
+    document.querySelectorAll('[data-ocr-precision-btn]').forEach(btn => {
+        btn.classList.toggle('tool-active-underline', window.ocrAltaPrecisionActivo);
+        btn.setAttribute('aria-pressed', window.ocrAltaPrecisionActivo ? 'true' : 'false');
+    });
+
+    if (typeof eel !== 'undefined' && typeof eel.establecer_modo_ocr_precision === 'function') {
+        try {
+            eel.establecer_modo_ocr_precision(window.ocrAltaPrecisionActivo)();
+        } catch (e) {
+            console.warn('⚠️ [OCR] No se pudo sincronizar modo Alta Precisión con backend:', e);
+        }
+    }
+
+    if (guardar && typeof guardarTodosAjustes === 'function') {
+        guardarTodosAjustes(false);
+    }
+}
+window.toggleOcrAltaPrecision = toggleOcrAltaPrecision;
+window.toggleOcrAltaPrecisionClic = toggleOcrAltaPrecisionClic;
 
 function toggleAutoLayoutClic() {
     toggleAutoLayout(!window.autoLayoutActivo);
@@ -350,11 +447,13 @@ if (typeof eel !== 'undefined') {
     function notificar_inicio_ocr_pagina(num) {
         mostrarHUDScannerOCR(null, num);
     }
+    window.notificar_inicio_ocr_pagina = notificar_inicio_ocr_pagina;
 
     eel.expose(notificar_fin_ocr_pagina);
     function notificar_fin_ocr_pagina(num) {
         ocultarHUDScannerOCR();
     }
+    window.notificar_fin_ocr_pagina = notificar_fin_ocr_pagina;
 
     eel.expose(actualizar_progreso_ocr_batch);
     function actualizar_progreso_ocr_batch(actual, total, porcentaje, tiempoEstimado = "") {

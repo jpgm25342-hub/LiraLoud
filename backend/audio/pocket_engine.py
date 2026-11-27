@@ -29,8 +29,22 @@ import logging
 import threading
 from typing import Dict, List, Any, Optional
 
-import torch
 import numpy as np
+
+_torch_lock = threading.Lock()
+_torch_mod = None
+
+
+def _obtener_torch():
+    """Importa torch de forma diferida (thread-safe) para no penalizar el arranque."""
+    global _torch_mod
+    if _torch_mod is not None:
+        return _torch_mod
+    with _torch_lock:
+        if _torch_mod is None:
+            import torch as _t
+            _torch_mod = _t
+    return _torch_mod
 
 logger = logging.getLogger("LiraPocketEngine")
 
@@ -91,22 +105,9 @@ def obtener_voces_pocket() -> List[Dict[str, str]]:
     return resultado
 
 
-def dividir_en_subfrases_seguras(texto: str, max_palabras: int = 12) -> List[str]:
-    """
-    Divide un texto largo en subfrases seguras (menores a 12 palabras / ~30-40 tokens)
-    para evitar que el modelo de lenguaje de Pocket-TTS exceda su ventana de atención
-    y omita palabras al inicio o al final de oraciones largas.
-    """
+def _dividir_por_puntuacion(texto: str, max_palabras: int) -> List[str]:
+    """Pase 1: divide un texto largo en bloques respetando signos de puntuación naturales."""
     import re
-    texto = texto.strip()
-    if not texto:
-        return []
-
-    palabras = texto.split()
-    if len(palabras) <= max_palabras:
-        return [texto]
-
-    # Pase 1: Dividir por signos de puntuación naturales
     partes = re.split(r'([,;:—–\.\!\?]+\s*)', texto)
     bloques = []
     actual = ""
@@ -130,6 +131,26 @@ def dividir_en_subfrases_seguras(texto: str, max_palabras: int = 12) -> List[str
         i += 1
     if actual.strip():
         bloques.append(actual.strip())
+    return bloques
+
+
+def dividir_en_subfrases_seguras(texto: str, max_palabras: int = 12) -> List[str]:
+    """
+    Divide un texto largo en subfrases seguras (menores a 12 palabras / ~30-40 tokens)
+    para evitar que el modelo de lenguaje de Pocket-TTS exceda su ventana de atención
+    y omita palabras al inicio o al final de oraciones largas.
+    """
+    import re
+    texto = texto.strip()
+    if not texto:
+        return []
+
+    palabras = texto.split()
+    if len(palabras) <= max_palabras:
+        return [texto]
+
+    # Pase 1: Dividir por signos de puntuación naturales
+    bloques = _dividir_por_puntuacion(texto, max_palabras)
 
     # Pase 2: Si algún bloque aún supera max_palabras (oración larga sin comas),
     # subdividir por conjunciones y preposiciones clave
@@ -235,7 +256,7 @@ class PocketTTSEngine:
 
         with self._lock:
             state = model.get_state_for_audio_prompt(ruta_audio)
-            torch.save(state, state_path)
+            _obtener_torch().save(state, state_path)
             self._states_cache[voice_key] = state
 
         clones = cargar_clones_pocket()
@@ -265,7 +286,7 @@ class PocketTTSEngine:
         if not os.path.exists(state_path):
             raise FileNotFoundError(f"No existe el perfil de voz clonada: {state_path}")
 
-        state = torch.load(state_path, weights_only=False)
+        state = _obtener_torch().load(state_path, weights_only=False)
         self._states_cache[voice_key] = state
         return state
 
@@ -344,10 +365,11 @@ class PocketTTSEngine:
                 )
                 fragmentos_audio.append(chunk_audio)
 
+        _torch = _obtener_torch()
         if fragmentos_audio:
-            audio_tensor = torch.cat(fragmentos_audio, dim=0)
+            audio_tensor = _torch.cat(fragmentos_audio, dim=0)
         else:
-            audio_tensor = torch.zeros(0, dtype=torch.float32)
+            audio_tensor = _torch.zeros(0, dtype=_torch.float32)
 
         # Convertir float32 tensor [-1.0, 1.0] a PCM 16-bit
         audio_np = audio_tensor.detach().cpu().numpy()

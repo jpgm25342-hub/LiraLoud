@@ -58,25 +58,20 @@ def crear_httpx_async_client(timeout: float = 60.0) -> Any:
 
 T = TypeVar("T")
 
-def run_async_safely(coro: Coroutine[Any, Any, T]) -> T:
-    """
-    Ejecuta una corrutina asíncrona de manera segura tanto en entornos con bucle activo
-    (como Eel o Jupyter) como en hilos secundarios sincrónicos.
-    """
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
-    if loop.is_running():
-        # Si el bucle del hilo actual ya está corriendo, ejecutar en un hilo separado para no bloquear
-        import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(asyncio.run, coro)
-            return future.result()
-    else:
-        return loop.run_until_complete(coro)
+try:
+    from backend.core.utils import safe_async_run as run_async_safely
+except ImportError:
+    def run_async_safely(coro: Coroutine[Any, Any, T]) -> T:
+        """Fallback si base_provider se importa fuera del paquete backend."""
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if loop and loop.is_running():
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                return executor.submit(asyncio.run, coro).result()
+        return asyncio.run(coro)
 
 
 class BaseLLMProvider(ABC):

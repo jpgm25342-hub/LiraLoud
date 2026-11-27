@@ -6,8 +6,6 @@ import os
 import re
 import shutil
 
-import edge_tts
-
 from backend.core.estado_global import estado_app
 from backend.core.webview_bridge import eel
 
@@ -69,8 +67,10 @@ def sintetizar_audio_tutorial(texto, voz_edge="es-MX-DaliaNeural", lang_iso=None
                 pass
 
     # 2. Miss de caché: bloquear solo la descarga externa si el modo privacidad está activo
-    if getattr(estado_app, "modo_privacidad", False):
+    if getattr(estado_app, "modo_privacidad_estricta", False):
         return {"ok": False, "error": "Modo privacidad activo"}
+
+    import edge_tts
 
     async def _generar():
         com = edge_tts.Communicate(texto_limpio, voz_edge, rate="+5%")

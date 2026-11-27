@@ -53,6 +53,9 @@ function renderizarAtajos() {
 
 function abrirConfiguracion() {
     renderizarAtajos();
+    if (typeof actualizarVisibilidadPrecargaHojas === 'function') {
+        actualizarVisibilidadPrecargaHojas();
+    }
     document.body.classList.add('modal-config-abierto');
     document.getElementById('modalConfig').style.display = 'flex';
 }
@@ -160,7 +163,31 @@ function aplicarAtajosAlNavegador() {
             e.preventDefault();
 			cerrarBuscadorPDF();
             cerrarModalesAbiertos();
+            if (typeof window.corteVSeleccionado === 'number' && window.corteVSeleccionado >= 0) {
+                window.corteVSeleccionado = -1;
+                if (typeof dibujar === 'function') dibujar();
+            }
             return; // Detenemos aquí para no procesar combos vacíos
+        }
+
+        // 2b. Borrar columna vertical seleccionada o arrastrada con Backspace / Delete
+        if ((e.key === "Backspace" || e.key === "Delete") && typeof eliminarCorteVPorIndice === 'function') {
+            let idxBorrar = -1;
+            if (typeof arrastre !== 'undefined' && arrastre && (arrastre.tipo === 'V' || arrastre.tipo === 'V_TOP' || arrastre.tipo === 'V_BOTTOM')) {
+                idxBorrar = arrastre.index;
+                arrastre = { tipo: null, index: -1 };
+            } else if (typeof window.corteVSeleccionado === 'number' && window.corteVSeleccionado >= 0) {
+                idxBorrar = window.corteVSeleccionado;
+            }
+            if (idxBorrar >= 0 && eliminarCorteVPorIndice(idxBorrar)) {
+                e.preventDefault();
+                if (typeof window.mostrarToast === 'function') {
+                    window.mostrarToast("Columna vertical eliminada", "borrar");
+                } else if (typeof mostrarToastLira === 'function') {
+                    mostrarToastLira("Columna vertical eliminada", "borrar");
+                }
+                return;
+            }
         }
 
         // 3. CONSTRUCCIÓN DEL COMBO (Orden Bayesiano)

@@ -52,6 +52,7 @@ async function abrirDocumentoDesdeRuta(ruta, esTemporal = false, esCaptura = fal
     if (typeof cerrarEditorTexto === 'function') cerrarEditorTexto();
     const capaEditor = document.getElementById('lira-pdf-text-editor-layer');
     if (capaEditor) capaEditor.innerHTML = '';
+    if (typeof window.limpiarEstadoMoverElementos === 'function') window.limpiarEstadoMoverElementos();
 
     // 1. Cargar el documento en la memoria de Python (fitz.open)
     if (typeof eel.cargar_documento === 'function') {
@@ -65,10 +66,22 @@ async function abrirDocumentoDesdeRuta(ruta, esTemporal = false, esCaptura = fal
 
     rutaPDFActual = ruta;
     paginaActual = 0;
+    datosPagina = null;
+    if (typeof oracionActiva !== 'undefined') oracionActiva = null;
     memoriaLayout = {};
     cortesV = [];
     limitesH = {};
     zonasExcluidas = [];
+    const _wrapperCrop = document.getElementById('pdf-crop-wrapper');
+    if (_wrapperCrop) {
+        _wrapperCrop.style.width = '';
+        _wrapperCrop.style.height = '';
+    }
+    const _canvasCrop = document.getElementById('lienzo-pdf');
+    if (_canvasCrop) {
+        _canvasCrop.style.left = '';
+        _canvasCrop.style.top = '';
+    }
     if (typeof window.reiniciarLibroTeatro === 'function') {
         window.reiniciarLibroTeatro(ruta);
     }
@@ -134,8 +147,8 @@ async function abrirDocumentoDesdeRuta(ruta, esTemporal = false, esCaptura = fal
                 }
                 if (docInfo.es_escaneado && !docInfo.completamente_cacheado) {
                     if (esCaptura) {
-                        // Es una captura de pantalla, saltar pregunta y aplicar OCR directamente.
-                        iniciarBatchOCR(0, totalPaginas || null);
+                        // Es una captura de pantalla: mostrar vista rápida de inmediato y ejecutar OCR de esa página.
+                        cargarPagina(paginaActual);
                         return;
                     }
 
@@ -223,6 +236,7 @@ function bloquearControlesNavegacion(bloqueado) {
 }
 
 async function cargarPagina(num) {
+    if (typeof rutaPDFActual !== 'string' || !rutaPDFActual) return;
     if (window.modoSoloLecturaActivo && typeof window.cargarPaginaSoloLecturaRapida === 'function') {
         paginaActual = num;
         const inpPag = document.getElementById('input-pagina-actual');
@@ -246,21 +260,25 @@ async function cargarPagina(num) {
     });
     bloquearControlesNavegacion(true);
 
-    // Guardar si el editor estaba activo
+    // Guardar si el editor o mover elementos estaban activos
     const editorEstabaActivo = window.modoEditorTextoActivo === true;
+    const moverEstabaActivo = window.modoMoverElementosActivo === true;
 
-    // Limpiar editor de texto si está activo al cambiar de página
+    // Limpiar editor de texto y capa de mover elementos si están activos al cambiar de página
     if (typeof cerrarEditorTexto === 'function') cerrarEditorTexto();
     const capaEditor = document.getElementById('lira-pdf-text-editor-layer');
     if (capaEditor) capaEditor.innerHTML = '';
+    if (typeof window.limpiarCapaMoverElementos === 'function') window.limpiarCapaMoverElementos();
 
     indiceOracion = -1; // Reset de índice
+    window.corteVSeleccionado = -1;
 
     paginaActual = num;
     try {
         let clave = num.toString();
         const esTextoEscrito = (window.tipoDocumento === 'texto_escrito');
-        const usarAutoLayout = Boolean(window.autoLayoutActivo && !esTextoEscrito);
+        const esCapturaDoc = (window.tipoDocumento === 'captura');
+        const usarAutoLayout = Boolean(window.autoLayoutActivo && !esTextoEscrito && !esCapturaDoc);
 
         let yaFueConfigurada = !esTextoEscrito && memoriaLayout[clave] !== undefined &&
             (memoriaLayout[clave].configuradaManualmente === true || memoriaLayout[clave].limitesHManual === true);
@@ -518,7 +536,7 @@ async function cargarPagina(num) {
                 limitesH,
                 dictActivo,
                 false,
-                esTextoEscrito ? false : window.autoOCRActivo,
+                esTextoEscrito ? false : (esCapturaDoc ? true : window.autoOCRActivo),
                 zonasExcluidas,
                 recorteActual,
                 !yaTenemosImagen // incluir_imagen: False si vista rápida ya la transfirió
@@ -579,6 +597,10 @@ async function cargarPagina(num) {
         // Si el editor de texto estaba activo, volver a renderizar los bloques
         if (editorEstabaActivo && typeof renderizarBloquesEditor === 'function') {
             renderizarBloquesEditor();
+        }
+        // Si Mover elementos estaba activo, volver a renderizar los elementos de la página
+        if ((moverEstabaActivo || window.modoMoverElementosActivo) && typeof window.cargarYRenderizarElementosMover === 'function') {
+            window.cargarYRenderizarElementosMover();
         }
 
         // Lookahead OCR: Pre-cachear en segundo plano la siguiente página
@@ -700,6 +722,67 @@ function cambiarPagina(delta) {
     }
 }
 
+async function recalcularLayoutPaginaActual() {
+    if (!datosPagina) return;
+    if (typeof dibujar === 'function') dibujar();
+
+    let pagKey = paginaActual.toString();
+    if (!memoriaLayout[pagKey]) memoriaLayout[pagKey] = {};
+    memoriaLayout[pagKey].cortesV = [...cortesV];
+    memoriaLayout[pagKey].limitesH = JSON.parse(JSON.stringify(limitesH));
+
+    if (window.tutorialActivo || window.modoSoloLecturaActivo) {
+        guardarEstadoPaginaActual();
+        return;
+    }
+
+    guardarEstadoPaginaActual();
+    if (typeof eel === 'undefined' || typeof eel.obtener_pagina_data !== 'function') return;
+
+    const miToken = ++tokenCargaActual;
+    const num = paginaActual;
+    const imagenPrevia = datosPagina.imagen;
+    const esTextoEscrito = (window.tipoDocumento === 'texto_escrito');
+    const dictActivo = obtenerDiccionarioConsolidado();
+    const recorteActual = parseInt(document.getElementById('rng-recorte-pdf')?.value || 0);
+
+    try {
+        const data = await eel.obtener_pagina_data(
+            num,
+            cortesV.length > 0 ? cortesV : null,
+            limitesH,
+            dictActivo,
+            false,
+            esTextoEscrito ? false : window.autoOCRActivo,
+            zonasExcluidas,
+            recorteActual,
+            false // incluir_imagen: false (la imagen ya está en canvas)
+        )();
+        if (miToken !== tokenCargaActual || !data) return;
+        if (!data.imagen && imagenPrevia) data.imagen = imagenPrevia;
+        datosPagina = data;
+        guardarEstadoPaginaActual();
+        if (typeof window.compilarLibroTeatroPagina === 'function' && data?.oraciones) {
+            window.compilarLibroTeatroPagina(num, data.oraciones);
+        }
+        if (typeof dibujar === 'function') dibujar();
+    } catch (e) {
+        console.warn('[PDF] Error recalculando layout de página actual:', e);
+    }
+}
+window.recalcularLayoutPaginaActual = recalcularLayoutPaginaActual;
+
+function _aplicarMutacionCortesV() {
+    if (window.modoMoverElementosActivo && typeof toggleModoMoverElementos === 'function') {
+        toggleModoMoverElementos(false);
+    }
+    let pagKey = paginaActual.toString();
+    if (!memoriaLayout[pagKey]) memoriaLayout[pagKey] = {};
+    memoriaLayout[pagKey].configuradaManualmente = true;
+    inicializarLimitesH();
+    recalcularLayoutPaginaActual();
+}
+
 function agregarCorteV() {
     if (!datosPagina) return;
     cortesV.push({
@@ -707,49 +790,29 @@ function agregarCorteV() {
         yMin: 0,
         yMax: datosPagina.alto_pagina_pdf
     });
-    let pagKey = paginaActual.toString();
-    if (!memoriaLayout[pagKey]) memoriaLayout[pagKey] = {};
-    memoriaLayout[pagKey].configuradaManualmente = true;
-    inicializarLimitesH();
-    if (window.tutorialActivo) {
-        if (typeof dibujar === 'function') dibujar();
-        return;
-    }
-    guardarEstadoPaginaActual();
-    cargarPagina(paginaActual);
+    window.corteVSeleccionado = cortesV.length - 1;
+    _aplicarMutacionCortesV();
 }
+
+function eliminarCorteVPorIndice(index) {
+    if (typeof index !== 'number' || index < 0 || index >= cortesV.length) return false;
+    cortesV.splice(index, 1);
+    window.corteVSeleccionado = -1;
+    _aplicarMutacionCortesV();
+    return true;
+}
+window.eliminarCorteVPorIndice = eliminarCorteVPorIndice;
 
 function quitarCorteV() {
     if (cortesV.length > 0) {
-        cortesV.pop();
-        let pagKey = paginaActual.toString();
-        if (!memoriaLayout[pagKey]) memoriaLayout[pagKey] = {};
-        memoriaLayout[pagKey].configuradaManualmente = true;
-        inicializarLimitesH();
-        if (window.tutorialActivo) {
-            if (typeof dibujar === 'function') dibujar();
-            return;
-        }
-        guardarEstadoPaginaActual();
-        if (typeof window.compilarLibroTeatroPagina === 'function' && data?.oraciones) {
-            window.compilarLibroTeatroPagina(num, data.oraciones);
-        }
-        cargarPagina(paginaActual);
+        eliminarCorteVPorIndice(cortesV.length - 1);
     }
 }
 
 function limpiarCortesV() {
     cortesV = [];
-    let pagKey = paginaActual.toString();
-    if (!memoriaLayout[pagKey]) memoriaLayout[pagKey] = {};
-    memoriaLayout[pagKey].configuradaManualmente = true;
-    inicializarLimitesH();
-    if (window.tutorialActivo) {
-        if (typeof dibujar === 'function') dibujar();
-        return;
-    }
-    guardarEstadoPaginaActual();
-    cargarPagina(paginaActual);
+    window.corteVSeleccionado = -1;
+    _aplicarMutacionCortesV();
 }
 
 function inicializarLimitesH() {
@@ -768,6 +831,9 @@ function inicializarLimitesH() {
 
 function restablecerLimitesHorizontales() {
     if (!datosPagina) return;
+    if (window.modoMoverElementosActivo && typeof toggleModoMoverElementos === 'function') {
+        toggleModoMoverElementos(false);
+    }
     limitesH = {};
     let numCols = cortesV.length > 0 ? cortesV.length + 1 : 1;
     for (let i = 0; i < numCols; i++) {
@@ -812,6 +878,9 @@ async function autoDetectarLayoutActual() {
             mostrarToastLira("Abre un documento para auto-detectar el diseño");
         }
         return;
+    }
+    if (window.modoMoverElementosActivo && typeof toggleModoMoverElementos === 'function') {
+        toggleModoMoverElementos(false);
     }
     if (window.tipoDocumento === 'texto_escrito') {
         if (typeof mostrarToastLira === 'function') {

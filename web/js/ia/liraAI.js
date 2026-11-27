@@ -1241,21 +1241,53 @@ function _registrarSnippetCitaIA(texto) {
 }
 
 // --- NAVEGACIÓN Y RESALTADO INTERACTIVO DE FUENTES EN EL PDF ---
-window.liraNavegarYResaltarFuente = async function (pagina, textoSnippet, btnEl = null) {
+window.liraNavegarYResaltarFuente = async function (pagina, textoSnippet, btnEl = null, paginaFin = null) {
     if (!pagina || isNaN(pagina)) {
         console.warn("⚠️ [LiraAI] Página inválida:", pagina);
         return;
     }
     const numPag = parseInt(pagina);
+    const numPagFin = (paginaFin !== null && paginaFin !== undefined && !isNaN(paginaFin)) ? parseInt(paginaFin) : null;
     const pagObjetivo = numPag - 1;
     const docObjetivo = (typeof rutaPDFActual !== 'undefined') ? rutaPDFActual : '';
     let snippetReal = (textoSnippet && window._liraSnippetsMap && Object.prototype.hasOwnProperty.call(window._liraSnippetsMap, textoSnippet))
         ? window._liraSnippetsMap[textoSnippet]
         : (textoSnippet || '');
+    let textoAfirmacion = '';
+    // Solo extraer la oración inmediatamente anterior cuando NO hay snippet de chunk (modo bypass [Pág. X])
     if (!snippetReal && btnEl && typeof btnEl.closest === 'function') {
-        const blk = btnEl.closest('li, p, div');
-        if (blk && blk.innerText) {
-            snippetReal = blk.innerText;
+        const blk = btnEl.closest('li, p, blockquote, div');
+        if (blk) {
+            let textoPrevio = '';
+            try {
+                const walker = document.createTreeWalker(blk, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, null);
+                let nodo = walker.nextNode();
+                while (nodo && nodo !== btnEl) {
+                    if (nodo.nodeType === Node.ELEMENT_NODE) {
+                        if (nodo.matches && nodo.matches('.ia-cite-badge, button')) {
+                            // Saltar el contenido interno de otros badges de cita
+                            nodo = walker.nextSibling() || walker.nextNode();
+                            continue;
+                        }
+                        if (nodo.tagName === 'BR') {
+                            textoPrevio += '\n';
+                        }
+                    } else if (nodo.nodeType === Node.TEXT_NODE) {
+                        if (!nodo.parentElement || !nodo.parentElement.closest('.ia-cite-badge, button')) {
+                            textoPrevio += nodo.nodeValue || '';
+                        }
+                    }
+                    nodo = walker.nextNode();
+                }
+            } catch (_) {
+                textoPrevio = '';
+            }
+            const limpioPrev = textoPrevio.replace(/[ \t]+/g, ' ').trim();
+            if (limpioPrev && !/^(?:📍|❓|Fuentes verificadas|Fragmentos consultados|Pregunta:)/i.test(limpioPrev)) {
+                const partesOracion = limpioPrev.split(/(?:[\.\?!]\s+|\n+)/);
+                const ultimaOracion = (partesOracion[partesOracion.length - 1] || limpioPrev).trim();
+                textoAfirmacion = ultimaOracion.length >= 15 ? ultimaOracion : limpioPrev;
+            }
         }
     }
 
@@ -1283,21 +1315,40 @@ window.liraNavegarYResaltarFuente = async function (pagina, textoSnippet, btnEl 
     // 3. Obtener coordenadas exactas de las líneas del chunk desde PyMuPDF
     try {
         if (typeof eel !== 'undefined' && eel.rag_buscar_coordenadas_fuente) {
-            const res = await eel.rag_buscar_coordenadas_fuente(numPag, snippetReal)();
+            const res = await eel.rag_buscar_coordenadas_fuente(numPag, snippetReal, numPagFin, textoAfirmacion)();
 
-            // Evitar dibujar si el usuario ya cambió de página, cerró LiraAI o abrió otro PDF durante la consulta
+            // Evitar dibujar si el usuario ya cerró LiraAI o abrió otro PDF durante la consulta
             const modalIA = document.getElementById('modal-ia');
             const iaCerrado = modalIA && modalIA.style.display === 'none';
-            if (iaCerrado || (typeof paginaActual !== 'undefined' && paginaActual !== pagObjetivo) || (typeof rutaPDFActual !== 'undefined' && rutaPDFActual !== docObjetivo)) {
+            if (iaCerrado || (typeof rutaPDFActual !== 'undefined' && rutaPDFActual !== docObjetivo)) {
                 return;
             }
 
             console.log("🔍 [LiraAI] Coordenadas recibidas:", res);
             if (res && res.exito && (res.rects || res.coords)) {
+                const pagReal = (res.pagina && !isNaN(res.pagina)) ? parseInt(res.pagina) : numPag;
+                const pagObjetivoReal = pagReal - 1;
+
+                // Si el backend encontró el fragmento en pagina_fin, saltar automáticamente a esa página real
+                if (typeof paginaActual !== 'undefined' && paginaActual !== pagObjetivoReal) {
+                    if (typeof cargarPagina === 'function') {
+                        await cargarPagina(pagObjetivoReal);
+                    } else {
+                        const inputPag = document.getElementById('input-pagina-actual');
+                        if (inputPag) inputPag.value = pagReal;
+                        if (typeof irAPaginaDirecta === 'function') irAPaginaDirecta();
+                    }
+                    await new Promise(r => setTimeout(r, 120));
+                }
+
+                if (typeof paginaActual !== 'undefined' && paginaActual !== pagObjetivoReal) {
+                    return;
+                }
+
                 const rectsToUse = res.rects || [res.coords];
                 window.resaltadoBusqueda = rectsToUse;
                 window.resaltadoBBox = res.bbox || null;
-                window.resaltadoPagina = pagObjetivo;
+                window.resaltadoPagina = pagObjetivoReal;
                 if (typeof resaltadoBusqueda !== 'undefined') {
                     resaltadoBusqueda = rectsToUse;
                 }
@@ -1309,7 +1360,7 @@ window.liraNavegarYResaltarFuente = async function (pagina, textoSnippet, btnEl 
 
                 // 4. Auto-Scroll suave del visor PDF hacia la posición resaltada
                 setTimeout(() => {
-                    if ((typeof paginaActual !== 'undefined' && paginaActual !== pagObjetivo)) return;
+                    if ((typeof paginaActual !== 'undefined' && paginaActual !== pagObjetivoReal)) return;
                     const factorZoom = (typeof datosPagina !== 'undefined' && datosPagina?.factor_zoom) ? datosPagina.factor_zoom : 1.0;
                     const cssZoom = (typeof nivelZoomPDF === 'number') ? nivelZoomPDF : 1.0;
                     const targetY = res.bbox ? res.bbox[1] : (res.rects ? res.rects[0][1] : res.coords[1]);
@@ -1987,19 +2038,31 @@ function formatearMarkdown(texto, fuentes = []) {
     if (!texto) return '';
     let html = escaparHTML(texto);
 
-    // Mapa de fragmentos por página para enlazar botones de citas con el texto completo del chunk
+    // Mapa de fragmentos por página para enlazar botones de citas con el texto específico de la página destino
     const fuentesPorPagina = {};
     const fuentesPorIdx = {};
     if (Array.isArray(fuentes)) {
         fuentes.forEach((f, i) => {
             const pIni = parseInt(f.pagina_inicio || f.pagina || 1);
             const pFin = parseInt(f.pagina_fin || pIni);
-            const snip = (f.texto_puro || f.texto || '').replace(/\s+/g, ' ').trim();
+            const mapaPag = (f.texto_por_pagina && typeof f.texto_por_pagina === 'object') ? f.texto_por_pagina : null;
+            const snipFull = (f.texto_puro || f.texto || '').replace(/\s+/g, ' ').trim();
+            const snipPagIni = (mapaPag && mapaPag[String(pIni)])
+                ? String(mapaPag[String(pIni)]).replace(/\s+/g, ' ').trim()
+                : snipFull;
             for (let p = pIni; p <= pFin; p++) {
                 if (!fuentesPorPagina[p]) fuentesPorPagina[p] = [];
-                if (snip) fuentesPorPagina[p].push(snip);
+                const snipP = (mapaPag && mapaPag[String(p)])
+                    ? String(mapaPag[String(p)]).replace(/\s+/g, ' ').trim()
+                    : snipFull;
+                if (snipP) fuentesPorPagina[p].push(snipP);
             }
-            fuentesPorIdx[i + 1] = { pagina: pIni, texto: snip };
+            const fNum = parseInt(f.fragmento_num || (i + 1));
+            const entry = { pagina: pIni, pagina_fin: pFin, texto: snipPagIni || snipFull };
+            fuentesPorIdx[fNum] = entry;
+            if (!fuentesPorIdx[i + 1]) {
+                fuentesPorIdx[i + 1] = entry;
+            }
         });
     }
 
@@ -2007,6 +2070,12 @@ function formatearMarkdown(texto, fuentes = []) {
     html = html.replace(/^### (.*$)/gim, '<h4 class="ia-bloque-texto" title="🖱️ Clic para escuchar este encabezado" style="color:#2c3e50; margin:14px 0 6px 0; font-size:14px; font-weight:700; border-bottom:1px solid #dfe4ea; padding-bottom:3px;">$1</h4>');
     html = html.replace(/^## (.*$)/gim, '<h3 class="ia-bloque-texto" title="🖱️ Clic para escuchar este encabezado" style="color:#2c3e50; margin:16px 0 8px 0; font-size:15px; font-weight:700;">$1</h3>');
     html = html.replace(/^# (.*$)/gim, '<h2 class="ia-bloque-texto" title="🖱️ Clic para escuchar este título" style="color:#2c3e50; margin:18px 0 10px 0; font-size:16px; font-weight:800;">$1</h2>');
+
+    // Reglas horizontales Markdown (---)
+    html = html.replace(/^\s*---+\s*$/gm, '<hr class="ia-hr">');
+
+    // Blockquotes Markdown (> ...)
+    html = html.replace(/^&gt;\s?(.*)$/gm, '<blockquote class="ia-blockquote">$1</blockquote>');
 
     // Negritas y cursivas
     html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
@@ -2022,10 +2091,48 @@ function formatearMarkdown(texto, fuentes = []) {
             const p1 = mRango[1];
             const p2 = mRango[2];
             const pag = parseInt(p1);
+            const pagFinArg = p2 ? parseInt(p2) : 'null';
             const label = p2 ? `📄 Págs. ${p1}-${p2}` : `📄 Pág. ${p1}`;
             const textosPag = fuentesPorPagina[pag];
             const snipKey = (textosPag && textosPag.length) ? _registrarSnippetCitaIA(textosPag.join('\n')) : '';
-            return `<button class="ia-cite-badge" onclick="liraNavegarYResaltarFuente(${pag}, '${snipKey}', this)" title="Saltar a página ${p1} y resaltar fragmento en el PDF">${label}</button>`;
+            return `<button class="ia-cite-badge" onclick="liraNavegarYResaltarFuente(${pag}, '${snipKey}', this, ${pagFinArg})" title="Saltar a página ${p1} y resaltar fragmento en el PDF">${label}</button>`;
+        }).join(' ');
+    });
+
+    // Citas cortas verificadas: soporta [F1], listas [F1, F2, F3], [F1, 2, 3] y rangos [F1-F3]
+    html = html.replace(/\[\s*F\s*(\d+(?:\s*(?:[-,;/])\s*F?\s*\d+)*)\s*\]/gi, (match, cuerpo) => {
+        const partes = String(cuerpo).split(/[,;/]+/).map(s => s.trim()).filter(Boolean);
+        const indices = [];
+        partes.forEach(parte => {
+            const mRango = parte.match(/^F?\s*(\d+)\s*-\s*F?\s*(\d+)$/i);
+            if (mRango) {
+                const a = parseInt(mRango[1]);
+                const b = parseInt(mRango[2]);
+                if (a <= b && (b - a) <= 20) {
+                    for (let n = a; n <= b; n++) {
+                        if (!indices.includes(n)) indices.push(n);
+                    }
+                } else {
+                    if (!indices.includes(a)) indices.push(a);
+                    if (!indices.includes(b)) indices.push(b);
+                }
+            } else {
+                const mNum = parte.match(/^F?\s*(\d+)$/i);
+                if (mNum) {
+                    const n = parseInt(mNum[1]);
+                    if (!indices.includes(n)) indices.push(n);
+                }
+            }
+        });
+        if (!indices.length) return match;
+        return indices.map(idx => {
+            const fData = fuentesPorIdx[idx];
+            if (fData) {
+                const snipKey = _registrarSnippetCitaIA(fData.texto);
+                const pagFinArg = fData.pagina_fin ? fData.pagina_fin : 'null';
+                return `<button class="ia-cite-badge" onclick="liraNavegarYResaltarFuente(${fData.pagina}, '${snipKey}', this, ${pagFinArg})" title="Saltar a fragmento F${idx} en Pág. ${fData.pagina} y resaltar en el PDF">📄 Pág. ${fData.pagina}</button>`;
+            }
+            return `<span style="display:inline-flex; align-items:center; background:#eef2ff; color:#4338ca; border-radius:4px; padding:0 5px; font-size:11px; font-weight:600;">[F${idx}]</span>`;
         }).join(' ');
     });
 
@@ -2035,7 +2142,8 @@ function formatearMarkdown(texto, fuentes = []) {
         const fData = fuentesPorIdx[idx];
         if (fData) {
             const snipKey = _registrarSnippetCitaIA(fData.texto);
-            return `<button class="ia-cite-badge" onclick="liraNavegarYResaltarFuente(${fData.pagina}, '${snipKey}', this)" title="Saltar a fragmento ${idx} en Pág. ${fData.pagina}">📑 Ref. ${idx} (Pág. ${fData.pagina})</button>`;
+            const pagFinArg = fData.pagina_fin ? fData.pagina_fin : 'null';
+            return `<button class="ia-cite-badge" onclick="liraNavegarYResaltarFuente(${fData.pagina}, '${snipKey}', this, ${pagFinArg})" title="Saltar a fragmento ${idx} en Pág. ${fData.pagina}">📑 Ref. ${idx} (Pág. ${fData.pagina})</button>`;
         }
         return `<span style="display:inline-flex; align-items:center; background:#eef2ff; color:#4338ca; border-radius:4px; padding:0 5px; font-size:11px; font-weight:600;">[Ref. ${p1}]</span>`;
     });
@@ -2048,7 +2156,7 @@ function formatearMarkdown(texto, fuentes = []) {
     const htmlFormateado = parrafos.map(p => {
         let pTrim = p.trim();
         if (!pTrim) return '';
-        if (pTrim.startsWith('<h') || pTrim.startsWith('<li') || pTrim.startsWith('<div')) {
+        if (pTrim.startsWith('<h') || pTrim.startsWith('<li') || pTrim.startsWith('<div') || pTrim.startsWith('<blockquote') || pTrim.startsWith('<hr')) {
             return pTrim.replace(/\n/g, '<br>');
         }
         return `<p class="ia-bloque-texto" title="🖱️ Clic para escuchar este párrafo">${pTrim.replace(/\n/g, '<br>')}</p>`;

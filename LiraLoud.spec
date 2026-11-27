@@ -76,6 +76,18 @@ hiddenimports += [
     'webview.platforms.winforms',
     'clr',
     'bottle',
+    'sqlite3',
+    '_sqlite3',
+    'backend.documento.elementos_pdf',
+    'backend.documento.elementos_pdf.comun',
+    'backend.documento.elementos_pdf.stream_xobjects',
+    'backend.documento.elementos_pdf.imagenes',
+    'backend.documento.elementos_pdf.anotaciones',
+    'backend.documento.elementos_pdf.capas',
+    'backend.documento.ocr_modelos',
+    'backend.documento.historial_pdf',
+    'backend.documento.gestor_fuentes',
+    'backend.ia.fts_store',
 ]
 
 a = Analysis(

@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import shutil
 import socket
@@ -7,6 +8,28 @@ import threading
 import time
 import urllib.parse
 import urllib.request
+
+
+def _estimar_peso_modelo_hf(modelo, mid):
+    """Estima y formatea el peso legible de un modelo GGUF a partir de metadatos o su identificador."""
+    bytes_peso = modelo.get("usedStorage") or 0
+    if not bytes_peso:
+        gguf_sizes = [
+            s.get("size", 0) for s in modelo.get("siblings", [])
+            if isinstance(s, dict) and str(s.get("rfilename", "")).lower().endswith(".gguf") and s.get("size", 0) > 0
+        ]
+        if gguf_sizes:
+            gguf_sizes.sort()
+            bytes_peso = gguf_sizes[len(gguf_sizes) // 2]
+    if bytes_peso >= (1024 ** 3):
+        return f"~{bytes_peso / (1024 ** 3):.1f} GB"
+    if bytes_peso >= (1024 ** 2):
+        return f"~{bytes_peso / (1024 ** 2):.0f} MB"
+    m_params = re.search(r'(\d+(?:\.\d+)?)\s*[bB]\b', mid)
+    if m_params:
+        est_gb = float(m_params.group(1)) * 0.6
+        return f"~{est_gb:.1f} GB (Q4)" if est_gb >= 1.0 else f"~{int(est_gb * 1024)} MB (Q4)"
+    return "N/D"
 
 
 def buscar_modelos_hf_gguf(query="", limit=15):
@@ -32,26 +55,7 @@ def buscar_modelos_hf_gguf(query="", limit=15):
             mid = m.get("id") or m.get("modelId") or ""
             if not mid:
                 continue
-            bytes_peso = m.get("usedStorage") or 0
-            if not bytes_peso:
-                gguf_sizes = [
-                    s.get("size", 0) for s in m.get("siblings", [])
-                    if isinstance(s, dict) and str(s.get("rfilename", "")).lower().endswith(".gguf") and s.get("size", 0) > 0
-                ]
-                if gguf_sizes:
-                    gguf_sizes.sort()
-                    bytes_peso = gguf_sizes[len(gguf_sizes) // 2]
-            if bytes_peso >= (1024 ** 3):
-                peso_str = f"~{bytes_peso / (1024 ** 3):.1f} GB"
-            elif bytes_peso >= (1024 ** 2):
-                peso_str = f"~{bytes_peso / (1024 ** 2):.0f} MB"
-            else:
-                m_params = re.search(r'(\d+(?:\.\d+)?)\s*[bB]\b', mid)
-                if m_params:
-                    est_gb = float(m_params.group(1)) * 0.6
-                    peso_str = f"~{est_gb:.1f} GB (Q4)" if est_gb >= 1.0 else f"~{int(est_gb * 1024)} MB (Q4)"
-                else:
-                    peso_str = "N/D"
+            peso_str = _estimar_peso_modelo_hf(m, mid)
             resultados.append({
                 "id": mid,
                 "hf_tag": f"hf.co/{mid}",
@@ -188,19 +192,8 @@ def _detectar_vram_registro_windows():
     return mejor_vram, mejor_nombre
 
 
-def obtener_info_hardware_ollama():
-    """Devuelve RAM total, VRAM real (NVIDIA/AMD/Intel Arc), CPU y recomendación dinámica de modelos."""
-    ram_gb = 8.0
-    nucleos_fisicos = 4
-    hilos = 4
-    try:
-        import psutil
-        ram_gb = round(psutil.virtual_memory().total / (1024 ** 3), 1)
-        nucleos_fisicos = psutil.cpu_count(logical=False) or os.cpu_count() or 4
-        hilos = psutil.cpu_count(logical=True) or os.cpu_count() or nucleos_fisicos
-    except Exception:
-        pass
-
+def _detectar_gpu_vram():
+    """Detecta VRAM (GB) y nombre de GPU probando nvidia-smi, registro Windows y CIM PowerShell."""
     vram_gb = 0.0
     gpu_nombre = ""
     try:
@@ -238,6 +231,24 @@ def obtener_info_hardware_ollama():
                     vram_gb = round(float(gpu_info["AdapterRAM"]) / (1024 ** 3), 1)
         except Exception:
             pass
+
+    return vram_gb, gpu_nombre
+
+
+def obtener_info_hardware_ollama():
+    """Devuelve RAM total, VRAM real (NVIDIA/AMD/Intel Arc), CPU y recomendación dinámica de modelos."""
+    ram_gb = 8.0
+    nucleos_fisicos = 4
+    hilos = 4
+    try:
+        import psutil
+        ram_gb = round(psutil.virtual_memory().total / (1024 ** 3), 1)
+        nucleos_fisicos = psutil.cpu_count(logical=False) or os.cpu_count() or 4
+        hilos = psutil.cpu_count(logical=True) or os.cpu_count() or nucleos_fisicos
+    except Exception:
+        pass
+
+    vram_gb, gpu_nombre = _detectar_gpu_vram()
 
     especificacion = generar_especificacion_hardware(vram_gb, ram_gb, nucleos_fisicos, hilos)
     q4_min, q4_max = especificacion["rango_parametros_q4"]

@@ -20,7 +20,8 @@ window.actualizarEstadoInteractivoCapaSoloLectura = function () {
         window.modoSubrayadorActivo ||
         window.modoBorradorActivo ||
         window.modoEditorTextoActivo ||
-        window.modoCuadroTextoActivo
+        window.modoCuadroTextoActivo ||
+        window.modoMoverElementosActivo
     );
     capa.style.display = herramientaActiva ? 'none' : 'block';
     capa.style.pointerEvents = herramientaActiva ? 'none' : 'auto';
@@ -80,7 +81,8 @@ window.sincronizarCapaTextoSoloLectura = function () {
         window.modoSubrayadorActivo ||
         window.modoBorradorActivo ||
         window.modoEditorTextoActivo ||
-        window.modoCuadroTextoActivo
+        window.modoCuadroTextoActivo ||
+        window.modoMoverElementosActivo
     );
 
     const capa = document.createElement('div');
@@ -141,9 +143,11 @@ window.cargarPaginaSoloLecturaRapida = async function (num) {
     }
 
     const editorEstabaActivo = window.modoEditorTextoActivo === true;
+    const moverEstabaActivo = window.modoMoverElementosActivo === true;
     if (typeof cerrarEditorTexto === 'function') cerrarEditorTexto();
     const capaEditor = document.getElementById('lira-pdf-text-editor-layer');
     if (capaEditor) capaEditor.innerHTML = '';
+    if (typeof window.limpiarCapaMoverElementos === 'function') window.limpiarCapaMoverElementos();
 
     const miToken = (typeof tokenCargaActual === 'number') ? ++tokenCargaActual : 1;
     if (typeof datosPagina !== 'undefined' && datosPagina && !datosPagina._esSoloLectura && typeof guardarEstadoPaginaActual === 'function') {
@@ -253,6 +257,9 @@ window.cargarPaginaSoloLecturaRapida = async function (num) {
 
         if (editorEstabaActivo && typeof renderizarBloquesEditor === 'function') {
             renderizarBloquesEditor();
+        }
+        if ((moverEstabaActivo || window.modoMoverElementosActivo) && typeof window.cargarYRenderizarElementosMover === 'function') {
+            window.cargarYRenderizarElementosMover();
         }
         return true;
     } catch (e) {

@@ -1,155 +1,149 @@
 <div id="tab-rendimiento" class="tab-content" style="display:none;">
 
-                        <!-- SECTOR: PRIVACIDAD Y SEGURIDAD ESTRICTA (100% OFFLINE) -->
-                        <div class="grupo-calibracion" id="sec-privacidad-estricta"
-                            style="border: 2px solid #27ae60; background: #f2fbf5; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                            <h4
-                                style="margin-top:0; color: #1e824c; border-bottom: 1px solid #c8e6c9; padding-bottom: 5px; display:flex; align-items:center; gap:8px;">
-                                <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                    style="width:18px; height:18px; color:#27ae60;">
-                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                                </svg>
-                                <span data-i18n="lbl-privacidad-titulo">Privacidad Estricta (Modo 100% Offline)</span>
-                            </h4>
-                            <p style="font-size: 11px; color: #576574; line-height: 1.4; margin-bottom: 15px;"
-                                data-i18n="lbl-privacidad-desc">
-                                Apaga y bloquea todas las funciones que envían datos o texto a servidores externos (Edge-TTS de Microsoft, Google Translate y modelos de nube). Ideal para leer documentos confidenciales o sensibles sin conexión.
-                            </p>
+    <!-- SECTOR: PRIVACIDAD Y SEGURIDAD ESTRICTA (100% OFFLINE) -->
+    <div class="grupo-calibracion" id="sec-privacidad-estricta">
+        <h4>
+            <svg class="svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" style="width:18px; height:18px;">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            <span data-i18n="lbl-privacidad-titulo">Privacidad Estricta (Modo 100% Offline)</span>
+        </h4>
+        <p style="font-size: 11px; color: #576574; line-height: 1.4; margin-bottom: 15px;"
+            data-i18n="lbl-privacidad-desc">
+            Apaga y bloquea todas las funciones que envían datos o texto a servidores externos (Edge-TTS de Microsoft,
+            Google Translate y modelos de nube). Ideal para leer documentos confidenciales o sensibles sin conexión.
+        </p>
 
-                            <div class="control-row"
-                                style="display:flex; justify-content:space-between; align-items:center;">
-                                <div>
-                                    <label style="font-size:13px; font-weight: bold; color: #2c3e50;" data-i18n="lbl-privacidad-toggle">Aislamiento de Red (Sin Internet):</label>
-                                    <div style="font-size:10px; color:#7f8c8d;" data-i18n="lbl-privacidad-sub">Fuerza Piper, síntesis local y traducción offline</div>
-                                </div>
-                                <div style="display:flex; gap:10px; align-items:center;">
-                                    <span style="font-size:11px; color: #666;">OFF</span>
-                                    <input type="checkbox" id="chk-modo-privacidad" class="switch-individual"
-                                        onchange="toggleModoPrivacidad(this.checked); guardarTodosAjustes(false)">
-                                    <span style="font-size:11px; color: #27ae60; font-weight: bold;">ON</span>
-                                </div>
-                            </div>
-                        </div>
+        <div class="control-row" style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <label style="font-size:13px; font-weight: bold; color: #2c3e50;"
+                    data-i18n="lbl-privacidad-toggle">Aislamiento de Red (Sin Internet):</label>
+                <div style="font-size:10px; color:#7f8c8d;" data-i18n="lbl-privacidad-sub">Fuerza Piper, síntesis local
+                    y traducción offline</div>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <span style="font-size:11px; color: #666;">OFF</span>
+                <input type="checkbox" id="chk-modo-privacidad" class="switch-individual"
+                    onchange="toggleModoPrivacidad(this.checked); guardarTodosAjustes(false)">
+                <span style="font-size:11px; color: #27ae60; font-weight: bold;">ON</span>
+            </div>
+        </div>
+    </div>
 
-                        <div class="grupo-calibracion"
-                            style="border: 2px solid #34495e; background: #f8f9f9; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                            <h4
-                                style="margin-top:0; color: #2c3e50; border-bottom: 1px solid #d5dbdb; padding-bottom: 5px;">
-                                <span data-i18n="lbl-rendimiento-titulo">Pre-renderizado de Página</span>
-                            </h4>
+    <!-- BLOQUE 2: RENDIMIENTO Y PRECARGA -->
+    <div class="grupo-calibracion">
+        <h4>
+            <span data-i18n="lbl-rendimiento-cache">Rendimiento y Caché</span>
+        </h4>
 
-                            <p style="font-size: 11px; color: #7f8c8d; line-height: 1.4; margin-bottom: 15px;">
-                                <span data-i18n="lbl-rendimiento-desc">Optimiza la <b>Inferencia Activa</b> del motor
-                                    Piper.
-                                    Al activarlo, el procesador genera el audio de la página completa al cargarla,
-                                    eliminando la latencia entre oraciones.</span>
-                            </p>
+        <!-- Subbloque 1: Pre-renderizado de Página -->
+        <div>
+            <div class="rendimiento-subtitulo"
+                style="font-size: 13px; font-weight: bold; color: #67645f; margin-bottom: 4px;"
+                data-i18n="lbl-rendimiento-titulo">Pre-renderizado de Página</div>
+            <p style="font-size: 11px; color: #7f8c8d; line-height: 1.4; margin: 0 0 10px 0;">
+                <span data-i18n="lbl-rendimiento-desc">Optimiza la <b>Inferencia Activa</b> del motor
+                    Piper.
+                    Al activarlo, el procesador genera el audio de la página completa al cargarla,
+                    eliminando la latencia entre oraciones.</span>
+            </p>
+            <div class="control-row" style="display:flex; justify-content:space-between; align-items:center;">
+                <label style="font-size:13px; font-weight: bold; color: #2c3e50;" data-i18n="lbl-alto-rendimiento">Modo
+                    de
+                    Alto Rendimiento:</label>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <span style="font-size:11px; color: #666;" data-i18n="lbl-estandar">Estándar</span>
+                    <input type="checkbox" id="chk-alto-rendimiento" class="switch-individual"
+                        onchange="guardarTodosAjustes()">
+                    <span style="font-size:11px; color: #5c5a56; font-weight: bold;"
+                        data-i18n="lbl-potenciado">Potenciado</span>
+                </div>
+            </div>
+        </div>
 
-                            <div class="control-row"
-                                style="display:flex; justify-content:space-between; align-items:center;">
-                                <label style="font-size:13px; font-weight: bold;" data-i18n="lbl-alto-rendimiento">Modo
-                                    de
-                                    Alto Rendimiento:</label>
-                                <div style="display:flex; gap:10px; align-items:center;">
-                                    <span style="font-size:11px; color: #666;" data-i18n="lbl-estandar">Estándar</span>
-                                    <input type="checkbox" id="chk-alto-rendimiento" class="switch-individual"
-                                        onchange="guardarTodosAjustes()">
-                                    <span style="font-size:11px; color: #2980b9; font-weight: bold;"
-                                        data-i18n="lbl-potenciado">Potenciado</span>
-                                </div>
-                            </div>
-                        </div>
+        <!-- Subbloque 2: Pre-renderizado Extendido / Buffer Adyacente -->
+        <div class="rendimiento-subbloque" style="border-top: 1px dashed #d3cec2; padding-top: 12px; margin-top: 12px;">
+            <div class="rendimiento-subtitulo"
+                style="font-size: 13px; font-weight: bold; color: #67645f; margin-bottom: 4px;"
+                data-i18n="lbl-buffer-extendido-titulo">Pre-renderizado Extendido</div>
+            <p style="font-size: 11px; color: #7f8c8d; line-height: 1.4; margin: 0 0 10px 0;">
+                <span data-i18n="lbl-buffer-extendido-desc">Carga el audio de la página <b>anterior y
+                        posterior</b> automáticamente. Ideal para repasos rápidos sin latencia.</span>
+            </p>
+            <div class="control-row" style="display:flex; justify-content:space-between; align-items:center;">
+                <label style="font-size:13px; font-weight: bold; color: #2c3e50;"
+                    data-i18n="lbl-buffer-adyacente">Buffer
+                    Adyacente:</label>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <span style="font-size:11px; color: #666;">OFF</span>
+                    <input type="checkbox" id="chk-buffer-extendido" class="switch-individual"
+                        onchange="guardarTodosAjustes()">
+                    <span style="font-size:11px; color: #5c5a56; font-weight: bold;">ON</span>
+                </div>
+            </div>
+        </div>
 
+        <!-- Subbloque 3: Precargar modelos en RAM -->
+        <div class="rendimiento-subbloque" style="border-top: 1px dashed #d3cec2; padding-top: 12px; margin-top: 12px;">
+            <label
+                style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:bold; cursor: pointer; color: #2c3e50;">
+                <input type="checkbox" id="chk-precarga-ram" onchange="guardarTodosAjustes(true)"
+                    style="transform: scale(1.1);">
+                <span data-i18n="lbl-precargar-ram">Precargar modelos en RAM</span>
+            </label>
 
-                        <div class="grupo-calibracion"
-                            style="border: 2px solid #8e44ad; background: #fbf0ff; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                            <h4
-                                style="margin-top:0; color: #6c3483; border-bottom: 1px solid #e8daef; padding-bottom: 5px;">
-                                <span data-i18n="lbl-pretraducir-titulo">Pre-traducir Páginas</span>
-                            </h4>
-                            <p style="font-size: 11px; color: #7f8c8d; line-height: 1.4; margin-bottom: 10px;">
-                                <span data-i18n="lbl-pretraducir-desc">Traduce en segundo plano la página actual y sus
-                                    páginas <b>anterior y posterior</b> para que la lectura y subtítulos sean
-                                    instantáneos.</span>
-                            </p>
-                            <div class="control-row"
-                                style="display:flex; justify-content:space-between; align-items:center;">
-                                <label style="font-size:13px; font-weight: bold; color: #2c3e50;"
-                                    data-i18n="lbl-pretraducir-adyacente">Pre-traducción en Fondo:</label>
-                                <div style="display:flex; gap:10px; align-items:center;">
-                                    <span style="font-size:11px; color: #666;">OFF</span>
-                                    <input type="checkbox" id="chk-pretraducir-paginas" class="switch-individual"
-                                        onchange="validarPretraduccionRed(this)">
-                                    <span style="font-size:11px; color: #8e44ad; font-weight: bold;">ON</span>
-                                </div>
-                            </div>
-                        </div>
+            <p style="font-size: 11px; color: #7f8c8d; line-height: 1.4; margin: 8px 0 0 22px;">
+                <span data-i18n="lbl-precargar-ram-desc">Asigna los archivos .onnx de tus voces
+                    favoritas
+                    directamente a la memoria al iniciar. <br><b>Nota:</b> Aumenta el tiempo de
+                    arranque,
+                    pero elimina latencias al reproducir.</span>
+            </p>
+        </div>
+    </div>
 
+    <!-- BLOQUE 3: PRE-TRADUCIR PÁGINAS -->
+    <div class="grupo-calibracion">
+        <h4>
+            <span data-i18n="lbl-pretraducir-titulo">Pre-traducir Páginas</span>
+        </h4>
+        <p style="font-size: 11px; color: #7f8c8d; line-height: 1.4; margin-bottom: 10px;">
+            <span data-i18n="lbl-pretraducir-desc">Traduce en segundo plano la página actual y sus
+                páginas <b>anterior y posterior</b> para que la lectura y subtítulos sean
+                instantáneos.</span>
+        </p>
+        <div class="control-row" style="display:flex; justify-content:space-between; align-items:center;">
+            <label style="font-size:13px; font-weight: bold; color: #2c3e50;"
+                data-i18n="lbl-pretraducir-adyacente">Pre-traducción en Fondo:</label>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <span style="font-size:11px; color: #666;">OFF</span>
+                <input type="checkbox" id="chk-pretraducir-paginas" class="switch-individual"
+                    onchange="validarPretraduccionRed(this)">
+                <span style="font-size:11px; color: #5c5a56; font-weight: bold;">ON</span>
+            </div>
+        </div>
 
-                        <div class="grupo-calibracion"
-                            style="border: 2px solid #27ae60; background: #f0fff4; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                            <h4
-                                style="margin-top:0; color: #1e8449; border-bottom: 1px solid #c3e6cb; padding-bottom: 5px;">
-                                <span data-i18n="lbl-buffer-extendido-titulo">Pre-renderizado Extendido</span>
-                            </h4>
-                            <p style="font-size: 11px; color: #7f8c8d; line-height: 1.4; margin-bottom: 10px;">
-                                <span data-i18n="lbl-buffer-extendido-desc">Carga el audio de la página <b>anterior y
-                                        posterior</b> automáticamente. Ideal para repasos rápidos sin latencia.</span>
-                            </p>
-                            <div class="control-row"
-                                style="display:flex; justify-content:space-between; align-items:center;">
-                                <label style="font-size:13px;" data-i18n="lbl-buffer-adyacente">Buffer
-                                    Adyacente:</label>
-                                <div style="display:flex; gap:10px; align-items:center;">
-                                    <span style="font-size:11px; color: #666;">OFF</span>
-                                    <input type="checkbox" id="chk-buffer-extendido" class="switch-individual"
-                                        onchange="guardarTodosAjustes()">
-                                    <span style="font-size:11px; color: #27ae60; font-weight: bold;">ON</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="grupo-calibracion"
-                            style="border: 2px solid #34495e; background: #f8f9f9; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                            <h4
-                                style="margin-top: 0; color: #2c3e50; border-bottom: 1px solid #d5dbdb; padding-bottom: 5px;">
-                                <span data-i18n="lbl-rendimiento-cache">Rendimiento y Caché</span>
-                            </h4>
-
-
-                            <label
-                                style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:bold; cursor: pointer; color: #2c3e50;">
-                                <input type="checkbox" id="chk-precarga-ram" onchange="guardarTodosAjustes(true)"
-                                    style="transform: scale(1.1);">
-                                <span data-i18n="lbl-precargar-ram">Precargar modelos en RAM</span>
-                            </label>
-
-                            <p style="font-size: 11px; color: #7f8c8d; line-height: 1.4; margin: 8px 0 0 22px;">
-                                <span data-i18n="lbl-precargar-ram-desc">Asigna los archivos .onnx de tus voces
-                                    favoritas
-                                    directamente a la memoria al iniciar. <br><b>Nota:</b> Aumenta el tiempo de
-                                    arranque,
-                                    pero elimina latencias al reproducir.</span>
-                            </p>
-
-                            <div style="margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-                                <label for="num-precarga-hojas" style="font-size: 13px; font-weight: bold; color: #2c3e50;" data-i18n="lbl-precarga-hojas">
-                                    Precarga de hojas (Auto-Layout):
-                                </label>
-                                <input type="number" id="num-precarga-hojas" min="0" max="5" value="2"
-                                    onchange="window.precargaHojas = Math.max(0, Math.min(5, parseInt(this.value) || 0)); this.value = window.precargaHojas; guardarTodosAjustes()"
-                                    style="width: 58px; padding: 4px 6px; border: 1px solid #bdc3c7; border-radius: 6px; font-size: 13px; text-align: center;">
-                            </div>
-                            <p style="font-size: 11px; color: #7f8c8d; line-height: 1.4; margin: 4px 0 0 0;" data-i18n="lbl-precarga-hojas-desc">
-                                Cantidad de páginas siguientes que se analizan en segundo plano (0 = desactivado, recomendado: 2).
-                            </p>
-
-
-
-                        </div>
+        <div id="panel-precarga-hojas" class="rendimiento-subbloque"
+            style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #d3cec2;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                <label for="num-precarga-hojas" style="font-size: 13px; font-weight: bold; color: #2c3e50;"
+                    data-i18n="lbl-precarga-hojas">
+                    Precarga de hojas (Auto-Layout):
+                </label>
+                <input type="number" id="num-precarga-hojas" min="0" max="5" value="2"
+                    onchange="window.precargaHojas = Math.max(0, Math.min(5, parseInt(this.value) || 0)); this.value = window.precargaHojas; guardarTodosAjustes()"
+                    style="width: 58px; padding: 4px 6px; border: 1px solid #bdc3c7; border-radius: 6px; font-size: 13px; text-align: center;">
+            </div>
+            <p style="font-size: 11px; color: #7f8c8d; line-height: 1.4; margin: 4px 0 0 0;"
+                data-i18n="lbl-precarga-hojas-desc">
+                Cantidad de páginas siguientes que se analizan en segundo plano (0 = desactivado, recomendado: 2).
+            </p>
+        </div>
+    </div>
 
 
 
 
 
-                    </div>
+</div>

@@ -53,7 +53,29 @@ class PuenteWebview:
         return _decorador
 
     def vincular_ventana(self, ventana):
-        """Asocia la instancia activa de la ventana de pywebview."""
+        """Asocia la instancia activa de la ventana de pywebview y protege evaluate_js contra callbacks obsoletos."""
+        if ventana is not None and hasattr(ventana, "evaluate_js") and not getattr(ventana, "_lira_eval_protegido", False):
+            eval_original = ventana.evaluate_js
+
+            def _evaluate_js_seguro(script, *args, **kwargs):
+                try:
+                    return eval_original(script, *args, **kwargs)
+                except Exception as exc:
+                    msg = str(exc)
+                    if "_returnValuesCallbacks" in msg and (
+                        "is not a function" in msg
+                        or "Cannot read properties" in msg
+                        or "undefined" in msg
+                    ):
+                        logger.debug(f"[PuenteWebview] Callback obsoleto descartado tras recarga: {msg}")
+                        return None
+                    raise
+
+            ventana.evaluate_js = _evaluate_js_seguro
+            try:
+                ventana._lira_eval_protegido = True
+            except Exception:
+                pass
         self.ventana = ventana
 
     def evaluar_js_seguro(self, nombre_fn: str, *args):

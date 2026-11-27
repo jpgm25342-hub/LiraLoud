@@ -241,6 +241,35 @@
                         <path d="M5 18H3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
                     </svg>
                 </button>
+
+                <!-- MOVER ELEMENTOS (IMÁGENES Y CUADROS DE TEXTO) -->
+                <div class="tool-group" id="group-mover-elementos">
+                    <button type="button" id="btn-mover-elementos" class="tool-btn"
+                        title="Mover elementos" data-i18n-title="ttl-mover-elementos"
+                        aria-pressed="false"
+                        onclick="if(typeof toggleModoMoverElementos==='function') toggleModoMoverElementos(!window.modoMoverElementosActivo); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes();">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                            style="width:18px;height:18px;" aria-hidden="true">
+                            <rect x="3.5" y="3.5" width="17" height="17" rx="1.5" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 2"/>
+                            <path d="M12 6.5V17.5M6.5 12H17.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                            <path d="M10 8.5L12 6.5L14 8.5M10 15.5L12 17.5L14 15.5M8.5 10L6.5 12L8.5 14M15.5 10L17.5 12L15.5 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- AÑADIR FIGURA (RECTÁNGULO, CÍRCULO/ÓVALO) -->
+                <div class="tool-group" id="group-anadir-figura">
+                    <button type="button" id="btn-anadir-figura" class="tool-btn"
+                        title="Añadir figura (Rectángulo / Círculo)" data-i18n-title="ttl-anadir-figura"
+                        aria-pressed="false"
+                        onclick="if(typeof toggleModoFiguras==='function') toggleModoFiguras(!window.modoFigurasActivo);">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                            style="width:18px;height:18px;" aria-hidden="true">
+                            <rect x="3" y="3" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1.6"/>
+                            <circle cx="16.5" cy="16.5" r="5" stroke="currentColor" stroke-width="1.6"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
             <button class="btn-engranaje" id="btn-config" onclick="abrirConfiguracion()" title="Configuración Avanzada" data-i18n-title="lbl-config-titulo">
                 <svg class="svg-icon" version="1.1" id="gear" xmlns="http://www.w3.org/2000/svg"
@@ -583,6 +612,31 @@
                                 </g>
                             </svg>
                             <span data-i18n="lbl-crear-cuadro-texto">Crear Cuadro de Texto</span>
+                        </button>
+
+                        <button type="button" id="btn-mover-elementos-zen" class="zen-ocr-item zen-item-mover-elementos"
+                            title="Mover elementos" data-i18n-title="ttl-mover-elementos"
+                            aria-pressed="false"
+                            onclick="if(typeof toggleModoMoverElementos==='function') toggleModoMoverElementos(!window.modoMoverElementosActivo); if(typeof guardarTodosAjustes==='function') guardarTodosAjustes(); document.getElementById('zen-details-edicion-bar').open=false;">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                                style="width:16px;height:16px;" aria-hidden="true">
+                                <rect x="3.5" y="3.5" width="17" height="17" rx="1.5" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 2"/>
+                                <path d="M12 6.5V17.5M6.5 12H17.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                                <path d="M10 8.5L12 6.5L14 8.5M10 15.5L12 17.5L14 15.5M8.5 10L6.5 12L8.5 14M15.5 10L17.5 12L15.5 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <span data-i18n="lbl-mover-elementos">Mover elementos</span>
+                        </button>
+
+                        <button type="button" id="btn-anadir-figura-zen" class="zen-ocr-item zen-item-anadir-figura"
+                            title="Añadir figura (Rectángulo / Círculo)" data-i18n-title="ttl-anadir-figura"
+                            aria-pressed="false"
+                            onclick="if(typeof toggleModoFiguras==='function') toggleModoFiguras(!window.modoFigurasActivo); document.getElementById('zen-details-edicion-bar').open=false;">
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                                style="width:16px;height:16px;" aria-hidden="true">
+                                <rect x="3" y="3" width="9" height="9" rx="1.2" stroke="currentColor" stroke-width="1.6"/>
+                                <circle cx="16" cy="16" r="4.5" stroke="currentColor" stroke-width="1.6"/>
+                            </svg>
+                            <span data-i18n="lbl-anadir-figura">Añadir figura</span>
                         </button>
 
                         <button id="btn-crop-extract-zen" class="zen-ocr-item zen-item-recorte"

@@ -42,6 +42,8 @@ function activarModoCuadroTexto(activo) {
         if (typeof toggleModoEditorTexto === 'function' && window.modoEditorTextoActivo) toggleModoEditorTexto(false);
         if (typeof toggleModoBorrador === 'function' && window.modoBorradorActivo) toggleModoBorrador(false);
         if (typeof toggleModoSubrayador === 'function' && window.modoSubrayadorActivo) toggleModoSubrayador(false);
+        if (typeof toggleModoRecorteExtraccion === 'function' && window.modoRecorteActivo) toggleModoRecorteExtraccion(false);
+        if (typeof toggleModoMoverElementos === 'function' && window.modoMoverElementosActivo) toggleModoMoverElementos(false);
         if (typeof toggleCapturaCorte === 'function' && window.capturandoCorte) toggleCapturaCorte(false);
         const chkLimites = document.getElementById('chk-dibujar-limites');
         if (chkLimites && chkLimites.checked) {

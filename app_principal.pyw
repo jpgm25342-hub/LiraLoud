@@ -135,6 +135,11 @@ def al_mostrar_ventana_webview():
 def al_cerrar_ventana_webview():
     logger.info("🔌 [PYWEBVIEW] Cerrando ventana principal de LiraLoud...")
     try:
+        from backend.documento.historial_pdf import limpiar_historial_pdf
+        limpiar_historial_pdf()
+    except Exception as e:
+        logger.error(f"Error limpiando historial PDF al cerrar: {e}")
+    try:
         backend.audio.media_control.restaurar_volumenes_salida()
     except Exception as e:
         logger.error(f"Error restaurando volúmenes al cerrar: {e}")

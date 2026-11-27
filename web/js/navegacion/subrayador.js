@@ -38,13 +38,19 @@ function toggleModoSubrayador(activo) {
     });
     
     if (activo) {
-        // Si activamos el subrayador, desactivamos el borrador, el editor y el cuadro de texto automáticamente
+        // Si activamos el subrayador, desactivamos el borrador, el editor, el cuadro de texto y mover elementos automáticamente
         toggleModoBorrador(false);
         if (typeof toggleModoEditorTexto === 'function' && window.modoEditorTextoActivo) {
             toggleModoEditorTexto(false);
         }
         if (typeof activarModoCuadroTexto === 'function' && window.modoCuadroTextoActivo) {
             activarModoCuadroTexto(false);
+        }
+        if (typeof toggleModoRecorteExtraccion === 'function' && window.modoRecorteActivo) {
+            toggleModoRecorteExtraccion(false);
+        }
+        if (typeof toggleModoMoverElementos === 'function' && window.modoMoverElementosActivo) {
+            toggleModoMoverElementos(false);
         }
         window.actualizarCursorSubrayador();
     } else {
@@ -67,13 +73,19 @@ function toggleModoBorrador(activo) {
     });
 
     if (activo) {
-        // Si activamos el borrador, desactivamos el subrayador, el editor y el cuadro de texto automáticamente
+        // Si activamos el borrador, desactivamos el subrayador, el editor, el cuadro de texto y mover elementos automáticamente
         toggleModoSubrayador(false);
         if (typeof toggleModoEditorTexto === 'function' && window.modoEditorTextoActivo) {
             toggleModoEditorTexto(false);
         }
         if (typeof activarModoCuadroTexto === 'function' && window.modoCuadroTextoActivo) {
             activarModoCuadroTexto(false);
+        }
+        if (typeof toggleModoRecorteExtraccion === 'function' && window.modoRecorteActivo) {
+            toggleModoRecorteExtraccion(false);
+        }
+        if (typeof toggleModoMoverElementos === 'function' && window.modoMoverElementosActivo) {
+            toggleModoMoverElementos(false);
         }
         window.actualizarCursorSubrayador();
     } else {

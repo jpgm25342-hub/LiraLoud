@@ -697,6 +697,35 @@ body.ui-dark-mode .svg-icon-ia {
     box-shadow: 0 3px 6px rgba(67, 56, 202, 0.25);
 }
 
+.ia-blockquote {
+    margin: 6px 0 8px 0;
+    padding: 5px 10px;
+    border-left: 3px solid #6366f1;
+    background: rgba(99, 102, 241, 0.06);
+    border-radius: 0 6px 6px 0;
+    color: #475569;
+    font-size: 12.5px;
+    line-height: 1.5;
+}
+
+body.ui-dark-mode .ia-blockquote,
+body.dark-mode .ia-blockquote {
+    border-left-color: #818cf8;
+    background: rgba(129, 140, 248, 0.1);
+    color: #cbd5e1;
+}
+
+.ia-hr {
+    border: none;
+    border-top: 1px solid #e2e8f0;
+    margin: 12px 0;
+}
+
+body.ui-dark-mode .ia-hr,
+body.dark-mode .ia-hr {
+    border-top-color: #30363d;
+}
+
 .ia-btn-ir-fuente {
     display: inline-flex;
     align-items: center;

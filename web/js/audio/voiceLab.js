@@ -675,14 +675,14 @@ async function cargarYRenderizarMezclasKokoroUI() {
             const eqEscapado = encodeURIComponent(eqNombre);
 
             html += `
-            <div style="display:flex; justify-content:space-between; align-items:center; background:#ffffff; border:1px solid #dcdde1; border-radius:5px; padding:6px 10px;">
+            <div class="voz-lab-item" style="display:flex; justify-content:space-between; align-items:center;">
                 <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:8px;">
-                    <span style="font-size:12px; font-weight:600; color:#2c3e50;">${nombreMostrar}</span>
+                    <span style="font-size:12px; font-weight:600; color:#333333;">${nombreMostrar}</span>
                     <span style="font-size:10px; color:#7f8c8d; margin-left:6px;" title="${formula} · ${acento} · ${eqNombre}">(${formula} · ${acento} · ${eqNombre})</span>
                 </div>
                 <div style="display:flex; gap:6px; align-items:center;">
                     <button type="button" class="btn-voz-item-test" title="Probar muestra rápida" onclick="reproducirMuestraRapidaBlend('${keyEscapada}', '${acentoEscapado}', '${encodeURIComponent(nombreMostrar)}', '${eqEscapado}')">
-                        <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px; height:12px; color:#2c3e50;"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px; height:12px;"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
                     </button>
                     <button type="button" class="btn-voz-item-delete" title="Eliminar mezcla" onclick="eliminarMezclaKokoroLive(decodeURIComponent('${idEscapado}'))">
                         ✕
@@ -1013,14 +1013,14 @@ async function cargarYRenderizarClonesPocketUI() {
             const nombreEscapado = encodeURIComponent(nombreMostrar);
 
             html += `
-            <div style="display:flex; justify-content:space-between; align-items:center; background:#ffffff; border:1px solid #dcdde1; border-radius:5px; padding:6px 10px;">
+            <div class="voz-lab-item" style="display:flex; justify-content:space-between; align-items:center;">
                 <div style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:8px;">
-                    <span style="font-size:12px; font-weight:600; color:#1f618d;">${nombreMostrar}</span>
+                    <span style="font-size:12px; font-weight:600; color:#333333;">${nombreMostrar}</span>
                     <span style="font-size:10px; color:#7f8c8d; margin-left:6px;">(Clon Zero-Shot · Pocket AI)</span>
                 </div>
                 <div style="display:flex; gap:6px; align-items:center;">
                     <button type="button" class="btn-voz-item-test" title="Probar muestra de voz clonada" onclick="probarMuestraClonPocket('${idEscapado}', '${nombreEscapado}')">
-                        <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px; height:12px; color:#1f618d;"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="currentColor" style="width:12px; height:12px;"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
                     </button>
                     <button type="button" class="btn-voz-item-delete" title="Eliminar voz clonada" onclick="eliminarClonPocketLive(decodeURIComponent('${idEscapado}'))">
                         ✕

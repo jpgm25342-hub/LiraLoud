@@ -1,10 +1,8 @@
 <div id="tab-estilo" class="tab-content" style="display:none;">
 
                         <!-- Tarea 3: Botón de Noche movido a Estilo -->
-                        <div class="grupo-calibracion"
-                            style="border: 2px solid #34495e; background: #ecf0f1; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                            <h4
-                                style="margin-top:0; color: #2c3e50; border-bottom: 1px solid #bdc3c7; padding-bottom: 5px; display:flex; align-items:center; gap:5px;">
+                        <div class="grupo-calibracion">
+                            <h4>
                                 <svg class="svg-icon icon-tema-sol" viewBox="0 0 512.001 512.001" xml:space="preserve"
                                     fill="#000000">
                                     <g stroke-width="0"></g>
@@ -68,10 +66,8 @@
                         </div>
 
                         <!-- NUEVO APARTADO: DISEÑO E INTERFAZ -->
-                        <div class="grupo-calibracion"
-                            style="border: 2px solid #e83e8c; background: #fff5f8; padding: 16px; border-radius: 8px; margin-top: 15px;">
-                            <h4
-                                style="margin-top:0; color: #ad1457; border-bottom: 1px solid #f8bbd0; padding-bottom: 6px; display:flex; align-items:center; gap:8px;">
+                        <div class="grupo-calibracion">
+                            <h4>
                                 <svg class="svg-icon" viewBox="0 0 505.058 505.058" xml:space="preserve"
                                     style="width:18px; height:18px; flex-shrink:0;">
                                     <g transform="translate(1 1)">
@@ -130,7 +126,7 @@
                             <!-- MODO MINIMALISTA -->
                             <div style="margin-top: 15px; margin-bottom: 18px;">
                                 <h5
-                                    style="color: #ad1457; margin-top:0; margin-bottom: 8px; font-weight: bold; border-bottom: 1px solid rgba(248,187,208,0.5); padding-bottom: 4px; font-size: 13.5px; display:flex; align-items:center; gap:6px;">
+                                    style="margin-top:0; margin-bottom: 8px; font-weight: bold; padding-bottom: 4px; font-size: 13.5px; display:flex; align-items:center; gap:6px;">
                                     <svg viewBox="0 0 17 17" version="1.1" xmlns="http://www.w3.org/2000/svg"
                                         xmlns:xlink="http://www.w3.org/1999/xlink" class="si-glyph si-glyph-feather"
                                         fill="currentColor" style="width:16px; height:16px; flex-shrink:0;">
@@ -143,41 +139,57 @@
                                     <span data-i18n="lbl-entorno-minimalista">Entorno Minimalista</span>
                                 </h5>
 
-                                <div class="control-row"
-                                    style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 4px;">
-                                    <label for="chk-modo-zen"
-                                        style="font-size:13px; font-weight:600; color: #34495e; cursor: pointer; flex:1; margin:0;">
-                                        <span data-i18n="lbl-modo-zen">Activar Modo Minimalista</span>
-                                    </label>
-                                    <input type="checkbox" id="chk-modo-zen" class="switch-individual" checked
-                                        onchange="toggleModoZen(this.checked); guardarTodosAjustes()">
-                                </div>
-                                <p class="ayuda-text" data-i18n="lbl-modo-zen-desc"
-                                    style="font-size: 11px; color: #7f8c8d; margin-top: 2px; margin-bottom: 0; line-height: 1.4;">
-                                    Transforma toda la interfaz ocultando herramientas secundarias y agrupándolas en
-                                    menús
-                                    flotantes.
-                                </p>
+            <div class="control-row"
+                style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 4px;">
+                <label for="chk-modo-zen"
+                    style="font-size:13px; font-weight:600; color: #34495e; cursor: pointer; flex:1; margin:0;">
+                    <span data-i18n="lbl-modo-zen">Activar Modo Minimalista</span>
+                </label>
+                <input type="checkbox" id="chk-modo-zen" class="switch-individual" checked
+                    onchange="toggleModoZen(this.checked); guardarTodosAjustes()">
+            </div>
+            <p class="ayuda-text" data-i18n="lbl-modo-zen-desc"
+                style="font-size: 11px; color: #7f8c8d; margin-top: 2px; margin-bottom: 0; line-height: 1.4;">
+                Transforma toda la interfaz ocultando herramientas secundarias y agrupándolas en
+                menús
+                flotantes.
+            </p>
 
-                                <div class="control-row"
-                                    style="display:flex; justify-content:space-between; align-items:center; margin-top: 10px; margin-bottom: 4px; padding-top: 8px; border-top: 1px dashed rgba(248,187,208,0.4);">
-                                    <label for="chk-etiquetas-zen"
-                                        style="font-size:13px; font-weight:600; color: #34495e; cursor: pointer; flex:1; margin:0;">
-                                        <span data-i18n="lbl-etiquetas-zen">Mostrar nombres en menú de funciones</span>
-                                    </label>
-                                    <input type="checkbox" id="chk-etiquetas-zen" class="switch-individual" checked
-                                        onchange="toggleEtiquetasZen(this.checked); guardarTodosAjustes()">
-                                </div>
-                                <p class="ayuda-text" data-i18n="lbl-etiquetas-zen-desc"
-                                    style="font-size: 11px; color: #7f8c8d; margin-top: 2px; margin-bottom: 0; line-height: 1.4;">
-                                    Muestra una etiqueta debajo de cada botón en el menú de funciones principales (Descarga, Teatro, OCR, IA, etc.).
-                                </p>
-                            </div>
+            <div class="control-row"
+                style="display:flex; justify-content:space-between; align-items:center; margin-top: 10px; margin-bottom: 4px; padding-top: 8px; border-top: 1px dashed rgba(248,187,208,0.4);">
+                <label for="chk-etiquetas-zen"
+                    style="font-size:13px; font-weight:600; color: #34495e; cursor: pointer; flex:1; margin:0;">
+                    <span data-i18n="lbl-etiquetas-zen">Mostrar nombres en menú de funciones</span>
+                </label>
+                <input type="checkbox" id="chk-etiquetas-zen" class="switch-individual" checked
+                    onchange="toggleEtiquetasZen(this.checked); guardarTodosAjustes()">
+            </div>
+            <p class="ayuda-text" data-i18n="lbl-etiquetas-zen-desc"
+                style="font-size: 11px; color: #7f8c8d; margin-top: 2px; margin-bottom: 0; line-height: 1.4;">
+                Muestra una etiqueta debajo de cada botón en el menú de funciones principales (Descarga, Teatro, OCR,
+                IA, etc.).
+            </p>
+
+            <div class="control-row"
+                style="display:flex; justify-content:space-between; align-items:center; margin-top: 10px; margin-bottom: 4px; padding-top: 8px; border-top: 1px dashed #d3cec2;">
+                <label for="chk-unir-solo-lectura-zen"
+                    style="font-size:13px; font-weight:600; color: #34495e; cursor: pointer; flex:1; margin:0;">
+                    <span data-i18n="lbl-unir-solo-lectura-zen">Unir «Solo lectura» al menú principal</span>
+                </label>
+                <input type="checkbox" id="chk-unir-solo-lectura-zen" class="switch-individual"
+                    onchange="toggleUnirSoloLecturaZen(this.checked); guardarTodosAjustes()">
+            </div>
+            <p class="ayuda-text" data-i18n="lbl-unir-solo-lectura-zen-desc"
+                style="font-size: 11px; color: #7f8c8d; margin-top: 2px; margin-bottom: 0; line-height: 1.4;">
+                Integra el botón Solo lectura dentro de la barra principal en Modo Minimalista sin flotarlo ni mostrar
+                sombra.
+            </p>
+        </div>
 
                             <!-- PERSONALIZACIÓN DE BOTONES -->
                             <div style="margin-top: 15px;">
                                 <h5
-                                    style="color: #ad1457; margin-top:0; margin-bottom: 6px; font-weight: bold; border-bottom: 1px solid rgba(248,187,208,0.5); padding-bottom: 4px; font-size: 13.5px; display:flex; align-items:center; gap:6px;">
+                                    style="margin-top:0; margin-bottom: 6px; font-weight: bold; padding-bottom: 4px; font-size: 13.5px; display:flex; align-items:center; gap:6px;">
                                     <svg fill="currentColor" version="1.1" xmlns="http://www.w3.org/2000/svg"
                                         xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 460.054 460.054"
                                         xml:space="preserve" style="width:15px; height:15px; flex-shrink:0;">
@@ -221,70 +233,53 @@
                                     Oculta selectivamente botones y barras en el modo estándar:
                                 </p>
 
-                                <div style="display: flex; flex-direction: column; gap: 8px;">
-                                    <div class="control-row fila-ocultar-item"
-                                        style="display:flex; justify-content:space-between; align-items:center; margin:0; padding: 4px 0; border-bottom: 1px dashed rgba(248,187,208,0.35);">
-                                        <label for="chk-hide-filtros"
-                                            style="font-size:13px; color: #34495e; cursor: pointer; flex:1; margin:0;">
-                                            <span data-i18n="lbl-hide-filtros">Ocultar barra de filtros
-                                                (Inferior)</span>
-                                        </label>
-                                        <input type="checkbox" id="chk-hide-filtros" class="switch-individual"
-                                            onchange="toggleVisibilidadElemento('.fila-filtros', this.checked); guardarTodosAjustes()">
-                                    </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <div class="control-row fila-ocultar-item"
+                    style="display:flex; justify-content:space-between; align-items:center; margin:0; padding: 4px 0; border-bottom: 1px dashed rgba(248,187,208,0.35);">
+                    <label for="chk-hide-filtros"
+                        style="font-size:13px; color: #34495e; cursor: pointer; flex:1; margin:0;">
+                        <span data-i18n="lbl-hide-filtros">Ocultar barra de filtros
+                            (Inferior)</span>
+                    </label>
+                    <input type="checkbox" id="chk-hide-filtros" class="switch-individual"
+                        onchange="toggleVisibilidadElemento('.fila-filtros', this.checked); guardarTodosAjustes()">
+                </div>
 
-                                    <div class="control-row fila-ocultar-item"
-                                        style="display:flex; justify-content:space-between; align-items:center; margin:0; padding: 4px 0; border-bottom: 1px dashed rgba(248,187,208,0.35);">
-                                        <label for="chk-hide-dicc"
-                                            style="font-size:13px; color: #34495e; cursor: pointer; flex:1; margin:0;">
-                                            <span data-i18n="lbl-hide-dicc">Ocultar botón Abreviaturas</span>
-                                        </label>
-                                        <input type="checkbox" id="chk-hide-dicc" class="switch-individual"
-                                            onchange="toggleVisibilidadElemento('#btn-dicc', this.checked); guardarTodosAjustes()">
-                                    </div>
+                <div class="control-row fila-ocultar-item"
+                    style="display:flex; justify-content:space-between; align-items:center; margin:0; padding: 4px 0; border-bottom: 1px dashed rgba(248,187,208,0.35);">
+                    <label for="chk-hide-dicc"
+                        style="font-size:13px; color: #34495e; cursor: pointer; flex:1; margin:0;">
+                        <span data-i18n="lbl-hide-dicc">Ocultar botón Abreviaturas</span>
+                    </label>
+                    <input type="checkbox" id="chk-hide-dicc" class="switch-individual"
+                        onchange="toggleVisibilidadElemento('#btn-dicc', this.checked); guardarTodosAjustes()">
+                </div>
 
-                                    <div class="control-row fila-ocultar-item"
-                                        style="display:flex; justify-content:space-between; align-items:center; margin:0; padding: 4px 0; border-bottom: 1px dashed rgba(248,187,208,0.35);">
-                                        <label for="chk-hide-teatro"
-                                            style="font-size:13px; color: #34495e; cursor: pointer; flex:1; margin:0;">
-                                            <span data-i18n="lbl-hide-teatro">Ocultar botón Modo Teatro</span>
-                                        </label>
-                                        <input type="checkbox" id="chk-hide-teatro" class="switch-individual"
-                                            onchange="toggleVisibilidadElemento('#btn-teatro', this.checked); guardarTodosAjustes()">
-                                    </div>
+                <div class="control-row fila-ocultar-item"
+                    style="display:flex; justify-content:space-between; align-items:center; margin:0; padding: 4px 0; border-bottom: 1px dashed rgba(248,187,208,0.35);">
+                    <label for="chk-hide-teatro"
+                        style="font-size:13px; color: #34495e; cursor: pointer; flex:1; margin:0;">
+                        <span data-i18n="lbl-hide-teatro">Ocultar botón Modo Teatro</span>
+                    </label>
+                    <input type="checkbox" id="chk-hide-teatro" class="switch-individual"
+                        onchange="toggleVisibilidadElemento('#btn-teatro', this.checked); guardarTodosAjustes()">
+                </div>
 
-                                    <div class="control-row"
-                                        style="display:flex; justify-content:space-between; align-items:center; margin:0; padding: 4px 0;">
-                                        <label for="chk-hide-mp3"
-                                            style="font-size:13px; color: #34495e; cursor: pointer; flex:1; margin:0;">
-                                            <span data-i18n="lbl-hide-mp3">Ocultar botón MP3</span>
-                                        </label>
-                                        <input type="checkbox" id="chk-hide-mp3" class="switch-individual"
-                                            onchange="toggleVisibilidadElemento('#btn-abrir-descarga', this.checked); guardarTodosAjustes()">
-                                    </div>
-                                </div>
-                            </div>
+                <div class="control-row"
+                    style="display:flex; justify-content:space-between; align-items:center; margin:0; padding: 4px 0;">
+                    <label for="chk-hide-mp3"
+                        style="font-size:13px; color: #34495e; cursor: pointer; flex:1; margin:0;">
+                        <span data-i18n="lbl-hide-mp3">Ocultar botón MP3</span>
+                    </label>
+                    <input type="checkbox" id="chk-hide-mp3" class="switch-individual"
+                        onchange="toggleVisibilidadElemento('#btn-abrir-descarga', this.checked); guardarTodosAjustes()">
+                </div>
+            </div>
+        </div>
+    </div>
 
-                            <script>
-                                function toggleVisibilidadElemento(selector, isHidden) {
-                                    const el = document.querySelector(selector);
-                                    if (el) {
-                                        if (isHidden) {
-                                            el.dataset.displayOriginal = el.style.display || getComputedStyle(el).display;
-                                            el.style.setProperty('display', 'none', 'important');
-                                        } else {
-                                            el.style.display = el.dataset.displayOriginal || '';
-                                        }
-                                    }
-                                }
-                                window.toggleVisibilidadElemento = toggleVisibilidadElemento;
-                            </script>
-                        </div>
-
-                        <div class="grupo-calibracion"
-                            style="border: 2px solid #8e44ad; background: #f9f0ff; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                            <h4
-                                style="margin-top:0; color: #2c3e50; border-bottom: 1px solid #e1bee7; padding-bottom: 5px; display:flex; align-items:center; gap:5px;">
+                        <div class="grupo-calibracion">
+                            <h4>
                                 <svg class="svg-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
                                     version="1.1">
                                     <g transform="translate(0 -1028.4)">
@@ -303,79 +298,71 @@
                                 <span data-i18n="lbl-resaltado-palabra">Resaltado de Palabra</span>
                             </h4>
 
-                            <div class="control-row"
-                                style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
-                                <label style="font-size:13px;" data-i18n="lbl-animacion">Animación:</label>
-                                <div style="display:flex; gap:10px; align-items:center;">
-                                    <span style="font-size:11px; color: #666;" data-i18n="lbl-brinco">Brinco</span>
-                                    <input type="checkbox" id="chk-llenado-fluido" class="switch-individual"
-                                        onchange="actualizarFiltrosSnapshot()">
-                                    <span style="font-size:11px; color: #666;" data-i18n="lbl-llenado">Llenado</span>
-                                </div>
-                            </div>
+        <div class="control-row"
+            style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+            <label style="font-size:13px;" data-i18n="lbl-animacion">Animación:</label>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <span style="font-size:11px; color: #666;" data-i18n="lbl-brinco">Brinco</span>
+                <input type="checkbox" id="chk-llenado-fluido" class="switch-individual"
+                    onchange="actualizarFiltrosSnapshot()">
+                <span style="font-size:11px; color: #666;" data-i18n="lbl-llenado">Llenado</span>
+            </div>
+        </div>
 
-                            <div class="control-row"
-                                style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
-                                <label style="font-size:13px;" data-i18n="lbl-color">Color:</label>
-                                <input type="color" id="color-resaltado" value="#ffff00" oninput="dibujar()"
-                                    style="width:40px; height:25px; border:1px solid #ccc; cursor:pointer;">
-                            </div>
+        <div class="control-row"
+            style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+            <label style="font-size:13px;" data-i18n="lbl-color">Color:</label>
+            <input type="color" id="color-resaltado" value="#ffff00" oninput="dibujar()"
+                style="width:40px; height:25px; border:1px solid #ccc; cursor:pointer;">
+        </div>
 
-                            <div class="control-row"
-                                style="display:flex; justify-content:space-between; align-items:center;">
-                                <label style="font-size:13px;" data-i18n="lbl-grosor">Grosor (Padding):</label>
-                                <div style="display:flex; gap:10px; align-items:center;">
-                                    <input type="range" id="rng-pad-karaoke" min="0" max="10" value="2"
-                                        oninput="dibujar()" style="width:80px;">
-                                    <span id="val-pad-karaoke" style="font-size:11px; width:25px;">2px</span>
-                                </div>
-                            </div>
+        <div class="control-row" style="display:flex; justify-content:space-between; align-items:center;">
+            <label style="font-size:13px;" data-i18n="lbl-grosor">Grosor (Padding):</label>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <input type="range" id="rng-pad-karaoke" min="0" max="10" value="2" oninput="dibujar()"
+                    style="width:80px;">
+                <span id="val-pad-karaoke" style="font-size:11px; width:25px;">2px</span>
+            </div>
+        </div>
 
-                            <!-- SUBTÍTULOS DE TRADUCCIÓN: Interlineado y Separación -->
-                            <div class="subtitulos-traduccion-calib"
-                                style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed rgba(142,68,173,0.25);">
-                                <div class="subtitulos-traduccion-titulo"
-                                    style="font-size: 12px; font-weight: 600; color: #8e44ad; margin-bottom: 8px; display:flex; align-items:center; gap:5px;">
-                                    <svg viewBox="0 0 24 24" fill="none" style="width:13px;height:13px;"
-                                        xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M3 5h18M3 12h18M3 19h18" stroke="currentColor" stroke-width="2"
-                                            stroke-linecap="round" />
-                                    </svg>
-                                    <span data-i18n="lbl-subtitulos-traduccion-calib">Subtítulos de Traducción</span>
-                                </div>
+        <!-- SUBTÍTULOS DE TRADUCCIÓN: Interlineado y Separación -->
+        <div class="subtitulos-traduccion-calib"
+            style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed rgba(142,68,173,0.25);">
+            <div class="subtitulos-traduccion-titulo"
+                style="font-size: 12px; font-weight: 600; color: #5c5a56; margin-bottom: 8px; display:flex; align-items:center; gap:5px;">
+                <svg viewBox="0 0 24 24" fill="none" style="width:13px;height:13px;" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 5h18M3 12h18M3 19h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                </svg>
+                <span data-i18n="lbl-subtitulos-traduccion-calib">Subtítulos de Traducción</span>
+            </div>
 
-                                <div class="control-row"
-                                    style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-                                    <label style="font-size:13px; color:#34495e;" data-i18n="lbl-interlineado">Interlineado:</label>
-                                    <div style="display:flex; gap:8px; align-items:center;">
-                                        <input type="range" id="rng-sub-lineheight" min="10" max="20" value="12"
-                                            step="1" oninput="aplicarSubtituloEspaciado(); guardarTodosAjustes()"
-                                            style="width:80px;">
-                                        <span id="val-sub-lineheight" style="font-size:11px; width:30px;">1.2</span>
-                                    </div>
-                                </div>
+            <div class="control-row"
+                style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                <label style="font-size:13px; color:#34495e;" data-i18n="lbl-interlineado">Interlineado:</label>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input type="range" id="rng-sub-lineheight" min="10" max="20" value="12" step="1"
+                        oninput="aplicarSubtituloEspaciado(); guardarTodosAjustes()" style="width:80px;">
+                    <span id="val-sub-lineheight" style="font-size:11px; width:30px;">1.2</span>
+                </div>
+            </div>
 
-                                <div class="control-row"
-                                    style="display:flex; justify-content:space-between; align-items:center;">
-                                    <label style="font-size:13px; color:#34495e;" data-i18n="lbl-sep-palabras">Sep. palabras:</label>
-                                    <div style="display:flex; gap:8px; align-items:center;">
-                                        <input type="range" id="rng-sub-wordgap" min="0" max="12" value="2" step="1"
-                                            oninput="aplicarSubtituloEspaciado(); guardarTodosAjustes()"
-                                            style="width:80px;">
-                                        <span id="val-sub-wordgap" style="font-size:11px; width:30px;">2px</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+            <div class="control-row" style="display:flex; justify-content:space-between; align-items:center;">
+                <label style="font-size:13px; color:#34495e;" data-i18n="lbl-sep-palabras">Sep. palabras:</label>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input type="range" id="rng-sub-wordgap" min="0" max="12" value="2" step="1"
+                        oninput="aplicarSubtituloEspaciado(); guardarTodosAjustes()" style="width:80px;">
+                    <span id="val-sub-wordgap" style="font-size:11px; width:30px;">2px</span>
+                </div>
+            </div>
+        </div>
+    </div>
 
 
 
 
 
-                        <div class="grupo-calibracion"
-                            style="border: 2px solid #2980b9; background: #f0f7ff; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                            <h4
-                                style="margin-top:0; color: #2c3e50; border-bottom: 1px solid #b8daff; padding-bottom: 5px; display:flex; align-items:center; gap:5px;">
+                        <div class="grupo-calibracion">
+                            <h4>
                                 <svg class="svg-icon" viewBox="0 0 24 24" fill="none"
                                     xmlns="http://www.w3.org/2000/svg">
                                     <path
@@ -518,28 +505,25 @@
                                 <span data-i18n="lbl-guia-oracion">Guía de Oración (Punto a Punto)</span>
                             </h4>
 
-                            <div class="control-row"
-                                style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
-                                <label style="font-size:13px;" data-i18n="lbl-color-guia">Color de Guía:</label>
-                                <input type="color" id="color-guia-oracion" value="#00b4ff" oninput="dibujar()"
-                                    style="width:40px; height:25px; border:1px solid #ccc; cursor:pointer;">
-                            </div>
+        <div class="control-row"
+            style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+            <label style="font-size:13px;" data-i18n="lbl-color-guia">Color de Guía:</label>
+            <input type="color" id="color-guia-oracion" value="#00b4ff" oninput="dibujar()"
+                style="width:40px; height:25px; border:1px solid #ccc; cursor:pointer;">
+        </div>
 
-                            <div class="control-row"
-                                style="display:flex; justify-content:space-between; align-items:center;">
-                                <label style="font-size:13px;" data-i18n="lbl-grosor">Grosor (Padding):</label>
-                                <div style="display:flex; gap:10px; align-items:center;">
-                                    <input type="range" id="rng-pad-guia" min="0" max="10" value="2" oninput="dibujar()"
-                                        style="width:80px;">
-                                    <span id="val-pad-guia" style="font-size:11px; width:25px;">2px</span>
-                                </div>
-                            </div>
-                        </div>
+        <div class="control-row" style="display:flex; justify-content:space-between; align-items:center;">
+            <label style="font-size:13px;" data-i18n="lbl-grosor">Grosor (Padding):</label>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <input type="range" id="rng-pad-guia" min="0" max="10" value="2" oninput="dibujar()"
+                    style="width:80px;">
+                <span id="val-pad-guia" style="font-size:11px; width:25px;">2px</span>
+            </div>
+        </div>
+    </div>
 
-                        <div class="grupo-calibracion"
-                            style="border: 2px solid #27ae60; background: #f0fff4; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                            <h4
-                                style="margin-top:0; color: #2c3e50; border-bottom: 1px solid #c3e6cb; padding-bottom: 5px; display:flex; align-items:center; gap:5px;">
+                        <div class="grupo-calibracion">
+                            <h4>
                                 <svg class="svg-icon" fill="#37c16d" viewBox="0 0 512 512"
                                     enable-background="new 0 0 512 512" xml:space="preserve">
                                     <g>
@@ -560,41 +544,35 @@
                                 </div>
                             </div>
 
-                            <div class="control-row"
-                                style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
-                                <label style="font-size:13px;" data-i18n="lbl-zoom-pdf">Zoom / Tamaño:</label>
-                                <div style="display:flex; gap:10px; align-items:center;">
-                                    <input type="range" id="rng-zoom-pdf" min="50" max="250" value="100"
-                                        oninput="aplicarZoomDinamico(this.value)" onchange="guardarTodosAjustes()"
-                                        style="width:100px;">
-                                    <span id="val-zoom-pdf" style="font-size:12px; width:35px;">100%</span>
-                                </div>
-                            </div>
+        <div class="control-row"
+            style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+            <label style="font-size:13px;" data-i18n="lbl-zoom-pdf">Zoom / Tamaño:</label>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <input type="range" id="rng-zoom-pdf" min="50" max="250" value="100"
+                    oninput="aplicarZoomDinamico(this.value)" onchange="guardarTodosAjustes()" style="width:100px;">
+                <span id="val-zoom-pdf" style="font-size:12px; width:35px;">100%</span>
+            </div>
+        </div>
 
-                            <div class="control-row"
-                                style="display:flex; justify-content:space-between; align-items:center;">
-                                <label style="font-size:13px;" data-i18n="lbl-margenes-laterales">Márgenes
-                                    Laterales:</label>
-                                <div style="display:flex; gap:10px; align-items:center;">
-                                    <input type="range" id="rng-margen-pdf" min="0" max="150" value="20"
-                                        oninput="aplicarMargenDinamico(this.value)" onchange="guardarTodosAjustes()"
-                                        style="width:100px;">
-                                    <span id="val-margen-pdf" style="font-size:12px; width:35px;">20px</span>
-                                </div>
-                            </div>
-                            <div class="control-group"
-                                style="margin-top: 25px; border-top: 1px solid #eee; padding-top: 15px;">
-                                <button class="btn-reset-sector" onclick="restablecerEstiloBase()">
-                                    <span data-i18n="lbl-reset-diseno">RESTABLECER DISEÑO ORIGINAL</span>
-                                </button>
-                            </div>
-                        </div>
+        <div class="control-row" style="display:flex; justify-content:space-between; align-items:center;">
+            <label style="font-size:13px;" data-i18n="lbl-margenes-laterales">Márgenes
+                Laterales:</label>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <input type="range" id="rng-margen-pdf" min="0" max="150" value="20"
+                    oninput="aplicarMargenDinamico(this.value)" onchange="guardarTodosAjustes()" style="width:100px;">
+                <span id="val-margen-pdf" style="font-size:12px; width:35px;">20px</span>
+            </div>
+        </div>
+        <div class="control-group" style="margin-top: 25px; border-top: 1px solid #eee; padding-top: 15px;">
+            <button class="btn-reset-sector" onclick="restablecerEstiloBase()">
+                <span data-i18n="lbl-reset-diseno">RESTABLECER DISEÑO ORIGINAL</span>
+            </button>
+        </div>
+    </div>
 
 
-                        <div class="grupo-calibracion"
-                            style="border: 2px solid #ff5e5b; background: #fff5f5; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                            <h4
-                                style="margin-top:0; color: #c0392b; border-bottom: 1px solid #ffcccc; padding-bottom: 5px; display:flex; align-items:center; gap:5px;">
+                        <div class="grupo-calibracion">
+                            <h4>
                                 <svg class="svg-icon" viewBox="0 0 32 32" enable-background="new 0 0 32 32"
                                     xml:space="preserve">
                                     <g>
@@ -620,23 +598,21 @@
                                 <span data-i18n="lbl-soporte-proyecto">Soporte del Proyecto</span>
                             </h4>
 
-                            <div class="ajuste-row"
-                                style="display:flex; justify-content:space-between; align-items:center;">
-                                <label style="font-size:13px; font-weight: bold; color: #2c3e50;"
-                                    data-i18n="lbl-mostrar-kofi">Mostrar botón "Invítame un café"</label>
-                                <input type="checkbox" id="chk-kofi" checked
-                                    onchange="toggleBotonKofi(this.checked); guardarTodosAjustes()"
-                                    style="transform: scale(1.2);">
-                            </div>
+        <div class="ajuste-row" style="display:flex; justify-content:space-between; align-items:center;">
+            <label style="font-size:13px; font-weight: bold; color: #2c3e50;" data-i18n="lbl-mostrar-kofi">Mostrar botón
+                "Invítame un café"</label>
+            <input type="checkbox" id="chk-kofi" checked onchange="toggleBotonKofi(this.checked); guardarTodosAjustes()"
+                style="transform: scale(1.2);">
+        </div>
 
-                            <p style="font-size: 11px; color: #7f8c8d; line-height: 1.4; margin-top: 10px;">
-                                <span data-i18n="lbl-kofi-desc">Desactivar esta opción ocultará el botón de apoyo en la
-                                    barra superior para mantener tu área de trabajo libre de distracciones
-                                    visuales.</span>
-                            </p>
-                        </div>
+        <p style="font-size: 11px; color: #7f8c8d; line-height: 1.4; margin-top: 10px;">
+            <span data-i18n="lbl-kofi-desc">Desactivar esta opción ocultará el botón de apoyo en la
+                barra superior para mantener tu área de trabajo libre de distracciones
+                visuales.</span>
+        </p>
+    </div>
 
 
 
 
-                    </div>
+</div>

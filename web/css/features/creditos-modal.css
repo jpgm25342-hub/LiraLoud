@@ -1,0 +1,229 @@
+/* ==========================================
+   MODAL IN-APP DE CRÉDITOS Y AVISO LEGAL
+   ========================================== */
+.modal-creditos-overlay {
+    z-index: 2147483647 !important;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal-creditos-card {
+    width: min(720px, 94vw);
+    max-height: 84vh;
+    display: flex;
+    flex-direction: column;
+    background: #fbf7f1;
+    color: #3a2d24;
+    border: 1px solid #e3d5c5;
+    border-radius: 16px;
+    box-shadow: 0 24px 60px rgba(32, 22, 16, 0.32);
+    overflow: hidden;
+}
+
+.modal-creditos-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    background: #f3eadf;
+    border-bottom: 1px solid #e3d5c5;
+}
+
+.modal-creditos-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-creditos-badge {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: #7c563c;
+    color: #fffaf3;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.modal-creditos-title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: #2f231b;
+}
+
+.modal-creditos-sub {
+    font-size: 11.5px;
+    color: #7c6758;
+}
+
+.modal-creditos-close {
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #6b584b;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.modal-creditos-close:hover {
+    background: rgba(124, 86, 60, 0.12);
+    color: #2f231b;
+}
+
+.modal-creditos-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 22px;
+    font-size: 12.8px;
+    line-height: 1.55;
+}
+
+.modal-creditos-loading {
+    text-align: center;
+    padding: 36px 0;
+    color: #7c6758;
+}
+
+.creditos-banner {
+    text-align: center;
+    font-weight: 700;
+    font-size: 12.5px;
+    letter-spacing: 0.04em;
+    color: #7c563c;
+    background: rgba(124, 86, 60, 0.08);
+    border-radius: 8px;
+    padding: 7px 10px;
+    margin: 6px 0 12px;
+}
+
+.creditos-h4 {
+    margin: 16px 0 8px;
+    padding-bottom: 4px;
+    font-size: 13px;
+    font-weight: 800;
+    color: #5c3d28;
+    border-bottom: 1px solid #e3d5c5;
+}
+
+.creditos-h5 {
+    margin: 12px 0 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #7c563c;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.creditos-p {
+    margin: 0 0 8px;
+    color: #3f3128;
+}
+
+.creditos-item {
+    margin: 5px 0 2px;
+    padding-left: 12px;
+    position: relative;
+    font-weight: 600;
+    color: #2f231b;
+}
+
+.creditos-item::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: #8c6244;
+}
+
+.creditos-subitem {
+    margin: 0 0 3px 16px;
+    font-size: 11.8px;
+    color: #6b584b;
+    word-break: break-word;
+}
+
+.creditos-link {
+    color: #8c5a37;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.creditos-link:hover {
+    color: #5c381f;
+}
+
+.modal-creditos-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    background: #f3eadf;
+    border-top: 1px solid #e3d5c5;
+}
+
+.modal-creditos-btn-sec {
+    background: transparent;
+    border: 1px solid #cbb8a3;
+    color: #5c4637;
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.modal-creditos-btn-sec:hover {
+    background: rgba(124, 86, 60, 0.1);
+}
+
+body.ui-dark-mode .modal-creditos-card {
+    background: #141920;
+    color: #e2e8f0;
+    border-color: #2d3748;
+}
+
+body.ui-dark-mode .modal-creditos-header,
+body.ui-dark-mode .modal-creditos-footer {
+    background: #1b222c;
+    border-color: #2d3748;
+}
+
+body.ui-dark-mode .modal-creditos-title,
+body.ui-dark-mode .creditos-item {
+    color: #f8fafc;
+}
+
+body.ui-dark-mode .modal-creditos-sub,
+body.ui-dark-mode .creditos-subitem,
+body.ui-dark-mode .modal-creditos-close {
+    color: #94a3b8;
+}
+
+body.ui-dark-mode .creditos-p {
+    color: #cbd5e1;
+}
+
+body.ui-dark-mode .creditos-h4 {
+    color: #e5c3a6;
+    border-bottom-color: #2d3748;
+}
+
+body.ui-dark-mode .creditos-h5,
+body.ui-dark-mode .creditos-banner,
+body.ui-dark-mode .creditos-link {
+    color: #d9a982;
+}
+
+body.ui-dark-mode .creditos-banner {
+    background: rgba(217, 169, 130, 0.1);
+}
+
+body.ui-dark-mode .modal-creditos-btn-sec {
+    border-color: #334155;
+    color: #cbd5e1;
+}

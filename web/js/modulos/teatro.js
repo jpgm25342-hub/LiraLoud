@@ -585,10 +585,14 @@ function sincronizarIndicadorTeatroZen() {
 
     const btnAviso = document.getElementById('btn-zen-teatro-aviso');
     const btnSolo = document.getElementById('btn-solo-lectura');
-    if (btnAviso && btnSolo && document.body.classList.contains('modo-minimalista') && activo) {
-        const rectSolo = btnSolo.getBoundingClientRect();
-        if (rectSolo.width > 0) {
-            btnAviso.style.left = `${Math.round(rectSolo.right + 8)}px`;
+    if (btnAviso && document.body.classList.contains('modo-minimalista') && activo) {
+        if (document.body.classList.contains('zen-unir-solo-lectura')) {
+            btnAviso.style.left = '';
+        } else if (btnSolo) {
+            const rectSolo = btnSolo.getBoundingClientRect();
+            if (rectSolo.width > 0) {
+                btnAviso.style.left = `${Math.round(rectSolo.right + 8)}px`;
+            }
         }
     }
 }

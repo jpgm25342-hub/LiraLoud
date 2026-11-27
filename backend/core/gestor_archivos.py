@@ -30,7 +30,7 @@ def validar_json(ruta, default_tipo=dict):
     if not os.path.exists(ruta):
         try:
             with open(ruta, 'w', encoding='utf-8') as f: json.dump(val_inicial, f)
-        except: pass
+        except OSError: pass
         return val_inicial
     try:
         with open(ruta, 'r', encoding='utf-8') as f:
@@ -38,7 +38,7 @@ def validar_json(ruta, default_tipo=dict):
             if not isinstance(data, default_tipo):
                 return val_inicial
             return data
-    except:
+    except (OSError, json.JSONDecodeError, TypeError, ValueError):
         return val_inicial
 @eel.expose
 def cargar_diccionario():
@@ -119,7 +119,7 @@ def guardar_diccionario(data):
         with open(DB_FILE, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
         return True
-    except: return False
+    except Exception: return False
 @eel.expose
 def cargar_atajos_desde_python():
     defaults = {
@@ -139,7 +139,7 @@ def guardar_atajos_en_python(atajos):
         with open(ARCHIVO_ATAJOS, 'w') as f:
             json.dump(atajos, f, indent=4)
         return True
-    except: return False
+    except (OSError, TypeError, ValueError): return False
 @eel.expose
 def cargar_ajustes_lectura():
     defaults = {
@@ -186,25 +186,29 @@ def cargar_ajustes_lectura():
     for k, v in defaults.items():
         if k not in datos: datos[k] = v
     return datos
+def _fusionar_subdict_no_vacios(data, previos, clave, valores_ignorados=()):
+    """Preserva entradas previas de un subdiccionario cuando las nuevas llegan vacías o ignoradas."""
+    nuevo = data.get(clave)
+    prev = previos.get(clave)
+    if not (isinstance(nuevo, dict) and isinstance(prev, dict)):
+        return
+    merged = dict(prev)
+    for k, v in nuevo.items():
+        if v and str(v).strip() and str(v) not in valores_ignorados:
+            merged[k] = str(v).strip()
+    data[clave] = merged
+
+
 @eel.expose
 def guardar_ajustes_lectura(data):
     try:
         previos = validar_json(ARCHIVO_AJUSTES_LECTURA)
         if isinstance(data, dict):
             # Preservar claves de IA previas si en data viene un diccionario pero con claves vacías que antes tenían valor
-            if "ia_cloud_keys" in data and isinstance(data["ia_cloud_keys"], dict) and "ia_cloud_keys" in previos and isinstance(previos["ia_cloud_keys"], dict):
-                merged_keys = dict(previos["ia_cloud_keys"])
-                for k, v in data["ia_cloud_keys"].items():
-                    if v and str(v).strip():
-                        merged_keys[k] = str(v).strip()
-                data["ia_cloud_keys"] = merged_keys
-
-            if "ia_cloud_modelos" in data and isinstance(data["ia_cloud_modelos"], dict) and "ia_cloud_modelos" in previos and isinstance(previos["ia_cloud_modelos"], dict):
-                merged_mods = dict(previos["ia_cloud_modelos"])
-                for k, v in data["ia_cloud_modelos"].items():
-                    if v and str(v).strip() and str(v) != '__custom_model_prompt__':
-                        merged_mods[k] = str(v).strip()
-                data["ia_cloud_modelos"] = merged_mods
+            _fusionar_subdict_no_vacios(data, previos, "ia_cloud_keys")
+            _fusionar_subdict_no_vacios(
+                data, previos, "ia_cloud_modelos", valores_ignorados=("__custom_model_prompt__",)
+            )
 
             if previos.get("tutorial_completado") is True:
                 data["tutorial_completado"] = True
@@ -247,7 +251,7 @@ def guardar_voz_default(voz):
         with open(ARCHIVO_CONFIG_VOZ, 'w', encoding='utf-8') as f:
             json.dump({"voz": voz}, f, indent=4, ensure_ascii=False)
         return True
-    except: return False
+    except (OSError, TypeError, ValueError): return False
 @eel.expose
 def cargar_lista_favoritos():
     return validar_json(ARCHIVO_FAVORITOS, default_tipo=list)
@@ -257,7 +261,7 @@ def guardar_lista_favoritos(favs):
         with open(ARCHIVO_FAVORITOS, 'w', encoding='utf-8') as f:
             json.dump(favs, f, indent=4, ensure_ascii=False)
         return True
-    except: return False
+    except (OSError, TypeError, ValueError): return False
 @eel.expose
 def cargar_diccionario_teatro():
     datos = validar_json(TEATRO_JSON)

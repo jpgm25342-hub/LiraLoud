@@ -54,6 +54,7 @@ async function guardarTodosAjustes(forceRamReload = false) {
             "llenado": document.getElementById('chk-llenado-fluido')?.checked ?? false,
             "recortePDF": parseInt(document.getElementById('rng-recorte-pdf')?.value || 0),
             "zoomPDF": parseInt(document.getElementById('rng-zoom-pdf')?.value || 100),
+            "margenPDF": parseInt(document.getElementById('rng-margen-pdf')?.value ?? 20),
             "seguirTexto": document.getElementById('chk-seguimiento')?.checked ?? true,
             "omitirParen": document.getElementById('chk-paren')?.checked ?? true,
             "omitirCorch": document.getElementById('chk-corch')?.checked ?? true,
@@ -66,6 +67,7 @@ async function guardarTodosAjustes(forceRamReload = false) {
             "modo_subrayador": window.modoSubrayadorActivo ?? false,
             "modo_borrador": window.modoBorradorActivo ?? false,
             "modo_editor_texto": window.modoEditorTextoActivo ?? false,
+            "modo_mover_elementos": window.modoMoverElementosActivo ?? false,
             "color_subrayador": typeof colorSubrayadorActual !== 'undefined' ? colorSubrayadorActual : "#FFFF00",
             "sensibilidadSalto": parseFloat(document.getElementById('rng-sensibilidad-salto')?.value || 0.5),
             "detectarSangria": document.getElementById('chk-detectar-sangria')?.checked ?? true,
@@ -102,6 +104,9 @@ async function guardarTodosAjustes(forceRamReload = false) {
             "kokoro_blend_cadencia": parseFloat(document.getElementById('sel-kokoro-blend-cadencia')?.value || 1.0),
             "modo_zen": document.getElementById('chk-modo-zen')?.checked ?? true,
             "etiquetas_zen": document.getElementById('chk-etiquetas-zen')?.checked ?? true,
+            "unir_solo_lectura_zen": document.getElementById('chk-unir-solo-lectura-zen')?.checked ?? false,
+            "ocr_alta_precision": Boolean(window.ocrAltaPrecisionActivo),
+            "ocr_idioma": window.ocrIdiomaActual || "latin",
             "hide_filtros": document.getElementById('chk-hide-filtros')?.checked ?? false,
             "hide_dicc": document.getElementById('chk-hide-dicc')?.checked ?? false,
             "hide_teatro": document.getElementById('chk-hide-teatro')?.checked ?? false,
@@ -410,6 +415,11 @@ window.onload = async () => {
         safeUI('rng-zoom-pdf', zoomGuardado);
         if (typeof aplicarZoomDinamico === 'function') aplicarZoomDinamico(zoomGuardado);
 
+        // Restaurar Márgenes Laterales
+        const margenGuardado = ajustes?.margenPDF ?? 20;
+        safeUI('rng-margen-pdf', margenGuardado);
+        if (typeof aplicarMargenDinamico === 'function') aplicarMargenDinamico(margenGuardado);
+
         safeCheck('chk-llenado-fluido', ajustes?.llenado ?? false);
         safeCheck('chk-seguir-texto', window.seguirTextoActivo);
         safeCheck('chk-paren', ajustes?.omitirParen ?? true);
@@ -443,6 +453,9 @@ window.onload = async () => {
         const opcEditor = ajustes?.modo_editor_texto ?? false;
         if (typeof toggleModoEditorTexto === 'function') toggleModoEditorTexto(opcEditor);
 
+        const opcMoverElementos = ajustes?.modo_mover_elementos ?? false;
+        if (typeof toggleModoMoverElementos === 'function') toggleModoMoverElementos(opcMoverElementos);
+
         safeCheck('chk-detectar-sangria', ajustes?.detectarSangria ?? true);
         safeCheck('chk-detectar-sangria-main', ajustes?.detectarSangria ?? true);
         const rngSaltoMain = document.getElementById('rng-sensibilidad-salto-main');
@@ -461,6 +474,22 @@ window.onload = async () => {
         safeCheck('chk-etiquetas-zen', etiquetasZenHabilitadas);
         if (typeof toggleEtiquetasZen === 'function') {
             toggleEtiquetasZen(etiquetasZenHabilitadas);
+        }
+
+        const unirSoloLecturaZen = ajustes?.unir_solo_lectura_zen ?? false;
+        safeCheck('chk-unir-solo-lectura-zen', unirSoloLecturaZen);
+        if (typeof toggleUnirSoloLecturaZen === 'function') {
+            toggleUnirSoloLecturaZen(unirSoloLecturaZen);
+        }
+
+        const ocrAltaPrecision = ajustes?.ocr_alta_precision ?? false;
+        if (typeof toggleOcrAltaPrecision === 'function') {
+            toggleOcrAltaPrecision(ocrAltaPrecision, false);
+        }
+
+        const ocrIdioma = ajustes?.ocr_idioma || 'latin';
+        if (typeof cambiarIdiomaOCR === 'function') {
+            cambiarIdiomaOCR(ocrIdioma, false);
         }
 
         const sidebarColapsado = ajustes?.sidebar_colapsado ?? false;
@@ -609,6 +638,9 @@ window.onload = async () => {
         safeUI('sel-traduccion-modo', tradModo);
         safeUI('zen-sel-traduccion-modo', tradModo);
         safeCheck('chk-pretraducir-paginas', ajustes?.pretraducir_paginas ?? true);
+        if (typeof actualizarVisibilidadPrecargaHojas === 'function') {
+            actualizarVisibilidadPrecargaHojas();
+        }
 
         if (typeof toggleMenuTraduccion === 'function') {
             toggleMenuTraduccion(tradActiva);

@@ -126,6 +126,74 @@ def _obtener_descargas_repo(repo_id):
         return 0
 
 
+def _inferir_idioma_y_archivo_piper(onnx_rel, repo_short):
+    """Infiere el código de idioma y el nombre de archivo local .onnx para una voz comunitaria Piper."""
+    import re
+    texto_id = f"{os.path.basename(onnx_rel)} {repo_short}"
+    m_loc = re.search(r"(?:^|[_/-])([a-z]{2})[_-]([A-Z]{2})(?:[_/-]|\.|$)", texto_id)
+    if m_loc:
+        idioma = f"{m_loc.group(1).lower()}_{m_loc.group(2).upper()}"
+    else:
+        m_lang = re.search(
+            r"(?:^|[_/-])(ar|bg|bn|ca|cs|cy|da|de|el|en|es|et|eu|fa|fi|fr|he|hi|hu|hy|id|is|it|ja|ka|kk|ko|ku|lb|lt|lv|ml|mr|ne|nl|no|pl|pt|ro|ru|sk|sl|sq|sr|sv|sw|te|th|tr|uk|ur|vi|zh)(?:[_/-]|\.|$)",
+            texto_id.lower(),
+        )
+        mapa_def = {"es": "es_ES", "en": "en_US", "fr": "fr_FR", "pt": "pt_BR", "it": "it_IT", "de": "de_DE", "ca": "ca_ES"}
+        idioma = mapa_def.get(m_lang.group(1), m_lang.group(1)) if m_lang else "es_ES"
+    base_onnx = os.path.basename(onnx_rel).replace("/", "_")
+    if not base_onnx.lower().startswith(("es_", "es-", "en_", "en-", "fr_", "pt_", "it_", "de_")):
+        archivo_local = f"{idioma}_{base_onnx}"
+    else:
+        archivo_local = base_onnx
+    if not archivo_local.endswith(".onnx"):
+        archivo_local += ".onnx"
+    return idioma, archivo_local
+
+
+def _seleccionar_archivos_piper_repo(siblings):
+    """Encuentra el par (onnx_rel, json_rel) principal en los siblings de un repo Piper, o (None, None)."""
+    onnx_files = [s.get("rfilename", "") for s in siblings if s.get("rfilename", "").endswith(".onnx")]
+    json_files = [
+        s.get("rfilename", "")
+        for s in siblings
+        if s.get("rfilename", "").endswith(".onnx.json") or s.get("rfilename", "") == "config.json"
+    ]
+    if not onnx_files or not json_files:
+        return None, None
+    onnx_rel = onnx_files[0]
+    json_rel = next((j for j in json_files if j == onnx_rel + ".json"), json_files[0])
+    return onnx_rel, json_rel
+
+
+def _construir_voz_comunidad_piper(m, vistos):
+    """Valida un modelo HF comunitario de Piper y construye su ficha de catálogo, o None si no aplica."""
+    repo_id = m.get("id") or m.get("modelId")
+    if not repo_id or repo_id in vistos or repo_id == "rhasspy/piper-voices":
+        return None
+    if "checkpoint" in repo_id.lower():
+        return None
+    onnx_rel, json_rel = _seleccionar_archivos_piper_repo(m.get("siblings") or [])
+    if not onnx_rel:
+        return None
+    vistos.add(repo_id)
+    repo_short = repo_id.split("/")[-1]
+    autor = repo_id.split("/")[0]
+    idioma, archivo_local = _inferir_idioma_y_archivo_piper(onnx_rel, repo_short)
+    return {
+        "id": f"hf_{repo_id.replace('/', '__')}",
+        "motor": "piper",
+        "nombre": f"🌐 {repo_short} (por {autor})",
+        "idioma": idioma,
+        "peso": "~60 MB (Comunidad HF)",
+        "descargas": int(m.get("downloads", 0) or 0),
+        "gated": m.get("gated") or False,
+        "repo_url": f"https://huggingface.co/{repo_id}",
+        "archivo": archivo_local,
+        "url_modelo": f"https://huggingface.co/{repo_id}/resolve/main/{onnx_rel}?download=true",
+        "url_config": f"https://huggingface.co/{repo_id}/resolve/main/{json_rel}?download=true",
+    }
+
+
 def _buscar_repos_comunidad_piper():
     """Busca repositorios comunitarios de Piper en Hugging Face (ej. piper-es, piper-voice) que contengan .onnx y .onnx.json."""
     voces_comunidad = []
@@ -140,54 +208,9 @@ def _buscar_repos_comunidad_piper():
             if not isinstance(modelos, list):
                 continue
             for m in modelos:
-                repo_id = m.get("id") or m.get("modelId")
-                if not repo_id or repo_id in vistos or repo_id == "rhasspy/piper-voices":
-                    continue
-                if "checkpoint" in repo_id.lower():
-                    continue
-                siblings = m.get("siblings") or []
-                onnx_files = [s.get("rfilename", "") for s in siblings if s.get("rfilename", "").endswith(".onnx")]
-                json_files = [s.get("rfilename", "") for s in siblings if s.get("rfilename", "").endswith(".onnx.json") or s.get("rfilename", "") == "config.json"]
-                if not onnx_files or not json_files:
-                    continue
-                vistos.add(repo_id)
-                onnx_rel = onnx_files[0]
-                # Preferir el .onnx.json que coincida con el nombre del .onnx
-                json_rel = next((j for j in json_files if j == onnx_rel + ".json"), json_files[0])
-                repo_short = repo_id.split("/")[-1]
-                autor = repo_id.split("/")[0]
-                import re
-                texto_id = f"{os.path.basename(onnx_rel)} {repo_short}"
-                m_loc = re.search(r"(?:^|[_/-])([a-z]{2})[_-]([A-Z]{2})(?:[_/-]|\.|$)", texto_id)
-                if m_loc:
-                    idioma = f"{m_loc.group(1).lower()}_{m_loc.group(2).upper()}"
-                else:
-                    m_lang = re.search(
-                        r"(?:^|[_/-])(ar|bg|bn|ca|cs|cy|da|de|el|en|es|et|eu|fa|fi|fr|he|hi|hu|hy|id|is|it|ja|ka|kk|ko|ku|lb|lt|lv|ml|mr|ne|nl|no|pl|pt|ro|ru|sk|sl|sq|sr|sv|sw|te|th|tr|uk|ur|vi|zh)(?:[_/-]|\.|$)",
-                        texto_id.lower(),
-                    )
-                    mapa_def = {"es": "es_ES", "en": "en_US", "fr": "fr_FR", "pt": "pt_BR", "it": "it_IT", "de": "de_DE", "ca": "ca_ES"}
-                    idioma = mapa_def.get(m_lang.group(1), m_lang.group(1)) if m_lang else "es_ES"
-                base_onnx = os.path.basename(onnx_rel).replace("/", "_")
-                if not base_onnx.lower().startswith(("es_", "es-", "en_", "en-", "fr_", "pt_", "it_", "de_")):
-                    archivo_local = f"{idioma}_{base_onnx}"
-                else:
-                    archivo_local = base_onnx
-                if not archivo_local.endswith(".onnx"):
-                    archivo_local += ".onnx"
-                voces_comunidad.append({
-                    "id": f"hf_{repo_id.replace('/', '__')}",
-                    "motor": "piper",
-                    "nombre": f"🌐 {repo_short} (por {autor})",
-                    "idioma": idioma,
-                    "peso": "~60 MB (Comunidad HF)",
-                    "descargas": int(m.get("downloads", 0) or 0),
-                    "gated": m.get("gated") or False,
-                    "repo_url": f"https://huggingface.co/{repo_id}",
-                    "archivo": archivo_local,
-                    "url_modelo": f"https://huggingface.co/{repo_id}/resolve/main/{onnx_rel}?download=true",
-                    "url_config": f"https://huggingface.co/{repo_id}/resolve/main/{json_rel}?download=true",
-                })
+                ficha = _construir_voz_comunidad_piper(m, vistos)
+                if ficha is not None:
+                    voces_comunidad.append(ficha)
         except Exception:
             continue
     return voces_comunidad
@@ -326,242 +349,22 @@ def obtener_catalogo_tienda(directorio_piper):
     return resultado
 
 
-import time
-
-_ESTADO_DESCARGAS = {}
-
-
-def _ruta_hf_token():
-    return os.path.join(estado_app.base_dir, "hf_token.json")
-
-
-def _leer_hf_config():
-    ruta = _ruta_hf_token()
-    if os.path.exists(ruta):
-        try:
-            with open(ruta, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, dict):
-                    return {
-                        "hf_token": str(data.get("hf_token") or "").strip(),
-                        "usuario": str(data.get("usuario") or "").strip(),
-                    }
-        except (OSError, ValueError):
-            pass
-    env_tok = (os.environ.get("HF_TOKEN") or "").strip()
-    return {"hf_token": env_tok, "usuario": ""}
-
-
-def obtener_hf_token():
-    return _leer_hf_config()["hf_token"]
-
-
-def obtener_hf_usuario():
-    return _leer_hf_config()["usuario"]
-
-
-def _consultar_usuario_hf(token):
-    try:
-        req = urllib.request.Request(
-            "https://huggingface.co/api/whoami-v2",
-            headers={"User-Agent": "LiraLoud/2.0", "Authorization": f"Bearer {token}"},
-        )
-        with urllib.request.urlopen(req, timeout=4) as resp:
-            info = json.loads(resp.read().decode("utf-8"))
-            return str(info.get("name") or "").strip()
-    except Exception:
-        return ""
-
-
-def guardar_hf_token(token):
-    tok = (token or "").strip()
-    ruta = _ruta_hf_token()
-    if not tok:
-        if os.path.exists(ruta):
-            try:
-                os.remove(ruta)
-            except OSError:
-                pass
-        return True
-    usuario = _consultar_usuario_hf(tok)
-    with open(ruta, "w", encoding="utf-8") as f:
-        json.dump({"hf_token": tok, "usuario": usuario}, f, ensure_ascii=False, indent=2)
-    return True
-
-
-def pausar_descarga_voz(voz_id):
-    if voz_id in _ESTADO_DESCARGAS:
-        _ESTADO_DESCARGAS[voz_id]["pausada"] = True
-    return True
-
-
-def reanudar_descarga_voz(voz_id):
-    if voz_id in _ESTADO_DESCARGAS:
-        _ESTADO_DESCARGAS[voz_id]["pausada"] = False
-    return True
-
-
-def cancelar_descarga_voz(voz_id):
-    if voz_id in _ESTADO_DESCARGAS:
-        _ESTADO_DESCARGAS[voz_id]["cancelada"] = True
-        _ESTADO_DESCARGAS[voz_id]["pausada"] = False
-    else:
-        _ESTADO_DESCARGAS[voz_id] = {"pausada": False, "cancelada": True}
-    return True
-
-
-def _descargar_archivo(url, destino, callback_progreso=None, voz_id=""):
-    os.makedirs(os.path.dirname(destino), exist_ok=True)
-    estado = _ESTADO_DESCARGAS.get(voz_id) if voz_id else None
-    headers = {"User-Agent": "LiraLoud/2.0"}
-    token = obtener_hf_token()
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-    req = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(req, timeout=120) as resp:
-        total = int(resp.headers.get("Content-Length") or 0)
-        descargado = 0
-        tmp_destino = destino + ".tmp"
-        with open(tmp_destino, "wb") as f:
-            while True:
-                if estado:
-                    if estado.get("cancelada"):
-                        raise RuntimeError("__CANCELADA__")
-                    while estado.get("pausada") and not estado.get("cancelada"):
-                        time.sleep(0.1)
-                    if estado.get("cancelada"):
-                        raise RuntimeError("__CANCELADA__")
-                bloque = resp.read(65536)
-                if not bloque:
-                    break
-                f.write(bloque)
-                descargado += len(bloque)
-                if callback_progreso and total > 0:
-                    pct = min(99, int((descargado / total) * 100))
-                    callback_progreso(voz_id, pct)
-        os.replace(tmp_destino, destino)
-
-
-def descargar_voz_hf(motor, voz_id, directorio_piper, callback_progreso=None):
-    """Descarga una voz de Piper, Kokoro o Pocket desde Hugging Face."""
-    _ESTADO_DESCARGAS[voz_id] = {"pausada": False, "cancelada": False}
-    try:
-        return _descargar_voz_hf_impl(motor, voz_id, directorio_piper, callback_progreso)
-    finally:
-        _ESTADO_DESCARGAS.pop(voz_id, None)
-
-
-def _descargar_voz_hf_impl(motor, voz_id, directorio_piper, callback_progreso=None):
-    if motor == "piper":
-        catalogo = _cargar_piper_desde_hf()
-        voz = next((v for v in catalogo if v["id"] == voz_id), None)
-        if not voz:
-            return {"ok": False, "error": "Voz de Piper no encontrada en el catálogo."}
-        os.makedirs(directorio_piper, exist_ok=True)
-        destino_modelo = os.path.join(directorio_piper, voz["archivo"])
-        destino_config = destino_modelo + ".json"
-        try:
-            _descargar_archivo(voz["url_modelo"], destino_modelo, callback_progreso, voz_id)
-            if voz.get("url_config"):
-                _descargar_archivo(voz["url_config"], destino_config)
-            if callback_progreso:
-                callback_progreso(voz_id, 100)
-            return {"ok": True, "id": voz_id}
-        except Exception as e:
-            for p in (destino_modelo + ".tmp", destino_config + ".tmp"):
-                if os.path.exists(p):
-                    try:
-                        os.remove(p)
-                    except OSError:
-                        pass
-            if "__CANCELADA__" in str(e):
-                return {"ok": False, "cancelada": True, "error": "Descarga cancelada"}
-            return {"ok": False, "error": str(e)}
-
-    if motor == "kokoro":
-        try:
-            os.makedirs(os.path.join(DIRECTORIO_KOKORO, "voices"), exist_ok=True)
-            # Asegurar tokenizer y modelo base cuantizado de Kokoro si aún no existen
-            tok_dest = os.path.join(DIRECTORIO_KOKORO, "tokenizer.json")
-            if not os.path.exists(tok_dest):
-                _descargar_archivo(
-                    f"https://huggingface.co/{KOKORO_HF_REPO}/resolve/main/tokenizer.json?download=true",
-                    tok_dest,
-                )
-            onnx_fp32 = os.path.join(DIRECTORIO_KOKORO, "onnx", "model.onnx")
-            onnx_quant = os.path.join(DIRECTORIO_KOKORO, "onnx", "model_quantized.onnx")
-            if not os.path.exists(onnx_fp32) and not os.path.exists(onnx_quant):
-                _descargar_archivo(
-                    f"https://huggingface.co/{KOKORO_HF_REPO}/resolve/main/onnx/model_quantized.onnx?download=true",
-                    onnx_quant,
-                    callback_progreso,
-                    voz_id,
-                )
-            destino_bin = os.path.join(DIRECTORIO_KOKORO, "voices", f"{voz_id}.bin")
-            url_bin = f"https://huggingface.co/{KOKORO_HF_REPO}/resolve/main/voices/{voz_id}.bin?download=true"
-            _descargar_archivo(url_bin, destino_bin, callback_progreso, voz_id)
-            if callback_progreso:
-                callback_progreso(voz_id, 100)
-            return {"ok": True, "id": voz_id}
-        except Exception as e:
-            if "__CANCELADA__" in str(e):
-                return {"ok": False, "cancelada": True, "error": "Descarga cancelada"}
-            return {"ok": False, "error": str(e)}
-
-    if motor == "pocket":
-        try:
-            catalogo_p = _obtener_catalogo_pocket()
-            voz_p = next((v for v in catalogo_p if v["id"] == voz_id), None)
-            if not voz_p:
-                return {"ok": False, "error": "Modelo Pocket no encontrado."}
-            if callback_progreso:
-                callback_progreso(voz_id, 25)
-            pocket_engine_global._obtener_modelo(voz_p["lang_key"])
-            os.makedirs(DIRECTORIO_POCKET, exist_ok=True)
-            with open(os.path.join(DIRECTORIO_POCKET, f".ready_{voz_p['lang_key']}"), "w", encoding="utf-8") as f:
-                f.write("ok")
-            if callback_progreso:
-                callback_progreso(voz_id, 100)
-            return {"ok": True, "id": voz_id}
-        except Exception as e:
-            if "__CANCELADA__" in str(e):
-                return {"ok": False, "cancelada": True, "error": "Descarga cancelada"}
-            return {"ok": False, "error": str(e)}
-
-    return {"ok": False, "error": f"Motor '{motor}' no reconocido."}
-
-
-def eliminar_voz_local(motor, voz_id, directorio_piper):
-    """Elimina los archivos locales de una voz descargada."""
-    if motor == "piper":
-        catalogo = _cargar_piper_desde_hf()
-        voz = next((v for v in catalogo if v["id"] == voz_id), None)
-        archivo = voz["archivo"] if voz else f"{voz_id}.onnx"
-        eliminado = False
-        for path in (
-            os.path.join(directorio_piper, archivo),
-            os.path.join(directorio_piper, archivo + ".json"),
-        ):
-            if os.path.exists(path):
-                os.remove(path)
-                eliminado = True
-        return {"ok": eliminado}
-
-    if motor == "kokoro":
-        ruta_bin = os.path.join(DIRECTORIO_KOKORO, "voices", f"{voz_id}.bin")
-        if os.path.exists(ruta_bin):
-            os.remove(ruta_bin)
-            return {"ok": True}
-        return {"ok": False, "error": "El archivo de voz Kokoro no existe en disco."}
-
-    if motor == "pocket":
-        catalogo_p = _obtener_catalogo_pocket()
-        voz_p = next((v for v in catalogo_p if v["id"] == voz_id), None)
-        if voz_p:
-            marker = os.path.join(DIRECTORIO_POCKET, f".ready_{voz_p['lang_key']}")
-            if os.path.exists(marker):
-                os.remove(marker)
-            pocket_engine_global._models.pop(voz_p["lang_key"], None)
-            return {"ok": True}
-
-    return {"ok": False, "error": f"Motor '{motor}' no soportado."}
+from backend.audio.voice_downloader import (  # noqa: E402, F401
+    _ESTADO_DESCARGAS,
+    _ruta_hf_token,
+    _leer_hf_config,
+    obtener_hf_token,
+    obtener_hf_usuario,
+    _consultar_usuario_hf,
+    guardar_hf_token,
+    pausar_descarga_voz,
+    reanudar_descarga_voz,
+    cancelar_descarga_voz,
+    _descargar_archivo,
+    descargar_voz_hf,
+    _formatear_error_descarga,
+    _descargar_voz_piper,
+    _descargar_voz_kokoro,
+    _descargar_voz_hf_impl,
+    eliminar_voz_local,
+)

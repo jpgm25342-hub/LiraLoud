@@ -1,73 +1,179 @@
 ========================================================================
-                       LIRALOUD v4.0 - CREDITS & LEGAL NOTICE
+                   LIRALOUD 2.0 - CREDITS & LEGAL NOTICE
 ========================================================================
 
 1. DEVELOPMENT & AUTHORSHIP ATTRIBUTION
 ------------------------------------------------------------------------
-This software is an open-source development project created through an
-iterative, collaborative pair-programming process between:
+This software is an open-source desktop application created through an
+iterative, collaborative development process between:
 
 * Core Architect: José Pablo González Macías
-* AI Assistant:   Gemini (Collaborative Software Engineering Inferences)
+* AI Assistants:  Gemini / Antigravity (Collaborative Software Engineering)
 
 All moral rights regarding the authorship and integrity of the original
-source code are strictly retained by the creators under international
-intellectual property frameworks and local civil law provisions.
+source code are retained by the author under international intellectual
+property frameworks and applicable civil law provisions.
 
 2. SOFTWARE BILL OF MATERIALS (SBOM) & OPEN-SOURCE DEPENDENCIES
 ------------------------------------------------------------------------
-LiraLoud is built upon and linked with the following third-party 
-libraries and open-source frameworks. Distribution and modifications 
-of this software are strictly subject to their respective licensing terms:
+LiraLoud is built upon and integrates the following third-party
+libraries, engines, and open-source models. Distribution and
+modifications of this software are subject to their respective licenses:
 
-- Piper TTS (Neural Text-to-Speech Engine)
-  License: MIT License
-  Project: https://github.com/rhasspy/piper
-
-- PyMuPDF (High-Performance PDF Processing Engine)
-  License: GNU General Public License v3 (GPL v3)
-  Project: https://github.com/pymupdf/PyMuPDF
-
-- Eel (Python-to-JavaScript Inter-Process Communication Bridge)
-  License: MIT License
-  Project: https://github.com/python-eel/Eel
-
-- Edge-TTS (Microsoft Azure Neural Speech Wrapper)
-  License: MIT License
-  Project: https://github.com/rany2/edge-tts
+--- Desktop Interface & Core Runtime ---
+- pywebview (Native Desktop WebView & Python-JS Bridge)
+  License: BSD 3-Clause License
+  Project: https://github.com/r0x0r/pywebview
 
 - ONNX Runtime (Cross-Platform Neural Network Inference Engine)
   License: MIT License
   Project: https://github.com/microsoft/onnxruntime
 
-3. LEGAL DISCLAIMER & LIMITATION OF LIABILITY
+- OpenCV & NumPy (Image Processing & Numerical Computing)
+  License: Apache 2.0 / BSD 3-Clause
+  Project: https://opencv.org / https://numpy.org
+
+--- Document Processing, OCR & Layout AI ---
+- PyMuPDF (High-Performance PDF & EPUB Processing Engine)
+  License: GNU AGPL v3 / Commercial (distributed under GPL v3)
+  Project: https://github.com/pymupdf/PyMuPDF
+
+- RapidOCR & PaddleOCR ONNX Models (Multilingual Optical Character Recognition)
+  License: Apache License 2.0
+  Project: https://github.com/RapidAI/RapidOCR
+  Models:  https://huggingface.co/monkt/paddleocr-onnx
+
+- DocLayout-YOLO (Document Layout Analysis Engine)
+  License: GNU AGPL v3 / Apache 2.0
+  Project: https://github.com/opendatalab/DocLayout-YOLO
+
+- python-docx & docx2pdf (Microsoft Word Document Conversion)
+  License: MIT License
+  Project: https://github.com/python-openxml/python-docx
+
+--- Speech Synthesis (TTS), Audio & Media ---
+- Piper TTS (Local Neural Text-to-Speech Engine)
+  License: MIT License
+  Project: https://github.com/rhasspy/piper
+
+- Kokoro-82M / inno-kokoro (Local High-Fidelity Neural TTS Engine)
+  License: Apache License 2.0
+  Project: https://huggingface.co/hexgrad/Kokoro-82M
+
+- Pocket TTS (Local Zero-Shot Voice Cloning TTS Engine)
+  License: CC-BY-4.0 / MIT (Kyutai Labs)
+  Project: https://github.com/kyutai-labs/pocket-tts
+
+- Edge-TTS (Microsoft Azure Neural Speech Client)
+  License: GNU LGPL v3 / MIT
+  Project: https://github.com/rany2/edge-tts
+
+- FFmpeg (Audio Encoding & MP3 Export)
+  License: GNU LGPL v2.1+ / GPL v2+
+  Project: https://ffmpeg.org
+
+- SoundFile, PyAudio & Pygame (Audio Playback & DSP Pipeline)
+  License: BSD 3-Clause / MIT / LGPL
+
+--- Translation, AI Assistant & Web Reader ---
+- Argos Translate & CTranslate2 (Offline Neural Machine Translation)
+  License: MIT License
+  Project: https://github.com/argosopentech/argos-translate
+
+- ChromaDB & Ollama (Local Vector Search / RAG & Local LLM Integration)
+  License: Apache License 2.0 / MIT
+  Project: https://github.com/chroma-core/chroma / https://ollama.com
+
+- Playwright (Web Page Reader & Extraction)
+  License: Apache License 2.0
+  Project: https://playwright.dev
+
+3. SVG ICONS & VISUAL ASSETS ATTRIBUTION
 ------------------------------------------------------------------------
-LiraLoud is a general-purpose document reader and accessibility utility 
-provided on an "AS IS" basis. 
+LiraLoud uses SVG icons and vector assets from the following creators
+and collections under their respective open licenses:
+
+--- Creative Commons Attribution (CC BY) ---
+- Responsive Bordered Tiny Icons by Pixelbazaar
+  https://www.pixelbazaar.com/goodie/responsive-icons
+- Solar Broken Line Icons by Solar Icons
+  https://www.figma.com/community/file/1166831539721848736
+- Iconship Interface Icons by Giovana
+  https://www.figma.com/@d12da0b9_b193_4
+- Frexy Glyph Icons by Frexy
+  https://github.com/frexy/glyph-iconset
+- Font Awesome Solid Icons by Fortawesome
+  https://github.com/FortAwesome/Font-Awesome
+- Generica Tiny Interface Icons by Vlad Cristea
+  https://www.figma.com/@thevladc
+- Subway Sharp Interface Icons by Mariusz Ostrowski
+  https://github.com/mariuszostrowski/subway
+- Dazzle Line Icons by Dazzle UI
+  https://dazzleui.gumroad.com/l/dazzleiconsfree
+- Interface Vectors by Leonid Tsvetkov
+  https://www.figma.com/@leonid
+
+--- MIT License ---
+- Framework7 Line Icons by Framework7io
+  https://github.com/framework7io/framework7-icons
+- Ionicons Filled Interface Icons by Ionicons
+  https://github.com/ionic-team/ionicons
+- Meteor Line & Solid Tiny Icons by Shopware
+  https://github.com/shopware/meteor-icon-kit
+- Scarlab Duotone Line Vectors by Scarlab
+  https://github.com/la-moore/scarlab-icons
+- Fluent UI Icons Filled by Microsoft
+  https://github.com/microsoft/vscode-codicons
+- Ant Design Outlined Icons by Ant Design
+  https://github.com/ant-design/ant-design-icons
+
+--- Public Domain / CC0 ---
+- Variety Tritone Bordered Icons by Jack Liu
+  https://dribbble.com/strayguy
+- Icona Moon Bold UI Icons by Dariush Habibpour
+  https://redl.ink/dariush/links
+- Colored Object Line Icons by Juan Sarmiento
+  https://tympanus.net/codrops/2015/12/23/freebie-colored-line-icons-svg-ai-png/
+- Sensa Emoji Vectors by Sensa
+  https://sensa.co/emoji/
+- Elementary School Vectors via SVG Repo
+  https://www.svgrepo.com/
+
+4. LEGAL DISCLAIMER & LIMITATION OF LIABILITY
+------------------------------------------------------------------------
+LiraLoud is a general-purpose document reader, PDF editor, and
+accessibility utility provided strictly on an "AS IS" basis.
 
 - NO WARRANTY: To the maximum extent permitted by applicable law, there
-  is absolutely no warranty for this free software. The entire risk as 
-  to the quality, accuracy, and performance of the document parsing and
-  audio synthesis is born entirely by the end user.
+  is no warranty of any kind for this free software. The entire risk
+  regarding quality, accuracy, and performance of document parsing,
+  OCR recognition, translation, AI summaries, and audio synthesis lies
+  entirely with the end user.
 
-- ACADEMIC AND EDUCATIONAL USE ONLY: This software is explicitly 
-  intended for personal academic assistance and text-to-speech 
-  document accessibility. It is NOT a medical device, nor is it 
-  certified as a clinical diagnostic support system. 
+- EDUCATIONAL AND ACCESSIBILITY USE ONLY: This software is intended for
+  personal study, productivity, and document accessibility. It is NOT a
+  medical device, nor is it certified as a clinical diagnostic or
+  professional decision-support system.
 
-- USER RESPONSIBILITY: The high-fidelity rendering of audio outputs 
-  depends entirely on the formatting of the source PDF files and the
-  underlying acoustic models. The author shall not be held liable for
-  any misinterpretations, omitted data, or clinical/educational decisions
-  made based on the synthesized audio. Users must invariably cross-reference 
-  and validate any critical data against the official, original 
-  peer-reviewed literature.
+- OCR, TRANSLATION & AI ACCURACY: Optical Character Recognition (OCR),
+  machine translation, and AI assistant outputs may contain omissions,
+  hallucinations, or formatting errors. Users must always verify
+  critical information against the original source documents.
 
-4. LICENSING FRAMEWORK
+- VOICE CLONING RESPONSIBILITY: Any voice cloning feature (Pocket TTS)
+  must be used strictly with audio samples for which the user holds
+  explicit legal consent and rights. The author assumes no liability
+  for unauthorized voice cloning or misuse.
+
+- USER RESPONSIBILITY: The author shall not be held liable for any
+  misinterpretations, data loss, or clinical, legal, or academic
+  decisions made based on synthesized audio, OCR text, or AI outputs.
+
+5. LICENSING FRAMEWORK
 ------------------------------------------------------------------------
-LiraLoud is fully licensed under the GNU General Public License v3 (GPL v3).
+LiraLoud is licensed under the GNU General Public License v3 (GPL v3).
 The complete, verbatim terms and conditions of this license are located
-in the root directory of this software installation within the 'LICENSE' 
+in the root directory of this software installation within the 'LICENSE'
 file. Any downstream redistribution or derivation of this codebase must
 comply with the copyleft provisions mandated by the GPL v3.
 

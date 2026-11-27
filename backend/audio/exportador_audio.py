@@ -45,7 +45,7 @@ from backend.core.gestor_archivos import (
     validar_json
 )
 from backend.core.utils import crear_regex_inmune_acentos, normalizar_texto
-from backend.documento.ocr_engine import procesar_ocr_pagina
+from backend.documento.ocr_engine import procesar_ocr_pagina, renderizar_pixmap_ocr
 from backend.audio.kokoro_engine import kokoro_engine_global, es_voz_kokoro
 
 try:
@@ -71,7 +71,10 @@ if BASE_DIR and BASE_DIR not in os.environ.get('PATH', '').split(os.pathsep):
     os.environ['PATH'] = BASE_DIR + os.pathsep + os.environ.get('PATH', '')
 
 
-class ExportadorAudio:
+from backend.audio.exportador_texto import ExportadorTextoMixin
+
+
+class ExportadorAudio(ExportadorTextoMixin):
     """
     Controlador maestro de exportación de audios para LiraLoud.
     Diseñado para ejecutarse en subprocesos/hilos sin bloquear Eel ni la interfaz.
@@ -284,144 +287,6 @@ class ExportadorAudio:
         voz_final = await self.resolver_identidad_voz(voz_objetivo)
         return await self.sintetizar_edge(texto, voz_final, velocidad)
 
-    def preparar_texto_pagina(
-        self,
-        doc: Any,
-        num_pag: int,
-        dict_activo: Optional[Dict[str, Any]] = None,
-        filtros: Optional[Dict[str, Any]] = None,
-        modo_teatro: bool = False,
-        obra_actual: str = "General",
-        voz_default: str = "es-MX-DaliaNeural",
-        aplicar_layout: bool = True,
-    ) -> List[Tuple[str, str]]:
-        """
-        Prepara la lista de (texto_frase, voz_asignada) usando el mismo pipeline
-        de segmentación y filtros que el karaoke en vivo.
-        """
-        if not doc or num_pag < 0 or num_pag >= len(doc):
-            return []
-
-        from backend.core.estado_global import estado_app
-        from backend.core.gestor_archivos import cargar_progreso_libro
-        from backend.documento.gestor_documento_rpc import (
-            _extraer_palabras_con_tipografia,
-            _filtrar_palabras_por_exclusiones,
-        )
-        from backend.documento.procesador_texto import (
-            organizar_palabras_con_cortes_y_limites,
-            procesar_oraciones_de_palabras,
-            aplicar_reemplazos,
-        )
-
-        pagina = doc[num_pag]
-        ajustes = cargar_ajustes_lectura()
-        if dict_activo is None:
-            dict_activo = cargar_diccionario()
-
-        if filtros is None:
-            filtros = {
-                "chk-urls": ajustes.get("omitirUrls", False),
-                "chk-paren": ajustes.get("omitirParen", False),
-                "chk-corch": ajustes.get("omitirCorch", False),
-                "chk-llaves": ajustes.get("omitirLlaves", False),
-                "chk-barras": ajustes.get("omitirBarras", False),
-                "chk-referencias": ajustes.get("omitirSuperindices", ajustes.get("omitirReferencias", True)),
-                "chk-superindices": ajustes.get("omitirSuperindices", ajustes.get("omitirReferencias", True)),
-                "chk-subindices": ajustes.get("omitirSubindices", False),
-            }
-        filtros = {
-            **filtros,
-            "usarBloquesNativos": ajustes.get("usarBloquesNativos", True),
-            "sensibilidadSalto": float(ajustes.get("sensibilidadSalto", 0.5)),
-            "detectarSangria": ajustes.get("detectarSangria", True),
-            "modo_teatro": bool(modo_teatro),
-            "obra_actual": str(obra_actual or "General"),
-        }
-
-        pag_cortes_v = []
-        pag_limites_h = {}
-        pag_zonas = []
-        est_ia = None
-        doc_path = getattr(doc, "name", "") or ""
-
-        if aplicar_layout:
-            lay_mem = estado_app.layouts_por_pagina.get(int(num_pag))
-            if isinstance(lay_mem, dict):
-                pag_cortes_v = lay_mem.get("cortesV") or []
-                pag_limites_h = lay_mem.get("limitesH") or {}
-                pag_zonas = lay_mem.get("zonasExcluidas") or []
-                est_ia = lay_mem.get("estructura")
-            elif doc_path:
-                prog = cargar_progreso_libro(doc_path)
-                layouts = prog.get("layouts", {}) if isinstance(prog, dict) else {}
-                pag_layout = layouts.get(str(num_pag), {})
-                pag_cortes_v = pag_layout.get("cortesV", [])
-                pag_limites_h = pag_layout.get("limitesH", {})
-                pag_zonas = pag_layout.get("zonasExcluidas", [])
-
-        tiene_cortes_v = bool(pag_cortes_v and len(pag_cortes_v) > 0)
-        tiene_limites_h = any(
-            isinstance(lim, (list, tuple)) and len(lim) >= 2 and (lim[0] > 5 or lim[1] < (pagina.rect.height - 5))
-            for lim in (pag_limites_h or {}).values()
-        )
-        usar_sort = not tiene_cortes_v and not tiene_limites_h
-
-        palabras_raw = _extraer_palabras_con_tipografia(pagina, sort=usar_sort)
-        if not palabras_raw and ajustes.get("auto_ocr", True):
-            try:
-                pix = pagina.get_pixmap(dpi=150)
-                palabras_raw = procesar_ocr_pagina(
-                    pixmap_bytes=pix.tobytes("png"),
-                    ancho_pdf=pagina.rect.width,
-                    alto_pdf=pagina.rect.height,
-                    ancho_px=pix.width,
-                    alto_px=pix.height,
-                    doc_path=doc_path or "doc_actual",
-                    num_pagina=num_pag,
-                    forzar=False,
-                )
-            except Exception as e:
-                logger.warning(f"⚠️ No se pudo procesar OCR para la página {num_pag}: {e}")
-
-        if aplicar_layout and pag_zonas:
-            palabras_raw = _filtrar_palabras_por_exclusiones(palabras_raw, pag_zonas)
-
-        if aplicar_layout and (tiene_cortes_v or tiene_limites_h):
-            palabras_raw = organizar_palabras_con_cortes_y_limites(
-                palabras_raw, pag_cortes_v, pag_limites_h, pagina.rect.width, pagina.rect.height
-            )
-
-        oraciones_raw = procesar_oraciones_de_palabras(palabras_raw, dict_activo, filtros_externos=filtros, estructura_ia=est_ia)
-        oraciones_filtradas: List[Tuple[str, str]] = []
-
-        for orac in oraciones_raw:
-            txt_orac = str(orac.get("texto") or "").strip()
-            if not txt_orac:
-                continue
-            pack = aplicar_reemplazos(
-                txt_orac,
-                dict_activo,
-                filtros,
-                modo_teatro=modo_teatro,
-                obra_actual=obra_actual,
-            )
-            texto_final, voz_detectada = pack if isinstance(pack, tuple) else (pack, None)
-            voz_actual = voz_detectada or (estado_app.voz_teatro_persistente if modo_teatro else None) or voz_default
-            if texto_final and re.search(r"[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]", str(texto_final)):
-                oraciones_filtradas.append((str(texto_final).strip(), voz_actual))
-
-        return oraciones_filtradas
-
-    def _es_inicio_seccion(self, texto: str) -> bool:
-        t = (texto or "").strip()
-        if not t or len(t) > 90:
-            return False
-        if re.match(r"^(?:cap[ií]tulo|secci[oó]n|parte|chapter|section|part|act|acto|escena)\b", t, re.IGNORECASE):
-            return True
-        letras = re.sub(r"[^a-zA-ZáéíóúÁÉÍÓÚñÑ]", "", t)
-        return len(letras) >= 5 and letras.isupper() and len(t.split()) <= 10
-
     def _codificar_pista(self, ruta_wav: str, ruta_destino: str, es_mp3: bool) -> str:
         if es_mp3 and shutil.which("ffmpeg"):
             cmd = [
@@ -445,6 +310,72 @@ class ExportadorAudio:
         if ruta_wav != final_wav and os.path.exists(ruta_wav):
             os.replace(ruta_wav, final_wav)
         return final_wav
+
+    @staticmethod
+    def _indexar_libro_teatro_por_pagina(
+        opts: Dict[str, Any],
+        modo_teatro: bool,
+        pag_ini: int,
+        pag_fin: int,
+        voz_id: str,
+    ) -> Dict[int, List[Tuple[str, str]]]:
+        """Agrupa entradas del guion de Modo Teatro dentro del rango [pag_ini, pag_fin]."""
+        libro_teatro = opts.get("libro_teatro") if isinstance(opts.get("libro_teatro"), list) else []
+        libro_por_pag: Dict[int, List[Tuple[str, str]]] = {}
+        if not (modo_teatro and libro_teatro):
+            return libro_por_pag
+        for item in libro_teatro:
+            if not isinstance(item, dict):
+                continue
+            p_idx = item.get("pagina")
+            if p_idx is None:
+                continue
+            p_num = int(p_idx)
+            if (pag_ini - 1) <= p_num <= (pag_fin - 1):
+                txt_it = str(item.get("texto") or "").strip()
+                voz_it = str(item.get("voz") or voz_id)
+                if txt_it:
+                    libro_por_pag.setdefault(p_num, []).append((txt_it, voz_it))
+        return libro_por_pag
+
+    def _preparar_config_exportacion(
+        self,
+        opciones_corte: Optional[Dict[str, Any]],
+        modo_teatro: bool,
+        pag_ini: int,
+        pag_fin: int,
+        voz_id: str,
+    ) -> Dict[str, Any]:
+        """Normaliza opciones de corte/traducción y construye el mapa de libro temporal en Modo Teatro."""
+        opts = opciones_corte if isinstance(opciones_corte, dict) else {}
+        corte_modo = str(opts.get("corte_modo", "unico") or "unico").lower()
+        corte_minutos = max(1.0, float(opts.get("corte_minutos", 15) or 15))
+        corte_paginas = max(1, int(opts.get("corte_paginas", 1) or 1))
+        trad_activa = bool(opts.get("traduccion_activa", False))
+
+        traductor_global = None
+        if trad_activa:
+            from backend.ia.traductor import traductor_global as _tg
+            traductor_global = _tg
+
+        libro_por_pag = self._indexar_libro_teatro_por_pagina(
+            opts, modo_teatro, pag_ini, pag_fin, voz_id
+        )
+
+        return {
+            "corte_modo": corte_modo,
+            "corte_paginas": corte_paginas,
+            "max_segundos_pista": corte_minutos * 60.0,
+            "empaquetar_zip": bool(opts.get("empaquetar_zip", True)),
+            "usar_limites": bool(opts.get("usar_limites", True)),
+            "trad_activa": trad_activa,
+            "trad_origen": str(opts.get("traduccion_origen", "auto") or "auto"),
+            "trad_destino": str(opts.get("traduccion_destino", "es") or "es"),
+            "trad_motor": str(opts.get("traduccion_motor", "hibrido") or "hibrido"),
+            "trad_modo": str(opts.get("traduccion_modo", "solo_traduccion") or "solo_traduccion"),
+            "traductor_global": traductor_global,
+            "libro_por_pag": libro_por_pag,
+        }
 
     def exportar_rango(
         self,
@@ -483,40 +414,20 @@ class ExportadorAudio:
             extraer_mapa_capitulos_toc,
         )
 
-        opts = opciones_corte if isinstance(opciones_corte, dict) else {}
-        corte_modo = str(opts.get("corte_modo", "unico") or "unico").lower()
-        corte_minutos = max(1.0, float(opts.get("corte_minutos", 15) or 15))
-        corte_paginas = max(1, int(opts.get("corte_paginas", 1) or 1))
-        max_segundos_pista = corte_minutos * 60.0
-        empaquetar_zip = bool(opts.get("empaquetar_zip", True))
-        usar_limites = bool(opts.get("usar_limites", True))
-        libro_teatro = opts.get("libro_teatro") if isinstance(opts.get("libro_teatro"), list) else []
-        trad_activa = bool(opts.get("traduccion_activa", False))
-        trad_origen = str(opts.get("traduccion_origen", "auto") or "auto")
-        trad_destino = str(opts.get("traduccion_destino", "es") or "es")
-        trad_motor = str(opts.get("traduccion_motor", "hibrido") or "hibrido")
-        trad_modo = str(opts.get("traduccion_modo", "solo_traduccion") or "solo_traduccion")
-
-        traductor_global = None
-        if trad_activa:
-            from backend.ia.traductor import traductor_global as _tg
-            traductor_global = _tg
-
+        cfg_exp = self._preparar_config_exportacion(opciones_corte, modo_teatro, pag_ini, pag_fin, voz_id)
+        corte_modo = cfg_exp["corte_modo"]
+        corte_paginas = cfg_exp["corte_paginas"]
+        max_segundos_pista = cfg_exp["max_segundos_pista"]
+        empaquetar_zip = cfg_exp["empaquetar_zip"]
+        usar_limites = cfg_exp["usar_limites"]
+        trad_activa = cfg_exp["trad_activa"]
+        trad_origen = cfg_exp["trad_origen"]
+        trad_destino = cfg_exp["trad_destino"]
+        trad_motor = cfg_exp["trad_motor"]
+        trad_modo = cfg_exp["trad_modo"]
+        traductor_global = cfg_exp["traductor_global"]
+        libro_por_pag = cfg_exp["libro_por_pag"]
         mapa_toc = extraer_mapa_capitulos_toc(doc) if corte_modo == "seccion" else {}
-        libro_por_pag: Dict[int, List[Tuple[str, str]]] = {}
-        if modo_teatro and libro_teatro:
-            for item in libro_teatro:
-                if not isinstance(item, dict):
-                    continue
-                p_idx = item.get("pagina")
-                if p_idx is None:
-                    continue
-                p_num = int(p_idx)
-                if (pag_ini - 1) <= p_num <= (pag_fin - 1):
-                    txt_it = str(item.get("texto") or "").strip()
-                    voz_it = str(item.get("voz") or voz_id)
-                    if txt_it:
-                        libro_por_pag.setdefault(p_num, []).append((txt_it, voz_it))
 
         with self._lock:
             self.exportacion_activa = True

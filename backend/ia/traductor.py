@@ -50,22 +50,38 @@ def _log(msg: str):
         except Exception:
             pass
 
-# Configurar Stanza / Argos en modo 100% Offline (Evita que Stanza intente conectar a raw.githubusercontent.com)
-try:
-    import logging
-    logging.getLogger('stanza').setLevel(logging.ERROR)
-    import stanza
-    from stanza.pipeline.core import DownloadMethod
-    _orig_stanza_init = stanza.Pipeline.__init__
-    def _patched_stanza_init(self, *args, **kwargs):
-        if 'download_method' not in kwargs:
-            kwargs['download_method'] = DownloadMethod.REUSE_RESOURCES
-        if 'logging_level' not in kwargs:
-            kwargs['logging_level'] = 'ERROR'
-        return _orig_stanza_init(self, *args, **kwargs)
-    stanza.Pipeline.__init__ = _patched_stanza_init
-except Exception:
-    pass
+# Configurar Stanza / Argos en modo 100% Offline de forma diferida (evita importar torch/stanza en el arranque)
+_stanza_patch_lock = threading.Lock()
+_stanza_patcheado = False
+
+
+def _asegurar_stanza_offline():
+    """Parchea stanza.Pipeline una sola vez (thread-safe) justo antes de usar ArgosTranslate."""
+    global _stanza_patcheado
+    if _stanza_patcheado:
+        return
+    with _stanza_patch_lock:
+        if _stanza_patcheado:
+            return
+        try:
+            import logging
+            logging.getLogger('stanza').setLevel(logging.ERROR)
+            import stanza
+            from stanza.pipeline.core import DownloadMethod
+            _orig_stanza_init = stanza.Pipeline.__init__
+
+            def _patched_stanza_init(self, *args, **kwargs):
+                if 'download_method' not in kwargs:
+                    kwargs['download_method'] = DownloadMethod.REUSE_RESOURCES
+                if 'logging_level' not in kwargs:
+                    kwargs['logging_level'] = 'ERROR'
+                return _orig_stanza_init(self, *args, **kwargs)
+
+            stanza.Pipeline.__init__ = _patched_stanza_init
+        except Exception:
+            pass
+        _stanza_patcheado = True
+
 
 class GestorTraduccionHibrida:
     def __init__(self):
@@ -77,13 +93,23 @@ class GestorTraduccionHibrida:
         self._ultimo_request_time = 0.0
         self._online_reintento_despues = 0.0
         self._timer_guardado = None
+        self._precarga_iniciada = False
+        self.modo_privacidad_offline = getattr(estado_app, "modo_privacidad_estricta", False)
         self._cargar_y_sanitizar_cache()
+
+    def iniciar_precarga_en_fondo(self):
+        """Dispara de forma explícita y no bloqueante la pre-carga de ArgosTranslate (post-arranque)."""
+        with self._lock:
+            if self._precarga_iniciada:
+                return
+            self._precarga_iniciada = True
         self._iniciar_calentamiento_argos()
 
     def _iniciar_calentamiento_argos(self):
         """Carga en segundo plano el modelo local de ArgosTranslate para que la traducción offline sea instantánea."""
         def _warmup():
             try:
+                _asegurar_stanza_offline()
                 with self._argos_init_lock:
                     if ('en', 'es') in self._modelos_argos:
                         return
@@ -271,6 +297,7 @@ class GestorTraduccionHibrida:
     def _asegurar_paquete_argos(self, from_code: str, to_code: str):
         """Descarga e instala el modelo offline de ArgosTranslate si no está disponible y hay internet."""
         try:
+            _asegurar_stanza_offline()
             import argostranslate.package
             import argostranslate.translate
             
@@ -297,39 +324,42 @@ class GestorTraduccionHibrida:
             _log(f"⚠️ [TRADUCCIÓN OFFLINE] No se pudo auto-instalar modelo {from_code}->{to_code}: {e}")
         return False
 
+    def _obtener_traductor_argos(self, argos_translate_mod, from_code: str, to_code: str):
+        """Obtiene o carga de forma thread-safe el traductor ArgosTranslate para (from_code, to_code)."""
+        par = (from_code, to_code)
+        with self._lock:
+            translation = self._modelos_argos.get(par)
+        if translation:
+            return translation
+
+        def _buscar_par_instalado():
+            installed_languages = argos_translate_mod.get_installed_languages()
+            from_lang = next((l for l in installed_languages if l.code == from_code), None)
+            to_lang = next((l for l in installed_languages if l.code == to_code), None)
+            if from_lang and to_lang:
+                return from_lang.get_translation(to_lang)
+            return None
+
+        with self._argos_init_lock:
+            translation = self._modelos_argos.get(par)
+            if not translation:
+                translation = _buscar_par_instalado()
+                if not translation and self._asegurar_paquete_argos(from_code, to_code):
+                    translation = _buscar_par_instalado()
+                if translation:
+                    with self._lock:
+                        self._modelos_argos[par] = translation
+        return translation
+
     def _traducir_offline(self, texto: str, origen: str = "auto", destino: str = "es") -> str:
         """Traducción offline ultrarrápida mediante ArgosTranslate (CTranslate2 local) con caché en RAM."""
         try:
+            _asegurar_stanza_offline()
             import argostranslate.translate
-            
+
             from_code = "en" if not origen or origen == "auto" else origen.lower().split('-')[0]
             to_code = destino.lower().split('-')[0] if destino else "es"
-            par = (from_code, to_code)
-            
-            with self._lock:
-                translation = self._modelos_argos.get(par)
-            
-            if not translation:
-                with self._argos_init_lock:
-                    translation = self._modelos_argos.get(par)
-                    if not translation:
-                        installed_languages = argostranslate.translate.get_installed_languages()
-                        from_lang = next((l for l in installed_languages if l.code == from_code), None)
-                        to_lang = next((l for l in installed_languages if l.code == to_code), None)
-                        if from_lang and to_lang:
-                            translation = from_lang.get_translation(to_lang)
-                        
-                        if not translation:
-                            if self._asegurar_paquete_argos(from_code, to_code):
-                                installed_languages = argostranslate.translate.get_installed_languages()
-                                from_lang = next((l for l in installed_languages if l.code == from_code), None)
-                                to_lang = next((l for l in installed_languages if l.code == to_code), None)
-                                if from_lang and to_lang:
-                                    translation = from_lang.get_translation(to_lang)
-                        
-                        if translation:
-                            with self._lock:
-                                self._modelos_argos[par] = translation
+            translation = self._obtener_traductor_argos(argostranslate.translate, from_code, to_code)
 
             if translation:
                 res = translation.translate(texto).strip()
@@ -337,7 +367,7 @@ class GestorTraduccionHibrida:
                     return res
         except Exception as e:
             _log(f"❌ [TRADUCCIÓN OFFLINE] Error en motor local: {e}")
-        
+
         raise RuntimeError("Motor offline no disponible o sin modelo para el par solicitado")
 
     def _es_traduccion_valida(self, texto_original: str, texto_traducido: str, origen: str, destino: str) -> bool:
@@ -358,6 +388,33 @@ class GestorTraduccionHibrida:
             return False
             
         return True
+
+    def _ejecutar_cascada_traduccion(self, texto_limpio: str, origen: str, destino: str, motor: str) -> tuple:
+        """Ejecuta la cascada de traducción según motor ('online', 'offline', 'hibrido') respetando privacidad."""
+        if motor == "offline":
+            try:
+                return self._traducir_offline(texto_limpio, origen, destino), "offline"
+            except Exception as e:
+                if getattr(self, "modo_privacidad_offline", False):
+                    _log(f"⚠️ [TRADUCCIÓN OFFLINE] Modo Privacidad activo: omitiendo fallback online ({e}).")
+                    return texto_limpio, "offline (sin red)"
+                _log(f"⚠️ [TRADUCCIÓN OFFLINE] Falló offline ({e}), recurriendo a online...")
+                try:
+                    return self._traducir_online(texto_limpio, origen, destino), "online (fallback)"
+                except Exception as e_on:
+                    _log(f"❌ [TRADUCCIÓN] Fallaron offline y online: {e_on}")
+                    return texto_limpio, "original"
+
+        etiqueta_fb = "offline (fallback)" if motor == "online" else "offline"
+        try:
+            return self._traducir_online(texto_limpio, origen, destino), "online"
+        except Exception as e:
+            _log(f"⚠️ [TRADUCCIÓN {motor.upper()}] Online no disponible ({e}), pasando a Argos offline...")
+            try:
+                return self._traducir_offline(texto_limpio, origen, destino), etiqueta_fb
+            except Exception as e_off:
+                _log(f"❌ [TRADUCCIÓN {motor.upper()}] Falló offline: {e_off}")
+                return texto_limpio, "original"
 
     def traducir(self, texto: str, origen: str = "auto", destino: str = "es", motor: str = "hibrido") -> dict:
         """
@@ -392,56 +449,10 @@ class GestorTraduccionHibrida:
                 with self._lock:
                     self.cache.pop(key_cache, None)
 
-        resultado_texto = ""
-        motor_utilizado = motor
-
         # 2. Ejecutar según motor con cascada de seguridad inteligente
-        if motor == "online":
-            try:
-                resultado_texto = self._traducir_online(texto_limpio, origen, destino)
-                motor_utilizado = "online"
-            except Exception as e:
-                _log(f"⚠️ [TRADUCCIÓN ONLINE] Falló online ({e}), recurriendo a Argos offline...")
-                try:
-                    resultado_texto = self._traducir_offline(texto_limpio, origen, destino)
-                    motor_utilizado = "offline (fallback)"
-                except Exception as e_off:
-                    _log(f"❌ [TRADUCCIÓN] Fallaron online y offline: {e_off}")
-                    resultado_texto = texto_limpio
-                    motor_utilizado = "original"
-
-        elif motor == "offline":
-            try:
-                resultado_texto = self._traducir_offline(texto_limpio, origen, destino)
-                motor_utilizado = "offline"
-            except Exception as e:
-                if getattr(self, "modo_privacidad_offline", False):
-                    _log(f"⚠️ [TRADUCCIÓN OFFLINE] Modo Privacidad activo: omitiendo fallback online ({e}).")
-                    resultado_texto = texto_limpio
-                    motor_utilizado = "offline (sin red)"
-                else:
-                    _log(f"⚠️ [TRADUCCIÓN OFFLINE] Falló offline ({e}), recurriendo a online...")
-                    try:
-                        resultado_texto = self._traducir_online(texto_limpio, origen, destino)
-                        motor_utilizado = "online (fallback)"
-                    except Exception as e_on:
-                        _log(f"❌ [TRADUCCIÓN] Fallaron offline y online: {e_on}")
-                        resultado_texto = texto_limpio
-                        motor_utilizado = "original"
-
-        else:  # Híbrido (Auto)
-            try:
-                resultado_texto = self._traducir_online(texto_limpio, origen, destino)
-                motor_utilizado = "online"
-            except Exception as e:
-                _log(f"⚠️ [TRADUCCIÓN HÍBRIDA] Online no disponible ({e}), pasando a offline Argos...")
-                try:
-                    resultado_texto = self._traducir_offline(texto_limpio, origen, destino)
-                    motor_utilizado = "offline"
-                except Exception as e_off:
-                    _log(f"❌ [TRADUCCIÓN HÍBRIDA] Falló offline: {e_off}")
-                    resultado_texto = texto_limpio
-                    motor_utilizado = "original"
+        resultado_texto, motor_utilizado = self._ejecutar_cascada_traduccion(
+            texto_limpio, origen, destino, motor
+        )
 
         # 3. Guardar en Caché SÓLO SI LA TRADUCCIÓN ES VÁLIDA
         if self._es_traduccion_valida(texto_limpio, resultado_texto, origen, destino):

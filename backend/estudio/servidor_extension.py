@@ -125,6 +125,108 @@ def _limpiar_nombre_archivo(titulo_sugerido="", url_path=""):
     return nombre_limpio or "documento"
 
 
+def _es_url_pdf_directo(url, parsed, headers):
+    """Determina por heurística de URL o cabecera HTTP HEAD si la URL apunta a un PDF directo."""
+    path_lower = parsed.path.lower()
+    query_lower = parsed.query.lower()
+    if path_lower.endswith(".pdf") or ".pdf?" in url.lower() or "pdf" in query_lower:
+        return True
+    try:
+        head = requests.head(url, headers=headers, timeout=5, allow_redirects=True)
+        return "application/pdf" in head.headers.get("content-type", "").lower()
+    except Exception:
+        return False
+
+
+def _intentar_descargar_pdf_directo(url, parsed, headers, nombre_limpio, ts):
+    """Detecta si la URL apunta a un PDF directo y lo descarga; retorna dict de resultado o None para seguir como web."""
+    if not _es_url_pdf_directo(url, parsed, headers):
+        return None
+
+    path_lower = parsed.path.lower()
+    ruta_pdf = os.path.join(TEMP_DIR, f"{nombre_limpio}_{ts}.pdf")
+    logger.info(f"📥 [EXTENSIÓN] Descargando PDF directo desde: {url[:80]}...")
+    try:
+        with requests.get(url, headers=headers, stream=True, timeout=60, allow_redirects=True) as resp:
+            resp.raise_for_status()
+            ctype = resp.headers.get("content-type", "").lower()
+            iterador = resp.iter_content(chunk_size=65536)
+            primer_chunk = next(iterador, b"")
+            # Si la URL tenía "pdf" en query pero el servidor devolvió una página HTML en vez de un binario %PDF
+            if primer_chunk and not primer_chunk.lstrip().startswith(b"%PDF") and "text/html" in ctype:
+                logger.info("🌐 [EXTENSIÓN] La respuesta es HTML y no un binario %PDF; redirigiendo a conversor web.")
+                return None
+            with open(ruta_pdf, "wb") as f:
+                if primer_chunk:
+                    f.write(primer_chunk)
+                for chunk in iterador:
+                    if chunk:
+                        f.write(chunk)
+
+        if os.path.exists(ruta_pdf) and os.path.getsize(ruta_pdf) > 0:
+            logger.info(f"✅ [EXTENSIÓN] PDF guardado en: {ruta_pdf}")
+            return {"ok": True, "ruta": os.path.abspath(ruta_pdf), "tipo": "pdf"}
+        return {"ok": False, "error": "El archivo descargado está vacío o dañado."}
+    except Exception as e:
+        if path_lower.endswith(".pdf"):
+            logger.error(f"❌ [EXTENSIÓN] Error descargando PDF directo: {e}")
+            return {"ok": False, "error": f"Fallo al descargar PDF: {str(e)[:120]}"}
+        logger.warning(f"⚠️ [EXTENSIÓN] Falló descarga como PDF directo ({e}), intentando como página web...")
+        return None
+
+
+def _procesar_contenido_directo_extension(pdf_base64, texto_directo, titulo_sugerido, nombre_limpio, ts):
+    """Procesa PDF Base64 o texto seleccionado enviado directamente por la extensión; retorna dict o None."""
+    if pdf_base64:
+        try:
+            b64_clean = pdf_base64.split(",", 1)[-1].strip()
+            raw_bytes = base64.b64decode(b64_clean)
+            if raw_bytes.startswith(b"%PDF"):
+                ruta_pdf = os.path.join(TEMP_DIR, f"{nombre_limpio}_{ts}.pdf")
+                with open(ruta_pdf, "wb") as f:
+                    f.write(raw_bytes)
+                logger.info(f"✅ [EXTENSIÓN] PDF recibido desde sesión del navegador guardado en: {ruta_pdf}")
+                return {"ok": True, "ruta": os.path.abspath(ruta_pdf), "tipo": "pdf"}
+        except Exception as e_b64:
+            logger.warning(f"⚠️ [EXTENSIÓN] Falló decodificación de pdf_base64, continuando por URL: {e_b64}")
+
+    if texto_directo and texto_directo.strip():
+        try:
+            from backend.estudio.web_reader import importar_texto_como_pdf
+            res_txt = importar_texto_como_pdf(texto_directo.strip(), titulo_sugerido or "Selección Web")
+            if res_txt and res_txt.get("ok"):
+                res_txt["tipo"] = "web"
+                return res_txt
+            return {"ok": False, "error": res_txt.get("error", "No se pudo convertir el texto seleccionado.")}
+        except Exception as e_txt:
+            logger.error(f"❌ [EXTENSIÓN] Error convirtiendo texto seleccionado: {e_txt}")
+            return {"ok": False, "error": f"Error al procesar texto seleccionado: {str(e_txt)[:120]}"}
+    return None
+
+
+def _procesar_esquema_local_o_blob(url, parsed, html_fallback, titulo_sugerido, nombre_limpio, ts):
+    """Maneja URLs locales (`file://`) y temporales (`blob:`); retorna dict o None si es HTTP/HTTPS."""
+    if parsed.scheme == "file":
+        local_path = urllib.request.url2pathname(urllib.parse.unquote(parsed.path))
+        if re.match(r"^[\\/][a-zA-Z]:", local_path):
+            local_path = local_path[1:]
+        if os.path.exists(local_path):
+            logger.info(f"📂 [EXTENSIÓN] Archivo local detectado: {local_path}")
+            return {"ok": True, "ruta": os.path.abspath(local_path), "tipo": "local"}
+        return {"ok": False, "error": f"Archivo local no encontrado en el equipo: {local_path}"}
+
+    if parsed.scheme == "blob":
+        if html_fallback:
+            from backend.estudio.web_reader import _fallback_html_a_pdf
+            ruta_pdf = os.path.join(TEMP_DIR, f"web_{nombre_limpio}_{ts}.pdf")
+            return _fallback_html_a_pdf(url, parsed, ruta_pdf, html_provisto=html_fallback, titulo_sugerido=titulo_sugerido)
+        return {
+            "ok": False,
+            "error": "Este PDF usa una URL temporal (blob:) protegida por el sitio. Descárgalo primero o ábrelo como archivo local.",
+        }
+    return None
+
+
 def procesar_url_extension(url="", titulo_sugerido="", html_fallback="", texto_directo="", pdf_base64=""):
     """
     Descarga o procesa la URL / contenido recibido desde la extensión del navegador.
@@ -141,56 +243,21 @@ def procesar_url_extension(url="", titulo_sugerido="", html_fallback="", texto_d
     parsed = urllib.parse.urlparse(url) if url else urllib.parse.urlparse("")
     nombre_limpio = _limpiar_nombre_archivo(titulo_sugerido, parsed.path)
 
-    # 0. Caso PDF enviado directamente en Base64 por la extensión (ej. blob: o sesión autenticada)
-    if pdf_base64:
-        try:
-            b64_clean = pdf_base64.split(",", 1)[-1].strip()
-            raw_bytes = base64.b64decode(b64_clean)
-            if raw_bytes.startswith(b"%PDF"):
-                ruta_pdf = os.path.join(TEMP_DIR, f"{nombre_limpio}_{ts}.pdf")
-                with open(ruta_pdf, "wb") as f:
-                    f.write(raw_bytes)
-                logger.info(f"✅ [EXTENSIÓN] PDF recibido desde sesión del navegador guardado en: {ruta_pdf}")
-                return {"ok": True, "ruta": os.path.abspath(ruta_pdf), "tipo": "pdf"}
-        except Exception as e_b64:
-            logger.warning(f"⚠️ [EXTENSIÓN] Falló decodificación de pdf_base64, continuando por URL: {e_b64}")
-
-    # 0.5 Caso texto seleccionado enviado directamente desde la extensión
-    if texto_directo and texto_directo.strip():
-        try:
-            from backend.estudio.web_reader import importar_texto_como_pdf
-            res_txt = importar_texto_como_pdf(texto_directo.strip(), titulo_sugerido or "Selección Web")
-            if res_txt and res_txt.get("ok"):
-                res_txt["tipo"] = "web"
-                return res_txt
-            return {"ok": False, "error": res_txt.get("error", "No se pudo convertir el texto seleccionado.")}
-        except Exception as e_txt:
-            logger.error(f"❌ [EXTENSIÓN] Error convirtiendo texto seleccionado: {e_txt}")
-            return {"ok": False, "error": f"Error al procesar texto seleccionado: {str(e_txt)[:120]}"}
+    res_directo = _procesar_contenido_directo_extension(
+        pdf_base64, texto_directo, titulo_sugerido, nombre_limpio, ts
+    )
+    if res_directo is not None:
+        return res_directo
 
     if not url:
         return {"ok": False, "error": "No se recibió ninguna URL ni texto válido."}
 
-    # 1. Caso archivo local abierto en el navegador (file:///)
-    if parsed.scheme == "file":
-        local_path = urllib.request.url2pathname(urllib.parse.unquote(parsed.path))
-        if re.match(r"^[\\/][a-zA-Z]:", local_path):
-            local_path = local_path[1:]
-        if os.path.exists(local_path):
-            logger.info(f"📂 [EXTENSIÓN] Archivo local detectado: {local_path}")
-            return {"ok": True, "ruta": os.path.abspath(local_path), "tipo": "local"}
-        else:
-            return {"ok": False, "error": f"Archivo local no encontrado en el equipo: {local_path}"}
-
-    if parsed.scheme == "blob":
-        if html_fallback:
-            from backend.estudio.web_reader import _fallback_html_a_pdf
-            ruta_pdf = os.path.join(TEMP_DIR, f"web_{nombre_limpio}_{ts}.pdf")
-            return _fallback_html_a_pdf(url, parsed, ruta_pdf, html_provisto=html_fallback, titulo_sugerido=titulo_sugerido)
-        return {
-            "ok": False,
-            "error": "Este PDF usa una URL temporal (blob:) protegida por el sitio. Descárgalo primero o ábrelo como archivo local."
-        }
+    # 1. Caso archivo local (file:///) o URL temporal (blob:)
+    res_especial = _procesar_esquema_local_o_blob(
+        url, parsed, html_fallback, titulo_sugerido, nombre_limpio, ts
+    )
+    if res_especial is not None:
+        return res_especial
 
     if parsed.scheme not in ("http", "https"):
         url = "https://" + url
@@ -205,52 +272,9 @@ def procesar_url_extension(url="", titulo_sugerido="", html_fallback="", texto_d
     }
 
     # 2. Verificar si es un PDF directo (por extensión, cabecera Content-Type o firma mágica %PDF-)
-    es_pdf = False
-    path_lower = parsed.path.lower()
-    query_lower = parsed.query.lower()
-    if path_lower.endswith(".pdf") or ".pdf?" in url.lower() or "pdf" in query_lower:
-        es_pdf = True
-    else:
-        try:
-            head = requests.head(url, headers=headers, timeout=5, allow_redirects=True)
-            ctype = head.headers.get("content-type", "").lower()
-            if "application/pdf" in ctype:
-                es_pdf = True
-        except Exception:
-            pass
-
-    if es_pdf:
-        ruta_pdf = os.path.join(TEMP_DIR, f"{nombre_limpio}_{ts}.pdf")
-        logger.info(f"📥 [EXTENSIÓN] Descargando PDF directo desde: {url[:80]}...")
-        try:
-            with requests.get(url, headers=headers, stream=True, timeout=60, allow_redirects=True) as resp:
-                resp.raise_for_status()
-                ctype = resp.headers.get("content-type", "").lower()
-                iterador = resp.iter_content(chunk_size=65536)
-                primer_chunk = next(iterador, b"")
-                # Si la URL tenía "pdf" en query pero el servidor devolvió una página HTML en vez de un binario %PDF
-                if primer_chunk and not primer_chunk.lstrip().startswith(b"%PDF") and "text/html" in ctype:
-                    logger.info("🌐 [EXTENSIÓN] La respuesta es HTML y no un binario %PDF; redirigiendo a conversor web.")
-                    es_pdf = False
-                else:
-                    with open(ruta_pdf, "wb") as f:
-                        if primer_chunk:
-                            f.write(primer_chunk)
-                        for chunk in iterador:
-                            if chunk:
-                                f.write(chunk)
-
-            if es_pdf:
-                if os.path.exists(ruta_pdf) and os.path.getsize(ruta_pdf) > 0:
-                    logger.info(f"✅ [EXTENSIÓN] PDF guardado en: {ruta_pdf}")
-                    return {"ok": True, "ruta": os.path.abspath(ruta_pdf), "tipo": "pdf"}
-                else:
-                    return {"ok": False, "error": "El archivo descargado está vacío o dañado."}
-        except Exception as e:
-            if path_lower.endswith(".pdf"):
-                logger.error(f"❌ [EXTENSIÓN] Error descargando PDF directo: {e}")
-                return {"ok": False, "error": f"Fallo al descargar PDF: {str(e)[:120]}"}
-            logger.warning(f"⚠️ [EXTENSIÓN] Falló descarga como PDF directo ({e}), intentando como página web...")
+    res_pdf_directo = _intentar_descargar_pdf_directo(url, parsed, headers, nombre_limpio, ts)
+    if res_pdf_directo is not None:
+        return res_pdf_directo
 
     # 3. Caso página web HTML (convertir a PDF usando web_reader de LiraLoud + fallback DOM del navegador)
     logger.info("🌐 [EXTENSIÓN] Convirtiendo página web a PDF con web_reader...")
@@ -295,65 +319,80 @@ class ExtensionHTTPHandler(BaseHTTPRequestHandler):
             except (ConnectionAbortedError, ConnectionResetError, BrokenPipeError):
                 pass
 
+    def _leer_payload_post_abrir(self):
+        """Lee y normaliza el cuerpo JSON de POST /abrir."""
+        content_len = int(self.headers.get("Content-Length", 0))
+        cuerpo = self.rfile.read(content_len).decode("utf-8")
+        datos = json.loads(cuerpo) if cuerpo else {}
+        return {
+            "url": (datos.get("url") or "").strip(),
+            "titulo": datos.get("titulo") or "",
+            "html_fallback": datos.get("html") or "",
+            "texto_directo": datos.get("texto") or "",
+            "pdf_base64": datos.get("pdf_base64") or "",
+        }
+
+    def _manejar_post_abrir(self):
+        """Procesa el cuerpo JSON de POST /abrir, responde a la extensión y despacha la apertura."""
+        try:
+            payload = self._leer_payload_post_abrir()
+            url = payload["url"]
+            titulo = payload["titulo"]
+            html_fallback = payload["html_fallback"]
+            texto_directo = payload["texto_directo"]
+            pdf_base64 = payload["pdf_base64"]
+
+            if not url and not texto_directo and not pdf_base64:
+                self._responder_json(400, {"ok": False, "error": "No se recibió ninguna URL ni contenido."})
+                return
+
+            logger.info(f"🚀 [EXTENSIÓN] Petición de apertura recibida: {(url or titulo or 'contenido directo')[:80]}")
+            resultado = procesar_url_extension(
+                url=url,
+                titulo_sugerido=titulo,
+                html_fallback=html_fallback,
+                texto_directo=texto_directo,
+                pdf_base64=pdf_base64,
+            )
+
+            if isinstance(resultado, dict) and resultado.get("ok"):
+                ruta_pdf = resultado.get("ruta")
+                tipo_doc = resultado.get("tipo", "pdf")
+
+                # Responder de inmediato a la extensión para confirmar éxito
+                self._responder_json(200, {
+                    "ok": True,
+                    "mensaje": "Documento cargado en LiraLoud",
+                    "ruta": ruta_pdf,
+                    "tipo": tipo_doc,
+                })
+
+                # Despachar apertura al puente pywebview y enfocar ventana de manera no bloqueante
+                def _despachar():
+                    time.sleep(0.05)
+                    try:
+                        eel.abrir_desde_extension(ruta_pdf, tipo_doc)
+                        logger.info(f"✨ [EXTENSIÓN] Orden enviada a pywebview para abrir: {ruta_pdf} (tipo={tipo_doc})")
+                    except Exception as ex_eel:
+                        logger.error(f"⚠️ [EXTENSIÓN] Error notificando a pywebview: {ex_eel}")
+
+                    enfocar_ventana_liraloud()
+
+                threading.Thread(target=_despachar, name="DespachoWebviewExtension", daemon=True).start()
+
+            else:
+                self._responder_json(200, {
+                    "ok": False,
+                    "error": resultado.get("error", "No se pudo procesar el documento.")
+                })
+        except Exception as e:
+            logger.error(f"❌ [EXTENSIÓN] Excepción en manejador POST: {e}", exc_info=True)
+            self._responder_json(500, {"ok": False, "error": str(e)})
+
     def do_POST(self):
         parsed = urllib.parse.urlparse(self.path)
         if parsed.path == "/abrir":
-            try:
-                content_len = int(self.headers.get("Content-Length", 0))
-                cuerpo = self.rfile.read(content_len).decode("utf-8")
-                datos = json.loads(cuerpo) if cuerpo else {}
-                url = (datos.get("url") or "").strip()
-                titulo = datos.get("titulo") or ""
-                html_fallback = datos.get("html") or ""
-                texto_directo = datos.get("texto") or ""
-                pdf_base64 = datos.get("pdf_base64") or ""
-
-                if not url and not texto_directo and not pdf_base64:
-                    self._responder_json(400, {"ok": False, "error": "No se recibió ninguna URL ni contenido."})
-                    return
-
-                logger.info(f"🚀 [EXTENSIÓN] Petición de apertura recibida: {(url or titulo or 'contenido directo')[:80]}")
-                resultado = procesar_url_extension(
-                    url=url,
-                    titulo_sugerido=titulo,
-                    html_fallback=html_fallback,
-                    texto_directo=texto_directo,
-                    pdf_base64=pdf_base64,
-                )
-
-                if isinstance(resultado, dict) and resultado.get("ok"):
-                    ruta_pdf = resultado.get("ruta")
-                    tipo_doc = resultado.get("tipo", "pdf")
-
-                    # Responder de inmediato a la extensión para confirmar éxito
-                    self._responder_json(200, {
-                        "ok": True,
-                        "mensaje": "Documento cargado en LiraLoud",
-                        "ruta": ruta_pdf,
-                        "tipo": tipo_doc,
-                    })
-
-                    # Despachar apertura al puente pywebview y enfocar ventana de manera no bloqueante
-                    def _despachar():
-                        time.sleep(0.05)
-                        try:
-                            eel.abrir_desde_extension(ruta_pdf, tipo_doc)
-                            logger.info(f"✨ [EXTENSIÓN] Orden enviada a pywebview para abrir: {ruta_pdf} (tipo={tipo_doc})")
-                        except Exception as ex_eel:
-                            logger.error(f"⚠️ [EXTENSIÓN] Error notificando a pywebview: {ex_eel}")
-
-                        enfocar_ventana_liraloud()
-
-                    threading.Thread(target=_despachar, name="DespachoWebviewExtension", daemon=True).start()
-
-                else:
-                    self._responder_json(200, {
-                        "ok": False,
-                        "error": resultado.get("error", "No se pudo procesar el documento.")
-                    })
-            except Exception as e:
-                logger.error(f"❌ [EXTENSIÓN] Excepción en manejador POST: {e}", exc_info=True)
-                self._responder_json(500, {"ok": False, "error": str(e)})
+            self._manejar_post_abrir()
         else:
             try:
                 self.send_response(404)

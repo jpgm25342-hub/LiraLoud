@@ -5,6 +5,7 @@ window.handleJustClicked = false;
 window.creandoZonaExcluida = false;
 window.zonaExcluidaTemp = null;
 window.puntoInicioZona = null;
+window.corteVSeleccionado = -1;
 
 canvas.addEventListener('mousedown', (e) => {
     // Alt + Clic izquierdo: Iniciar dibujo de Zona Excluida (Caja Negra)
@@ -110,25 +111,36 @@ canvas.addEventListener('mousedown', (e) => {
             // Clic en extremo superior (para mover yMin hacia arriba o abajo)
             if (Math.abs(y - y0_vis) < 16) {
                 arrastre = { tipo: 'V_TOP', index: i };
+                window.corteVSeleccionado = i;
                 window.handleJustClicked = true;
                 setTimeout(() => { window.handleJustClicked = false; }, 150);
+                dibujar();
                 return;
             }
             // Clic en extremo inferior (para mover yMax hacia arriba o abajo)
             if (Math.abs(y - y1_vis) < 16) {
                 arrastre = { tipo: 'V_BOTTOM', index: i };
+                window.corteVSeleccionado = i;
                 window.handleJustClicked = true;
                 setTimeout(() => { window.handleJustClicked = false; }, 150);
+                dibujar();
                 return;
             }
             // Clic sobre el cuerpo de la línea (para moverla horizontalmente)
             if (y >= y0_vis - 5 && y <= y1_vis + 5) {
                 arrastre = { tipo: 'V', index: i };
+                window.corteVSeleccionado = i;
                 window.handleJustClicked = true;
                 setTimeout(() => { window.handleJustClicked = false; }, 150);
+                dibujar();
                 return;
             }
         }
+    }
+
+    if (window.corteVSeleccionado !== -1) {
+        window.corteVSeleccionado = -1;
+        dibujar();
     }
 
     // 2. Manijas y líneas de límites horizontales (H)
@@ -537,9 +549,11 @@ window.addEventListener('mouseup', () => {
             dibujar();
             return;
         }
-        guardarEstadoPaginaActual(); // Guardar al soltar
-        if (typeof cargarPagina === 'function') {
-            cargarPagina(paginaActual);
+        if (typeof recalcularLayoutPaginaActual === 'function') {
+            recalcularLayoutPaginaActual();
+        } else {
+            guardarEstadoPaginaActual();
+            if (typeof cargarPagina === 'function') cargarPagina(paginaActual);
         }
     }
 });

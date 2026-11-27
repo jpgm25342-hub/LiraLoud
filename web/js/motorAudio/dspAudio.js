@@ -16,11 +16,21 @@ function validarCambioMotorTraduccion(selectEl) {
 }
 window.validarCambioMotorTraduccion = validarCambioMotorTraduccion;
 
+function actualizarVisibilidadPrecargaHojas() {
+    const chk = document.getElementById('chk-pretraducir-paginas');
+    const panel = document.getElementById('panel-precarga-hojas');
+    if (!panel) return;
+    panel.style.display = (chk && chk.checked) ? 'block' : 'none';
+}
+window.actualizarVisibilidadPrecargaHojas = actualizarVisibilidadPrecargaHojas;
+
 function validarPretraduccionRed(checkboxEl) {
     if (window.modoPrivacidadEstricta && checkboxEl.checked) {
         checkboxEl.checked = false;
+        actualizarVisibilidadPrecargaHojas();
         return false;
     }
+    actualizarVisibilidadPrecargaHojas();
     if (typeof guardarTodosAjustes === 'function') guardarTodosAjustes();
     if (typeof dispararPretraduccionEntorno === 'function') dispararPretraduccionEntorno();
     return true;

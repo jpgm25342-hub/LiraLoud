@@ -74,6 +74,26 @@
             </button>
         </div>
 
+        <div class="ocr-precision-toggle-row ocr-lang-row">
+            <div>
+                <div class="ocr-precision-title" data-i18n="ocr-dec-idioma-titulo">Idioma del documento (OCR)</div>
+                <div class="ocr-precision-desc" data-i18n="ocr-dec-idioma-desc">Usa el modelo adecuado para conservar espacios y acentos. Los idiomas adicionales se descargan automáticamente la primera vez.</div>
+            </div>
+            <select id="sel-ocr-idioma-decision" class="ocr-lang-select" data-ocr-idioma-select
+                onchange="cambiarIdiomaOCR(this.value)">
+                <option value="latin" selected>Latino (ES, EN, FR, DE, PT...)</option>
+            </select>
+        </div>
+
+        <label class="ocr-precision-toggle-row" for="chk-ocr-alta-precision-decision">
+            <div>
+                <div class="ocr-precision-title" data-i18n="ocr-dec-precision-titulo">OCR Alta Precisión (texto pequeño o denso)</div>
+                <div class="ocr-precision-desc" data-i18n="ocr-dec-precision-desc">Tarda unos segundos más por página, pero es más preciso y presenta menos errores.</div>
+            </div>
+            <input type="checkbox" id="chk-ocr-alta-precision-decision" class="switch-individual"
+                data-ocr-precision-toggle onchange="toggleOcrAltaPrecision(this.checked)">
+        </label>
+
         <div class="ocr-modal-footer">
             <label class="ocr-remember-label">
                 <input type="checkbox" id="chk-ocr-recordar-decision">

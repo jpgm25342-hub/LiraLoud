@@ -130,6 +130,12 @@ function cerrarModalesAbiertos() {
     const estaVisible = (el) => Boolean(el && el.style.display !== 'none' && getComputedStyle(el).display !== 'none');
 
     // Lightbox / Captura (prioridad más alta)
+    const modalCreditos = document.getElementById('modal-creditos');
+    if (estaVisible(modalCreditos)) {
+        if (typeof cerrarModalCreditos === 'function') cerrarModalCreditos();
+        return true;
+    }
+
     const modalVerCaptura = document.getElementById('modal-ver-captura');
     if (estaVisible(modalVerCaptura)) {
         if (typeof cerrarModalVerCaptura === 'function') cerrarModalVerCaptura();

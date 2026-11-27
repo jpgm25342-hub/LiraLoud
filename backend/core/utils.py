@@ -45,7 +45,7 @@ def normalizar_texto(t):
     if isinstance(t, list):
         try:
             t = " ".join([str(x.get('texto', x)) if isinstance(x, dict) else str(x) for x in t])
-        except:
+        except Exception:
             t = str(t)
     if not isinstance(t, str):
         t = str(t) if t is not None else ""
