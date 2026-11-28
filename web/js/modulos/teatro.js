@@ -25,113 +25,114 @@ window.reiniciarLibroTeatro = function (rutaDoc = "") {
     };
 };
 
+function _obtenerRepartoObraTeatro() {
+    const obra = window.obraActualTeatro;
+    return (obra && dbTeatro && dbTeatro[obra] && dbTeatro[obra].actors) ? dbTeatro[obra].actors : {};
+}
+
+function _construirParametrosVozTeatro() {
+    return {
+        velocidad: typeof velocidadLectura !== 'undefined' ? velocidadLectura : 1.0,
+        pitch: typeof pitchLectura !== 'undefined' ? pitchLectura : 1.0
+    };
+}
+
+function _construirEntradaPersonajeTeatro(clave, voz, on) {
+    return {
+        personaje: clave,
+        voz,
+        motor: _detectarMotorVozTeatro(voz),
+        on: on !== false,
+        parametrosVoz: _construirParametrosVozTeatro()
+    };
+}
+
 window.sincronizarVocesLibroTeatro = function () {
     if (!window.libroTeatro) return;
-    const obra = window.obraActualTeatro;
-    const reparto = (obra && dbTeatro && dbTeatro[obra] && dbTeatro[obra].actors) ? dbTeatro[obra].actors : {};
+    const reparto = _obtenerRepartoObraTeatro();
     const personajes = window.libroTeatro.personajes || {};
 
     for (const [nombre, info] of Object.entries(reparto)) {
         const clave = nombre.replace(/:\s*$/, '').trim() + ':';
-        const motor = _detectarMotorVozTeatro(info.voz);
-        personajes[clave] = {
-            personaje: clave,
-            voz: info.voz,
-            motor,
-            on: info.on !== false,
-            parametrosVoz: {
-                velocidad: typeof velocidadLectura !== 'undefined' ? velocidadLectura : 1.0,
-                pitch: typeof pitchLectura !== 'undefined' ? pitchLectura : 1.0
-            }
-        };
+        personajes[clave] = _construirEntradaPersonajeTeatro(clave, info.voz, info.on);
     }
 
-    window.libroTeatro.obra = obra || null;
+    window.libroTeatro.obra = window.obraActualTeatro || null;
     for (const item of window.libroTeatro.intervenciones) {
         const pInfo = personajes[item.personaje];
-        if (pInfo && pInfo.on !== false && pInfo.voz) {
-            item.voz = pInfo.voz;
-            item.motor = pInfo.motor;
-            item.parametrosVoz = { ...pInfo.parametrosVoz };
-        }
+        if (!pInfo || pInfo.on === false || !pInfo.voz) continue;
+        item.voz = pInfo.voz;
+        item.motor = pInfo.motor;
+        item.parametrosVoz = { ...pInfo.parametrosVoz };
     }
 };
 
-window.compilarLibroTeatroPagina = function (numPagina, oracionesPag = null) {
-    const ruta = (typeof rutaPDFActual !== 'undefined' ? rutaPDFActual : '') || '';
-    if (!window.libroTeatro || window.libroTeatro.rutaDoc !== ruta) {
-        window.reiniciarLibroTeatro(ruta);
-    }
-    const listaOrac = Array.isArray(oracionesPag)
-        ? oracionesPag
-        : ((typeof datosPagina !== 'undefined' && datosPagina && Array.isArray(datosPagina.oraciones)) ? datosPagina.oraciones : []);
-    if (!listaOrac.length) return window.libroTeatro;
+function _detectarPersonajeEnTextoTeatro(txt, reparto) {
+    const mPrefijo = txt.match(/^\s*([A-ZÁÉÍÓÚÑa-záéíóúñ0-9_\s]{1,28}:)\s*(.*)$/);
+    if (!mPrefijo) return { personaje: null, textoLimpio: txt };
 
-    const obra = window.obraActualTeatro;
-    const reparto = (obra && dbTeatro && dbTeatro[obra] && dbTeatro[obra].actors) ? dbTeatro[obra].actors : {};
-    const vozDefault = (typeof vozPredeterminada !== 'undefined' && vozPredeterminada)
-        ? vozPredeterminada
-        : (document.getElementById('selector-voz-live')?.value || '');
-
-    // Eliminar entradas previas de esta página para evitar duplicados
-    window.libroTeatro.intervenciones = window.libroTeatro.intervenciones.filter(x => x.pagina !== numPagina);
-
-    let personajeActual = 'Narrador:';
-    const nuevas = [];
-    for (let idx = 0; idx < listaOrac.length; idx++) {
-        const txt = String(listaOrac[idx]?.texto || '').trim();
-        if (!txt) continue;
-
-        let personajeDetectado = null;
-        let textoLimpio = txt;
-        const mPrefijo = txt.match(/^\s*([A-ZÁÉÍÓÚÑa-záéíóúñ0-9_\s]{1,28}:)\s*(.*)$/);
-        if (mPrefijo) {
-            const cand = mPrefijo[1].trim();
-            const candNorm = _normalizarNombreTeatro(cand.replace(':', ''));
-            for (const actorKey of Object.keys(reparto)) {
-                const actorNorm = _normalizarNombreTeatro(actorKey.replace(':', ''));
-                if (actorNorm === candNorm || candNorm.endsWith(' ' + actorNorm)) {
-                    personajeDetectado = actorKey.endsWith(':') ? actorKey : (actorKey + ':');
-                    textoLimpio = (mPrefijo[2] || '').trim() || txt;
-                    break;
-                }
-            }
-            if (!personajeDetectado && cand.length <= 24) {
-                personajeDetectado = cand;
-            }
-        }
-
-        if (personajeDetectado) {
-            personajeActual = personajeDetectado;
-        }
-        const actorCfg = reparto[personajeActual] || reparto[personajeActual.replace(':', '')];
-        const vozAsignada = (actorCfg && actorCfg.on !== false && actorCfg.voz) ? actorCfg.voz : vozDefault;
-        const motorAsignado = _detectarMotorVozTeatro(vozAsignada);
-        const params = {
-            velocidad: typeof velocidadLectura !== 'undefined' ? velocidadLectura : 1.0,
-            pitch: typeof pitchLectura !== 'undefined' ? pitchLectura : 1.0
-        };
-
-        if (!window.libroTeatro.personajes[personajeActual]) {
-            window.libroTeatro.personajes[personajeActual] = {
-                personaje: personajeActual,
-                voz: vozAsignada,
-                motor: motorAsignado,
-                on: actorCfg ? (actorCfg.on !== false) : true,
-                parametrosVoz: { ...params }
+    const cand = mPrefijo[1].trim();
+    const candNorm = _normalizarNombreTeatro(cand.replace(':', ''));
+    for (const actorKey of Object.keys(reparto)) {
+        const actorNorm = _normalizarNombreTeatro(actorKey.replace(':', ''));
+        if (actorNorm === candNorm || candNorm.endsWith(' ' + actorNorm)) {
+            return {
+                personaje: actorKey.endsWith(':') ? actorKey : (actorKey + ':'),
+                textoLimpio: (mPrefijo[2] || '').trim() || txt
             };
         }
+    }
+    return { personaje: cand.length <= 24 ? cand : null, textoLimpio: txt };
+}
 
-        nuevas.push({
-            id: `p${numPagina}_o${idx}`,
-            pagina: numPagina,
-            indiceOracion: idx,
-            personaje: personajeActual,
-            texto: textoLimpio,
-            motor: motorAsignado,
-            voz: vozAsignada,
-            parametrosVoz: params
-        });
+function _resolverVozDefaultTeatro() {
+    if (typeof vozPredeterminada !== 'undefined' && vozPredeterminada) return vozPredeterminada;
+    return document.getElementById('selector-voz-live')?.value || '';
+}
+
+function _procesarOracionLibroTeatro(numPagina, idx, orac, estado, reparto, vozDefault) {
+    const txt = String(orac?.texto || '').trim();
+    if (!txt) return null;
+
+    const { personaje, textoLimpio } = _detectarPersonajeEnTextoTeatro(txt, reparto);
+    if (personaje) estado.personajeActual = personaje;
+
+    const pActual = estado.personajeActual;
+    const actorCfg = reparto[pActual] || reparto[pActual.replace(':', '')];
+    const vozAsignada = (actorCfg && actorCfg.on !== false && actorCfg.voz) ? actorCfg.voz : vozDefault;
+    const entry = _construirEntradaPersonajeTeatro(pActual, vozAsignada, actorCfg ? actorCfg.on : true);
+    if (!window.libroTeatro.personajes[pActual]) window.libroTeatro.personajes[pActual] = entry;
+
+    return {
+        id: `p${numPagina}_o${idx}`,
+        pagina: numPagina,
+        indiceOracion: idx,
+        personaje: pActual,
+        texto: textoLimpio,
+        motor: entry.motor,
+        voz: vozAsignada,
+        parametrosVoz: entry.parametrosVoz
+    };
+}
+
+window.compilarLibroTeatroPagina = function (numPagina, oracionesPag = null) {
+    const ruta = (typeof rutaPDFActual !== 'undefined' && rutaPDFActual) ? rutaPDFActual : '';
+    if (!window.libroTeatro || window.libroTeatro.rutaDoc !== ruta) window.reiniciarLibroTeatro(ruta);
+
+    const listaOrac = Array.isArray(oracionesPag)
+        ? oracionesPag
+        : ((typeof datosPagina !== 'undefined' && Array.isArray(datosPagina?.oraciones)) ? datosPagina.oraciones : []);
+    if (!listaOrac.length) return window.libroTeatro;
+
+    const reparto = _obtenerRepartoObraTeatro();
+    const vozDefault = _resolverVozDefaultTeatro();
+    window.libroTeatro.intervenciones = window.libroTeatro.intervenciones.filter(x => x.pagina !== numPagina);
+
+    const estado = { personajeActual: 'Narrador:' };
+    const nuevas = [];
+    for (let idx = 0; idx < listaOrac.length; idx++) {
+        const interv = _procesarOracionLibroTeatro(numPagina, idx, listaOrac[idx], estado, reparto, vozDefault);
+        if (interv) nuevas.push(interv);
     }
 
     window.libroTeatro.intervenciones.push(...nuevas);
@@ -223,139 +224,74 @@ function cargarIdiomasTeatro() {
 }
 
 function filtrarVocesTeatroClon() {
-    let elFiltro = document.getElementById('select-idioma-teatro');
-    let langFilter = elFiltro ? elFiltro.value : 'es';
-
-    let selVoz = document.getElementById('select-voz-teatro');
+    const elFiltro = document.getElementById('select-idioma-teatro');
+    const langFilter = elFiltro ? elFiltro.value : 'es';
+    const selVoz = document.getElementById('select-voz-teatro');
     if (!selVoz) return;
-    selVoz.innerHTML = "";
 
-    let safeVocesPython = (typeof vocesPython !== 'undefined' && vocesPython) ? vocesPython : [];
-    let safeVocesSistema = (typeof vocesSistema !== 'undefined' && vocesSistema) ? vocesSistema : [];
-
-    let todasLasVoces = [];
-
-    // 1. Procesar Piper y Nube (igual al primordial)
-    safeVocesPython.forEach(v => {
-        if (v.tipo === 'nube' || (!v.id.startsWith('Local-') && !v.id.endsWith('.onnx'))) {
-            if (window.modoPrivacidadEstricta) return;
-            const idLower = v.id.toLowerCase();
-            if (!langFilter || idLower.includes('-' + langFilter + '-') || idLower.startsWith(langFilter.toLowerCase())) {
-                todasLasVoces.push({ id: v.id, nombre: v.nombre, origen: 'nube' });
-            }
-            return;
-        }
-        let idFinal = v.id.startsWith("Local-") ? v.id : "Local-" + v.id;
-        let nombreArchivo = idFinal.replace("Local-", "");
-
-        if (!langFilter || nombreArchivo.startsWith(langFilter)) {
-            todasLasVoces.push({ id: idFinal, nombre: v.nombre, origen: 'piper' });
-        }
+    const todasLasVoces = window.recolectarVocesDisponibles(langFilter);
+    window.poblarSelectVocesSimples(selVoz, todasLasVoces, {
+        piperColor: '#2980b9',
+        piperWeight: '500',
+        inputBusquedaId: 'busqueda-voz-teatro',
     });
-
-    // 2. Procesar Navegador
-    safeVocesSistema.forEach(v => {
-        if (window.modoPrivacidadEstricta) {
-            const nombreLower = (v.name || '').toLowerCase();
-            if (nombreLower.includes('online') || nombreLower.includes('natural')) return;
-        }
-        if (!langFilter || v.lang.startsWith(langFilter)) {
-            todasLasVoces.push({ id: v.name, nombre: v.name, origen: 'navegador' });
-        }
-    });
-
-    // 3. Renderizado en el select del Teatro
-    todasLasVoces.forEach(voz => {
-        let opt = document.createElement('option');
-        opt.value = voz.id;
-        opt.innerText = voz.nombre;
-        opt.setAttribute('data-origen', voz.origen);
-        if (voz.origen === 'piper') {
-            opt.style.color = "#2980b9";
-            opt.style.fontWeight = "500";
-        }
-        selVoz.appendChild(opt);
-    });
-
-    if (selVoz.options.length > 0) {
-        selVoz.selectedIndex = 0;
-        const inpVozTeatro = document.getElementById('busqueda-voz-teatro');
-        if (inpVozTeatro) inpVozTeatro.value = selVoz.options[0].text;
-    }
 }
 
 // --- CONTROLADORES TIPO WINDOWS SEARCH STYLE PARA EL TEATRO ---
 function abrirComboTeatro(tipo) {
-    const el = document.getElementById(tipo === 'idioma' ? 'select-idioma-teatro' : 'select-voz-teatro');
-    if (el) {
-        Array.from(el.options).forEach(opt => opt.style.display = "block");
-        el.style.display = 'block';
-    }
+    window.abrirComboSelect(tipo === 'idioma' ? 'select-idioma-teatro' : 'select-voz-teatro');
 }
 
 function filtrarComboTeatro(tipo) {
-    const query = document.getElementById(`busqueda-${tipo}-teatro`).value.toLowerCase();
-    const sel = document.getElementById(tipo === 'idioma' ? 'select-idioma-teatro' : 'select-voz-teatro');
-    if (!sel) return;
-
-    sel.style.display = 'block';
-
-    Array.from(sel.options).forEach(opt => {
-        opt.style.display = opt.text.toLowerCase().includes(query) ? "block" : "none";
-    });
+    window.filtrarComboSelect(tipo === 'idioma' ? 'select-idioma-teatro' : 'select-voz-teatro', `busqueda-${tipo}-teatro`);
 }
 
 function seleccionarComboTeatro(tipo) {
-    const sel = document.getElementById(tipo === 'idioma' ? 'select-idioma-teatro' : 'select-voz-teatro');
-    const inp = document.getElementById(`busqueda-${tipo}-teatro`);
-
-    if (sel && sel.selectedIndex !== -1) {
-        const valorNuevo = sel.options[sel.selectedIndex].text;
-        inp.value = valorNuevo;
-        sel.style.display = 'none';
-
+    const selectId = tipo === 'idioma' ? 'select-idioma-teatro' : 'select-voz-teatro';
+    window.seleccionarComboSelect(selectId, `busqueda-${tipo}-teatro`, () => {
         if (tipo === 'idioma') {
-            filtrarVocesTeatroClon(); // Refresca las voces del teatro según el idioma seleccionado
-            document.getElementById('busqueda-voz-teatro').value = ""; // Limpia la caja para obligar a elegir
+            filtrarVocesTeatroClon();
+            const inpVoz = document.getElementById('busqueda-voz-teatro');
+            if (inpVoz) inpVoz.value = "";
         }
+    });
+}
+
+function _coincideVozTeatroConFiltro(idLower, nombreVoz, lang) {
+    if (lang === 'es') {
+        return idLower.includes('-es-') || idLower.includes('_es') || idLower.includes('es-')
+            || nombreVoz.includes('spanish') || nombreVoz.includes('español');
     }
+    if (lang === 'en') {
+        return idLower.includes('-en-') || idLower.includes('_en') || nombreVoz.includes('english');
+    }
+    return idLower.includes(lang) || nombreVoz.includes(lang);
 }
 
 function filtrarVocesTeatro() {
-    if (!document.getElementById('busqueda-idioma-teatro')) { if (typeof filtrarVocesTeatroClon === 'function') filtrarVocesTeatroClon(); return; }
-    // 1. Leemos la caja de texto en lugar del select oculto
-    const inputTexto = document.getElementById('busqueda-idioma-teatro').value.toLowerCase().trim();
+    const inpIdioma = document.getElementById('busqueda-idioma-teatro');
+    if (!inpIdioma) {
+        if (typeof filtrarVocesTeatroClon === 'function') filtrarVocesTeatroClon();
+        return;
+    }
     const selVoz = document.getElementById('select-voz-teatro');
     const selectorMaestro = document.getElementById('modal-voz');
-
     if (!selVoz || !selectorMaestro) return;
 
-    // 2. Mapeo para traducir texto humano a código
+    const inputTexto = inpIdioma.value.toLowerCase().trim();
     const mapaIdiomas = { "español": "es", "ingles": "en", "inglés": "en", "mexico": "es-mx" };
     const lang = mapaIdiomas[inputTexto] || inputTexto;
-
     selVoz.innerHTML = "";
 
     Array.from(selectorMaestro.options).forEach(opt => {
-        let idVoz = opt.value;
-        let nombreVoz = opt.text.toLowerCase();
-
-        // Bloqueo de voces de Windows
+        const idVoz = opt.value;
         if (idVoz.includes(" ") && !idVoz.startsWith("Local-")) return;
+        if (!_coincideVozTeatroConFiltro(idVoz.toLowerCase(), opt.text.toLowerCase(), lang)) return;
 
-        let coincide = false;
-        let idLower = idVoz.toLowerCase();
-
-        if (lang === 'es' && (idLower.includes('-es-') || idLower.includes('_es') || idLower.includes('es-') || nombreVoz.includes('spanish') || nombreVoz.includes('español'))) coincide = true;
-        else if (lang === 'en' && (idLower.includes('-en-') || idLower.includes('_en') || nombreVoz.includes('english'))) coincide = true;
-        else if (idLower.includes(lang) || nombreVoz.includes(lang)) coincide = true;
-
-        if (coincide) {
-            let nuevaOpt = document.createElement('option');
-            nuevaOpt.value = idVoz;
-            nuevaOpt.innerText = opt.text;
-            selVoz.appendChild(nuevaOpt);
-        }
+        const nuevaOpt = document.createElement('option');
+        nuevaOpt.value = idVoz;
+        nuevaOpt.innerText = opt.text;
+        selVoz.appendChild(nuevaOpt);
     });
 }
 
@@ -597,22 +533,42 @@ function sincronizarIndicadorTeatroZen() {
     }
 }
 
+function _txtTeatro(clave, fallback) {
+    return (typeof window.t === 'function') ? window.t(clave, fallback) : fallback;
+}
+
+function _vincularEventosAvisoTeatro(overlay) {
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    ['btn-cerrar-aviso-teatro-x', 'btn-aviso-entendido-teatro'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.addEventListener('click', () => overlay.remove());
+    });
+    const btnApagar = document.getElementById('btn-aviso-apagar-teatro');
+    if (btnApagar) {
+        btnApagar.addEventListener('click', () => {
+            const c = document.getElementById('chk-teatro-global');
+            if (c) {
+                c.checked = false;
+                c.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            sincronizarIndicadorTeatroZen();
+            if (typeof guardarTodosAjustes === 'function') guardarTodosAjustes();
+            overlay.remove();
+        });
+    }
+}
+
 function mostrarAvisoModoTeatro() {
     const existente = document.getElementById('modal-aviso-teatro-zen');
-    if (existente) {
-        existente.remove();
-        return;
-    }
+    if (existente) { existente.remove(); return; }
 
     const esc = (typeof window.escapeHtml === 'function')
         ? window.escapeHtml
         : (s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
-    const txtTitulo = (typeof window.t === 'function') ? window.t('ttl-teatro-activo-aviso', 'Modo Teatro activo') : 'Modo Teatro activo';
-    const txtMsg = (typeof window.t === 'function')
-        ? window.t('msg-teatro-activo-aviso', 'Tienes el modo teatro activo. Puede que para lecturas que no busquen cambiar de voces te dé problemas; apaga el modo teatro si no lo estás utilizando.')
-        : 'Tienes el modo teatro activo. Puede que para lecturas que no busquen cambiar de voces te dé problemas; apaga el modo teatro si no lo estás utilizando.';
-    const txtApagar = (typeof window.t === 'function') ? window.t('btn-apagar-teatro', 'Apagar Modo Teatro') : 'Apagar Modo Teatro';
-    const txtEntendido = (typeof window.t === 'function') ? window.t('btn-entendido', 'Entendido') : 'Entendido';
+    const txtTitulo = _txtTeatro('ttl-teatro-activo-aviso', 'Modo Teatro activo');
+    const txtMsg = _txtTeatro('msg-teatro-activo-aviso', 'Tienes el modo teatro activo. Puede que para lecturas que no busquen cambiar de voces te dé problemas; apaga el modo teatro si no lo estás utilizando.');
+    const txtApagar = _txtTeatro('btn-apagar-teatro', 'Apagar Modo Teatro');
+    const txtEntendido = _txtTeatro('btn-entendido', 'Entendido');
 
     const btnAviso = document.getElementById('btn-zen-teatro-aviso');
     const r = btnAviso ? btnAviso.getBoundingClientRect() : null;
@@ -640,28 +596,8 @@ function mostrarAvisoModoTeatro() {
             </div>
         </div>
     `;
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) overlay.remove();
-    });
     document.body.appendChild(overlay);
-
-    const btnCerrarX = document.getElementById('btn-cerrar-aviso-teatro-x');
-    const btnEntendido = document.getElementById('btn-aviso-entendido-teatro');
-    const btnApagar = document.getElementById('btn-aviso-apagar-teatro');
-    if (btnCerrarX) btnCerrarX.addEventListener('click', () => overlay.remove());
-    if (btnEntendido) btnEntendido.addEventListener('click', () => overlay.remove());
-    if (btnApagar) {
-        btnApagar.addEventListener('click', () => {
-            const c = document.getElementById('chk-teatro-global');
-            if (c) {
-                c.checked = false;
-                c.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-            sincronizarIndicadorTeatroZen();
-            if (typeof guardarTodosAjustes === 'function') guardarTodosAjustes();
-            overlay.remove();
-        });
-    }
+    _vincularEventosAvisoTeatro(overlay);
 }
 
 window.sincronizarIndicadorTeatroZen = sincronizarIndicadorTeatroZen;

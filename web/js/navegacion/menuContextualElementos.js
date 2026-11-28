@@ -130,87 +130,60 @@
         return row;
     }
 
-    function abrirMenuContextualElemento(elemento, clientX, clientY) {
-        if (!elemento) return;
-        const tipo = elemento.tipo;
-        if (tipo !== 'imagen' && tipo !== 'freetext' && tipo !== 'figura') return;
+    function _agregarItemsImagenMenuCtx(menu, elemento) {
+        const itemReemplazar = construirItem(
+            `<span class="ctx-item-label">${ICONOS.reemplazar}<span>${txt('ctx-mover-reemplazar', 'Reemplazar imagen')}</span></span>`,
+            '',
+            () => {
+                cerrarMenuContextualElementos();
+                if (typeof window.reemplazarImagenElementoMover === 'function') {
+                    window.reemplazarImagenElementoMover(elemento);
+                }
+            }
+        );
+        itemReemplazar.dataset.accion = 'reemplazar';
+        menu.appendChild(itemReemplazar);
 
-        elementoContextualActual = elemento;
-        const menu = obtenerOCrearMenu();
-        menu.innerHTML = '';
-
-        if (tipo === 'figura') {
-            const itemEstilo = construirItem(
-                `<span class="ctx-item-label">${ICONOS.estilo}<span>${txt('ctx-figura-estilo', 'Cambiar estilo y color')}</span></span>`,
+        const angulos = [
+            { key: 'ctx-mover-rotar-90', label: '90° derecha', deg: 90 },
+            { key: 'ctx-mover-rotar-neg90', label: '-90° izquierda', deg: -90 },
+            { key: 'ctx-mover-rotar-180', label: '180°', deg: 180 },
+            { key: 'ctx-mover-rotar-270', label: '270°', deg: 270 }
+        ];
+        const subItemsRotar = angulos.map((op) => {
+            const subItem = construirItem(
+                `<span class="ctx-item-label"><span>${txt(op.key, op.label)}</span></span>`,
                 '',
                 () => {
                     cerrarMenuContextualElementos();
-                    if (typeof window.abrirPopoverEstiloFigura === 'function') {
-                        window.abrirPopoverEstiloFigura(elemento);
+                    if (typeof window.rotarImagenElementoMover === 'function') {
+                        window.rotarImagenElementoMover(elemento, op.deg);
                     }
                 }
             );
-            itemEstilo.dataset.accion = 'estilo';
-            menu.appendChild(itemEstilo);
-        }
+            subItem.dataset.angulo = String(op.deg);
+            return subItem;
+        });
 
-        if (tipo === 'imagen') {
-            // 1. Reemplazar imagen
-            const itemReemplazar = construirItem(
-                `<span class="ctx-item-label">${ICONOS.reemplazar}<span>${txt('ctx-mover-reemplazar', 'Reemplazar imagen')}</span></span>`,
-                '',
-                () => {
-                    cerrarMenuContextualElementos();
-                    if (typeof window.reemplazarImagenElementoMover === 'function') {
-                        window.reemplazarImagenElementoMover(elemento);
-                    }
+        const itemRotarLibre = construirItem(
+            `<span class="ctx-item-label">${ICONOS.rotarLibre}<span>${txt('ctx-mover-rotar-libre', 'Rotación libre')}</span></span>`,
+            'borde-top',
+            () => {
+                cerrarMenuContextualElementos();
+                if (typeof window.iniciarRotacionLibreElemento === 'function') {
+                    window.iniciarRotacionLibreElemento(elemento);
                 }
-            );
-            itemReemplazar.dataset.accion = 'reemplazar';
-            menu.appendChild(itemReemplazar);
+            }
+        );
+        itemRotarLibre.dataset.accion = 'rotar-libre';
+        subItemsRotar.push(itemRotarLibre);
 
-            // 2. Rotar (submenú)
-            const angulos = [
-                { key: 'ctx-mover-rotar-90', label: '90° derecha', deg: 90 },
-                { key: 'ctx-mover-rotar-neg90', label: '-90° izquierda', deg: -90 },
-                { key: 'ctx-mover-rotar-180', label: '180°', deg: 180 },
-                { key: 'ctx-mover-rotar-270', label: '270°', deg: 270 }
-            ];
+        menu.appendChild(
+            construirSubmenu(SUBMENU_ID, 'rotar', ICONOS.rotar, txt('ctx-mover-rotar', 'Rotar'), subItemsRotar)
+        );
+    }
 
-            const subItemsRotar = angulos.map((op) => {
-                const subItem = construirItem(
-                    `<span class="ctx-item-label"><span>${txt(op.key, op.label)}</span></span>`,
-                    '',
-                    () => {
-                        cerrarMenuContextualElementos();
-                        if (typeof window.rotarImagenElementoMover === 'function') {
-                            window.rotarImagenElementoMover(elemento, op.deg);
-                        }
-                    }
-                );
-                subItem.dataset.angulo = String(op.deg);
-                return subItem;
-            });
-
-            const itemRotarLibre = construirItem(
-                `<span class="ctx-item-label">${ICONOS.rotarLibre}<span>${txt('ctx-mover-rotar-libre', 'Rotación libre')}</span></span>`,
-                'borde-top',
-                () => {
-                    cerrarMenuContextualElementos();
-                    if (typeof window.iniciarRotacionLibreElemento === 'function') {
-                        window.iniciarRotacionLibreElemento(elemento);
-                    }
-                }
-            );
-            itemRotarLibre.dataset.accion = 'rotar-libre';
-            subItemsRotar.push(itemRotarLibre);
-
-            menu.appendChild(
-                construirSubmenu(SUBMENU_ID, 'rotar', ICONOS.rotar, txt('ctx-mover-rotar', 'Rotar'), subItemsRotar)
-            );
-        }
-
-        // 2b. Capas (debajo de Rotar; aplica a imagen, figura y cuadro de texto)
+    function _construirSubmenuCapasMenuCtx(elemento) {
         const opcionesCapas = [
             { accion: 'frente', key: 'ctx-capa-frente', label: 'Traer al frente' },
             { accion: 'subir', key: 'ctx-capa-subir', label: 'Subir una capa' },
@@ -231,11 +204,49 @@
             subItem.dataset.capa = op.accion;
             return subItem;
         });
-        menu.appendChild(
-            construirSubmenu('submenu-capas-elementos', 'capas', ICONOS.capas, txt('ctx-mover-capas', 'Capas'), subItemsCapas)
-        );
+        return construirSubmenu('submenu-capas-elementos', 'capas', ICONOS.capas, txt('ctx-mover-capas', 'Capas'), subItemsCapas);
+    }
 
-        // 3. Eliminar (para imagen, freetext y figura)
+    function _posicionarMenuContextualEnVentana(menu, clientX, clientY) {
+        menu.style.display = 'block';
+        menu.style.left = '0px';
+        menu.style.top = '0px';
+
+        const menuW = menu.offsetWidth || 195;
+        const menuH = menu.offsetHeight || 120;
+        const left = Math.max(8, Math.min(window.innerWidth - menuW - 8, clientX));
+        const top = Math.max(8, Math.min(window.innerHeight - menuH - 8, clientY));
+
+        menu.style.left = Math.round(left) + 'px';
+        menu.style.top = Math.round(top) + 'px';
+    }
+
+    function abrirMenuContextualElemento(elemento, clientX, clientY) {
+        if (!elemento || !['imagen', 'freetext', 'figura'].includes(elemento.tipo)) return;
+
+        elementoContextualActual = elemento;
+        const menu = obtenerOCrearMenu();
+        menu.innerHTML = '';
+
+        if (elemento.tipo === 'figura') {
+            const itemEstilo = construirItem(
+                `<span class="ctx-item-label">${ICONOS.estilo}<span>${txt('ctx-figura-estilo', 'Cambiar estilo y color')}</span></span>`,
+                '',
+                () => {
+                    cerrarMenuContextualElementos();
+                    if (typeof window.abrirPopoverEstiloFigura === 'function') {
+                        window.abrirPopoverEstiloFigura(elemento);
+                    }
+                }
+            );
+            itemEstilo.dataset.accion = 'estilo';
+            menu.appendChild(itemEstilo);
+        } else if (elemento.tipo === 'imagen') {
+            _agregarItemsImagenMenuCtx(menu, elemento);
+        }
+
+        menu.appendChild(_construirSubmenuCapasMenuCtx(elemento));
+
         const itemEliminar = construirItem(
             `<span class="ctx-item-label">${ICONOS.eliminar}<span>${txt('ctx-mover-eliminar', 'Eliminar')}</span></span>`,
             'borde-top ctx-item-peligro',
@@ -249,17 +260,7 @@
         itemEliminar.dataset.accion = 'eliminar';
         menu.appendChild(itemEliminar);
 
-        menu.style.display = 'block';
-        menu.style.left = '0px';
-        menu.style.top = '0px';
-
-        const menuW = menu.offsetWidth || 195;
-        const menuH = menu.offsetHeight || 120;
-        const left = Math.max(8, Math.min(window.innerWidth - menuW - 8, clientX));
-        const top = Math.max(8, Math.min(window.innerHeight - menuH - 8, clientY));
-
-        menu.style.left = Math.round(left) + 'px';
-        menu.style.top = Math.round(top) + 'px';
+        _posicionarMenuContextualEnVentana(menu, clientX, clientY);
     }
 
     function cerrarMenuContextualElementos() {

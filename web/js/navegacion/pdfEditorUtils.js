@@ -71,83 +71,74 @@
         };
     }
 
-    function calcularRectRedimensionado(op, clientX, clientY, shiftKey, minPx = 8) {
-        const dx = clientX - op.startClientX;
-        const dy = clientY - op.startClientY;
-        const o = op.origRect;
-        const b = op.bounds;
-        const dir = op.handle;
+    function _ajustarDimensionesProporcionales(newW, newH, aspect, maxAvailW, maxAvailH, minPx) {
+        if (newW > maxAvailW) {
+            newW = maxAvailW;
+            newH = newW / aspect;
+        }
+        if (newH > maxAvailH) {
+            newH = maxAvailH;
+            newW = newH * aspect;
+        }
+        if (newW < minPx) {
+            newW = minPx;
+            newH = Math.max(minPx, newW / aspect);
+        }
+        if (newH < minPx) {
+            newH = minPx;
+            newW = Math.max(minPx, newH * aspect);
+        }
+        return { newW, newH };
+    }
 
+    function _calcularRectProporcional(o, b, dir, dx, dy, minPx) {
+        const aspect = o.w / Math.max(1, o.h);
+        const esOeste = dir.includes('w');
+        const esNorte = dir.includes('n');
+        const anchorX = esOeste ? (o.x + o.w) : o.x;
+        const anchorY = esNorte ? (o.y + o.h) : o.y;
+
+        const rawW = esOeste ? (o.w - dx) : (o.w + dx);
+        const rawH = esNorte ? (o.h - dy) : (o.h + dy);
+        const maxAvailW = esOeste ? (anchorX - b.minX) : (b.maxX - anchorX);
+        const maxAvailH = esNorte ? (anchorY - b.minY) : (b.maxY - anchorY);
+
+        const scale = Math.max(
+            Math.max(minPx, rawW) / Math.max(1, o.w),
+            Math.max(minPx, rawH) / Math.max(1, o.h)
+        );
+        const { newW, newH } = _ajustarDimensionesProporcionales(
+            o.w * scale, (o.w * scale) / aspect, aspect, maxAvailW, maxAvailH, minPx
+        );
+
+        const x0 = esOeste ? (anchorX - newW) : anchorX;
+        const x1 = esOeste ? anchorX : (anchorX + newW);
+        const y0 = esNorte ? (anchorY - newH) : anchorY;
+        const y1 = esNorte ? anchorY : (anchorY + newH);
+        return { x0, y0, x1, y1 };
+    }
+
+    function _calcularRectLibre(o, b, dir, dx, dy, minPx) {
         let x0 = o.x;
         let y0 = o.y;
         let x1 = o.x + o.w;
         let y1 = o.y + o.h;
 
-        const esEsquina = (dir === 'nw' || dir === 'ne' || dir === 'sw' || dir === 'se');
+        if (dir.includes('w')) x0 = clamp(o.x + dx, b.minX, x1 - minPx);
+        if (dir.includes('e')) x1 = clamp(o.x + o.w + dx, x0 + minPx, b.maxX);
+        if (dir.includes('n')) y0 = clamp(o.y + dy, b.minY, y1 - minPx);
+        if (dir.includes('s')) y1 = clamp(o.y + o.h + dy, y0 + minPx, b.maxY);
+        return { x0, y0, x1, y1 };
+    }
 
-        if (shiftKey && esEsquina) {
-            const aspect = o.w / Math.max(1, o.h);
-            const anchorX = dir.includes('w') ? x1 : x0;
-            const anchorY = dir.includes('n') ? y1 : y0;
+    function calcularRectRedimensionado(op, clientX, clientY, shiftKey, minPx = 8) {
+        const dx = clientX - op.startClientX;
+        const dy = clientY - op.startClientY;
+        const esEsquina = ['nw', 'ne', 'sw', 'se'].includes(op.handle);
 
-            const rawW = dir.includes('w') ? (o.w - dx) : (o.w + dx);
-            const rawH = dir.includes('n') ? (o.h - dy) : (o.h + dy);
-
-            const maxAvailW = dir.includes('w') ? (anchorX - b.minX) : (b.maxX - anchorX);
-            const maxAvailH = dir.includes('n') ? (anchorY - b.minY) : (b.maxY - anchorY);
-
-            const scaleW = Math.max(minPx, rawW) / Math.max(1, o.w);
-            const scaleH = Math.max(minPx, rawH) / Math.max(1, o.h);
-            const scale = Math.max(scaleW, scaleH);
-
-            let newW = o.w * scale;
-            let newH = newW / aspect;
-
-            if (newW > maxAvailW) {
-                newW = maxAvailW;
-                newH = newW / aspect;
-            }
-            if (newH > maxAvailH) {
-                newH = maxAvailH;
-                newW = newH * aspect;
-            }
-            if (newW < minPx) {
-                newW = minPx;
-                newH = Math.max(minPx, newW / aspect);
-            }
-            if (newH < minPx) {
-                newH = minPx;
-                newW = Math.max(minPx, newH * aspect);
-            }
-
-            if (dir.includes('w')) {
-                x0 = anchorX - newW;
-                x1 = anchorX;
-            } else {
-                x0 = anchorX;
-                x1 = anchorX + newW;
-            }
-            if (dir.includes('n')) {
-                y0 = anchorY - newH;
-                y1 = anchorY;
-            } else {
-                y0 = anchorY;
-                y1 = anchorY + newH;
-            }
-        } else {
-            if (dir.includes('w')) {
-                x0 = clamp(o.x + dx, b.minX, x1 - minPx);
-            }
-            if (dir.includes('e')) {
-                x1 = clamp(o.x + o.w + dx, x0 + minPx, b.maxX);
-            }
-            if (dir.includes('n')) {
-                y0 = clamp(o.y + dy, b.minY, y1 - minPx);
-            }
-            if (dir.includes('s')) {
-                y1 = clamp(o.y + o.h + dy, y0 + minPx, b.maxY);
-            }
-        }
+        const { x0, y0, x1, y1 } = (shiftKey && esEsquina)
+            ? _calcularRectProporcional(op.origRect, op.bounds, op.handle, dx, dy, minPx)
+            : _calcularRectLibre(op.origRect, op.bounds, op.handle, dx, dy, minPx);
 
         return {
             x: x0,

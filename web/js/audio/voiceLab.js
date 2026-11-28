@@ -30,81 +30,124 @@ function actualizarEtiquetasBlendKokoro() {
     }
 }
 
+const _EQ_MUESTRA_KOKORO = {
+    estudio: [
+        { frequency: 300, gain: 1.8, Q: 0.9 },
+        { frequency: 4200, gain: -1.8 }
+    ],
+    cristalino: [{ frequency: 4800, gain: 2.2, Q: 0.8 }],
+    radio: [{ frequency: 180, gain: 2.8, Q: 1.0 }]
+};
+
+const _PREFIJOS_IDIOMA_ACENTO = [
+    ['en', 'en'], ['fr', 'fr'], ['it', 'it'], ['pt', 'pt'],
+    ['ja', 'ja'], ['cmn', 'zh'], ['zh', 'zh'], ['hi', 'hi']
+];
+
+function _resolverIdiomaDesdeAcento(acento) {
+    const a = String(acento || '');
+    for (const [prefijo, iso] of _PREFIJOS_IDIOMA_ACENTO) {
+        if (a.startsWith(prefijo)) return iso;
+    }
+    return 'es';
+}
+
+function _leerParametrosBlendKokoro() {
+    const vozA = document.getElementById('sel-kokoro-blend-voza')?.value || 'ef_dora';
+    const vozB = document.getElementById('sel-kokoro-blend-vozb')?.value || 'af_bella';
+    const vozC = document.getElementById('sel-kokoro-blend-vozc')?.value || 'ninguna';
+    const pesoCRaw = (vozC !== 'ninguna') ? parseInt(document.getElementById('rng-kokoro-blend-pesoc')?.value || 0) : 0;
+    const ratioAB = parseInt(document.getElementById('rng-kokoro-blend-ratio')?.value || 70);
+    const restante = 100 - pesoCRaw;
+    const pA = ((ratioAB / 100) * restante / 100).toFixed(2);
+    const pB = ((restante - Math.round((ratioAB / 100) * restante)) / 100).toFixed(2);
+    const pC = (pesoCRaw / 100).toFixed(2);
+    const voiceKey = `${vozA}:${pA}+${vozB}:${pB}` + ((vozC !== 'ninguna' && pesoCRaw > 0) ? `+${vozC}:${pC}` : '');
+    const acento = document.getElementById('sel-kokoro-blend-acento')?.value || 'es-419';
+    const perfilEq = document.getElementById('sel-kokoro-blend-eq')?.value || 'estudio';
+    const expresividad = parseFloat(document.getElementById('sel-kokoro-blend-expresividad')?.value || 1.0);
+    const cadencia = parseFloat(document.getElementById('sel-kokoro-blend-cadencia')?.value || 1.0);
+    return { vozA, vozB, vozC, pA, pB, pC, voiceKey, acento, lang: _resolverIdiomaDesdeAcento(acento), perfilEq, expresividad, cadencia };
+}
+
+function _formatearErrorVoiceLab(err) {
+    return err?.error || err?.message || (typeof err === 'object' ? JSON.stringify(err) : String(err));
+}
+
+async function _resolverNombreVozLab(inputId, promptMsg, sugerido) {
+    const inputNombre = document.getElementById(inputId);
+    let nombre = inputNombre?.value?.trim() || "";
+    if (!nombre) {
+        nombre = await liraPrompt(promptMsg, sugerido, 'voz');
+        if (!nombre || !nombre.trim()) return null;
+        nombre = nombre.trim();
+        if (inputNombre) inputNombre.value = nombre;
+    }
+    return { nombre, inputNombre };
+}
+
+async function _refrescarCatalogoYSeleccionarVoz(nuevoId = null) {
+    const vocesActualizadas = await eel.obtener_voces_disponibles()();
+    if (vocesActualizadas && vocesActualizadas.length > 0) {
+        vocesPython = vocesActualizadas;
+        if (typeof llenarTodosLosSelectores === 'function') llenarTodosLosSelectores();
+        if (typeof actualizarListaVocesUI === 'function') actualizarListaVocesUI();
+    }
+    const selPrincipal = document.getElementById('selector-voz-live');
+    if (selPrincipal && nuevoId) {
+        selPrincipal.value = nuevoId;
+        if (typeof cambiarVozLive === 'function') cambiarVozLive();
+    }
+}
+
+function _leerBlobABase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("No se pudo leer el archivo de audio seleccionado."));
+        reader.onload = (e) => resolve(e.target.result.split(',')[1]);
+        reader.readAsDataURL(blob);
+    });
+}
+
+function _aplicarEqMuestraPCM(ctx, fuente, perfilEq) {
+    let ultimoNodo = fuente;
+    for (const cfg of (_EQ_MUESTRA_KOKORO[perfilEq] || [])) {
+        const eq = ctx.createBiquadFilter();
+        eq.type = 'peaking';
+        eq.frequency.value = cfg.frequency;
+        eq.gain.value = cfg.gain;
+        if (cfg.Q !== undefined) eq.Q.value = cfg.Q;
+        ultimoNodo.connect(eq);
+        ultimoNodo = eq;
+    }
+    ultimoNodo.connect((typeof masterGain !== 'undefined' && masterGain) ? masterGain : ctx.destination);
+}
+
 function reproducirMuestraPCM(pcmBase64, sampleRate = 24000, perfilEq = 'estudio') {
     if (!pcmBase64) return;
     try {
         if (!audioCtxMuestraKokoro) {
-            audioCtxMuestraKokoro = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: sampleRate });
+            audioCtxMuestraKokoro = new (window.AudioContext || window.webkitAudioContext)({ sampleRate });
         }
-        if (audioCtxMuestraKokoro.state === 'suspended') {
-            audioCtxMuestraKokoro.resume();
-        }
+        if (audioCtxMuestraKokoro.state === 'suspended') audioCtxMuestraKokoro.resume();
         if (fuenteMuestraKokoro) {
-            try { fuenteMuestraKokoro.stop(); } catch(e) {}
+            try { fuenteMuestraKokoro.stop(); } catch (e) {}
             fuenteMuestraKokoro = null;
         }
 
         const binario = atob(pcmBase64);
-        const len = binario.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-            bytes[i] = binario.charCodeAt(i);
-        }
-
+        const bytes = new Uint8Array(binario.length);
+        for (let i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i);
         const int16 = new Int16Array(bytes.buffer);
         const float32 = new Float32Array(int16.length);
-        for (let i = 0; i < int16.length; i++) {
-            float32[i] = int16[i] / 32768.0;
-        }
+        for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768.0;
 
         const buffer = audioCtxMuestraKokoro.createBuffer(1, float32.length, sampleRate);
         buffer.getChannelData(0).set(float32);
 
         fuenteMuestraKokoro = audioCtxMuestraKokoro.createBufferSource();
         fuenteMuestraKokoro.buffer = buffer;
-
-        // Aplicar ecualización según el perfil acústico elegido
-        let ultimoNodo = fuenteMuestraKokoro;
-        if (perfilEq === 'estudio') {
-            const eqWarmth = audioCtxMuestraKokoro.createBiquadFilter();
-            eqWarmth.type = 'peaking';
-            eqWarmth.frequency.value = 300;
-            eqWarmth.gain.value = 1.8;
-            eqWarmth.Q.value = 0.9;
-
-            const eqDeHarsh = audioCtxMuestraKokoro.createBiquadFilter();
-            eqDeHarsh.type = 'peaking';
-            eqDeHarsh.frequency.value = 4200;
-            eqDeHarsh.gain.value = -1.8;
-
-            ultimoNodo.connect(eqWarmth);
-            eqWarmth.connect(eqDeHarsh);
-            ultimoNodo = eqDeHarsh;
-        } else if (perfilEq === 'cristalino') {
-            const eqAir = audioCtxMuestraKokoro.createBiquadFilter();
-            eqAir.type = 'peaking';
-            eqAir.frequency.value = 4800;
-            eqAir.gain.value = 2.2;
-            eqAir.Q.value = 0.8;
-            ultimoNodo.connect(eqAir);
-            ultimoNodo = eqAir;
-        } else if (perfilEq === 'radio') {
-            const eqBass = audioCtxMuestraKokoro.createBiquadFilter();
-            eqBass.type = 'peaking';
-            eqBass.frequency.value = 180;
-            eqBass.gain.value = 2.8;
-            eqBass.Q.value = 1.0;
-            ultimoNodo.connect(eqBass);
-            ultimoNodo = eqBass;
-        }
-
-        // Conectar al masterGain global si existe, o al destino directo
-        if (typeof masterGain !== 'undefined' && masterGain) {
-            ultimoNodo.connect(masterGain);
-        } else {
-            ultimoNodo.connect(audioCtxMuestraKokoro.destination);
-        }
-
+        _aplicarEqMuestraPCM(audioCtxMuestraKokoro, fuenteMuestraKokoro, perfilEq);
         fuenteMuestraKokoro.start(0);
         console.log(`🔊 [KOKORO LAB] Muestra reproduciéndose (Perfil: ${perfilEq}).`);
     } catch (err) {
@@ -115,29 +158,7 @@ function reproducirMuestraPCM(pcmBase64, sampleRate = 24000, perfilEq = 'estudio
 async function probarMezclaKokoroLive() {
     const btn = document.getElementById('btn-probar-kokoro-blend');
     const icn = document.getElementById('icon-probar-kokoro-blend');
-    const vozA = document.getElementById('sel-kokoro-blend-voza')?.value || 'ef_dora';
-    const vozB = document.getElementById('sel-kokoro-blend-vozb')?.value || 'af_bella';
-    const vozC = document.getElementById('sel-kokoro-blend-vozc')?.value || 'ninguna';
-    const pesoCRaw = (vozC !== 'ninguna')
-        ? parseInt(document.getElementById('rng-kokoro-blend-pesoc')?.value || 0)
-        : 0;
-
-    const ratioAB = parseInt(document.getElementById('rng-kokoro-blend-ratio')?.value || 70);
-    const restante = 100 - pesoCRaw;
-    const pA = ((ratioAB / 100) * restante / 100).toFixed(2);
-    const pB = ((restante - Math.round((ratioAB / 100) * restante)) / 100).toFixed(2);
-    const pC = (pesoCRaw / 100).toFixed(2);
-
-    let voiceKey = `${vozA}:${pA}+${vozB}:${pB}`;
-    if (vozC !== 'ninguna' && pesoCRaw > 0) {
-        voiceKey += `+${vozC}:${pC}`;
-    }
-
-    const acento = document.getElementById('sel-kokoro-blend-acento')?.value || 'es-419';
-    const perfilEq = document.getElementById('sel-kokoro-blend-eq')?.value || 'estudio';
-    const expresividad = parseFloat(document.getElementById('sel-kokoro-blend-expresividad')?.value || 1.0);
-    const cadencia = parseFloat(document.getElementById('sel-kokoro-blend-cadencia')?.value || 1.0);
-
+    const p = _leerParametrosBlendKokoro();
     const nombreVoz = document.getElementById('txt-kokoro-blend-nombre')?.value?.trim();
     const frasePrueba = nombreVoz
         ? `Hola, esta es una prueba de mi nueva voz ${nombreVoz} con Kokoro.`
@@ -147,22 +168,22 @@ async function probarMezclaKokoroLive() {
     if (icn) icn.style.opacity = "0.5";
 
     try {
-        console.log(`[KOKORO LAB] Solicitando muestra para: ${voiceKey} (${acento}) [EQ: ${perfilEq}, Exp: ${expresividad}, Cad: ${cadencia}]`);
+        console.log(`[KOKORO LAB] Solicitando muestra para: ${p.voiceKey} (${p.acento}) [EQ: ${p.perfilEq}, Exp: ${p.expresividad}, Cad: ${p.cadencia}]`);
         let res;
         try {
-            res = await eel.probar_muestra_kokoro_blend(voiceKey, acento, frasePrueba, expresividad, cadencia)();
+            res = await eel.probar_muestra_kokoro_blend(p.voiceKey, p.acento, frasePrueba, p.expresividad, p.cadencia)();
         } catch (argsErr) {
             console.warn("Servidor en memoria ejecutando versión de 3 parámetros. Reintentando con modo compatible...", argsErr);
-            res = await eel.probar_muestra_kokoro_blend(voiceKey, acento, frasePrueba)();
+            res = await eel.probar_muestra_kokoro_blend(p.voiceKey, p.acento, frasePrueba)();
         }
 
         if (res && res.exito && res.pcm_b64) {
-            reproducirMuestraPCM(res.pcm_b64, res.sr || 24000, perfilEq);
+            reproducirMuestraPCM(res.pcm_b64, res.sr || 24000, p.perfilEq);
         } else {
             await liraAlert("No se pudo generar la muestra: " + (res?.error || "Error desconocido"), 'error');
         }
     } catch (err) {
-        const errorMsg = err?.error || err?.message || (typeof err === 'object' ? JSON.stringify(err) : String(err));
+        const errorMsg = _formatearErrorVoiceLab(err);
         console.error("Error al pedir muestra:", errorMsg, err);
         await liraAlert("Error al generar muestra: " + errorMsg, 'error');
     } finally {
@@ -171,191 +192,116 @@ async function probarMezclaKokoroLive() {
     }
 }
 
+function _mostrarConfirmacionBtnGuardarBlend(btn) {
+    if (!btn) return;
+    const txtOriginal = btn.innerHTML;
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px;"><polyline points="20 6 9 17 4 12"></polyline></svg> <span>¡Guardada!</span>`;
+    btn.style.background = "#27ae60";
+    setTimeout(() => {
+        btn.innerHTML = txtOriginal;
+        btn.style.background = "#009432";
+        btn.disabled = false;
+    }, 1600);
+}
+
 async function guardarMezclaKokoroLive() {
-    const inputNombre = document.getElementById('txt-kokoro-blend-nombre');
-    let nombre = inputNombre?.value?.trim() || "";
-    if (!nombre) {
-        const sugerido = "Voz Personalizada " + Math.floor(Math.random() * 900 + 100);
-        nombre = await liraPrompt("Introduce un nombre para tu voz personalizada:", sugerido, 'voz');
-        if (!nombre || !nombre.trim()) return;
-        nombre = nombre.trim();
-        if (inputNombre) inputNombre.value = nombre;
-    }
+    const sugerido = "Voz Personalizada " + Math.floor(Math.random() * 900 + 100);
+    const resNombre = await _resolverNombreVozLab('txt-kokoro-blend-nombre', "Introduce un nombre para tu voz personalizada:", sugerido);
+    if (!resNombre) return;
+    const { nombre, inputNombre } = resNombre;
 
-    const vozA = document.getElementById('sel-kokoro-blend-voza')?.value || 'ef_dora';
-    const vozB = document.getElementById('sel-kokoro-blend-vozb')?.value || 'af_bella';
-    const vozC = document.getElementById('sel-kokoro-blend-vozc')?.value || 'ninguna';
-    const pesoCRaw = (vozC !== 'ninguna')
-        ? parseInt(document.getElementById('rng-kokoro-blend-pesoc')?.value || 0)
-        : 0;
-
-    const ratioAB = parseInt(document.getElementById('rng-kokoro-blend-ratio')?.value || 70);
-    const restante = 100 - pesoCRaw;
-    const pA = ((ratioAB / 100) * restante / 100).toFixed(2);
-    const pB = ((restante - Math.round((ratioAB / 100) * restante)) / 100).toFixed(2);
-    const pC = (pesoCRaw / 100).toFixed(2);
-
-    const acento = document.getElementById('sel-kokoro-blend-acento')?.value || 'es-419';
-    const perfilEq = document.getElementById('sel-kokoro-blend-eq')?.value || 'estudio';
-    const expresividad = parseFloat(document.getElementById('sel-kokoro-blend-expresividad')?.value || 1.0);
-    const cadencia = parseFloat(document.getElementById('sel-kokoro-blend-cadencia')?.value || 1.0);
-
-    const lang = acento.startsWith('en') ? 'en' :
-                 (acento.startsWith('fr') ? 'fr' :
-                 (acento.startsWith('it') ? 'it' :
-                 (acento.startsWith('pt') ? 'pt' :
-                 (acento.startsWith('ja') ? 'ja' :
-                 (acento.startsWith('cmn') || acento.startsWith('zh') ? 'zh' :
-                 (acento.startsWith('hi') ? 'hi' : 'es'))))));
-
+    const p = _leerParametrosBlendKokoro();
     const btn = document.getElementById('btn-guardar-kokoro-blend');
     if (btn) btn.disabled = true;
 
     try {
-        console.log(`💾 [KOKORO LAB] Guardando mezcla: ${nombre} (${vozA}:${pA} + ${vozB}:${pB} + ${vozC}:${pC}) [EQ: ${perfilEq}]`);
+        console.log(`💾 [KOKORO LAB] Guardando mezcla: ${nombre} (${p.vozA}:${p.pA} + ${p.vozB}:${p.pB} + ${p.vozC}:${p.pC}) [EQ: ${p.perfilEq}]`);
         let res;
         try {
-            res = await eel.guardar_nueva_mezcla_kokoro(nombre, vozA, pA, vozB, pB, acento, lang, vozC, pC, perfilEq, expresividad, cadencia)();
+            res = await eel.guardar_nueva_mezcla_kokoro(nombre, p.vozA, p.pA, p.vozB, p.pB, p.acento, p.lang, p.vozC, p.pC, p.perfilEq, p.expresividad, p.cadencia)();
         } catch (argsErr) {
             console.warn("⚠️ Servidor en memoria ejecutando versión previa de guardado. Guardando compatible...", argsErr);
-            res = await eel.guardar_nueva_mezcla_kokoro(nombre, vozA, pA, vozB, pB, acento, lang)();
+            res = await eel.guardar_nueva_mezcla_kokoro(nombre, p.vozA, p.pA, p.vozB, p.pB, p.acento, p.lang)();
         }
+
         if (res && res.exito) {
-            // Actualizar lista en UI
             await cargarYRenderizarMezclasKokoroUI();
-            
-            // Recargar catálogo de voces en Python y refrescar todos los selectores de la app
-            const vocesActualizadas = await eel.obtener_voces_disponibles()();
-            if (vocesActualizadas && vocesActualizadas.length > 0) {
-                vocesPython = vocesActualizadas;
-                if (typeof llenarTodosLosSelectores === 'function') llenarTodosLosSelectores();
-                if (typeof actualizarListaVocesUI === 'function') actualizarListaVocesUI();
-            }
-
-            // Seleccionar automáticamente la voz recién creada en el selector principal
-            const nuevoId = res.blend?.id;
-            const selPrincipal = document.getElementById('selector-voz-live');
-            if (selPrincipal && nuevoId) {
-                selPrincipal.value = nuevoId;
-                if (typeof cambiarVozLive === 'function') cambiarVozLive();
-            }
-
-            // Reiniciar campo de texto para la próxima voz
+            await _refrescarCatalogoYSeleccionarVoz(res.blend?.id);
             if (inputNombre) inputNombre.value = "";
-
-            // Notificación visual rápida
-            if (btn) {
-                const txtOriginal = btn.innerHTML;
-                btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px;"><polyline points="20 6 9 17 4 12"></polyline></svg> <span>¡Guardada!</span>`;
-                btn.style.background = "#27ae60";
-                setTimeout(() => {
-                    btn.innerHTML = txtOriginal;
-                    btn.style.background = "#009432";
-                    btn.disabled = false;
-                }, 1600);
-            }
+            _mostrarConfirmacionBtnGuardarBlend(btn);
         } else {
             await liraAlert("Error al guardar mezcla: " + (res?.error || "Error desconocido"), 'error');
             if (btn) btn.disabled = false;
         }
     } catch (err) {
-        const errorMsg = err?.error || err?.message || (typeof err === 'object' ? JSON.stringify(err) : String(err));
+        const errorMsg = _formatearErrorVoiceLab(err);
         console.error("Error guardando mezcla:", errorMsg, err);
         await liraAlert("Error al guardar: " + errorMsg, 'error');
         if (btn) btn.disabled = false;
     }
 }
 
-async function procesarArchivoMuestraAudio(inputElement) {
+async function _procesarArchivoAudioVoiceLab(inputElement, cfg) {
     const file = inputElement?.files?.[0];
     if (!file) return;
-
-    // Resetear input para permitir seleccionar el mismo archivo si se desea
     inputElement.value = "";
 
-    const inputNombre = document.getElementById('txt-kokoro-blend-nombre');
-    let nombre = inputNombre?.value?.trim() || "";
-    if (!nombre) {
-        const baseName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").trim();
-        const sugerido = baseName ? `Voz ${baseName}` : "Mi Voz Muestra";
-        nombre = await liraPrompt("Introduce un nombre para tu nueva voz:", sugerido, 'voz');
-        if (!nombre || !nombre.trim()) return;
-        nombre = nombre.trim();
-        if (inputNombre) inputNombre.value = nombre;
-    }
+    const baseName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").trim();
+    const sugerido = baseName ? `${cfg.prefijoSugerido} ${baseName}` : cfg.fallbackSugerido;
+    const resNombre = await _resolverNombreVozLab(cfg.inputNombreId, cfg.promptMsg, sugerido);
+    if (!resNombre) return;
+    const { nombre, inputNombre } = resNombre;
 
-    const acento = document.getElementById('sel-kokoro-blend-acento')?.value || 'es-419';
-    const perfilEq = document.getElementById('sel-kokoro-blend-eq')?.value || 'estudio';
-    const lang = acento.startsWith('en') ? 'en' :
-                 (acento.startsWith('fr') ? 'fr' :
-                 (acento.startsWith('it') ? 'it' :
-                 (acento.startsWith('pt') ? 'pt' :
-                 (acento.startsWith('ja') ? 'ja' :
-                 (acento.startsWith('cmn') || acento.startsWith('zh') ? 'zh' :
-                 (acento.startsWith('hi') ? 'hi' : 'es'))))));
-
-    const btn = document.getElementById('btn-cargar-muestra-audio');
-    const lbl = document.getElementById('lbl-btn-cargar-audio');
+    const btn = document.getElementById(cfg.btnId);
+    const lbl = document.getElementById(cfg.lblId);
     const txtOriginal = lbl ? lbl.innerText : "Cargar Audio...";
+    const restaurarUI = () => {
+        if (lbl) lbl.innerText = txtOriginal;
+        if (btn) btn.disabled = false;
+    };
 
     if (btn) btn.disabled = true;
-    if (lbl) lbl.innerText = "Afinando voz...";
+    if (lbl) lbl.innerText = cfg.textoProcesando;
 
     try {
-        const reader = new FileReader();
-        reader.onerror = async () => {
-            await liraAlert("No se pudo leer el archivo de audio seleccionado.", 'error');
-            if (btn) btn.disabled = false;
-            if (lbl) lbl.innerText = txtOriginal;
-        };
-        reader.onload = async (e) => {
-            try {
-                const b64 = e.target.result.split(',')[1];
-                const res = await eel.crear_voz_desde_muestra(nombre, b64, file.name, acento, lang, perfilEq)();
-
-                if (res && res.exito) {
-                    if (lbl) lbl.innerText = "¡Voz creada!";
-                    await cargarYRenderizarMezclasKokoroUI();
-
-                    const vocesActualizadas = await eel.obtener_voces_disponibles()();
-                    if (vocesActualizadas && vocesActualizadas.length > 0) {
-                        vocesPython = vocesActualizadas;
-                        if (typeof llenarTodosLosSelectores === 'function') llenarTodosLosSelectores();
-                        if (typeof actualizarListaVocesUI === 'function') actualizarListaVocesUI();
-                    }
-
-                    const nuevoId = res.blend?.id;
-                    const selPrincipal = document.getElementById('selector-voz-live');
-                    if (selPrincipal && nuevoId) {
-                        selPrincipal.value = nuevoId;
-                        if (typeof cambiarVozLive === 'function') cambiarVozLive();
-                    }
-
-                    // Reiniciar campo de texto para la próxima voz
-                    if (inputNombre) inputNombre.value = "";
-
-                    setTimeout(() => {
-                        if (lbl) lbl.innerText = txtOriginal;
-                        if (btn) btn.disabled = false;
-                    }, 2000);
-                } else {
-                    await liraAlert("Error al procesar la muestra: " + (res?.error || "Error desconocido"), 'error');
-                    if (lbl) lbl.innerText = txtOriginal;
-                    if (btn) btn.disabled = false;
-                }
-            } catch (rpcErr) {
-                console.error("Error en llamada RPC crear_voz_desde_muestra:", rpcErr);
-                await liraAlert("Error al procesar audio: " + (rpcErr?.error || rpcErr?.message || rpcErr), 'error');
-                if (lbl) lbl.innerText = txtOriginal;
-                if (btn) btn.disabled = false;
-            }
-        };
-        reader.readAsDataURL(file);
+        const b64 = await _leerBlobABase64(file);
+        const res = await cfg.enviarRPC(nombre, b64, file.name);
+        if (res && res.exito) {
+            if (lbl) lbl.innerText = cfg.textoExito;
+            await cfg.refrescarListaUI();
+            await _refrescarCatalogoYSeleccionarVoz(cfg.extraerNuevoId(res));
+            if (inputNombre) inputNombre.value = "";
+            setTimeout(restaurarUI, 2000);
+        } else {
+            await liraAlert(`${cfg.textoError}: ${res?.error || "Error desconocido"}`, 'error');
+            restaurarUI();
+        }
     } catch (err) {
-        console.error("Error al cargar muestra:", err);
-        if (btn) btn.disabled = false;
-        if (lbl) lbl.innerText = txtOriginal;
+        console.error(cfg.logError, err);
+        await liraAlert(`${cfg.textoError}: ${_formatearErrorVoiceLab(err)}`, 'error');
+        restaurarUI();
     }
+}
+
+async function procesarArchivoMuestraAudio(inputElement) {
+    const acento = document.getElementById('sel-kokoro-blend-acento')?.value || 'es-419';
+    const perfilEq = document.getElementById('sel-kokoro-blend-eq')?.value || 'estudio';
+    const lang = _resolverIdiomaDesdeAcento(acento);
+    return _procesarArchivoAudioVoiceLab(inputElement, {
+        inputNombreId: 'txt-kokoro-blend-nombre',
+        prefijoSugerido: 'Voz',
+        fallbackSugerido: 'Mi Voz Muestra',
+        promptMsg: 'Introduce un nombre para tu nueva voz:',
+        btnId: 'btn-cargar-muestra-audio',
+        lblId: 'lbl-btn-cargar-audio',
+        textoProcesando: 'Afinando voz...',
+        textoExito: '¡Voz creada!',
+        textoError: 'Error al procesar la muestra',
+        logError: 'Error en llamada RPC crear_voz_desde_muestra:',
+        enviarRPC: (nombre, b64, fileName) => eel.crear_voz_desde_muestra(nombre, b64, fileName, acento, lang, perfilEq)(),
+        refrescarListaUI: cargarYRenderizarMezclasKokoroUI,
+        extraerNuevoId: (res) => res.blend?.id
+    });
 }
 
 // Variables de estado para grabación de voz con micrófono
@@ -432,200 +378,176 @@ function mezclarACanalMono(audioBuffer) {
     return mono;
 }
 
-async function toggleGrabacionMuestraAudio() {
-    const btn = document.getElementById('btn-grabar-muestra-audio');
-    const lbl = document.getElementById('lbl-btn-grabar-audio');
-    const icn = document.getElementById('icon-grabar-muestra-audio');
-    const lblTimer = document.getElementById('lbl-tiempo-grabacion');
+const _estadoGrabacionKokoro = { recorder: null, chunks: [], stream: null, timer: null, segundos: 0 };
+const _estadoGrabacionPocket = { recorder: null, chunks: [], stream: null, timer: null, segundos: 0 };
 
-    if (mediaRecorderMuestra && mediaRecorderMuestra.state === 'recording') {
-        // Detener grabación
-        mediaRecorderMuestra.stop();
-        if (streamMicrofonoMuestra) {
-            streamMicrofonoMuestra.getTracks().forEach(track => track.stop());
-            streamMicrofonoMuestra = null;
-        }
-        clearInterval(timerGrabacionMuestra);
-        timerGrabacionMuestra = null;
+function _detectarMimeTypeGrabacionVoiceLab() {
+    for (const mime of ['audio/webm', 'audio/ogg', 'audio/wav']) {
+        if (MediaRecorder.isTypeSupported(mime)) return mime;
+    }
+    return '';
+}
 
-        if (lbl) lbl.innerText = "Procesando...";
-        if (btn) {
-            btn.disabled = true;
-            btn.style.background = "#2c3e50";
-        }
-        if (icn) {
-            icn.innerHTML = '<circle cx="12" cy="12" r="8"/>';
-            icn.style.color = "#e74c3c";
-        }
+function _restaurarBotonGrabacionVoiceLab(ui) {
+    if (ui.lbl) ui.lbl.innerText = "Grabar Voz";
+    if (ui.btn) {
+        ui.btn.disabled = false;
+        ui.btn.style.background = "#2c3e50";
+    }
+    if (ui.icn) {
+        ui.icn.innerHTML = '<circle cx="12" cy="12" r="8"/>';
+        ui.icn.style.color = "#e74c3c";
+    }
+    if (ui.lblTimer) ui.lblTimer.style.display = "none";
+}
+
+function _detenerGrabacionActivaVoiceLab(estado, ui) {
+    estado.recorder.stop();
+    if (estado.stream) {
+        estado.stream.getTracks().forEach(track => track.stop());
+        estado.stream = null;
+    }
+    clearInterval(estado.timer);
+    estado.timer = null;
+
+    if (ui.lbl) ui.lbl.innerText = "Procesando...";
+    if (ui.btn) {
+        ui.btn.disabled = true;
+        ui.btn.style.background = "#2c3e50";
+    }
+    if (ui.icn) {
+        ui.icn.innerHTML = '<circle cx="12" cy="12" r="8"/>';
+        ui.icn.style.color = "#e74c3c";
+    }
+}
+
+function _activarEstadoGrabandoUI(estado, ui) {
+    if (ui.lbl) ui.lbl.innerText = "Detener";
+    if (ui.btn) ui.btn.style.background = "#c0392b";
+    if (ui.icn) {
+        ui.icn.innerHTML = '<rect x="6" y="6" width="12" height="12" rx="2"/>';
+        ui.icn.style.color = "#ffffff";
+    }
+    if (ui.lblTimer) {
+        ui.lblTimer.innerText = "00:00";
+        ui.lblTimer.style.display = "inline";
+    }
+    estado.timer = setInterval(() => {
+        estado.segundos++;
+        const m = String(Math.floor(estado.segundos / 60)).padStart(2, '0');
+        const s = String(estado.segundos % 60).padStart(2, '0');
+        if (ui.lblTimer) ui.lblTimer.innerText = `${m}:${s}`;
+    }, 1000);
+}
+
+async function _procesarGrabacionFinalizadaVoiceLab(estado, ui, cfg) {
+    if (ui.lblTimer) ui.lblTimer.style.display = "none";
+
+    if (estado.segundos < 2) {
+        await liraAlert(cfg.msgCorta, 'advertencia');
+        estado.recorder = null;
+        _restaurarBotonGrabacionVoiceLab(ui);
         return;
     }
 
-    // Iniciar grabación
+    const audioBlob = new Blob(estado.chunks, { type: estado.recorder.mimeType || 'audio/webm' });
+    estado.recorder = null;
+
+    const sugerido = cfg.prefijoSugerido + " " + Math.floor(Math.random() * 900 + 100);
+    const resNombre = await _resolverNombreVozLab(cfg.inputNombreId, cfg.promptMsg, sugerido);
+    if (!resNombre) {
+        _restaurarBotonGrabacionVoiceLab(ui);
+        return;
+    }
+    const { nombre, inputNombre } = resNombre;
+    if (ui.lbl) ui.lbl.innerText = cfg.textoProcesando;
+
+    try {
+        const wavBlob = await convertirBlobAudioAWav(audioBlob);
+        const b64 = await _leerBlobABase64(wavBlob);
+        const res = await cfg.enviarRPC(nombre, b64);
+
+        if (res && res.exito) {
+            if (ui.lbl) ui.lbl.innerText = cfg.textoExito;
+            await cfg.refrescarListaUI();
+            await _refrescarCatalogoYSeleccionarVoz(cfg.extraerNuevoId(res));
+            if (cfg.limpiarInput && inputNombre) inputNombre.value = "";
+            if (res.interpolacion_desc) console.log(`[KOKORO LAB] Interpolación detectada para ${nombre}: ${res.interpolacion_desc}`);
+            setTimeout(() => _restaurarBotonGrabacionVoiceLab(ui), 2000);
+        } else {
+            await liraAlert("Error al procesar la grabación: " + (res?.error || "Error desconocido"), 'error');
+            _restaurarBotonGrabacionVoiceLab(ui);
+        }
+    } catch (err) {
+        console.error(cfg.logError, err);
+        await liraAlert(`${cfg.textoErrorGrabacion}: ${_formatearErrorVoiceLab(err)}`, 'error');
+        _restaurarBotonGrabacionVoiceLab(ui);
+    }
+}
+
+async function _toggleGrabacionVoiceLab(estado, cfg) {
+    const ui = {
+        btn: document.getElementById(cfg.btnId),
+        lbl: document.getElementById(cfg.lblId),
+        icn: document.getElementById(cfg.icnId),
+        lblTimer: document.getElementById(cfg.lblTimerId)
+    };
+
+    if (estado.recorder && estado.recorder.state === 'recording') {
+        _detenerGrabacionActivaVoiceLab(estado, ui);
+        return;
+    }
+
     try {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             await liraAlert("Tu navegador no soporta grabación de audio desde micrófono.", 'advertencia');
             return;
         }
+        estado.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        estado.chunks = [];
+        estado.segundos = 0;
 
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        streamMicrofonoMuestra = stream;
-        audioChunksMuestra = [];
-        segundosGrabadosMuestra = 0;
-
-        let mimeType = '';
-        if (MediaRecorder.isTypeSupported('audio/webm')) {
-            mimeType = 'audio/webm';
-        } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
-            mimeType = 'audio/ogg';
-        } else if (MediaRecorder.isTypeSupported('audio/wav')) {
-            mimeType = 'audio/wav';
-        }
-
-        mediaRecorderMuestra = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-
-        mediaRecorderMuestra.ondataavailable = (e) => {
-            if (e.data && e.data.size > 0) {
-                audioChunksMuestra.push(e.data);
-            }
-        };
-
-        mediaRecorderMuestra.onstop = async () => {
-            if (lblTimer) lblTimer.style.display = "none";
-
-            if (segundosGrabadosMuestra < 2) {
-                await liraAlert("La grabación fue demasiado corta. Habla al menos de 4 a 10 segundos para afinar la voz.", 'advertencia');
-                if (lbl) lbl.innerText = "Grabar Voz";
-                if (btn) btn.disabled = false;
-                mediaRecorderMuestra = null;
-                return;
-            }
-
-            const audioBlob = new Blob(audioChunksMuestra, { type: mediaRecorderMuestra.mimeType || 'audio/webm' });
-            mediaRecorderMuestra = null;
-
-            // Solicitar nombre si no tiene
-            const inputNombre = document.getElementById('txt-kokoro-blend-nombre');
-            let nombre = inputNombre?.value?.trim() || "";
-            if (!nombre) {
-                const sugerido = "Mi Voz Grabada " + Math.floor(Math.random() * 900 + 100);
-                nombre = await liraPrompt("Introduce un nombre para tu nueva voz grabada:", sugerido, 'voz');
-                if (!nombre || !nombre.trim()) {
-                    if (lbl) lbl.innerText = "Grabar Voz";
-                    if (btn) btn.disabled = false;
-                    return;
-                }
-                nombre = nombre.trim();
-                if (inputNombre) inputNombre.value = nombre;
-            }
-
-            const acento = document.getElementById('sel-kokoro-blend-acento')?.value || 'es-419';
-            const perfilEq = document.getElementById('sel-kokoro-blend-eq')?.value || 'estudio';
-            const lang = acento.startsWith('en') ? 'en' :
-                         (acento.startsWith('fr') ? 'fr' :
-                         (acento.startsWith('it') ? 'it' :
-                         (acento.startsWith('pt') ? 'pt' :
-                         (acento.startsWith('ja') ? 'ja' :
-                         (acento.startsWith('cmn') || acento.startsWith('zh') ? 'zh' :
-                         (acento.startsWith('hi') ? 'hi' : 'es'))))));
-
-            if (lbl) lbl.innerText = "Afinando voz...";
-
-            try {
-                // Convertir WebM / Blob a WAV PCM 16-bit nativo en el navegador para que libsndfile lo lea sin error
-                const wavBlob = await convertirBlobAudioAWav(audioBlob);
-                const reader = new FileReader();
-                reader.onload = async (ev) => {
-                    try {
-                        const b64 = ev.target.result.split(',')[1];
-                        const res = await eel.crear_voz_desde_muestra(nombre, b64, "grabacion.wav", acento, lang, perfilEq)();
-
-                        if (res && res.exito) {
-                            if (lbl) lbl.innerText = "¡Voz creada!";
-                            await cargarYRenderizarMezclasKokoroUI();
-
-                            const vocesActualizadas = await eel.obtener_voces_disponibles()();
-                            if (vocesActualizadas && vocesActualizadas.length > 0) {
-                                vocesPython = vocesActualizadas;
-                                if (typeof llenarTodosLosSelectores === 'function') llenarTodosLosSelectores();
-                                if (typeof actualizarListaVocesUI === 'function') actualizarListaVocesUI();
-                            }
-
-                            const nuevoId = res.blend?.id;
-                            const selPrincipal = document.getElementById('selector-voz-live');
-                            if (selPrincipal && nuevoId) {
-                                selPrincipal.value = nuevoId;
-                                if (typeof cambiarVozLive === 'function') cambiarVozLive();
-                            }
-
-                            if (res.interpolacion_desc) {
-                                console.log(`[KOKORO LAB] Interpolación detectada para ${nombre}: ${res.interpolacion_desc}`);
-                            }
-
-                            setTimeout(() => {
-                                if (lbl) lbl.innerText = "Grabar Voz";
-                                if (btn) btn.disabled = false;
-                            }, 2000);
-                        } else {
-                            await liraAlert("Error al procesar la grabación: " + (res?.error || "Error desconocido"), 'error');
-                            if (lbl) lbl.innerText = "Grabar Voz";
-                            if (btn) btn.disabled = false;
-                        }
-                    } catch (rpcErr) {
-                        console.error("Error en llamada RPC crear_voz_desde_muestra:", rpcErr);
-                        await liraAlert("Error al afinar la voz grabada: " + (rpcErr?.error || rpcErr?.message || rpcErr), 'error');
-                        if (lbl) lbl.innerText = "Grabar Voz";
-                        if (btn) btn.disabled = false;
-                    }
-                };
-                reader.readAsDataURL(wavBlob);
-            } catch (convErr) {
-                console.error("Error al convertir grabación a WAV:", convErr);
-                await liraAlert("Error al procesar audio grabado: " + convErr, 'error');
-                if (lbl) lbl.innerText = "Grabar Voz";
-                if (btn) btn.disabled = false;
-            }
-        };
-
-        mediaRecorderMuestra.start();
-
-        if (lbl) lbl.innerText = "Detener";
-        if (btn) {
-            btn.style.background = "#c0392b";
-        }
-        if (icn) {
-            icn.innerHTML = '<rect x="6" y="6" width="12" height="12" rx="2"/>';
-            icn.style.color = "#ffffff";
-        }
-        if (lblTimer) {
-            lblTimer.innerText = "00:00";
-            lblTimer.style.display = "inline";
-        }
-
-        timerGrabacionMuestra = setInterval(() => {
-            segundosGrabadosMuestra++;
-            const m = String(Math.floor(segundosGrabadosMuestra / 60)).padStart(2, '0');
-            const s = String(segundosGrabadosMuestra % 60).padStart(2, '0');
-            if (lblTimer) lblTimer.innerText = `${m}:${s}`;
-        }, 1000);
-
+        const mimeType = _detectarMimeTypeGrabacionVoiceLab();
+        estado.recorder = mimeType ? new MediaRecorder(estado.stream, { mimeType }) : new MediaRecorder(estado.stream);
+        estado.recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) estado.chunks.push(e.data); };
+        estado.recorder.onstop = () => _procesarGrabacionFinalizadaVoiceLab(estado, ui, cfg);
+        estado.recorder.start();
+        _activarEstadoGrabandoUI(estado, ui);
     } catch (micErr) {
         console.error("Error al acceder al micrófono:", micErr);
-        if (micErr && (micErr.name === 'NotAllowedError' || micErr.name === 'PermissionDeniedError')) {
-            await liraAlert("Acceso al micrófono denegado.\n\nPara solucionarlo:\n1. Revisa en la barra de direcciones o en Windows si los permisos de micrófono para Chrome/la aplicación están permitidos.\n2. Si prefieres no usar el micrófono, puedes grabar tu voz con la grabadora de Windows o tu celular y usar el botón 'Cargar Audio...'", 'advertencia');
-        } else {
-            await liraAlert("No se pudo acceder al micrófono: " + (micErr?.message || "Verifica los permisos en tu sistema."), 'error');
-        }
-        if (lbl) lbl.innerText = "Grabar Voz";
-        if (btn) {
-            btn.disabled = false;
-            btn.style.background = "#2c3e50";
-        }
-        if (icn) {
-            icn.innerHTML = '<circle cx="12" cy="12" r="8"/>';
-            icn.style.color = "#e74c3c";
-        }
-        if (lblTimer) lblTimer.style.display = "none";
+        const esPermiso = micErr && (micErr.name === 'NotAllowedError' || micErr.name === 'PermissionDeniedError');
+        await liraAlert(
+            esPermiso ? cfg.msgPermisoDenegado : ("No se pudo acceder al micrófono: " + (micErr?.message || "Verifica los permisos en tu sistema.")),
+            esPermiso ? 'advertencia' : 'error'
+        );
+        _restaurarBotonGrabacionVoiceLab(ui);
     }
+}
+
+async function toggleGrabacionMuestraAudio() {
+    return _toggleGrabacionVoiceLab(_estadoGrabacionKokoro, {
+        btnId: 'btn-grabar-muestra-audio',
+        lblId: 'lbl-btn-grabar-audio',
+        icnId: 'icon-grabar-muestra-audio',
+        lblTimerId: 'lbl-tiempo-grabacion',
+        inputNombreId: 'txt-kokoro-blend-nombre',
+        prefijoSugerido: 'Mi Voz Grabada',
+        promptMsg: 'Introduce un nombre para tu nueva voz grabada:',
+        msgCorta: 'La grabación fue demasiado corta. Habla al menos de 4 a 10 segundos para afinar la voz.',
+        msgPermisoDenegado: "Acceso al micrófono denegado.\n\nPara solucionarlo:\n1. Revisa en la barra de direcciones o en Windows si los permisos de micrófono para Chrome/la aplicación están permitidos.\n2. Si prefieres no usar el micrófono, puedes grabar tu voz con la grabadora de Windows o tu celular y usar el botón 'Cargar Audio...'",
+        textoProcesando: 'Afinando voz...',
+        textoExito: '¡Voz creada!',
+        textoErrorGrabacion: 'Error al afinar la voz grabada',
+        logError: 'Error en llamada RPC crear_voz_desde_muestra:',
+        limpiarInput: false,
+        enviarRPC: (nombre, b64) => {
+            const acento = document.getElementById('sel-kokoro-blend-acento')?.value || 'es-419';
+            const perfilEq = document.getElementById('sel-kokoro-blend-eq')?.value || 'estudio';
+            return eel.crear_voz_desde_muestra(nombre, b64, "grabacion.wav", acento, _resolverIdiomaDesdeAcento(acento), perfilEq)();
+        },
+        refrescarListaUI: cargarYRenderizarMezclasKokoroUI,
+        extraerNuevoId: (res) => res.blend?.id
+    });
 }
 
 async function eliminarMezclaKokoroLive(blendId) {
@@ -634,12 +556,7 @@ async function eliminarMezclaKokoroLive(blendId) {
         const ok = await eel.eliminar_mezcla_kokoro(blendId)();
         if (ok) {
             await cargarYRenderizarMezclasKokoroUI();
-            const vocesActualizadas = await eel.obtener_voces_disponibles()();
-            if (vocesActualizadas && vocesActualizadas.length > 0) {
-                vocesPython = vocesActualizadas;
-                if (typeof llenarTodosLosSelectores === 'function') llenarTodosLosSelectores();
-                if (typeof actualizarListaVocesUI === 'function') actualizarListaVocesUI();
-            }
+            await _refrescarCatalogoYSeleccionarVoz();
         }
     } catch (err) {
         console.error("Error al eliminar mezcla:", err);
@@ -722,273 +639,45 @@ window.reproducirMuestraRapidaBlend = reproducirMuestraRapidaBlend;
 // ==========================================
 // 🧬 CLONACIÓN DE VOZ (POCKET TTS / KYUTAI)
 // ==========================================
-let mediaRecorderPocket = null;
-let audioChunksPocket = [];
-let streamMicrofonoPocket = null;
-let timerGrabacionPocket = null;
-let segundosGrabadosPocket = 0;
 
 async function procesarArchivoClonPocket(inputElement) {
-    const file = inputElement?.files?.[0];
-    if (!file) return;
-    inputElement.value = "";
-
-    const inputNombre = document.getElementById('txt-pocket-clone-nombre');
-    let nombre = inputNombre?.value?.trim() || "";
-    if (!nombre) {
-        const baseName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").trim();
-        const sugerido = baseName ? `Clon ${baseName}` : "Mi Voz Clonada";
-        nombre = await liraPrompt("Introduce un nombre para tu nueva voz clonada:", sugerido, 'voz');
-        if (!nombre || !nombre.trim()) return;
-        nombre = nombre.trim();
-        if (inputNombre) inputNombre.value = nombre;
-    }
-
-    const btn = document.getElementById('btn-cargar-clon-pocket');
-    const lbl = document.getElementById('lbl-btn-cargar-clon-pocket');
-    const txtOriginal = lbl ? lbl.innerText : "Cargar Audio...";
-
-    if (btn) btn.disabled = true;
-    if (lbl) lbl.innerText = "Clonando voz...";
-
-    try {
-        const reader = new FileReader();
-        reader.onerror = async () => {
-            await liraAlert("No se pudo leer el archivo de audio seleccionado.", 'error');
-            if (btn) btn.disabled = false;
-            if (lbl) lbl.innerText = txtOriginal;
-        };
-        reader.onload = async (e) => {
-            try {
-                const b64 = e.target.result.split(',')[1];
-                const res = await eel.clonar_voz_pocket(nombre, b64, file.name, "spanish")();
-
-                if (res && res.exito) {
-                    if (lbl) lbl.innerText = "¡Voz clonada!";
-                    await cargarYRenderizarClonesPocketUI();
-
-                    const vocesActualizadas = await eel.obtener_voces_disponibles()();
-                    if (vocesActualizadas && vocesActualizadas.length > 0) {
-                        vocesPython = vocesActualizadas;
-                        if (typeof llenarTodosLosSelectores === 'function') llenarTodosLosSelectores();
-                        if (typeof actualizarListaVocesUI === 'function') actualizarListaVocesUI();
-                    }
-
-                    const nuevoId = res.clon?.id;
-                    const selPrincipal = document.getElementById('selector-voz-live');
-                    if (selPrincipal && nuevoId) {
-                        selPrincipal.value = nuevoId;
-                        if (typeof cambiarVozLive === 'function') cambiarVozLive();
-                    }
-
-                    // Reiniciar campo de texto para la próxima voz
-                    if (inputNombre) inputNombre.value = "";
-
-                    setTimeout(() => {
-                        if (lbl) lbl.innerText = txtOriginal;
-                        if (btn) btn.disabled = false;
-                    }, 2000);
-                } else {
-                    await liraAlert("Error al clonar voz: " + (res?.error || "Error desconocido"), 'error');
-                    if (lbl) lbl.innerText = txtOriginal;
-                    if (btn) btn.disabled = false;
-                }
-            } catch (rpcErr) {
-                console.error("Error en llamada RPC clonar_voz_pocket:", rpcErr);
-                await liraAlert("Error al clonar audio: " + (rpcErr?.error || rpcErr?.message || rpcErr), 'error');
-                if (lbl) lbl.innerText = txtOriginal;
-                if (btn) btn.disabled = false;
-            }
-        };
-        reader.readAsDataURL(file);
-    } catch (err) {
-        console.error("Error al cargar audio para clonar:", err);
-        if (btn) btn.disabled = false;
-        if (lbl) lbl.innerText = txtOriginal;
-    }
+    return _procesarArchivoAudioVoiceLab(inputElement, {
+        inputNombreId: 'txt-pocket-clone-nombre',
+        prefijoSugerido: 'Clon',
+        fallbackSugerido: 'Mi Voz Clonada',
+        promptMsg: 'Introduce un nombre para tu nueva voz clonada:',
+        btnId: 'btn-cargar-clon-pocket',
+        lblId: 'lbl-btn-cargar-clon-pocket',
+        textoProcesando: 'Clonando voz...',
+        textoExito: '¡Voz clonada!',
+        textoError: 'Error al clonar voz',
+        logError: 'Error en llamada RPC clonar_voz_pocket:',
+        enviarRPC: (nombre, b64, fileName) => eel.clonar_voz_pocket(nombre, b64, fileName, "spanish")(),
+        refrescarListaUI: cargarYRenderizarClonesPocketUI,
+        extraerNuevoId: (res) => res.clon?.id
+    });
 }
 
 async function toggleGrabacionClonPocket() {
-    const btn = document.getElementById('btn-grabar-clon-pocket');
-    const lbl = document.getElementById('lbl-btn-grabar-clon-pocket');
-    const icn = document.getElementById('icon-grabar-clon-pocket');
-    const lblTimer = document.getElementById('lbl-tiempo-grabacion-pocket');
-
-    if (mediaRecorderPocket && mediaRecorderPocket.state === 'recording') {
-        // Detener grabación
-        mediaRecorderPocket.stop();
-        if (streamMicrofonoPocket) {
-            streamMicrofonoPocket.getTracks().forEach(track => track.stop());
-            streamMicrofonoPocket = null;
-        }
-        clearInterval(timerGrabacionPocket);
-        timerGrabacionPocket = null;
-
-        if (lbl) lbl.innerText = "Procesando...";
-        if (btn) {
-            btn.disabled = true;
-            btn.style.background = "#2c3e50";
-        }
-        if (icn) {
-            icn.innerHTML = '<circle cx="12" cy="12" r="8"/>';
-            icn.style.color = "#e74c3c";
-        }
-        return;
-    }
-
-    // Iniciar grabación
-    try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            await liraAlert("Tu navegador no soporta grabación de audio desde micrófono.", 'advertencia');
-            return;
-        }
-
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        streamMicrofonoPocket = stream;
-        audioChunksPocket = [];
-        segundosGrabadosPocket = 0;
-
-        let mimeType = '';
-        if (MediaRecorder.isTypeSupported('audio/webm')) {
-            mimeType = 'audio/webm';
-        } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
-            mimeType = 'audio/ogg';
-        } else if (MediaRecorder.isTypeSupported('audio/wav')) {
-            mimeType = 'audio/wav';
-        }
-
-        mediaRecorderPocket = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-
-        mediaRecorderPocket.ondataavailable = (e) => {
-            if (e.data && e.data.size > 0) {
-                audioChunksPocket.push(e.data);
-            }
-        };
-
-        mediaRecorderPocket.onstop = async () => {
-            if (lblTimer) lblTimer.style.display = "none";
-
-            if (segundosGrabadosPocket < 2) {
-                await liraAlert("La grabación fue demasiado corta. Habla o susurra de 4 a 10 segundos para clonar la voz.", 'advertencia');
-                if (lbl) lbl.innerText = "Grabar Voz";
-                if (btn) btn.disabled = false;
-                mediaRecorderPocket = null;
-                return;
-            }
-
-            const audioBlob = new Blob(audioChunksPocket, { type: mediaRecorderPocket.mimeType || 'audio/webm' });
-            mediaRecorderPocket = null;
-
-            const inputNombre = document.getElementById('txt-pocket-clone-nombre');
-            let nombre = inputNombre?.value?.trim() || "";
-            if (!nombre) {
-                const sugerido = "Mi Voz Clonada " + Math.floor(Math.random() * 900 + 100);
-                nombre = await liraPrompt("Introduce un nombre para tu nueva voz clonada:", sugerido, 'voz');
-                if (!nombre || !nombre.trim()) {
-                    if (lbl) lbl.innerText = "Grabar Voz";
-                    if (btn) btn.disabled = false;
-                    return;
-                }
-                nombre = nombre.trim();
-                if (inputNombre) inputNombre.value = nombre;
-            }
-
-            if (lbl) lbl.innerText = "Clonando voz...";
-
-            try {
-                const wavBlob = await convertirBlobAudioAWav(audioBlob);
-                const reader = new FileReader();
-                reader.onload = async (ev) => {
-                    try {
-                        const b64 = ev.target.result.split(',')[1];
-                        const res = await eel.clonar_voz_pocket(nombre, b64, "grabacion.wav", "spanish")();
-
-                        if (res && res.exito) {
-                            if (lbl) lbl.innerText = "¡Voz clonada!";
-                            await cargarYRenderizarClonesPocketUI();
-
-                            const vocesActualizadas = await eel.obtener_voces_disponibles()();
-                            if (vocesActualizadas && vocesActualizadas.length > 0) {
-                                vocesPython = vocesActualizadas;
-                                if (typeof llenarTodosLosSelectores === 'function') llenarTodosLosSelectores();
-                                if (typeof actualizarListaVocesUI === 'function') actualizarListaVocesUI();
-                            }
-
-                            const nuevoId = res.clon?.id;
-                            const selPrincipal = document.getElementById('selector-voz-live');
-                            if (selPrincipal && nuevoId) {
-                                selPrincipal.value = nuevoId;
-                                if (typeof cambiarVozLive === 'function') cambiarVozLive();
-                            }
-
-                            // Reiniciar campo de texto para la próxima voz
-                            if (inputNombre) inputNombre.value = "";
-
-                            setTimeout(() => {
-                                if (lbl) lbl.innerText = "Grabar Voz";
-                                if (btn) btn.disabled = false;
-                            }, 2000);
-                        } else {
-                            await liraAlert("Error al procesar la grabación: " + (res?.error || "Error desconocido"), 'error');
-                            if (lbl) lbl.innerText = "Grabar Voz";
-                            if (btn) btn.disabled = false;
-                        }
-                    } catch (rpcErr) {
-                        console.error("Error en llamada RPC clonar_voz_pocket:", rpcErr);
-                        await liraAlert("Error al clonar voz grabada: " + (rpcErr?.error || rpcErr?.message || rpcErr), 'error');
-                        if (lbl) lbl.innerText = "Grabar Voz";
-                        if (btn) btn.disabled = false;
-                    }
-                };
-                reader.readAsDataURL(wavBlob);
-            } catch (convErr) {
-                console.error("Error al convertir grabación a WAV:", convErr);
-                await liraAlert("Error al procesar audio grabado: " + convErr, 'error');
-                if (lbl) lbl.innerText = "Grabar Voz";
-                if (btn) btn.disabled = false;
-            }
-        };
-
-        mediaRecorderPocket.start();
-
-        if (lbl) lbl.innerText = "Detener";
-        if (btn) {
-            btn.style.background = "#c0392b";
-        }
-        if (icn) {
-            icn.innerHTML = '<rect x="6" y="6" width="12" height="12" rx="2"/>';
-            icn.style.color = "#ffffff";
-        }
-        if (lblTimer) {
-            lblTimer.innerText = "00:00";
-            lblTimer.style.display = "inline";
-        }
-
-        timerGrabacionPocket = setInterval(() => {
-            segundosGrabadosPocket++;
-            const m = String(Math.floor(segundosGrabadosPocket / 60)).padStart(2, '0');
-            const s = String(segundosGrabadosPocket % 60).padStart(2, '0');
-            if (lblTimer) lblTimer.innerText = `${m}:${s}`;
-        }, 1000);
-
-    } catch (micErr) {
-        console.error("Error al acceder al micrófono:", micErr);
-        if (micErr && (micErr.name === 'NotAllowedError' || micErr.name === 'PermissionDeniedError')) {
-            await liraAlert("Acceso al micrófono denegado. Puedes usar el botón 'Cargar Audio...' para subir una grabación.", 'advertencia');
-        } else {
-            await liraAlert("No se pudo acceder al micrófono: " + (micErr?.message || "Verifica los permisos en tu sistema."), 'error');
-        }
-        if (lbl) lbl.innerText = "Grabar Voz";
-        if (btn) {
-            btn.disabled = false;
-            btn.style.background = "#2c3e50";
-        }
-        if (icn) {
-            icn.innerHTML = '<circle cx="12" cy="12" r="8"/>';
-            icn.style.color = "#e74c3c";
-        }
-        if (lblTimer) lblTimer.style.display = "none";
-    }
+    return _toggleGrabacionVoiceLab(_estadoGrabacionPocket, {
+        btnId: 'btn-grabar-clon-pocket',
+        lblId: 'lbl-btn-grabar-clon-pocket',
+        icnId: 'icon-grabar-clon-pocket',
+        lblTimerId: 'lbl-tiempo-grabacion-pocket',
+        inputNombreId: 'txt-pocket-clone-nombre',
+        prefijoSugerido: 'Mi Voz Clonada',
+        promptMsg: 'Introduce un nombre para tu nueva voz clonada:',
+        msgCorta: 'La grabación fue demasiado corta. Habla o susurra de 4 a 10 segundos para clonar la voz.',
+        msgPermisoDenegado: "Acceso al micrófono denegado. Puedes usar el botón 'Cargar Audio...' para subir una grabación.",
+        textoProcesando: 'Clonando voz...',
+        textoExito: '¡Voz clonada!',
+        textoErrorGrabacion: 'Error al clonar voz grabada',
+        logError: 'Error en llamada RPC clonar_voz_pocket:',
+        limpiarInput: true,
+        enviarRPC: (nombre, b64) => eel.clonar_voz_pocket(nombre, b64, "grabacion.wav", "spanish")(),
+        refrescarListaUI: cargarYRenderizarClonesPocketUI,
+        extraerNuevoId: (res) => res.clon?.id
+    });
 }
 
 async function cargarYRenderizarClonesPocketUI() {
@@ -1056,12 +745,7 @@ async function eliminarClonPocketLive(voiceId) {
         const ok = await eel.eliminar_clon_pocket(voiceId)();
         if (ok) {
             await cargarYRenderizarClonesPocketUI();
-            const vocesActualizadas = await eel.obtener_voces_disponibles()();
-            if (vocesActualizadas && vocesActualizadas.length > 0) {
-                vocesPython = vocesActualizadas;
-                if (typeof llenarTodosLosSelectores === 'function') llenarTodosLosSelectores();
-                if (typeof actualizarListaVocesUI === 'function') actualizarListaVocesUI();
-            }
+            await _refrescarCatalogoYSeleccionarVoz();
         }
     } catch (err) {
         console.error("Error al eliminar clon Pocket:", err);

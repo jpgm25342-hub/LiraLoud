@@ -1719,68 +1719,49 @@ const DEMO_EXTRACCION_POR_IDIOMA = {
     }
 };
 
-function detectarIdiomaTutorialActivo() {
-    // 1. Idioma de la interfaz de la aplicación (currentLanguage)
-    // Si la interfaz del usuario está en inglés, francés, etc., todo el tutorial y documentos deben sincronizarse con ese idioma
-    const langUI = (typeof currentLanguage !== 'undefined' && currentLanguage)
+function _obtenerIdiomaUINormalizadoTour() {
+    return (typeof currentLanguage !== 'undefined' && currentLanguage)
         ? currentLanguage.toLowerCase().trim().slice(0, 2)
         : 'es';
-
-    if (langUI !== 'es' && CALIBRACION_POR_IDIOMA[langUI]) {
-        return langUI;
-    }
-
-    // 2. Si la interfaz es español, comprobar si el usuario eligió una voz de otro idioma en la barra
-    const selVoz = document.getElementById('selector-voz-live') || document.getElementById('modal-voz');
-    if (selVoz && selVoz.value) {
-        const vozLimpia = selVoz.value.toLowerCase().replace(/^(local-|edge-)/, '');
-        const match = vozLimpia.match(/^([a-z]{2})[-_]/);
-        if (match && CALIBRACION_POR_IDIOMA[match[1]]) {
-            return match[1];
-        }
-    }
-
-    // 3. Comprobar si el filtro de idioma fue cambiado a otro diferente a español
-    const elFiltro = document.getElementById('filtro-idioma') || document.getElementById('modal-filtro-idioma');
-    if (elFiltro && elFiltro.value) {
-        const iso = elFiltro.value.toLowerCase().trim().slice(0, 2);
-        if (iso !== 'es' && CALIBRACION_POR_IDIOMA[iso]) {
-            return iso;
-        }
-    }
-
-    // 4. Fallback: idioma de la interfaz si está soportado, o español
-    if (CALIBRACION_POR_IDIOMA[langUI]) {
-        return langUI;
-    }
-
-    return 'es';
 }
 
-// Helper de internacionalización dinámica para el tutorial
-function getTourText(key, defaultEs, vars = null) {
-    const langUI = (typeof currentLanguage !== 'undefined' && currentLanguage)
-        ? currentLanguage.toLowerCase().trim().slice(0, 2)
-        : 'es';
-    const langIso = (langUI !== 'es') ? langUI : detectarIdiomaTutorialActivo();
+function _extraerIdiomaDesdeSelectVozTour() {
+    const selVoz = document.getElementById('selector-voz-live') || document.getElementById('modal-voz');
+    if (!selVoz || !selVoz.value) return null;
+    const vozLimpia = selVoz.value.toLowerCase().replace(/^(local-|edge-)/, '');
+    const match = vozLimpia.match(/^([a-z]{2})[-_]/);
+    return (match && CALIBRACION_POR_IDIOMA[match[1]]) ? match[1] : null;
+}
 
-    let resolved = defaultEs;
-    if (langIso === 'es') {
-        if (typeof window.t === 'function') {
-            resolved = window.t(key, defaultEs);
-        }
-    } else if (typeof window.t === 'function') {
+function detectarIdiomaTutorialActivo() {
+    const langUI = _obtenerIdiomaUINormalizadoTour();
+    if (langUI !== 'es' && CALIBRACION_POR_IDIOMA[langUI]) return langUI;
+
+    const langVoz = _extraerIdiomaDesdeSelectVozTour();
+    if (langVoz) return langVoz;
+
+    const elFiltro = document.getElementById('filtro-idioma') || document.getElementById('modal-filtro-idioma');
+    const isoFiltro = elFiltro?.value ? elFiltro.value.toLowerCase().trim().slice(0, 2) : '';
+    if (isoFiltro && isoFiltro !== 'es' && CALIBRACION_POR_IDIOMA[isoFiltro]) return isoFiltro;
+
+    return CALIBRACION_POR_IDIOMA[langUI] ? langUI : 'es';
+}
+
+function _resolverTextoBaseTour(key, defaultEs, langIso) {
+    if (typeof window.t === 'function') {
         const txt = window.t(key, defaultEs);
-        if (txt && txt !== key) resolved = txt;
-    } else if (typeof translateDynamicText === 'function') {
+        return (langIso === 'es' || (txt && txt !== key)) ? txt : defaultEs;
+    }
+    if (langIso !== 'es' && typeof translateDynamicText === 'function') {
         try {
             const txt = translateDynamicText(key);
-            if (txt && txt !== key) resolved = txt;
-        } catch (e) { }
+            if (txt && txt !== key) return txt;
+        } catch (e) {}
     }
+    return defaultEs;
+}
 
-    if (typeof resolved !== 'string') return resolved;
-
+function _interpolarPlantillaTour(resolved, langIso, vars) {
     const abrevCfg = (typeof DEMO_ABREVIATURAS_POR_IDIOMA !== 'undefined')
         ? (DEMO_ABREVIATURAS_POR_IDIOMA[langIso] || DEMO_ABREVIATURAS_POR_IDIOMA.es || {})
         : {};
@@ -1788,10 +1769,20 @@ function getTourText(key, defaultEs, vars = null) {
         ? (DEMO_TEATRO_POR_IDIOMA[langIso] || DEMO_TEATRO_POR_IDIOMA.es || {})
         : {};
     const ctxVars = Object.assign({}, abrevCfg, teatroCfg, (vars && typeof vars === 'object') ? vars : {});
+    const replacer = (m, k) => (ctxVars[k] !== undefined && ctxVars[k] !== null) ? String(ctxVars[k]) : m;
 
     return resolved
-        .replace(/\$\{cfg\.([a-zA-Z0-9_]+)\}/g, (m, k) => (ctxVars[k] !== undefined && ctxVars[k] !== null) ? String(ctxVars[k]) : m)
-        .replace(/\{([a-zA-Z0-9_]+)\}/g, (m, k) => (ctxVars[k] !== undefined && ctxVars[k] !== null) ? String(ctxVars[k]) : m);
+        .replace(/\$\{cfg\.([a-zA-Z0-9_]+)\}/g, replacer)
+        .replace(/\{([a-zA-Z0-9_]+)\}/g, replacer);
+}
+
+// Helper de internacionalización dinámica para el tutorial
+function getTourText(key, defaultEs, vars = null) {
+    const langUI = _obtenerIdiomaUINormalizadoTour();
+    const langIso = (langUI !== 'es') ? langUI : detectarIdiomaTutorialActivo();
+    const resolved = _resolverTextoBaseTour(key, defaultEs, langIso);
+    if (typeof resolved !== 'string') return resolved;
+    return _interpolarPlantillaTour(resolved, langIso, vars);
 }
 
 window.CALIBRACION_POR_IDIOMA = CALIBRACION_POR_IDIOMA;

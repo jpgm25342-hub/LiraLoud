@@ -72,57 +72,69 @@ function cerrarPanelNotaRapida() {
     if (panel) panel.style.display = 'none';
 }
 
-async function guardarNotaRapida() {
-    const inpTitulo = document.getElementById('nota-rapida-titulo-input');
-    const inpClasif = document.getElementById('nota-rapida-clasif-input');
-    const inpPag = document.getElementById('nota-rapida-pagina');
-    const editor = document.getElementById('nota-rapida-editor-content');
-    const btnSave = document.getElementById('btn-guardar-nota-rapida');
-    
-    if (!inpTitulo || !editor) return;
-    
-    const titulo = inpTitulo.value.trim() || ("Nota Pág " + (inpPag?.value || 1));
-    const clasificacion = (inpClasif?.value.trim()) || "General";
-    const pagina = parseInt(inpPag?.value || 1) || 1;
-    const libro = obtenerNombreLibroActivo();
-    const contenido = editor.innerHTML.trim();
-    
-    if (!contenido && !titulo) {
-        await liraAlert("Escribe contenido o un título para tu nota.", "archivo");
-        return;
-    }
-    
-    const notaData = {
-        titulo: titulo,
-        clasificacion: clasificacion,
-        pagina: pagina,
-        libro: libro,
-        contenido: contenido,
-        fecha_creacion: null,
-        ruta_absoluta: null
+function _leerCamposNotaDOM(ids, libroFallback) {
+    const inpTitulo = document.getElementById(ids.titulo);
+    const editor = document.getElementById(ids.editor);
+    if (!inpTitulo || !editor) return null;
+    const inpClasif = document.getElementById(ids.clasif);
+    const inpPag = document.getElementById(ids.pagina);
+    const pagVal = parseInt(inpPag?.value || 1, 10) || 1;
+    return {
+        titulo: inpTitulo.value.trim() || ("Nota Pág " + pagVal),
+        clasificacion: (inpClasif?.value.trim()) || "General",
+        pagina: pagVal,
+        libro: libroFallback || obtenerNombreLibroActivo(),
+        contenido: editor.innerHTML.trim()
     };
-    
+}
+
+async function _persistirNotaEnBackend(notaData, cfgUI) {
+    const btnSave = cfgUI.btnSave;
     try {
         if (btnSave) btnSave.innerText = "⏳ Guardando...";
         const res = await eel.notas_guardar(notaData, window.rutaNotasPersonalizada || "")();
         if (res && res.exito) {
+            if (typeof cfgUI.onExito === 'function') cfgUI.onExito(res);
             if (btnSave) {
                 btnSave.innerText = "✅ Guardada";
                 setTimeout(() => {
-                    if (btnSave) btnSave.innerText = "Guardar";
-                    cerrarPanelNotaRapida();
-                }, 700);
+                    if (btnSave) btnSave.innerText = cfgUI.textoNormal;
+                    if (typeof cfgUI.despuesFeedback === 'function') cfgUI.despuesFeedback();
+                }, cfgUI.delayMs);
             }
-            // Refrescar lista si el gestor general se abre después
-            cargarNotasDesdeBackend();
+            if (cfgUI.esperarRecarga) await cargarNotasDesdeBackend();
+            else cargarNotasDesdeBackend();
         } else {
             await liraAlert("Error al guardar nota: " + (res?.error || "Error desconocido"), "advertencia");
-            if (btnSave) btnSave.innerText = "Guardar";
+            if (btnSave) btnSave.innerText = cfgUI.textoNormal;
         }
-    } catch(e) {
-        console.error('[Notas] Error al guardar nota rápida:', e);
-        if (btnSave) btnSave.innerText = "Guardar";
+    } catch (e) {
+        console.error(cfgUI.logError, e);
+        if (btnSave) btnSave.innerText = cfgUI.textoNormal;
     }
+}
+
+async function guardarNotaRapida() {
+    const campos = _leerCamposNotaDOM({
+        titulo: 'nota-rapida-titulo-input',
+        clasif: 'nota-rapida-clasif-input',
+        pagina: 'nota-rapida-pagina',
+        editor: 'nota-rapida-editor-content'
+    });
+    if (!campos) return;
+    if (!campos.contenido && !campos.titulo) {
+        await liraAlert("Escribe contenido o un título para tu nota.", "archivo");
+        return;
+    }
+    const notaData = { ...campos, fecha_creacion: null, ruta_absoluta: null };
+    await _persistirNotaEnBackend(notaData, {
+        btnSave: document.getElementById('btn-guardar-nota-rapida'),
+        textoNormal: "Guardar",
+        delayMs: 700,
+        esperarRecarga: false,
+        logError: '[Notas] Error al guardar nota rápida:',
+        despuesFeedback: cerrarPanelNotaRapida
+    });
 }
 
 async function enviarNotaRapidaAIA() {
@@ -147,7 +159,7 @@ async function enviarNotaRapidaAIA() {
     if (typeof abrirModalIA === 'function') {
         abrirModalIA();
         setTimeout(() => {
-            const inputChat = document.getElementById('ia-input-chat');
+            const inputChat = document.getElementById('ia-chat-input');
             if (inputChat) {
                 inputChat.value = promptParaIA;
                 inputChat.focus();
@@ -218,27 +230,25 @@ function obtenerNombreLibroActivo() {
 }
 
 // --- CARGA Y SINCRONIZACIÓN CON BACKEND ---
+function _resolverFiltrosListadoNotas() {
+    const libroActual = obtenerNombreLibroActivo();
+    const pagActual = (typeof paginaActual !== 'undefined' && paginaActual) ? paginaActual : 1;
+    if (window.filtroNotasModo === 'pagina_actual') return { filtroLibro: libroActual, filtroPag: pagActual };
+    if (window.filtroNotasModo === 'todo_libro') return { filtroLibro: libroActual, filtroPag: null };
+    return { filtroLibro: null, filtroPag: null };
+}
+
+function _seleccionarNotaTrasCarga() {
+    if (window.notasLista.length === 0) { crearNuevaNota(); return; }
+    const rutaAct = window.notaSeleccionadaActual?.ruta_absoluta;
+    const existe = rutaAct ? window.notasLista.find(n => n.ruta_absoluta === rutaAct) : null;
+    seleccionarNota(existe || window.notasLista[0]);
+}
+
 async function cargarNotasDesdeBackend() {
     try {
         if (typeof eel === 'undefined' || !eel.notas_listar) return;
-        
-        const libroActual = obtenerNombreLibroActivo();
-        const pagActual = (typeof paginaActual !== 'undefined' && paginaActual) ? paginaActual : 1;
-        
-        let filtroLibro = null;
-        let filtroPag = null;
-        
-        if (window.filtroNotasModo === 'pagina_actual') {
-            filtroLibro = libroActual;
-            filtroPag = pagActual;
-        } else if (window.filtroNotasModo === 'todo_libro') {
-            filtroLibro = libroActual;
-            filtroPag = null;
-        } else {
-            filtroLibro = null;
-            filtroPag = null;
-        }
-        
+        const { filtroLibro, filtroPag } = _resolverFiltrosListadoNotas();
         const res = await eel.notas_listar(
             window.rutaNotasPersonalizada || "",
             filtroLibro,
@@ -246,29 +256,17 @@ async function cargarNotasDesdeBackend() {
             window.filtroNotasClasificacion,
             window.filtroNotasBusqueda
         )();
-        
-        if (res && res.exito) {
-            window.notasLista = res.notas || [];
-            window.rutaNotasBaseActual = res.ruta_base || "";
-            
-            const lblRuta = document.getElementById('notas-ruta-carpeta-lbl');
-            if (lblRuta) lblRuta.innerText = window.rutaNotasBaseActual;
-            
-            renderizarSidebarFiltros();
-            renderizarListaNotas();
-            
-            if (window.notasLista.length > 0) {
-                const existe = window.notasLista.find(n => window.notaSeleccionadaActual && n.ruta_absoluta === window.notaSeleccionadaActual.ruta_absoluta);
-                if (existe) {
-                    seleccionarNota(existe);
-                } else {
-                    seleccionarNota(window.notasLista[0]);
-                }
-            } else {
-                crearNuevaNota();
-            }
-        }
-    } catch(e) {
+        if (!res?.exito) return;
+
+        window.notasLista = res.notas || [];
+        window.rutaNotasBaseActual = res.ruta_base || "";
+        const lblRuta = document.getElementById('notas-ruta-carpeta-lbl');
+        if (lblRuta) lblRuta.innerText = window.rutaNotasBaseActual;
+
+        renderizarSidebarFiltros();
+        renderizarListaNotas();
+        _seleccionarNotaTrasCarga();
+    } catch (e) {
         console.error('[Notas] Error al cargar notas desde backend:', e);
     }
 }
@@ -423,53 +421,31 @@ function crearNuevaNota() {
 }
 
 async function guardarNotaActual() {
-    const inpTitulo = document.getElementById('nota-editor-titulo');
-    const inpClasif = document.getElementById('nota-editor-clasif');
-    const inpPag = document.getElementById('nota-editor-pagina');
-    const contentDiv = document.getElementById('nota-editor-content');
-    
-    if (!inpTitulo || !contentDiv) return;
-    
-    const titulo = inpTitulo.value.trim() || ("Nota Pág " + (inpPag?.value || 1));
-    const clasificacion = (inpClasif?.value.trim()) || "General";
-    const pagina = parseInt(inpPag?.value || 1) || 1;
-    const libro = (window.notaSeleccionadaActual && window.notaSeleccionadaActual.libro) ? window.notaSeleccionadaActual.libro : obtenerNombreLibroActivo();
-    const contenido = contentDiv.innerHTML.trim();
-    
-    const notaData = {
-        titulo: titulo,
-        clasificacion: clasificacion,
-        pagina: pagina,
-        libro: libro,
-        contenido: contenido,
-        fecha_creacion: window.notaSeleccionadaActual ? window.notaSeleccionadaActual.fecha_creacion : null,
-        ruta_absoluta: window.notaSeleccionadaActual ? window.notaSeleccionadaActual.ruta_absoluta : null
-    };
-    
-    const btnSave = document.querySelector('.notas-editor-footer .notas-btn-save');
+    const campos = _leerCamposNotaDOM({
+        titulo: 'nota-editor-titulo',
+        clasif: 'nota-editor-clasif',
+        pagina: 'nota-editor-pagina',
+        editor: 'nota-editor-content'
+    }, window.notaSeleccionadaActual?.libro);
+    if (!campos) return;
 
-    try {
-        if (btnSave) btnSave.innerText = "⏳ Guardando...";
-        const res = await eel.notas_guardar(notaData, window.rutaNotasPersonalizada || "")();
-        if (res && res.exito) {
+    const notaData = {
+        ...campos,
+        fecha_creacion: window.notaSeleccionadaActual?.fecha_creacion || null,
+        ruta_absoluta: window.notaSeleccionadaActual?.ruta_absoluta || null
+    };
+    await _persistirNotaEnBackend(notaData, {
+        btnSave: document.querySelector('.notas-editor-footer .notas-btn-save'),
+        textoNormal: "Guardar Nota",
+        delayMs: 900,
+        esperarRecarga: true,
+        logError: '[Notas] Error al guardar nota:',
+        onExito: (res) => {
             notaData.ruta_absoluta = res.ruta_absoluta;
             notaData.fecha_modificacion = res.fecha_modificacion;
             window.notaSeleccionadaActual = notaData;
-            if (btnSave) {
-                btnSave.innerText = "✅ Guardada";
-                setTimeout(() => {
-                    if (btnSave) btnSave.innerText = "Guardar Nota";
-                }, 900);
-            }
-            await cargarNotasDesdeBackend();
-        } else {
-            await liraAlert("Error al guardar nota: " + (res?.error || "Error desconocido"), "advertencia");
-            if (btnSave) btnSave.innerText = "Guardar Nota";
         }
-    } catch(e) {
-        console.error('[Notas] Error al guardar nota:', e);
-        if (btnSave) btnSave.innerText = "Guardar Nota";
-    }
+    });
 }
 
 async function eliminarNotaActual() {
@@ -539,19 +515,53 @@ function _colocarCursorEnElemento(el, alFinal = true) {
     sel.addRange(range);
 }
 
+const _BLOQUES_SEPARADORES_INLINE = new Set(['P', 'DIV', 'H1', 'H2', 'H3', 'UL', 'OL', 'BLOCKQUOTE']);
+
+function _esCorteLineaInline(node) {
+    return !node || node.nodeName === 'BR' || (node.nodeType === 1 && _BLOQUES_SEPARADORES_INLINE.has(node.tagName));
+}
+
+function _restaurarSeleccionGuardadaNota(editor) {
+    const sel = window.getSelection();
+    if ((!sel || sel.rangeCount === 0 || !editor.contains(sel.anchorNode)) && window._ultimaSeleccionNotas[editor.id]) {
+        sel.removeAllRanges();
+        sel.addRange(window._ultimaSeleccionNotas[editor.id].cloneRange());
+    }
+    return sel;
+}
+
+function _envolverLineaInlineEnTag(editor, anchor, targetTag) {
+    let nodoBase = anchor;
+    while (nodoBase && nodoBase.parentNode !== editor) nodoBase = nodoBase.parentNode;
+
+    const nuevo = document.createElement(targetTag);
+    if (!nodoBase || nodoBase.parentNode !== editor) {
+        nuevo.innerHTML = '<br>';
+        editor.appendChild(nuevo);
+        return nuevo;
+    }
+
+    const inlineNodes = [nodoBase];
+    let prev = nodoBase.previousSibling;
+    while (!_esCorteLineaInline(prev)) { inlineNodes.unshift(prev); prev = prev.previousSibling; }
+    let next = nodoBase.nextSibling;
+    while (!_esCorteLineaInline(next)) { inlineNodes.push(next); next = next.nextSibling; }
+
+    editor.insertBefore(nuevo, inlineNodes[0]);
+    for (const n of inlineNodes) nuevo.appendChild(n);
+    if (next && next.nodeName === 'BR') next.remove();
+    return nuevo;
+}
+
 function _aplicarToggleEncabezado(editor, tagRaw) {
     const targetTag = String(tagRaw || 'H1').replace(/[<>]/g, '').toUpperCase();
     if (!['H1', 'H2', 'H3'].includes(targetTag)) return;
 
-    let sel = window.getSelection();
-    if ((!sel || sel.rangeCount === 0 || !editor.contains(sel.anchorNode)) && window._ultimaSeleccionNotas[editor.id]) {
-        sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(window._ultimaSeleccionNotas[editor.id].cloneRange());
-    }
-
-    // Caso editor vacío
-    if (!editor.childNodes.length || (editor.innerHTML === '<br>' || editor.textContent.trim() === '' && !editor.querySelector('h1,h2,h3,p,div'))) {
+    const sel = _restaurarSeleccionGuardadaNota(editor);
+    const estaVacio = !editor.childNodes.length
+        || editor.innerHTML === '<br>'
+        || (editor.textContent.trim() === '' && !editor.querySelector('h1,h2,h3,p,div'));
+    if (estaVacio) {
         editor.innerHTML = '';
         const nuevo = document.createElement(targetTag);
         nuevo.innerHTML = '<br>';
@@ -562,45 +572,15 @@ function _aplicarToggleEncabezado(editor, tagRaw) {
 
     const anchor = (sel && sel.rangeCount > 0 && editor.contains(sel.anchorNode)) ? sel.anchorNode : editor.firstChild;
     const bloque = _obtenerBloqueEnEditor(editor, anchor);
-
     if (bloque) {
-        const nuevoTag = (bloque.tagName === targetTag) ? 'P' : targetTag;
-        const nuevo = document.createElement(nuevoTag);
+        const nuevo = document.createElement(bloque.tagName === targetTag ? 'P' : targetTag);
         nuevo.innerHTML = bloque.innerHTML || '<br>';
         bloque.parentNode.replaceChild(nuevo, bloque);
         _colocarCursorEnElemento(nuevo, true);
         return;
     }
 
-    // Texto suelto / nodo inline directo dentro del editor
-    let nodoBase = anchor;
-    while (nodoBase && nodoBase.parentNode !== editor) {
-        nodoBase = nodoBase.parentNode;
-    }
-    const nuevo = document.createElement(targetTag);
-    if (nodoBase && nodoBase.parentNode === editor) {
-        // Agrupar nodos inline consecutivos de la misma línea (entre <br> o bloques)
-        const inlineNodes = [nodoBase];
-        let prev = nodoBase.previousSibling;
-        while (prev && prev.nodeName !== 'BR' && !(prev.nodeType === 1 && ['P', 'DIV', 'H1', 'H2', 'H3', 'UL', 'OL', 'BLOCKQUOTE'].includes(prev.tagName))) {
-            inlineNodes.unshift(prev);
-            prev = prev.previousSibling;
-        }
-        let next = nodoBase.nextSibling;
-        while (next && next.nodeName !== 'BR' && !(next.nodeType === 1 && ['P', 'DIV', 'H1', 'H2', 'H3', 'UL', 'OL', 'BLOCKQUOTE'].includes(next.tagName))) {
-            inlineNodes.push(next);
-            next = next.nextSibling;
-        }
-        editor.insertBefore(nuevo, inlineNodes[0]);
-        for (const n of inlineNodes) {
-            nuevo.appendChild(n);
-        }
-        if (next && next.nodeName === 'BR') next.remove();
-    } else {
-        nuevo.innerHTML = '<br>';
-        editor.appendChild(nuevo);
-    }
-    _colocarCursorEnElemento(nuevo, true);
+    _colocarCursorEnElemento(_envolverLineaInlineEnTag(editor, anchor, targetTag), true);
 }
 
 // --- FORMATEO EN EDITOR ENRIQUECIDO Y ESTADOS ACTIVOS ---
@@ -726,16 +706,58 @@ function formatearMarkdownParaNotaHTML(textoMD) {
     return html;
 }
 
+const _INSTRUCCIONES_IA_NOTA = {
+    mejorar: "Mejora la redacción y claridad de este apunte, haciéndolo fluido, profesional y bien estructurado con viñetas limpias sin omitir ningún concepto clave.",
+    ortografia: "Corrige minuciosamente todas las faltas de ortografía, acentuación, puntuación y concordancia gramatical de este apunte. Devuelve únicamente el texto corregido.",
+    expandir: "Explica a fondo y complementa los conceptos clave de este apunte con definiciones claras y ejemplos didácticos para facilitar el estudio."
+};
+
+const _HTML_BOTON_IA_NOTA_DEFAULT = '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9L12 2zm7 12l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3zM5 15l.8 2.2L8 18l-2.2.8L5 21l-.8-2.2L2 18l2.2-.8L5 15z"/></svg><span>IA</span>';
+
+async function _resolverInstruccionIANota(accion) {
+    if (accion === 'custom') {
+        const peticion = await liraPrompt("¿Qué deseas que la IA haga sobre esta nota?", "Resume los puntos principales", "editar");
+        return (peticion && peticion.trim()) ? peticion.trim() : null;
+    }
+    return _INSTRUCCIONES_IA_NOTA[accion] || "";
+}
+
+function _restaurarBtnIANota(btnIA, textoOriginal) {
+    if (!btnIA) return;
+    btnIA.innerHTML = textoOriginal;
+    btnIA.disabled = false;
+}
+
+async function _invocarIANotaBackend(textoNota, instruccion, accion) {
+    if (typeof eel === 'undefined' || !eel.notas_procesar_con_ia) return null;
+    const res = await eel.notas_procesar_con_ia(textoNota, instruccion, accion)();
+    if (res && res.exito && res.resultado) return res.resultado;
+    if (res && res.error) {
+        console.warn("[Notas IA] Error al procesar con IA:", res.error);
+        await liraAlert("Error de IA: " + res.error, "advertencia");
+    }
+    return null;
+}
+
+function _aplicarResultadoIANotaEnEditor(editor, accion, htmlResultado, esRapida) {
+    if (accion === 'mejorar' || accion === 'ortografia') {
+        editor.innerHTML = htmlResultado;
+    } else if (accion === 'expandir') {
+        editor.innerHTML = editor.innerHTML + `<br><hr><h3>💡 Explicación de Conceptos</h3>` + htmlResultado;
+    } else {
+        editor.innerHTML = editor.innerHTML + `<br><hr>` + htmlResultado;
+    }
+    if (!esRapida && window.notaSeleccionadaActual) {
+        window.notaSeleccionadaActual.contenido = editor.innerHTML;
+    }
+}
+
 async function ejecutarAccionIANota(accion, editorId, tituloInputId) {
-    // Cerrar popups de IA
     document.querySelectorAll('.menu-ia-nota-popup').forEach(m => m.style.display = 'none');
 
     const editor = document.getElementById(editorId);
-    const inpTitulo = document.getElementById(tituloInputId);
     const esRapida = editorId === 'nota-rapida-editor-content';
     const btnIA = document.getElementById(esRapida ? 'btn-ia-nota-rapida' : 'btn-ia-nota-general');
-    
-    const titulo = inpTitulo?.value.trim() || 'Nota';
     const textoNota = (editor?.innerText || editor?.textContent || '').trim();
 
     if (!textoNota) {
@@ -743,78 +765,29 @@ async function ejecutarAccionIANota(accion, editorId, tituloInputId) {
         return;
     }
 
-    let instruccion = "";
-    if (accion === 'mejorar') {
-        instruccion = "Mejora la redacción y claridad de este apunte, haciéndolo fluido, profesional y bien estructurado con viñetas limpias sin omitir ningún concepto clave.";
-    } else if (accion === 'ortografia') {
-        instruccion = "Corrige minuciosamente todas las faltas de ortografía, acentuación, puntuación y concordancia gramatical de este apunte. Devuelve únicamente el texto corregido.";
-    } else if (accion === 'expandir') {
-        instruccion = "Explica a fondo y complementa los conceptos clave de este apunte con definiciones claras y ejemplos didácticos para facilitar el estudio.";
-    } else if (accion === 'custom') {
-        const peticion = await liraPrompt("¿Qué deseas que la IA haga sobre esta nota?", "Resume los puntos principales", "editar");
-        if (!peticion || !peticion.trim()) return;
-        instruccion = peticion.trim();
-    }
+    const instruccion = await _resolverInstruccionIANota(accion);
+    if (instruccion === null) return;
 
-    const textoBotonOriginal = btnIA ? btnIA.innerHTML : '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9L12 2zm7 12l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3zM5 15l.8 2.2L8 18l-2.2.8L5 21l-.8-2.2L2 18l2.2-.8L5 15z"/></svg><span>IA</span>';
+    const textoBotonOriginal = btnIA ? btnIA.innerHTML : _HTML_BOTON_IA_NOTA_DEFAULT;
     if (btnIA) {
         btnIA.innerHTML = `⏳ Procesando...`;
         btnIA.disabled = true;
     }
 
     try {
-        let textoGenerado = null;
-
-        if (typeof eel !== 'undefined' && eel.notas_procesar_con_ia) {
-            const res = await eel.notas_procesar_con_ia(textoNota, instruccion, accion)();
-            if (res && res.exito && res.resultado) {
-                textoGenerado = res.resultado;
-            } else if (res && res.error) {
-                console.warn("[Notas IA] Error al procesar con IA:", res.error);
-                await liraAlert("Error de IA: " + res.error, "advertencia");
-            }
-        }
-
+        const textoGenerado = await _invocarIANotaBackend(textoNota, instruccion, accion);
         if (textoGenerado) {
-            const htmlResultado = formatearMarkdownParaNotaHTML(textoGenerado);
-            
-            if (accion === 'mejorar' || accion === 'ortografia') {
-                // Reemplazar el texto in-situ directamente
-                editor.innerHTML = htmlResultado;
-            } else if (accion === 'expandir') {
-                // Insertar al final con título
-                editor.innerHTML = editor.innerHTML + `<br><hr><h3>💡 Explicación de Conceptos</h3>` + htmlResultado;
-            } else {
-                // Petición personalizada: anexar resultado
-                editor.innerHTML = editor.innerHTML + `<br><hr>` + htmlResultado;
-            }
-
-            // Sincronizar nota seleccionada si está en el gestor general
-            if (!esRapida && window.notaSeleccionadaActual) {
-                window.notaSeleccionadaActual.contenido = editor.innerHTML;
-            }
-
+            _aplicarResultadoIANotaEnEditor(editor, accion, formatearMarkdownParaNotaHTML(textoGenerado), esRapida);
             if (btnIA) btnIA.innerHTML = `✅ ¡Listo!`;
-            setTimeout(() => {
-                if (btnIA) {
-                    btnIA.innerHTML = textoBotonOriginal;
-                    btnIA.disabled = false;
-                }
-            }, 1200);
+            setTimeout(() => _restaurarBtnIANota(btnIA, textoBotonOriginal), 1200);
         } else {
             await liraAlert("No se pudo procesar la nota con la IA. Asegúrate de tener Ollama activo o una API Key configurada en Ajustes > Inteligencia Artificial.", "ia");
-            if (btnIA) {
-                btnIA.innerHTML = textoBotonOriginal;
-                btnIA.disabled = false;
-            }
+            _restaurarBtnIANota(btnIA, textoBotonOriginal);
         }
-    } catch(e) {
+    } catch (e) {
         console.error('[Notas IA] Error al procesar nota con IA:', e);
         await liraAlert("Error al procesar con IA: " + e.message, "error");
-        if (btnIA) {
-            btnIA.innerHTML = textoBotonOriginal;
-            btnIA.disabled = false;
-        }
+        _restaurarBtnIANota(btnIA, textoBotonOriginal);
     }
 }
 
@@ -868,48 +841,59 @@ async function toggleDictadoVoz(editorId = 'nota-editor-content', btnId = 'btn-d
     iniciarDictadoVoz(editorId, btnId);
 }
 
+function _actualizarEstadoBtnDictado(btn, grabando) {
+    if (!btn) return;
+    btn.classList.toggle('grabando', grabando);
+    btn.title = grabando ? "🎙️ Escuchando... Clic para detener" : "Dictar con Micrófono";
+    const spanTxt = btn.querySelector('.btn-mic-txt');
+    if (spanTxt) spanTxt.innerText = grabando ? "Detener" : "Dictar";
+}
+
+function _resolverIdiomaDictado() {
+    if (typeof idiomaActual !== 'undefined' && idiomaActual && idiomaActual.startsWith('en')) {
+        return 'en-US';
+    }
+    return 'es-ES';
+}
+
+function _onEndDictadoVoz() {
+    if (!reconociendoVozActivo) {
+        detenerDictadoVoz();
+        return;
+    }
+    try {
+        recognitionInstancia.start();
+    } catch (e) {
+        detenerDictadoVoz();
+    }
+}
+
 function iniciarDictadoVoz(editorId, btnId) {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
 
     try {
         if (recognitionInstancia) {
-            try { recognitionInstancia.stop(); } catch(e){}
+            try { recognitionInstancia.stop(); } catch (e) {}
         }
 
         recognitionInstancia = new SpeechRecognition();
         recognitionInstancia.continuous = true;
         recognitionInstancia.interimResults = false;
-
-        // Determinar idioma (por defecto español latinoamericano/españa)
-        let langCode = 'es-ES';
-        if (typeof idiomaActual !== 'undefined' && idiomaActual) {
-            langCode = idiomaActual.startsWith('en') ? 'en-US' : 'es-ES';
-        }
-        recognitionInstancia.lang = langCode;
+        recognitionInstancia.lang = _resolverIdiomaDictado();
 
         editorDictadoActualId = editorId;
         btnDictadoActualId = btnId;
-
         const btn = document.getElementById(btnId);
-        const editor = document.getElementById(editorId);
 
         recognitionInstancia.onstart = () => {
             reconociendoVozActivo = true;
-            if (btn) {
-                btn.classList.add('grabando');
-                btn.title = "🎙️ Escuchando... Clic para detener";
-                const spanTxt = btn.querySelector('.btn-mic-txt');
-                if (spanTxt) spanTxt.innerText = "Detener";
-            }
+            _actualizarEstadoBtnDictado(btn, true);
         };
 
         recognitionInstancia.onresult = (event) => {
-            const current = event.resultIndex;
-            const transcript = event.results[current][0].transcript.trim();
-            if (transcript) {
-                insertarTextoEnEditor(editorId, transcript);
-            }
+            const transcript = event.results[event.resultIndex][0].transcript.trim();
+            if (transcript) insertarTextoEnEditor(editorId, transcript);
         };
 
         recognitionInstancia.onerror = async (event) => {
@@ -920,21 +904,9 @@ function iniciarDictadoVoz(editorId, btnId) {
             detenerDictadoVoz();
         };
 
-        recognitionInstancia.onend = () => {
-            if (reconociendoVozActivo) {
-                // Si se corta por pausa breve del usuario, reiniciar automáticamente
-                try {
-                    recognitionInstancia.start();
-                } catch(e) {
-                    detenerDictadoVoz();
-                }
-            } else {
-                detenerDictadoVoz();
-            }
-        };
-
+        recognitionInstancia.onend = _onEndDictadoVoz;
         recognitionInstancia.start();
-    } catch(e) {
+    } catch (e) {
         console.error('[Dictado] Error al iniciar reconocimiento:', e);
         detenerDictadoVoz();
     }
@@ -943,18 +915,12 @@ function iniciarDictadoVoz(editorId, btnId) {
 function detenerDictadoVoz() {
     reconociendoVozActivo = false;
     if (recognitionInstancia) {
-        try { recognitionInstancia.stop(); } catch(e){}
+        try { recognitionInstancia.stop(); } catch (e) {}
         recognitionInstancia = null;
     }
 
     if (btnDictadoActualId) {
-        const btn = document.getElementById(btnDictadoActualId);
-        if (btn) {
-            btn.classList.remove('grabando');
-            btn.title = "Dictar con Micrófono";
-            const spanTxt = btn.querySelector('.btn-mic-txt');
-            if (spanTxt) spanTxt.innerText = "Dictar";
-        }
+        _actualizarEstadoBtnDictado(document.getElementById(btnDictadoActualId), false);
     }
 }
 

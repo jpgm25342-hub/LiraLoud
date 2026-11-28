@@ -8,6 +8,10 @@ function _iconoTiendaSVG(clave) {
         : '';
 }
 
+function _txtTienda(clave, fallback) {
+    return (typeof window.t === 'function') ? window.t(clave, fallback) : fallback;
+}
+
 window.abrirTiendaVoces = function () {
     const modal = document.getElementById('modal-tienda-voces');
     if (modal) modal.style.display = 'flex';
@@ -84,32 +88,33 @@ window.togglePanelTokenHF = function () {
     }
 };
 
+function _actualizarBadgeYAvisoTokenHF(has, usuario) {
+    const badge = document.getElementById('estado-token-hf-tienda');
+    const btn = document.getElementById('btn-token-hf-tienda');
+    const aviso = document.getElementById('aviso-token-hf-activo');
+    const txtAviso = document.getElementById('txt-aviso-token-hf-activo');
+    const sufijo = usuario ? ` (@${usuario})` : '';
+
+    if (badge) {
+        const txtOk = _txtTienda('lbl-token-hf-configurado', 'Configurado');
+        const txtNo = _txtTienda('lbl-token-hf-sin-token', 'Sin token');
+        badge.textContent = has ? `${txtOk}${sufijo}` : txtNo;
+        badge.classList.toggle('activo', has);
+    }
+    if (aviso) {
+        aviso.style.display = has ? 'flex' : 'none';
+        if (has && txtAviso) {
+            txtAviso.textContent = `${_txtTienda('lbl-token-hf-sesion-activa', 'Tienes un token de Hugging Face guardado')}${sufijo}`;
+        }
+    }
+    if (btn) btn.classList.toggle('activo', has);
+}
+
 window.cargarEstadoTokenHF = async function () {
     try {
         if (typeof eel === 'undefined' || typeof eel.obtener_token_hf_tienda !== 'function') return;
         const info = await eel.obtener_token_hf_tienda()();
-        const badge = document.getElementById('estado-token-hf-tienda');
-        const btn = document.getElementById('btn-token-hf-tienda');
-        const aviso = document.getElementById('aviso-token-hf-activo');
-        const txtAviso = document.getElementById('txt-aviso-token-hf-activo');
-        const has = !!(info && info.has_token);
-        const usuario = (info && info.usuario) ? info.usuario : '';
-        if (badge) {
-            const txtOk = (typeof window.t === 'function') ? window.t('lbl-token-hf-configurado', 'Configurado') : 'Configurado';
-            const txtNo = (typeof window.t === 'function') ? window.t('lbl-token-hf-sin-token', 'Sin token') : 'Sin token';
-            badge.textContent = has ? (usuario ? `${txtOk} (@${usuario})` : txtOk) : txtNo;
-            badge.classList.toggle('activo', has);
-        }
-        if (aviso) {
-            aviso.style.display = has ? 'flex' : 'none';
-            if (has && txtAviso) {
-                const baseMsg = (typeof window.t === 'function')
-                    ? window.t('lbl-token-hf-sesion-activa', 'Tienes un token de Hugging Face guardado')
-                    : 'Tienes un token de Hugging Face guardado';
-                txtAviso.textContent = usuario ? `${baseMsg} (@${usuario})` : baseMsg;
-            }
-        }
-        if (btn) btn.classList.toggle('activo', has);
+        _actualizarBadgeYAvisoTokenHF(!!(info && info.has_token), (info && info.usuario) ? info.usuario : '');
     } catch (e) {}
 };
 
@@ -157,70 +162,42 @@ window.toggleAyudaTiendaVoces = function () {
 
 window._descargasTiendaEstado = window._descargasTiendaEstado || {};
 
-window.filtrarTiendaVoces = function () {
-    const cont = document.getElementById('lista-tienda-voces');
-    if (!cont) return;
-
-    const totalDescargadas = _catalogoTiendaCache.filter(v => !!v.instalada).length;
-    const badgeDesc = document.getElementById('badge-tienda-descargadas');
-    if (badgeDesc) badgeDesc.textContent = `(${totalDescargadas})`;
-
-    const q = (document.getElementById('buscar-voz-tienda')?.value || '').toLowerCase().trim();
-    const porTab = _catalogoTiendaCache.filter(v =>
-        window._tabTiendaActual === 'descargadas' ? !!v.instalada : !v.instalada
-    );
-    const filtradas = porTab.filter(v => {
-        return !q || v.nombre.toLowerCase().includes(q) || (v.idioma || '').toLowerCase().includes(q) || (v.id || '').toLowerCase().includes(q);
-    });
-
-    if (filtradas.length === 0) {
-        const esDescVacia = window._tabTiendaActual === 'descargadas' && !q;
-        const keyVacio = esDescVacia ? 'msg-tienda-sin-descargadas' : 'msg-tienda-sin-voces';
-        const defVacio = esDescVacia ? 'Aún no tienes voces descargadas en la tienda.' : 'No se encontraron voces con ese filtro.';
-        const txtNoVoces = (typeof window.t === 'function') ? window.t(keyVacio, defVacio) : defVacio;
-        cont.innerHTML = `<div style="padding:12px; color:#64748b;">${txtNoVoces}</div>`;
-        return;
+function _construirControlesTarjetaVozTienda(v, textos, enDescarga, pausada, btnAbrirHF) {
+    if (v.instalada) {
+        return `<button id="btn-del-${v.id}" class="btn-tienda-eliminar" onclick="eliminarVozTiendaUI('${v.motor}', '${v.id}')">${textos.eliminar}</button>`;
     }
-
-    const txtEliminar = (typeof window.t === 'function') ? window.t('btn-eliminar', 'Eliminar') : 'Eliminar';
-    const txtDescargar = (typeof window.t === 'function') ? window.t('btn-descargar', 'Descargar') : 'Descargar';
-    const txtPermiso = (typeof window.t === 'function') ? window.t('lbl-tienda-requiere-permiso', 'Requiere permiso en Hugging Face') : 'Requiere permiso en Hugging Face';
-    const txtAbrirHF = (typeof window.t === 'function') ? window.t('ttl-abrir-hf-repo', 'Abrir página del modelo en Hugging Face') : 'Abrir página del modelo en Hugging Face';
-
-    cont.innerHTML = filtradas.map(v => {
-        const dlTxt = typeof v.descargas === 'number'
-            ? ` · <span class="tienda-dl-count">${_iconoTiendaSVG('descarga')} ${v.descargas.toLocaleString()}</span>`
-            : '';
-        const estDl = window._descargasTiendaEstado[v.id];
-        const enDescarga = !!estDl && !v.instalada;
-        const pausada = estDl?.estado === 'pausada';
-        const pct = estDl?.pct || 0;
-        const esGated = !!v.gated;
-        const badgeGated = esGated && !v.instalada
-            ? `<span class="badge-tienda-gated" title="${txtPermiso}">${SVG_CANDADO_TIENDA}<span>${txtPermiso}</span></span>`
-            : '';
-        const btnAbrirHF = esGated && v.repo_url && !v.instalada
-            ? `<button type="button" class="btn-tienda-hf-link" title="${txtAbrirHF}" onclick="abrirRepoHFTienda('${v.repo_url}')">${SVG_ENLACE_HF}</button>`
-            : '';
-
-        let controlesHtml = '';
-        if (v.instalada) {
-            controlesHtml = `<button id="btn-del-${v.id}" class="btn-tienda-eliminar" onclick="eliminarVozTiendaUI('${v.motor}', '${v.id}')">${txtEliminar}</button>`;
-        } else if (enDescarga) {
-            controlesHtml = `
-                <div style="display:flex; gap:6px; align-items:center;">
-                    <button id="btn-pause-${v.id}" class="btn-tienda-pausar" onclick="togglePausaDescargaTienda('${v.id}')">${pausada ? `${_iconoTiendaSVG('reproducir')} Reanudar` : `${_iconoTiendaSVG('pausar')} Pausar`}</button>
-                    <button id="btn-cancel-${v.id}" class="btn-tienda-cancelar" onclick="cancelarDescargaTiendaUI('${v.id}')">✕ Cancelar</button>
-                </div>`;
-        } else {
-            controlesHtml = `
-                <div style="display:flex; gap:6px; align-items:center;">
-                    ${btnAbrirHF}
-                    <button id="btn-dl-${v.id}" class="btn-tienda-descargar" onclick="descargarVozTiendaUI('${v.motor}', '${v.id}')">${txtDescargar}</button>
-                </div>`;
-        }
-
+    if (enDescarga) {
+        const lblPausa = pausada ? `${_iconoTiendaSVG('reproducir')} Reanudar` : `${_iconoTiendaSVG('pausar')} Pausar`;
         return `
+            <div style="display:flex; gap:6px; align-items:center;">
+                <button id="btn-pause-${v.id}" class="btn-tienda-pausar" onclick="togglePausaDescargaTienda('${v.id}')">${lblPausa}</button>
+                <button id="btn-cancel-${v.id}" class="btn-tienda-cancelar" onclick="cancelarDescargaTiendaUI('${v.id}')">✕ Cancelar</button>
+            </div>`;
+    }
+    return `
+        <div style="display:flex; gap:6px; align-items:center;">
+            ${btnAbrirHF}
+            <button id="btn-dl-${v.id}" class="btn-tienda-descargar" onclick="descargarVozTiendaUI('${v.motor}', '${v.id}')">${textos.descargar}</button>
+        </div>`;
+}
+
+function _renderizarTarjetaVozTienda(v, textos) {
+    const dlTxt = typeof v.descargas === 'number'
+        ? ` · <span class="tienda-dl-count">${_iconoTiendaSVG('descarga')} ${v.descargas.toLocaleString()}</span>`
+        : '';
+    const estDl = window._descargasTiendaEstado[v.id];
+    const enDescarga = !!estDl && !v.instalada;
+    const pct = estDl?.pct || 0;
+    const esGatedPendiente = !!v.gated && !v.instalada;
+    const badgeGated = esGatedPendiente
+        ? `<span class="badge-tienda-gated" title="${textos.permiso}">${SVG_CANDADO_TIENDA}<span>${textos.permiso}</span></span>`
+        : '';
+    const btnAbrirHF = esGatedPendiente && v.repo_url
+        ? `<button type="button" class="btn-tienda-hf-link" title="${textos.abrirHF}" onclick="abrirRepoHFTienda('${v.repo_url}')">${SVG_ENLACE_HF}</button>`
+        : '';
+    const controlesHtml = _construirControlesTarjetaVozTienda(v, textos, enDescarga, estDl?.estado === 'pausada', btnAbrirHF);
+
+    return `
         <div id="tienda-voz-${v.id}" style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; gap:10px; background:#fff;">
             <div style="flex:1; min-width:0;">
                 <div style="font-weight:600; font-size:14px; color:#1e293b;">${v.nombre}${badgeGated}</div>
@@ -232,7 +209,38 @@ window.filtrarTiendaVoces = function () {
             <div>${controlesHtml}</div>
         </div>
     `;
-    }).join('');
+}
+
+window.filtrarTiendaVoces = function () {
+    const cont = document.getElementById('lista-tienda-voces');
+    if (!cont) return;
+
+    const totalDescargadas = _catalogoTiendaCache.filter(v => !!v.instalada).length;
+    const badgeDesc = document.getElementById('badge-tienda-descargadas');
+    if (badgeDesc) badgeDesc.textContent = `(${totalDescargadas})`;
+
+    const q = (document.getElementById('buscar-voz-tienda')?.value || '').toLowerCase().trim();
+    const filtradas = _catalogoTiendaCache
+        .filter(v => (window._tabTiendaActual === 'descargadas' ? !!v.instalada : !v.instalada))
+        .filter(v => !q || v.nombre.toLowerCase().includes(q) || (v.idioma || '').toLowerCase().includes(q) || (v.id || '').toLowerCase().includes(q));
+
+    if (filtradas.length === 0) {
+        const esDescVacia = window._tabTiendaActual === 'descargadas' && !q;
+        const txtNoVoces = _txtTienda(
+            esDescVacia ? 'msg-tienda-sin-descargadas' : 'msg-tienda-sin-voces',
+            esDescVacia ? 'Aún no tienes voces descargadas en la tienda.' : 'No se encontraron voces con ese filtro.'
+        );
+        cont.innerHTML = `<div style="padding:12px; color:#64748b;">${txtNoVoces}</div>`;
+        return;
+    }
+
+    const textos = {
+        eliminar: _txtTienda('btn-eliminar', 'Eliminar'),
+        descargar: _txtTienda('btn-descargar', 'Descargar'),
+        permiso: _txtTienda('lbl-tienda-requiere-permiso', 'Requiere permiso en Hugging Face'),
+        abrirHF: _txtTienda('ttl-abrir-hf-repo', 'Abrir página del modelo en Hugging Face')
+    };
+    cont.innerHTML = filtradas.map(v => _renderizarTarjetaVozTienda(v, textos)).join('');
 };
 
 async function recargarCatalogoVocesApp() {

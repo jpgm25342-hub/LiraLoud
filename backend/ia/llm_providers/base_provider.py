@@ -74,6 +74,76 @@ except ImportError:
         return asyncio.run(coro)
 
 
+def extraer_mensaje_error_http(resp: Any) -> str:
+    """Extrae el mensaje de error legible de una respuesta HTTP JSON o texto plano."""
+    err_body = resp.text
+    try:
+        err_json = resp.json()
+        return err_json.get("error", {}).get("message", err_body)
+    except Exception:
+        return err_body
+
+
+def construir_mensajes_openai(
+    system_prompt: str,
+    mensajes_previos: List[Dict[str, str]],
+    user_prompt: str,
+) -> List[Dict[str, str]]:
+    """Construye la lista estándar de mensajes estilo OpenAI (system + historial + user)."""
+    messages = [{"role": "system", "content": system_prompt}]
+    for m in mensajes_previos:
+        messages.append({"role": m.get("role", "user"), "content": m.get("content", "")})
+    messages.append({"role": "user", "content": user_prompt})
+    return messages
+
+
+def parsear_respuesta_openai_chat(
+    resp: Any,
+    mod: str,
+    nombre_prov: str,
+    default_limit: int,
+    incluir_reset: bool = False,
+) -> Dict[str, Any]:
+    """Valida HTTP 200 y extrae texto, uso de tokens y rate-limits de una respuesta chat/completions."""
+    if resp.status_code != 200:
+        raise RuntimeError(f"Error {nombre_prov} ({resp.status_code}): {extraer_mensaje_error_http(resp)}")
+
+    headers = dict(resp.headers)
+    res_json = resp.json()
+    choices = res_json.get("choices", [])
+    if not choices:
+        raise ValueError(f"{nombre_prov} no devolvió opciones de respuesta.")
+
+    texto = choices[0].get("message", {}).get("content", "").strip()
+    usage = res_json.get("usage", {})
+    p_tok = int(usage.get("prompt_tokens", 0))
+    c_tok = int(usage.get("completion_tokens", 0))
+    t_tok = int(usage.get("total_tokens", p_tok + c_tok))
+
+    lim_hdr = headers.get("x-ratelimit-limit-tokens")
+    rem_hdr = headers.get("x-ratelimit-remaining-tokens")
+    lim_tok = int(lim_hdr) if lim_hdr and str(lim_hdr).isdigit() else default_limit
+    rem_tok = int(rem_hdr) if rem_hdr and str(rem_hdr).isdigit() else max(0, lim_tok - t_tok)
+
+    rate_limits: Dict[str, Any] = {
+        "limite_tokens": lim_tok,
+        "tokens_restantes": rem_tok,
+    }
+    if incluir_reset:
+        rate_limits["reset_tokens"] = headers.get("x-ratelimit-reset-tokens", "")
+
+    return {
+        "texto": texto,
+        "usage": {
+            "prompt_tokens": p_tok,
+            "completion_tokens": c_tok,
+            "total_tokens": t_tok,
+        },
+        "rate_limits": rate_limits,
+        "modelo": mod,
+    }
+
+
 class BaseLLMProvider(ABC):
     """
     Clase base abstracta para todos los proveedores de Modelos de Lenguaje (LLM).
@@ -132,10 +202,31 @@ class BaseLLMProvider(ABC):
         """Versión sincrónica de prueba de conectividad."""
         return run_async_safely(self.verificar_conexion_async(api_key=api_key, modelo=modelo))
 
-    @abstractmethod
     async def verificar_conexion_async(self, api_key: str, modelo: str = "") -> Dict[str, Any]:
-        """Versión asíncrona de prueba de conectividad."""
-        pass
+        """Versión asíncrona estándar de prueba de conectividad."""
+        key = str(api_key or "").strip()
+        if not key:
+            return {"exito": False, "error": f"No se proporcionó API Key para la prueba de {self.name.upper()}."}
+
+        mod = modelo or self.default_model
+        try:
+            res = await self.generar_respuesta_async(
+                system_prompt="Eres un asistente de verificación técnica.",
+                mensajes_previos=[],
+                user_prompt="Responde únicamente con la palabra: OK",
+                api_key=key,
+                modelo=mod,
+            )
+            return {
+                "exito": True,
+                "proveedor": self.name,
+                "modelo": mod,
+                "respuesta": res.get("texto", "OK"),
+                "mensaje": f"¡Conexión exitosa con {self.name.upper()} ({mod})!",
+            }
+        except Exception as e:
+            logger.error(f"❌ [{self.__class__.__name__}:{self.name}] Error de verificación: {e}")
+            return {"exito": False, "proveedor": self.name, "error": str(e)}
 
     # =========================================================================
     # CATÁLOGO DE MODELOS (SYNC / ASYNC)

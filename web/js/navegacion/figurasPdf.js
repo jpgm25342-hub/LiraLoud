@@ -60,28 +60,20 @@ window.grosorBordeFigura = 2;
         ];
     }
 
+    const _MODOS_A_DESACTIVAR_FIGURAS = [
+        ['modoEditorTextoActivo', () => typeof toggleModoEditorTexto === 'function' && toggleModoEditorTexto(false)],
+        ['modoCuadroTextoActivo', () => typeof activarModoCuadroTexto === 'function' && activarModoCuadroTexto(false)],
+        ['modoMoverElementosActivo', () => typeof toggleModoMoverElementos === 'function' && toggleModoMoverElementos(false)],
+        ['modoSubrayadorActivo', () => typeof toggleModoSubrayador === 'function' && toggleModoSubrayador(false)],
+        ['modoBorradorActivo', () => typeof toggleModoBorrador === 'function' && toggleModoBorrador(false)],
+        ['modoRecorteActivo', () => typeof toggleModoRecorteExtraccion === 'function' && toggleModoRecorteExtraccion(false)],
+        ['capturandoCorte', () => typeof toggleCapturaCorte === 'function' && toggleCapturaCorte(false)]
+    ];
+
     function desactivarOtrosModos() {
-        if (typeof toggleModoEditorTexto === 'function' && window.modoEditorTextoActivo) {
-            toggleModoEditorTexto(false);
-        }
-        if (typeof activarModoCuadroTexto === 'function' && window.modoCuadroTextoActivo) {
-            activarModoCuadroTexto(false);
-        }
-        if (typeof toggleModoMoverElementos === 'function' && window.modoMoverElementosActivo) {
-            toggleModoMoverElementos(false);
-        }
-        if (typeof toggleModoSubrayador === 'function' && window.modoSubrayadorActivo) {
-            toggleModoSubrayador(false);
-        }
-        if (typeof toggleModoBorrador === 'function' && window.modoBorradorActivo) {
-            toggleModoBorrador(false);
-        }
-        if (typeof toggleModoRecorteExtraccion === 'function' && window.modoRecorteActivo) {
-            toggleModoRecorteExtraccion(false);
-        }
-        if (typeof toggleCapturaCorte === 'function' && window.capturandoCorte) {
-            toggleCapturaCorte(false);
-        }
+        _MODOS_A_DESACTIVAR_FIGURAS.forEach(([flag, fn]) => {
+            if (window[flag]) fn();
+        });
         const chkLimites = document.getElementById('chk-dibujar-limites');
         if (chkLimites && chkLimites.checked) {
             chkLimites.checked = false;
@@ -153,6 +145,103 @@ window.grosorBordeFigura = 2;
         }
     }
 
+    function _aplicarRectACajaFigura(box, r) {
+        box.style.left = r.x.toFixed(2) + 'px';
+        box.style.top = r.y.toFixed(2) + 'px';
+        box.style.width = r.w.toFixed(2) + 'px';
+        box.style.height = r.h.toFixed(2) + 'px';
+    }
+
+    function _leerRectDeCajaFigura(box) {
+        return {
+            x: parseFloat(box.style.left) || 0,
+            y: parseFloat(box.style.top) || 0,
+            w: parseFloat(box.style.width) || box.offsetWidth || MIN_PX,
+            h: parseFloat(box.style.height) || box.offsetHeight || MIN_PX
+        };
+    }
+
+    function _setManipulacionMarcoFigura(box, activo) {
+        box.classList.toggle('manipulando', activo);
+        const pop = document.getElementById(POPOVER_ID);
+        if (pop) pop.classList.toggle('manipulando-figura', activo);
+    }
+
+    async function _persistirTransformacionFigura(rpcName, nuevoBbox, box, labelErr) {
+        const ruta = obtenerRutaPdf();
+        const pagIdx = obtenerPaginaIdx();
+        if (!ruta || typeof eel === 'undefined' || typeof eel[rpcName] !== 'function') return;
+        try {
+            const res = await eel[rpcName](ruta, pagIdx, figuraRecienCreada, nuevoBbox)();
+            if (res && res.success) {
+                if (res.bbox) figuraRecienCreada.bbox = res.bbox;
+                if (res.xref) figuraRecienCreada.xref = res.xref;
+                if (res.vertices) figuraRecienCreada.vertices = res.vertices;
+                if (typeof cargarPagina === 'function') await cargarPagina(pagIdx);
+                reposicionarMarcoFiguraRecienCreada();
+                abrirPopoverEstiloFigura(figuraRecienCreada, box);
+            }
+        } catch (err) {
+            console.error(`[FigurasPdf] Error al ${labelErr} figura:`, err);
+        }
+    }
+
+    function _vincularInteraccionMarcoFigura(target, box, dir) {
+        target.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            if (!dir && e.target.classList.contains('mover-handle')) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            const origRect = _leerRectDeCajaFigura(box);
+            const op = {
+                handle: dir,
+                startClientX: e.clientX,
+                startClientY: e.clientY,
+                origRect,
+                currentRect: { ...origRect },
+                bounds: obtenerLimitesPaginaCanvas()
+            };
+            _setManipulacionMarcoFigura(box, true);
+
+            const onMouseMove = (ev) => {
+                if (dir) {
+                    op.currentRect = calcularRectRedimensionado(op, ev.clientX, ev.clientY, ev.shiftKey);
+                    _aplicarRectACajaFigura(box, op.currentRect);
+                } else {
+                    const newX = clamp(op.origRect.x + (ev.clientX - op.startClientX), op.bounds.minX, op.bounds.maxX - op.origRect.w);
+                    const newY = clamp(op.origRect.y + (ev.clientY - op.startClientY), op.bounds.minY, op.bounds.maxY - op.origRect.h);
+                    op.currentRect.x = newX;
+                    op.currentRect.y = newY;
+                    box.style.left = newX.toFixed(2) + 'px';
+                    box.style.top = newY.toFixed(2) + 'px';
+                }
+            };
+
+            const onMouseUp = async () => {
+                window.removeEventListener('mousemove', onMouseMove);
+                window.removeEventListener('mouseup', onMouseUp);
+                _setManipulacionMarcoFigura(box, false);
+
+                const delta = dir
+                    ? Math.max(
+                        Math.abs(op.currentRect.x - op.origRect.x),
+                        Math.abs(op.currentRect.y - op.origRect.y),
+                        Math.abs(op.currentRect.w - op.origRect.w),
+                        Math.abs(op.currentRect.h - op.origRect.h)
+                    )
+                    : Math.hypot(op.currentRect.x - op.origRect.x, op.currentRect.y - op.origRect.y);
+                if (delta <= 1.0) return;
+
+                const rpcName = dir ? 'redimensionar_elemento_pdf' : 'mover_elemento_pdf';
+                await _persistirTransformacionFigura(rpcName, proyectarCanvasAPdf(op.currentRect), box, dir ? 'redimensionar' : 'mover');
+            };
+
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+        });
+    }
+
     function mostrarMarcoFiguraRecienCreada(figura) {
         limpiarSeleccionFiguraRecienCreada();
         if (!figura || !Array.isArray(figura.bbox)) return;
@@ -161,192 +250,130 @@ window.grosorBordeFigura = 2;
         const container = document.getElementById('visor-container');
         if (!container) return;
 
-        const r = proyectarPdfACanvas(figura.bbox);
         const box = document.createElement('div');
         box.id = MARCO_TEMPORAL_ID;
         box.className = 'mover-el-box seleccionado';
         box.dataset.tipo = 'figura';
-        box.style.left = r.x.toFixed(2) + 'px';
-        box.style.top = r.y.toFixed(2) + 'px';
-        box.style.width = r.w.toFixed(2) + 'px';
-        box.style.height = r.h.toFixed(2) + 'px';
+        _aplicarRectACajaFigura(box, proyectarPdfACanvas(figura.bbox));
 
-        // 8 handles de redimensionado
         HANDLES.forEach((dir) => {
             const handle = document.createElement('div');
             handle.className = 'mover-handle';
             handle.dataset.dir = dir;
-
-            handle.addEventListener('mousedown', (e) => {
-                if (e.button !== 0) return;
-                e.preventDefault();
-                e.stopPropagation();
-
-                const origRect = {
-                    x: parseFloat(box.style.left) || 0,
-                    y: parseFloat(box.style.top) || 0,
-                    w: parseFloat(box.style.width) || box.offsetWidth || MIN_PX,
-                    h: parseFloat(box.style.height) || box.offsetHeight || MIN_PX
-                };
-                const op = {
-                    handle: dir,
-                    startClientX: e.clientX,
-                    startClientY: e.clientY,
-                    origRect: origRect,
-                    currentRect: { ...origRect },
-                    bounds: obtenerLimitesPaginaCanvas()
-                };
-
-                box.classList.add('manipulando');
-                const pop = document.getElementById(POPOVER_ID);
-                if (pop) pop.classList.add('manipulando-figura');
-
-                function onMouseMove(ev) {
-                    op.currentRect = calcularRectRedimensionado(op, ev.clientX, ev.clientY, ev.shiftKey);
-                    box.style.left = op.currentRect.x.toFixed(2) + 'px';
-                    box.style.top = op.currentRect.y.toFixed(2) + 'px';
-                    box.style.width = op.currentRect.w.toFixed(2) + 'px';
-                    box.style.height = op.currentRect.h.toFixed(2) + 'px';
-                }
-
-                async function onMouseUp() {
-                    window.removeEventListener('mousemove', onMouseMove);
-                    window.removeEventListener('mouseup', onMouseUp);
-
-                    box.classList.remove('manipulando');
-                    if (pop) pop.classList.remove('manipulando-figura');
-
-                    const deltaMax = Math.max(
-                        Math.abs(op.currentRect.x - op.origRect.x),
-                        Math.abs(op.currentRect.y - op.origRect.y),
-                        Math.abs(op.currentRect.w - op.origRect.w),
-                        Math.abs(op.currentRect.h - op.origRect.h)
-                    );
-                    if (deltaMax <= 1.0) return;
-
-                    const ruta = obtenerRutaPdf();
-                    const pagIdx = obtenerPaginaIdx();
-                    if (!ruta || typeof eel === 'undefined' || typeof eel.redimensionar_elemento_pdf !== 'function') return;
-
-                    const nuevoBbox = proyectarCanvasAPdf(op.currentRect);
-                    try {
-                        const res = await eel.redimensionar_elemento_pdf(ruta, pagIdx, figuraRecienCreada, nuevoBbox)();
-                        if (res && res.success) {
-                            if (res.bbox) figuraRecienCreada.bbox = res.bbox;
-                            if (res.xref) figuraRecienCreada.xref = res.xref;
-                            if (res.vertices) figuraRecienCreada.vertices = res.vertices;
-                            if (typeof cargarPagina === 'function') {
-                                await cargarPagina(pagIdx);
-                            }
-                            reposicionarMarcoFiguraRecienCreada();
-                            abrirPopoverEstiloFigura(figuraRecienCreada, box);
-                        }
-                    } catch (err) {
-                        console.error('[FigurasPdf] Error al redimensionar figura:', err);
-                    }
-                }
-
-                window.addEventListener('mousemove', onMouseMove);
-                window.addEventListener('mouseup', onMouseUp);
-            });
-
+            _vincularInteraccionMarcoFigura(handle, box, dir);
             box.appendChild(handle);
         });
 
-        // Arrastre desde el interior de la caja para mover
-        box.addEventListener('mousedown', (e) => {
-            if (e.button !== 0 || e.target.classList.contains('mover-handle')) return;
-            e.preventDefault();
-            e.stopPropagation();
-
-            const origRect = {
-                x: parseFloat(box.style.left) || 0,
-                y: parseFloat(box.style.top) || 0,
-                w: parseFloat(box.style.width) || box.offsetWidth || MIN_PX,
-                h: parseFloat(box.style.height) || box.offsetHeight || MIN_PX
-            };
-            const op = {
-                startClientX: e.clientX,
-                startClientY: e.clientY,
-                origRect: origRect,
-                currentRect: { ...origRect },
-                bounds: obtenerLimitesPaginaCanvas()
-            };
-
-            box.classList.add('manipulando');
-            const pop = document.getElementById(POPOVER_ID);
-            if (pop) pop.classList.add('manipulando-figura');
-
-            function onMouseMove(ev) {
-                const dx = ev.clientX - op.startClientX;
-                const dy = ev.clientY - op.startClientY;
-                const newX = clamp(op.origRect.x + dx, op.bounds.minX, op.bounds.maxX - op.origRect.w);
-                const newY = clamp(op.origRect.y + dy, op.bounds.minY, op.bounds.maxY - op.origRect.h);
-                op.currentRect.x = newX;
-                op.currentRect.y = newY;
-                box.style.left = newX.toFixed(2) + 'px';
-                box.style.top = newY.toFixed(2) + 'px';
-            }
-
-            async function onMouseUp() {
-                window.removeEventListener('mousemove', onMouseMove);
-                window.removeEventListener('mouseup', onMouseUp);
-
-                box.classList.remove('manipulando');
-                if (pop) pop.classList.remove('manipulando-figura');
-
-                const delta = Math.hypot(op.currentRect.x - op.origRect.x, op.currentRect.y - op.origRect.y);
-                if (delta <= 1.0) return;
-
-                const ruta = obtenerRutaPdf();
-                const pagIdx = obtenerPaginaIdx();
-                if (!ruta || typeof eel === 'undefined' || typeof eel.mover_elemento_pdf !== 'function') return;
-
-                const nuevoBbox = proyectarCanvasAPdf(op.currentRect);
-                try {
-                    const res = await eel.mover_elemento_pdf(ruta, pagIdx, figuraRecienCreada, nuevoBbox)();
-                    if (res && res.success) {
-                        if (res.bbox) figuraRecienCreada.bbox = res.bbox;
-                        if (res.xref) figuraRecienCreada.xref = res.xref;
-                        if (res.vertices) figuraRecienCreada.vertices = res.vertices;
-                        if (typeof cargarPagina === 'function') {
-                            await cargarPagina(pagIdx);
-                        }
-                        reposicionarMarcoFiguraRecienCreada();
-                        abrirPopoverEstiloFigura(figuraRecienCreada, box);
-                    }
-                } catch (err) {
-                    console.error('[FigurasPdf] Error al mover figura:', err);
-                }
-            }
-
-            window.addEventListener('mousemove', onMouseMove);
-            window.addEventListener('mouseup', onMouseUp);
-        });
-
+        _vincularInteraccionMarcoFigura(box, box, null);
         container.appendChild(box);
         abrirPopoverEstiloFigura(figuraRecienCreada, box);
     }
 
-    function obtenerOCrearToolbar() {
-        let tb = document.getElementById(TOOLBAR_ID);
-        if (tb) return tb;
+    async function _notificarImagenCreadaParaMover(res, pagIdx) {
+        toggleModoFiguras(false);
+        if (typeof window.seleccionarElementoPendienteMover === 'function') {
+            window.seleccionarElementoPendienteMover({
+                tipo: 'imagen',
+                xref: res.xref,
+                bbox: res.bbox
+            });
+        }
+        if (typeof cargarPagina === 'function') await cargarPagina(pagIdx);
+        if (typeof toggleModoMoverElementos === 'function') toggleModoMoverElementos(true);
+    }
 
-        tb = document.createElement('div');
-        tb.id = TOOLBAR_ID;
-        tb.className = 'toolbar-figuras-flotante';
-        tb.innerHTML = `
+    async function _insertarImagenDesdeToolbarFiguras(btnAgregarImg) {
+        if (typeof eel === 'undefined' || typeof eel.insertar_imagen_pdf_rpc !== 'function') return;
+        const rutaPdf = obtenerRutaPdf();
+        if (!rutaPdf) return;
+        const pagIdx = obtenerPaginaIdx();
+        btnAgregarImg.disabled = true;
+        try {
+            const res = await eel.insertar_imagen_pdf_rpc(rutaPdf, pagIdx, null, null)();
+            if (res && res.cancelado) return;
+            if (res && res.success) {
+                await _notificarImagenCreadaParaMover(res, pagIdx);
+            } else if (res && res.error) {
+                mostrarAvisoToast(res.error, 'error');
+            }
+        } catch (err) {
+            console.error('[FigurasPdf] Error insertando imagen:', err);
+        } finally {
+            btnAgregarImg.disabled = false;
+        }
+    }
+
+    function _vincularEventosToolbarFiguras(tb) {
+        tb.querySelectorAll('.btn-figura-tipo[data-tipo]').forEach((b) => {
+            b.addEventListener('click', (e) => {
+                e.stopPropagation();
+                tb.querySelectorAll('.btn-figura-tipo[data-tipo]').forEach((x) => x.classList.remove('activo'));
+                b.classList.add('activo');
+                window.tipoFiguraSeleccionada = b.dataset.tipo;
+                actualizarVisibilidadRellenoToolbar(tb);
+            });
+        });
+
+        const btnAgregarImg = tb.querySelector('#btn-figura-agregar-imagen');
+        if (btnAgregarImg) {
+            btnAgregarImg.addEventListener('click', (e) => {
+                e.stopPropagation();
+                _insertarImagenDesdeToolbarFiguras(btnAgregarImg);
+            });
+        }
+
+        const inputBorde = tb.querySelector('#input-color-borde-fig');
+        if (inputBorde) {
+            inputBorde.addEventListener('input', (e) => { window.colorBordeFigura = e.target.value; });
+        }
+
+        const inputRelleno = tb.querySelector('#input-color-relleno-fig');
+        const btnSinRelleno = tb.querySelector('#btn-toggle-sin-relleno');
+        if (inputRelleno && btnSinRelleno) {
+            inputRelleno.addEventListener('input', (e) => {
+                window.colorRellenoFigura = e.target.value;
+                btnSinRelleno.classList.remove('activo');
+            });
+            btnSinRelleno.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const activarColor = window.colorRellenoFigura === 'none';
+                window.colorRellenoFigura = activarColor ? (inputRelleno.value || '#3498db') : 'none';
+                btnSinRelleno.classList.toggle('activo', !activarColor);
+            });
+        }
+
+        const selGrosor = tb.querySelector('#select-grosor-fig');
+        if (selGrosor) {
+            selGrosor.value = String(window.grosorBordeFigura);
+            selGrosor.addEventListener('change', (e) => {
+                window.grosorBordeFigura = parseFloat(e.target.value) || 2;
+            });
+        }
+
+        const btnCerrar = tb.querySelector('.btn-cerrar-toolbar-fig');
+        if (btnCerrar) {
+            btnCerrar.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleModoFiguras(false);
+            });
+        }
+    }
+
+    function _construirHTMLToolbarFiguras() {
+        const tipo = window.tipoFiguraSeleccionada;
+        const sinRelleno = window.colorRellenoFigura === 'none';
+        return `
             <div class="toolbar-figuras-grupo">
-                <button type="button" class="btn-figura-tipo ${window.tipoFiguraSeleccionada === 'rect' ? 'activo' : ''}" data-tipo="rect" title="${txt('ttl-figura-rect', 'Rectángulo')}">
+                <button type="button" class="btn-figura-tipo ${tipo === 'rect' ? 'activo' : ''}" data-tipo="rect" title="${txt('ttl-figura-rect', 'Rectángulo')}">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
                 </button>
-                <button type="button" class="btn-figura-tipo ${window.tipoFiguraSeleccionada === 'circle' ? 'activo' : ''}" data-tipo="circle" title="${txt('ttl-figura-circulo', 'Círculo / Óvalo')}">
+                <button type="button" class="btn-figura-tipo ${tipo === 'circle' ? 'activo' : ''}" data-tipo="circle" title="${txt('ttl-figura-circulo', 'Círculo / Óvalo')}">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>
                 </button>
-                <button type="button" class="btn-figura-tipo ${window.tipoFiguraSeleccionada === 'arrow' ? 'activo' : ''}" data-tipo="arrow" title="${txt('ttl-figura-flecha', 'Flecha')}">
+                <button type="button" class="btn-figura-tipo ${tipo === 'arrow' ? 'activo' : ''}" data-tipo="arrow" title="${txt('ttl-figura-flecha', 'Flecha')}">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                 </button>
-                <button type="button" class="btn-figura-tipo ${window.tipoFiguraSeleccionada === 'crop_img' ? 'activo' : ''}" data-tipo="crop_img" title="${txt('ttl-figura-recortar-zona', 'Recortar diagrama/zona como imagen (Shift: duplicar)')}">
+                <button type="button" class="btn-figura-tipo ${tipo === 'crop_img' ? 'activo' : ''}" data-tipo="crop_img" title="${txt('ttl-figura-recortar-zona', 'Recortar diagrama/zona como imagen (Shift: duplicar)')}">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3.2 2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/></svg>
                 </button>
                 <button type="button" id="btn-figura-agregar-imagen" class="btn-figura-tipo" title="${txt('ttl-figura-imagen', 'Agregar imagen')}">
@@ -361,8 +388,8 @@ window.grosorBordeFigura = 2;
             <div class="toolbar-figuras-separador" id="toolbar-sep-relleno"></div>
             <div class="toolbar-figuras-item" id="toolbar-item-relleno" title="${txt('ttl-figura-color-relleno', 'Color de relleno')}">
                 <label for="input-color-relleno-fig">${txt('lbl-figura-relleno', 'Relleno')}</label>
-                <input type="color" id="input-color-relleno-fig" value="${window.colorRellenoFigura === 'none' ? '#ffffff' : window.colorRellenoFigura}">
-                <button type="button" id="btn-toggle-sin-relleno" class="btn-sin-relleno ${window.colorRellenoFigura === 'none' ? 'activo' : ''}" title="${txt('ttl-figura-transparente', 'Sin relleno / Transparente')}">
+                <input type="color" id="input-color-relleno-fig" value="${sinRelleno ? '#ffffff' : window.colorRellenoFigura}">
+                <button type="button" id="btn-toggle-sin-relleno" class="btn-sin-relleno ${sinRelleno ? 'activo' : ''}" title="${txt('ttl-figura-transparente', 'Sin relleno / Transparente')}">
                     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
                 </button>
             </div>
@@ -382,99 +409,17 @@ window.grosorBordeFigura = 2;
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
         `;
+    }
 
-        // Eventos toolbar
-        tb.querySelectorAll('.btn-figura-tipo[data-tipo]').forEach((b) => {
-            b.addEventListener('click', (e) => {
-                e.stopPropagation();
-                tb.querySelectorAll('.btn-figura-tipo[data-tipo]').forEach((x) => x.classList.remove('activo'));
-                b.classList.add('activo');
-                window.tipoFiguraSeleccionada = b.dataset.tipo;
-                actualizarVisibilidadRellenoToolbar(tb);
-            });
-        });
+    function obtenerOCrearToolbar() {
+        let tb = document.getElementById(TOOLBAR_ID);
+        if (tb) return tb;
 
-        const btnAgregarImg = tb.querySelector('#btn-figura-agregar-imagen');
-        if (btnAgregarImg) {
-            btnAgregarImg.addEventListener('click', async (e) => {
-                e.stopPropagation();
-                if (typeof eel === 'undefined' || typeof eel.insertar_imagen_pdf_rpc !== 'function') return;
-                const rutaPdf = obtenerRutaPdf();
-                if (!rutaPdf) return;
-                const pagIdx = obtenerPaginaIdx();
-                btnAgregarImg.disabled = true;
-                try {
-                    const res = await eel.insertar_imagen_pdf_rpc(rutaPdf, pagIdx, null, null)();
-                    if (res && res.cancelado) return;
-                    if (res && res.success) {
-                        toggleModoFiguras(false);
-                        if (typeof window.seleccionarElementoPendienteMover === 'function') {
-                            window.seleccionarElementoPendienteMover({
-                                tipo: 'imagen',
-                                xref: res.xref,
-                                bbox: res.bbox
-                            });
-                        }
-                        if (typeof cargarPagina === 'function') {
-                            await cargarPagina(pagIdx);
-                        }
-                        if (typeof toggleModoMoverElementos === 'function') {
-                            toggleModoMoverElementos(true);
-                        }
-                    } else if (res && res.error) {
-                        mostrarAvisoToast(res.error, 'error');
-                    }
-                } catch (err) {
-                    console.error('[FigurasPdf] Error insertando imagen:', err);
-                } finally {
-                    btnAgregarImg.disabled = false;
-                }
-            });
-        }
-
-        const inputBorde = tb.querySelector('#input-color-borde-fig');
-        if (inputBorde) {
-            inputBorde.addEventListener('input', (e) => {
-                window.colorBordeFigura = e.target.value;
-            });
-        }
-
-        const inputRelleno = tb.querySelector('#input-color-relleno-fig');
-        const btnSinRelleno = tb.querySelector('#btn-toggle-sin-relleno');
-        if (inputRelleno && btnSinRelleno) {
-            inputRelleno.addEventListener('input', (e) => {
-                window.colorRellenoFigura = e.target.value;
-                btnSinRelleno.classList.remove('activo');
-            });
-
-            btnSinRelleno.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (window.colorRellenoFigura === 'none') {
-                    window.colorRellenoFigura = inputRelleno.value || '#3498db';
-                    btnSinRelleno.classList.remove('activo');
-                } else {
-                    window.colorRellenoFigura = 'none';
-                    btnSinRelleno.classList.add('activo');
-                }
-            });
-        }
-
-        const selGrosor = tb.querySelector('#select-grosor-fig');
-        if (selGrosor) {
-            selGrosor.value = String(window.grosorBordeFigura);
-            selGrosor.addEventListener('change', (e) => {
-                window.grosorBordeFigura = parseFloat(e.target.value) || 2;
-            });
-        }
-
-        const btnCerrar = tb.querySelector('.btn-cerrar-toolbar-fig');
-        if (btnCerrar) {
-            btnCerrar.addEventListener('click', (e) => {
-                e.stopPropagation();
-                toggleModoFiguras(false);
-            });
-        }
-
+        tb = document.createElement('div');
+        tb.id = TOOLBAR_ID;
+        tb.className = 'toolbar-figuras-flotante';
+        tb.innerHTML = _construirHTMLToolbarFiguras();
+        _vincularEventosToolbarFiguras(tb);
         document.body.appendChild(tb);
         actualizarVisibilidadRellenoToolbar(tb);
         return tb;
@@ -551,22 +496,23 @@ window.grosorBordeFigura = 2;
         if (prev) prev.remove();
     }
 
+    function _calcularPuntoSnapFlecha(startX, startY, curX, curY, shiftKey) {
+        if (!shiftKey) return { x: curX, y: curY };
+        const dx = curX - startX;
+        const dy = curY - startY;
+        const dist = Math.hypot(dx, dy);
+        const snap = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) * (Math.PI / 4);
+        return {
+            x: startX + dist * Math.cos(snap),
+            y: startY + dist * Math.sin(snap)
+        };
+    }
+
     function actualizarPreview(startX, startY, currentX, currentY, tipo, shiftKey) {
         const prev = asegurarPreview();
 
         if (tipo === 'arrow') {
-            let finalX = currentX;
-            let finalY = currentY;
-
-            if (shiftKey) {
-                const dx = currentX - startX;
-                const dy = currentY - startY;
-                const angle = Math.atan2(dy, dx);
-                const dist = Math.hypot(dx, dy);
-                const snap = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
-                finalX = startX + dist * Math.cos(snap);
-                finalY = startY + dist * Math.sin(snap);
-            }
+            const snapped = _calcularPuntoSnapFlecha(startX, startY, currentX, currentY, shiftKey);
 
             prev.style.border = 'none';
             prev.style.backgroundColor = 'transparent';
@@ -585,10 +531,10 @@ window.grosorBordeFigura = 2;
                             <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="${window.colorBordeFigura}"/>
                         </marker>
                     </defs>
-                    <line x1="${startX}" y1="${startY}" x2="${finalX}" y2="${finalY}" stroke="${window.colorBordeFigura}" stroke-width="${window.grosorBordeFigura}" marker-end="url(#${markerId})" stroke-linecap="round"/>
+                    <line x1="${startX}" y1="${startY}" x2="${snapped.x}" y2="${snapped.y}" stroke="${window.colorBordeFigura}" stroke-width="${window.grosorBordeFigura}" marker-end="url(#${markerId})" stroke-linecap="round"/>
                 </svg>
             `;
-            return { startX, startY, currentX: finalX, currentY: finalY };
+            return { startX, startY, currentX: snapped.x, currentY: snapped.y };
         }
 
         prev.innerHTML = '';
@@ -624,6 +570,151 @@ window.grosorBordeFigura = 2;
         return { x: left, y: top, w: width, h: height };
     }
 
+    async function _finalizarCreacionFiguraPdf(res, pagIdx, tipo, colorBorde, colorRelleno, grosor) {
+        if (!res || !res.success) {
+            if (tipo !== 'arrow') console.error('[FigurasPdf] Error al crear figura:', res?.error);
+            return;
+        }
+        if (typeof cargarPagina === 'function') await cargarPagina(pagIdx);
+        const figuraCreada = {
+            id: `figura-${res.xref}`,
+            tipo: 'figura',
+            tipo_figura: res.tipo_figura || tipo,
+            xref: res.xref,
+            bbox: res.bbox,
+            color_borde: res.color_borde || colorBorde,
+            color_relleno: tipo === 'arrow' ? (res.color_borde || colorBorde) : (res.color_relleno || colorRelleno),
+            grosor: res.grosor || grosor
+        };
+        if (res.vertices) figuraCreada.vertices = res.vertices;
+        mostrarMarcoFiguraRecienCreada(figuraCreada);
+    }
+
+    async function _crearFlechaEnPdf(finalDibujo, shiftKey, ruta, pagIdx) {
+        const pt = _calcularPuntoSnapFlecha(finalDibujo.startX, finalDibujo.startY, finalDibujo.currentX, finalDibujo.currentY, shiftKey);
+        const dist = Math.hypot(pt.x - finalDibujo.startX, pt.y - finalDibujo.startY);
+        removerPreview();
+        if (dist < 8) return;
+
+        const p1 = proyectarPuntoCanvasAPdf(finalDibujo.startX, finalDibujo.startY);
+        const p2 = proyectarPuntoCanvasAPdf(pt.x, pt.y);
+        try {
+            const res = await eel.crear_figura_pdf_rpc(
+                ruta, pagIdx, p1[0], p1[1], p2[0], p2[1],
+                'arrow', window.colorBordeFigura, window.colorBordeFigura, window.grosorBordeFigura, 1.0
+            )();
+            await _finalizarCreacionFiguraPdf(res, pagIdx, 'arrow', window.colorBordeFigura, window.colorBordeFigura, window.grosorBordeFigura);
+        } catch (err) {
+            console.error('[FigurasPdf] Error al crear flecha:', err);
+        }
+    }
+
+    async function _recortarZonaComoImagenPdf(finalDibujo, shiftKey, ruta, pagIdx) {
+        const w = finalDibujo.currentX - finalDibujo.startX;
+        const h = finalDibujo.currentY - finalDibujo.startY;
+        const left = w >= 0 ? finalDibujo.startX : finalDibujo.startX + w;
+        const top = h >= 0 ? finalDibujo.startY : finalDibujo.startY + h;
+        const width = Math.abs(w);
+        const height = Math.abs(h);
+        removerPreview();
+        if (width < 10 || height < 10 || typeof eel.recortar_zona_como_imagen_rpc !== 'function') return;
+
+        const p1 = proyectarPuntoCanvasAPdf(left, top);
+        const p2 = proyectarPuntoCanvasAPdf(left + width, top + height);
+        try {
+            const res = await eel.recortar_zona_como_imagen_rpc(ruta, pagIdx, p1[0], p1[1], p2[0], p2[1], Boolean(shiftKey))();
+            if (res && res.success) {
+                await _notificarImagenCreadaParaMover(res, pagIdx);
+            } else if (res && res.error) {
+                mostrarAvisoToast(res.error, 'error');
+            }
+        } catch (err) {
+            console.error('[FigurasPdf] Error recortando zona como imagen:', err);
+        }
+    }
+
+    async function _crearFormaRectOCirculoPdf(finalDibujo, shiftKey, ruta, pagIdx) {
+        const rawW = finalDibujo.currentX - finalDibujo.startX;
+        const rawH = finalDibujo.currentY - finalDibujo.startY;
+        let w = Math.abs(rawW);
+        let h = Math.abs(rawH);
+        if (shiftKey) {
+            const lado = Math.max(w, h);
+            w = lado;
+            h = lado;
+        }
+        const left = rawW >= 0 ? finalDibujo.startX : finalDibujo.startX - w;
+        const top = rawH >= 0 ? finalDibujo.startY : finalDibujo.startY - h;
+        removerPreview();
+        if (w < 6 || h < 6) return;
+
+        const rectPdf = proyectarCanvasAPdf({ x: left, y: top, w, h });
+        const rellenoParam = window.colorRellenoFigura === 'none' ? null : window.colorRellenoFigura;
+        try {
+            const res = await eel.crear_figura_pdf_rpc(
+                ruta, pagIdx, rectPdf[0], rectPdf[1], rectPdf[2], rectPdf[3],
+                finalDibujo.tipo, window.colorBordeFigura, rellenoParam, window.grosorBordeFigura, 1.0
+            )();
+            await _finalizarCreacionFiguraPdf(res, pagIdx, finalDibujo.tipo, window.colorBordeFigura, rellenoParam, window.grosorBordeFigura);
+        } catch (err) {
+            console.error('[FigurasPdf] Excepción al crear figura:', err);
+        }
+    }
+
+    function _onContainerMouseDownFiguras(e, container) {
+        if (!window.modoFigurasActivo || e.button !== 0) return;
+        if (e.target.closest('#' + TOOLBAR_ID) || e.target.closest('#' + POPOVER_ID) || e.target.closest('#' + MARCO_TEMPORAL_ID)) {
+            return;
+        }
+        if (figuraRecienCreada) {
+            limpiarSeleccionFiguraRecienCreada();
+        } else {
+            cerrarPopoverEstiloFigura();
+        }
+        const rectContainer = container.getBoundingClientRect();
+        const startX = e.clientX - rectContainer.left + container.scrollLeft;
+        const startY = e.clientY - rectContainer.top + container.scrollTop;
+        dibujoActivo = { startX, startY, currentX: startX, currentY: startY, tipo: window.tipoFiguraSeleccionada };
+        actualizarPreview(startX, startY, startX, startY, dibujoActivo.tipo, e.shiftKey);
+        e.preventDefault();
+    }
+
+    function _onWindowMouseMoveFiguras(e) {
+        if (!window.modoFigurasActivo || !dibujoActivo) return;
+        const containerEl = document.getElementById('visor-container');
+        if (!containerEl) return;
+        const rectContainer = containerEl.getBoundingClientRect();
+        dibujoActivo.currentX = e.clientX - rectContainer.left + containerEl.scrollLeft;
+        dibujoActivo.currentY = e.clientY - rectContainer.top + containerEl.scrollTop;
+        actualizarPreview(
+            dibujoActivo.startX, dibujoActivo.startY,
+            dibujoActivo.currentX, dibujoActivo.currentY,
+            dibujoActivo.tipo, e.shiftKey
+        );
+    }
+
+    async function _onWindowMouseUpFiguras(e) {
+        if (!window.modoFigurasActivo || !dibujoActivo) return;
+        const finalDibujo = dibujoActivo;
+        dibujoActivo = null;
+
+        const containerEl = document.getElementById('visor-container');
+        const ruta = obtenerRutaPdf();
+        if (!containerEl || !ruta || typeof eel === 'undefined' || typeof eel.crear_figura_pdf_rpc !== 'function') {
+            removerPreview();
+            return;
+        }
+
+        const pagIdx = obtenerPaginaIdx();
+        if (finalDibujo.tipo === 'arrow') {
+            await _crearFlechaEnPdf(finalDibujo, e.shiftKey, ruta, pagIdx);
+        } else if (finalDibujo.tipo === 'crop_img') {
+            await _recortarZonaComoImagenPdf(finalDibujo, e.shiftKey, ruta, pagIdx);
+        } else {
+            await _crearFormaRectOCirculoPdf(finalDibujo, e.shiftKey, ruta, pagIdx);
+        }
+    }
+
     function registrarListenersDibujo() {
         if (listenersInicializados) return;
         listenersInicializados = true;
@@ -631,246 +722,87 @@ window.grosorBordeFigura = 2;
         const container = document.getElementById('visor-container');
         if (!container) return;
 
-        container.addEventListener('mousedown', (e) => {
-            if (!window.modoFigurasActivo || e.button !== 0) return;
-            if (e.target.closest('#' + TOOLBAR_ID) || e.target.closest('#' + POPOVER_ID) || e.target.closest('#' + MARCO_TEMPORAL_ID)) {
-                return;
-            }
-
-            // Si hay una figura recién creada activa, fijarla al hacer clic fuera
-            if (figuraRecienCreada) {
-                limpiarSeleccionFiguraRecienCreada();
-            } else {
-                cerrarPopoverEstiloFigura();
-            }
-
-            const rectContainer = container.getBoundingClientRect();
-            const startX = e.clientX - rectContainer.left + container.scrollLeft;
-            const startY = e.clientY - rectContainer.top + container.scrollTop;
-
-            dibujoActivo = {
-                startX: startX,
-                startY: startY,
-                currentX: startX,
-                currentY: startY,
-                tipo: window.tipoFiguraSeleccionada
-            };
-
-            actualizarPreview(startX, startY, startX, startY, dibujoActivo.tipo, e.shiftKey);
-            e.preventDefault();
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (!window.modoFigurasActivo || !dibujoActivo) return;
-            const containerEl = document.getElementById('visor-container');
-            if (!containerEl) return;
-
-            const rectContainer = containerEl.getBoundingClientRect();
-            dibujoActivo.currentX = e.clientX - rectContainer.left + containerEl.scrollLeft;
-            dibujoActivo.currentY = e.clientY - rectContainer.top + containerEl.scrollTop;
-
-            actualizarPreview(
-                dibujoActivo.startX,
-                dibujoActivo.startY,
-                dibujoActivo.currentX,
-                dibujoActivo.currentY,
-                dibujoActivo.tipo,
-                e.shiftKey
-            );
-        });
-
-        window.addEventListener('mouseup', async (e) => {
-            if (!window.modoFigurasActivo || !dibujoActivo) return;
-            const finalDibujo = dibujoActivo;
-            dibujoActivo = null;
-
-            const containerEl = document.getElementById('visor-container');
-            if (!containerEl) {
-                removerPreview();
-                return;
-            }
-
-            const pagIdx = obtenerPaginaIdx();
-            const ruta = obtenerRutaPdf();
-
-            if (!ruta || typeof eel === 'undefined' || typeof eel.crear_figura_pdf_rpc !== 'function') {
-                removerPreview();
-                return;
-            }
-
-            if (finalDibujo.tipo === 'arrow') {
-                let curX = finalDibujo.currentX;
-                let curY = finalDibujo.currentY;
-
-                if (e.shiftKey) {
-                    const dx = curX - finalDibujo.startX;
-                    const dy = curY - finalDibujo.startY;
-                    const angle = Math.atan2(dy, dx);
-                    const dist = Math.hypot(dx, dy);
-                    const snap = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
-                    curX = finalDibujo.startX + dist * Math.cos(snap);
-                    curY = finalDibujo.startY + dist * Math.sin(snap);
-                }
-
-                const dist = Math.hypot(curX - finalDibujo.startX, curY - finalDibujo.startY);
-                removerPreview();
-
-                // Longitud euclidiana mínima de 8px para flechas
-                if (dist < 8) return;
-
-                const p1Pdf = proyectarPuntoCanvasAPdf(finalDibujo.startX, finalDibujo.startY);
-                const p2Pdf = proyectarPuntoCanvasAPdf(curX, curY);
-
-                try {
-                    const res = await eel.crear_figura_pdf_rpc(
-                        ruta,
-                        pagIdx,
-                        p1Pdf[0],
-                        p1Pdf[1],
-                        p2Pdf[0],
-                        p2Pdf[1],
-                        'arrow',
-                        window.colorBordeFigura,
-                        window.colorBordeFigura,
-                        window.grosorBordeFigura,
-                        1.0
-                    )();
-
-                    if (res && res.success) {
-                        if (typeof cargarPagina === 'function') {
-                            await cargarPagina(pagIdx);
-                        }
-                        const figuraCreada = {
-                            id: `figura-${res.xref}`,
-                            tipo: 'figura',
-                            tipo_figura: 'arrow',
-                            xref: res.xref,
-                            bbox: res.bbox,
-                            vertices: res.vertices,
-                            color_borde: res.color_borde || window.colorBordeFigura,
-                            color_relleno: res.color_borde || window.colorBordeFigura,
-                            grosor: res.grosor || window.grosorBordeFigura
-                        };
-                        mostrarMarcoFiguraRecienCreada(figuraCreada);
-                    }
-                } catch (err) {
-                    console.error('[FigurasPdf] Error al crear flecha:', err);
-                }
-                return;
-            }
-
-            if (finalDibujo.tipo === 'crop_img') {
-                const w = finalDibujo.currentX - finalDibujo.startX;
-                const h = finalDibujo.currentY - finalDibujo.startY;
-                const left = w >= 0 ? finalDibujo.startX : finalDibujo.startX + w;
-                const top = h >= 0 ? finalDibujo.startY : finalDibujo.startY + h;
-                const width = Math.abs(w);
-                const height = Math.abs(h);
-                removerPreview();
-                if (width < 10 || height < 10) return;
-                if (typeof eel.recortar_zona_como_imagen_rpc !== 'function') return;
-
-                const p1Pdf = proyectarPuntoCanvasAPdf(left, top);
-                const p2Pdf = proyectarPuntoCanvasAPdf(left + width, top + height);
-                try {
-                    const res = await eel.recortar_zona_como_imagen_rpc(
-                        ruta,
-                        pagIdx,
-                        p1Pdf[0],
-                        p1Pdf[1],
-                        p2Pdf[0],
-                        p2Pdf[1],
-                        Boolean(e.shiftKey)
-                    )();
-                    if (res && res.success) {
-                        toggleModoFiguras(false);
-                        if (typeof window.seleccionarElementoPendienteMover === 'function') {
-                            window.seleccionarElementoPendienteMover({
-                                tipo: 'imagen',
-                                xref: res.xref,
-                                bbox: res.bbox
-                            });
-                        }
-                        if (typeof cargarPagina === 'function') {
-                            await cargarPagina(pagIdx);
-                        }
-                        if (typeof toggleModoMoverElementos === 'function') {
-                            toggleModoMoverElementos(true);
-                        }
-                    } else if (res && res.error) {
-                        mostrarAvisoToast(res.error, 'error');
-                    }
-                } catch (err) {
-                    console.error('[FigurasPdf] Error recortando zona como imagen:', err);
-                }
-                return;
-            }
-
-            // Rectángulo y círculo
-            const rawW = finalDibujo.currentX - finalDibujo.startX;
-            const rawH = finalDibujo.currentY - finalDibujo.startY;
-            let w = Math.abs(rawW);
-            let h = Math.abs(rawH);
-
-            if (e.shiftKey) {
-                const lado = Math.max(w, h);
-                w = lado;
-                h = lado;
-            }
-
-            const left = rawW >= 0 ? finalDibujo.startX : finalDibujo.startX - w;
-            const top = rawH >= 0 ? finalDibujo.startY : finalDibujo.startY - h;
-
-            removerPreview();
-
-            // Mínimo 6x6 px para evitar clics accidentales en rectángulos y círculos
-            if (w < 6 || h < 6) return;
-
-            const rectPdf = proyectarCanvasAPdf({ x: left, y: top, w: w, h: h });
-
-            try {
-                const rellenoParam = window.colorRellenoFigura === 'none' ? null : window.colorRellenoFigura;
-                const res = await eel.crear_figura_pdf_rpc(
-                    ruta,
-                    pagIdx,
-                    rectPdf[0],
-                    rectPdf[1],
-                    rectPdf[2],
-                    rectPdf[3],
-                    finalDibujo.tipo,
-                    window.colorBordeFigura,
-                    rellenoParam,
-                    window.grosorBordeFigura,
-                    1.0
-                )();
-
-                if (res && res.success) {
-                    if (typeof cargarPagina === 'function') {
-                        await cargarPagina(pagIdx);
-                    }
-                    const figuraCreada = {
-                        id: `figura-${res.xref}`,
-                        tipo: 'figura',
-                        tipo_figura: res.tipo_figura || finalDibujo.tipo,
-                        xref: res.xref,
-                        bbox: res.bbox,
-                        color_borde: res.color_borde || window.colorBordeFigura,
-                        color_relleno: res.color_relleno || rellenoParam,
-                        grosor: res.grosor || window.grosorBordeFigura
-                    };
-                    mostrarMarcoFiguraRecienCreada(figuraCreada);
-                } else {
-                    console.error('[FigurasPdf] Error al crear figura:', res?.error);
-                }
-            } catch (err) {
-                console.error('[FigurasPdf] Excepción al crear figura:', err);
-            }
-        });
+        container.addEventListener('mousedown', (e) => _onContainerMouseDownFiguras(e, container));
+        window.addEventListener('mousemove', _onWindowMouseMoveFiguras);
+        window.addEventListener('mouseup', _onWindowMouseUpFiguras);
     }
 
     // ==========================================
     // POPOVER DE ESTILO DE FIGURA (EDICIÓN RÁPIDA)
     // ==========================================
+    async function _eliminarFiguraActivaPdf(el, usarFallbackMover = false) {
+        if (!el) return;
+        limpiarSeleccionFiguraRecienCreada();
+        const ruta = obtenerRutaPdf();
+        const pagIdx = obtenerPaginaIdx();
+        if (ruta && typeof eel !== 'undefined' && typeof eel.eliminar_elemento_pdf === 'function') {
+            try {
+                const res = await eel.eliminar_elemento_pdf(ruta, pagIdx, el)();
+                if (res && res.success && typeof cargarPagina === 'function') {
+                    await cargarPagina(pagIdx);
+                }
+            } catch (err) {
+                console.error('[FigurasPdf] Error al eliminar figura:', err);
+            }
+        } else if (usarFallbackMover && typeof window.eliminarElementoMover === 'function') {
+            window.eliminarElementoMover(el);
+        }
+    }
+
+    function _habilitarArrastrePopoverFigura(p) {
+        const header = p.querySelector('.popover-fig-header');
+        if (!header) return;
+        header.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.btn-cerrar-popover-fig') || e.button !== 0) return;
+            e.preventDefault();
+            e.stopPropagation();
+            p.classList.add('arrastrando');
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const initialLeft = p.offsetLeft;
+            const initialTop = p.offsetTop;
+
+            const onMouseMove = (ev) => {
+                p.style.transform = 'none';
+                p.style.left = Math.round(initialLeft + (ev.clientX - startX)) + 'px';
+                p.style.top = Math.round(initialTop + (ev.clientY - startY)) + 'px';
+            };
+            const onMouseUp = () => {
+                p.classList.remove('arrastrando');
+                window.removeEventListener('mousemove', onMouseMove);
+                window.removeEventListener('mouseup', onMouseUp);
+            };
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+        });
+    }
+
+    function _vincularEventosPopoverFigura(p) {
+        p.querySelector('.btn-cerrar-popover-fig').addEventListener('click', cerrarPopoverEstiloFigura);
+        p.querySelector('#pop-btn-aplicar-fig').addEventListener('click', cerrarPopoverEstiloFigura);
+        p.querySelector('#pop-color-borde-fig').addEventListener('change', (e) => {
+            aplicarCambioEstiloFigura({ color_borde: e.target.value });
+        });
+
+        const popInputRelleno = p.querySelector('#pop-color-relleno-fig');
+        const popBtnSinRelleno = p.querySelector('#pop-btn-sin-relleno');
+        popInputRelleno.addEventListener('change', (e) => {
+            popBtnSinRelleno.classList.remove('activo');
+            aplicarCambioEstiloFigura({ color_relleno: e.target.value });
+        });
+        popBtnSinRelleno.addEventListener('click', () => {
+            const esTransparente = popBtnSinRelleno.classList.toggle('activo');
+            aplicarCambioEstiloFigura({ color_relleno: esTransparente ? 'none' : (popInputRelleno.value || '#3498db') });
+        });
+
+        p.querySelector('#pop-select-grosor-fig').addEventListener('change', (e) => {
+            aplicarCambioEstiloFigura({ grosor: parseFloat(e.target.value) || 2 });
+        });
+        p.querySelector('#pop-btn-eliminar-fig').addEventListener('click', () => {
+            _eliminarFiguraActivaPdf(figuraEditandoActual, true);
+        });
+    }
+
     function obtenerOCrearPopoverEstilo() {
         let p = document.getElementById(POPOVER_ID);
         if (p) return p;
@@ -923,90 +855,31 @@ window.grosorBordeFigura = 2;
         `;
 
         document.body.appendChild(p);
-
-        // Arrastrar popover desde el encabezado
-        const header = p.querySelector('.popover-fig-header');
-        if (header) {
-            header.addEventListener('mousedown', (e) => {
-                if (e.target.closest('.btn-cerrar-popover-fig') || e.button !== 0) return;
-                e.preventDefault();
-                e.stopPropagation();
-                p.classList.add('arrastrando');
-                const startX = e.clientX;
-                const startY = e.clientY;
-                const initialLeft = p.offsetLeft;
-                const initialTop = p.offsetTop;
-
-                function onMouseMove(ev) {
-                    p.style.transform = 'none';
-                    const dx = ev.clientX - startX;
-                    const dy = ev.clientY - startY;
-                    p.style.left = Math.round(initialLeft + dx) + 'px';
-                    p.style.top = Math.round(initialTop + dy) + 'px';
-                }
-
-                function onMouseUp() {
-                    p.classList.remove('arrastrando');
-                    window.removeEventListener('mousemove', onMouseMove);
-                    window.removeEventListener('mouseup', onMouseUp);
-                }
-
-                window.addEventListener('mousemove', onMouseMove);
-                window.addEventListener('mouseup', onMouseUp);
-            });
-        }
-
-        // Listeners del popover
-        p.querySelector('.btn-cerrar-popover-fig').addEventListener('click', cerrarPopoverEstiloFigura);
-        p.querySelector('#pop-btn-aplicar-fig').addEventListener('click', cerrarPopoverEstiloFigura);
-
-        p.querySelector('#pop-color-borde-fig').addEventListener('change', (e) => {
-            aplicarCambioEstiloFigura({ color_borde: e.target.value });
-        });
-
-        const popInputRelleno = p.querySelector('#pop-color-relleno-fig');
-        const popBtnSinRelleno = p.querySelector('#pop-btn-sin-relleno');
-
-        popInputRelleno.addEventListener('change', (e) => {
-            popBtnSinRelleno.classList.remove('activo');
-            aplicarCambioEstiloFigura({ color_relleno: e.target.value });
-        });
-
-        popBtnSinRelleno.addEventListener('click', () => {
-            const esTransparente = popBtnSinRelleno.classList.toggle('activo');
-            if (esTransparente) {
-                aplicarCambioEstiloFigura({ color_relleno: 'none' });
-            } else {
-                aplicarCambioEstiloFigura({ color_relleno: popInputRelleno.value || '#3498db' });
-            }
-        });
-
-        p.querySelector('#pop-select-grosor-fig').addEventListener('change', (e) => {
-            aplicarCambioEstiloFigura({ grosor: parseFloat(e.target.value) || 2 });
-        });
-
-        p.querySelector('#pop-btn-eliminar-fig').addEventListener('click', async () => {
-            if (figuraEditandoActual) {
-                const el = figuraEditandoActual;
-                limpiarSeleccionFiguraRecienCreada();
-                const ruta = obtenerRutaPdf();
-                const pagIdx = obtenerPaginaIdx();
-                if (ruta && typeof eel !== 'undefined' && typeof eel.eliminar_elemento_pdf === 'function') {
-                    try {
-                        const res = await eel.eliminar_elemento_pdf(ruta, pagIdx, el)();
-                        if (res && res.success && typeof cargarPagina === 'function') {
-                            await cargarPagina(pagIdx);
-                        }
-                    } catch (err) {
-                        console.error('[FigurasPdf] Error al eliminar figura:', err);
-                    }
-                } else if (typeof window.eliminarElementoMover === 'function') {
-                    window.eliminarElementoMover(el);
-                }
-            }
-        });
-
+        _habilitarArrastrePopoverFigura(p);
+        _vincularEventosPopoverFigura(p);
         return p;
+    }
+
+    function _resolverEstiloFiguraParaRPC(p, cambios) {
+        const colorBorde = cambios.color_borde !== undefined ? cambios.color_borde : p.querySelector('#pop-color-borde-fig').value;
+        const esArrow = figuraEditandoActual.tipo_figura === 'arrow';
+        let colorRelleno = colorBorde;
+        if (!esArrow) {
+            colorRelleno = cambios.color_relleno !== undefined
+                ? cambios.color_relleno
+                : (p.querySelector('#pop-btn-sin-relleno').classList.contains('activo') ? 'none' : p.querySelector('#pop-color-relleno-fig').value);
+        }
+        const grosor = cambios.grosor !== undefined ? cambios.grosor : parseFloat(p.querySelector('#pop-select-grosor-fig').value) || 2;
+        return { colorBorde, rellenoParam: colorRelleno, grosor };
+    }
+
+    function _sincronizarFiguraEditadaConRes(target, res, colorBorde, rellenoParam, grosor) {
+        if (!target) return;
+        target.color_borde = res.color_borde || colorBorde;
+        target.color_relleno = res.color_relleno || (rellenoParam === 'none' ? null : rellenoParam);
+        target.grosor = res.grosor || grosor;
+        if (res.xref) target.xref = res.xref;
+        if (res.bbox) target.bbox = res.bbox;
     }
 
     async function aplicarCambioEstiloFigura(cambios) {
@@ -1015,50 +888,13 @@ window.grosorBordeFigura = 2;
         const pagIdx = obtenerPaginaIdx();
         if (!ruta || typeof eel === 'undefined' || typeof eel.editar_figura_pdf_rpc !== 'function') return;
 
-        const p = obtenerOCrearPopoverEstilo();
-        const colorBorde = cambios.color_borde !== undefined ? cambios.color_borde : p.querySelector('#pop-color-borde-fig').value;
-        const esArrow = figuraEditandoActual.tipo_figura === 'arrow';
-
-        let colorRelleno;
-        if (esArrow) {
-            colorRelleno = colorBorde;
-        } else {
-            colorRelleno = cambios.color_relleno !== undefined ? cambios.color_relleno : (
-                p.querySelector('#pop-btn-sin-relleno').classList.contains('activo') ? 'none' : p.querySelector('#pop-color-relleno-fig').value
-            );
-        }
-        const grosor = cambios.grosor !== undefined ? cambios.grosor : parseFloat(p.querySelector('#pop-select-grosor-fig').value) || 2;
-
-        const rellenoParam = colorRelleno;
-
+        const { colorBorde, rellenoParam, grosor } = _resolverEstiloFiguraParaRPC(obtenerOCrearPopoverEstilo(), cambios);
         try {
-            const res = await eel.editar_figura_pdf_rpc(
-                ruta,
-                pagIdx,
-                figuraEditandoActual,
-                colorBorde,
-                rellenoParam,
-                grosor
-            )();
-
+            const res = await eel.editar_figura_pdf_rpc(ruta, pagIdx, figuraEditandoActual, colorBorde, rellenoParam, grosor)();
             if (res && res.success) {
-                figuraEditandoActual.color_borde = res.color_borde || colorBorde;
-                figuraEditandoActual.color_relleno = res.color_relleno || (rellenoParam === 'none' ? null : rellenoParam);
-                figuraEditandoActual.grosor = res.grosor || grosor;
-                if (res.xref) figuraEditandoActual.xref = res.xref;
-                if (res.bbox) figuraEditandoActual.bbox = res.bbox;
-
-                if (figuraRecienCreada) {
-                    figuraRecienCreada.color_borde = figuraEditandoActual.color_borde;
-                    figuraRecienCreada.color_relleno = figuraEditandoActual.color_relleno;
-                    figuraRecienCreada.grosor = figuraEditandoActual.grosor;
-                    if (res.xref) figuraRecienCreada.xref = res.xref;
-                    if (res.bbox) figuraRecienCreada.bbox = res.bbox;
-                }
-
-                if (typeof cargarPagina === 'function') {
-                    await cargarPagina(pagIdx);
-                }
+                _sincronizarFiguraEditadaConRes(figuraEditandoActual, res, colorBorde, rellenoParam, grosor);
+                _sincronizarFiguraEditadaConRes(figuraRecienCreada, res, colorBorde, rellenoParam, grosor);
+                if (typeof cargarPagina === 'function') await cargarPagina(pagIdx);
                 reposicionarMarcoFiguraRecienCreada();
             }
         } catch (err) {
@@ -1082,96 +918,82 @@ window.grosorBordeFigura = 2;
         };
     }
 
-    function abrirPopoverEstiloFigura(elemento, anchorEl) {
-        if (!elemento || elemento.tipo !== 'figura') return;
-        figuraEditandoActual = elemento;
+    function _obtenerNombreTipoFigura(tipoFigura) {
+        if (tipoFigura === 'arrow') return txt('ttl-figura-flecha', 'Flecha');
+        if (tipoFigura === 'circle') return txt('ttl-figura-circulo', 'Círculo / Óvalo');
+        return txt('ttl-figura-rect', 'Rectángulo');
+    }
 
-        const p = obtenerOCrearPopoverEstilo();
-        const titulo = p.querySelector('#popover-fig-tipo-titulo');
-        const filaRelleno = p.querySelector('#pop-fila-relleno');
-        const labelBorde = p.querySelector('#pop-label-borde');
-
-        const esArrow = elemento.tipo_figura === 'arrow';
-
-        if (titulo) {
-            let tipoNom;
-            if (esArrow) {
-                tipoNom = txt('ttl-figura-flecha', 'Flecha');
-            } else if (elemento.tipo_figura === 'circle') {
-                tipoNom = txt('ttl-figura-circulo', 'Círculo / Óvalo');
-            } else {
-                tipoNom = txt('ttl-figura-rect', 'Rectángulo');
-            }
-            titulo.textContent = `${txt('lbl-estilo-figura', 'Estilo:')} ${tipoNom}`;
+    function _obtenerRectAnclaPopover(elemento, anchorEl) {
+        if (anchorEl && typeof anchorEl.getBoundingClientRect === 'function') {
+            return anchorEl.getBoundingClientRect();
         }
+        const marco = document.getElementById(MARCO_TEMPORAL_ID);
+        if (marco) return marco.getBoundingClientRect();
+        if (!Array.isArray(elemento.bbox)) return null;
+        const boxEl = document.querySelector(`.mover-el-box[data-el-id="${elemento.id}"]`);
+        return boxEl ? boxEl.getBoundingClientRect() : proyectarBboxPdfAPantalla(elemento.bbox);
+    }
 
-        if (labelBorde) {
-            labelBorde.textContent = esArrow ? txt('ttl-figura-color-flecha', 'Color de flecha') : txt('lbl-figura-borde', 'Color de borde');
+    function _posicionarPopoverEstilo(p, targetRect) {
+        if (!targetRect) {
+            p.style.left = '50%';
+            p.style.top = '100px';
+            p.style.transform = 'translateX(-50%)';
+            return;
         }
+        const popW = p.offsetWidth || 230;
+        const popH = p.offsetHeight || 220;
+        let left = targetRect.right + 12;
+        let top = targetRect.top;
+        if (left + popW > window.innerWidth - 12) left = Math.max(12, targetRect.left - popW - 12);
+        if (top + popH > window.innerHeight - 12) top = Math.max(12, window.innerHeight - popH - 12);
+        p.style.transform = 'none';
+        p.style.left = Math.round(left) + 'px';
+        p.style.top = Math.round(top) + 'px';
+    }
 
-        if (filaRelleno) {
-            filaRelleno.style.display = esArrow ? 'none' : 'flex';
-        }
-
+    function _sincronizarControlesColorPopover(p, elemento) {
         const inputBorde = p.querySelector('#pop-color-borde-fig');
         if (inputBorde) inputBorde.value = elemento.color_borde || '#000000';
 
         const inputRelleno = p.querySelector('#pop-color-relleno-fig');
         const btnSinRelleno = p.querySelector('#pop-btn-sin-relleno');
         if (inputRelleno && btnSinRelleno) {
-            if (!elemento.color_relleno || elemento.color_relleno === 'none') {
-                btnSinRelleno.classList.add('activo');
-            } else {
-                btnSinRelleno.classList.remove('activo');
-                inputRelleno.value = elemento.color_relleno;
-            }
+            const sinRelleno = !elemento.color_relleno || elemento.color_relleno === 'none';
+            btnSinRelleno.classList.toggle('activo', sinRelleno);
+            if (!sinRelleno) inputRelleno.value = elemento.color_relleno;
         }
+    }
+
+    function _sincronizarControlesPopover(p, elemento) {
+        const esArrow = elemento.tipo_figura === 'arrow';
+        const titulo = p.querySelector('#popover-fig-tipo-titulo');
+        if (titulo) titulo.textContent = `${txt('lbl-estilo-figura', 'Estilo:')} ${_obtenerNombreTipoFigura(elemento.tipo_figura)}`;
+
+        const labelBorde = p.querySelector('#pop-label-borde');
+        if (labelBorde) labelBorde.textContent = esArrow ? txt('ttl-figura-color-flecha', 'Color de flecha') : txt('lbl-figura-borde', 'Color de borde');
+
+        const filaRelleno = p.querySelector('#pop-fila-relleno');
+        if (filaRelleno) filaRelleno.style.display = esArrow ? 'none' : 'flex';
+
+        _sincronizarControlesColorPopover(p, elemento);
 
         const selGrosor = p.querySelector('#pop-select-grosor-fig');
         if (selGrosor) {
-            const gVal = Math.round(elemento.grosor || 2);
-            selGrosor.value = String(gVal);
+            selGrosor.value = String(Math.round(elemento.grosor || 2));
             if (!selGrosor.value) selGrosor.value = '2';
         }
+    }
 
-        // Posicionar popover
+    function abrirPopoverEstiloFigura(elemento, anchorEl) {
+        if (!elemento || elemento.tipo !== 'figura') return;
+        figuraEditandoActual = elemento;
+
+        const p = obtenerOCrearPopoverEstilo();
+        _sincronizarControlesPopover(p, elemento);
         p.style.display = 'block';
-
-        let targetRect = null;
-        if (anchorEl && typeof anchorEl.getBoundingClientRect === 'function') {
-            targetRect = anchorEl.getBoundingClientRect();
-        } else if (document.getElementById(MARCO_TEMPORAL_ID)) {
-            targetRect = document.getElementById(MARCO_TEMPORAL_ID).getBoundingClientRect();
-        } else if (Array.isArray(elemento.bbox)) {
-            const boxEl = document.querySelector(`.mover-el-box[data-el-id="${elemento.id}"]`);
-            if (boxEl) {
-                targetRect = boxEl.getBoundingClientRect();
-            } else {
-                targetRect = proyectarBboxPdfAPantalla(elemento.bbox);
-            }
-        }
-
-        if (targetRect) {
-            const popW = p.offsetWidth || 230;
-            const popH = p.offsetHeight || 220;
-            let left = targetRect.right + 12;
-            let top = targetRect.top;
-
-            if (left + popW > window.innerWidth - 12) {
-                left = Math.max(12, targetRect.left - popW - 12);
-            }
-            if (top + popH > window.innerHeight - 12) {
-                top = Math.max(12, window.innerHeight - popH - 12);
-            }
-
-            p.style.transform = 'none';
-            p.style.left = Math.round(left) + 'px';
-            p.style.top = Math.round(top) + 'px';
-        } else {
-            p.style.left = '50%';
-            p.style.top = '100px';
-            p.style.transform = 'translateX(-50%)';
-        }
+        _posicionarPopoverEstilo(p, _obtenerRectAnclaPopover(elemento, anchorEl));
     }
 
     function cerrarPopoverEstiloFigura() {
@@ -1197,19 +1019,7 @@ window.grosorBordeFigura = 2;
         if ((e.key === 'Delete' || e.key === 'Backspace') && figuraRecienCreada) {
             if (esContextoEditable(e)) return;
             e.preventDefault();
-            const el = figuraRecienCreada;
-            limpiarSeleccionFiguraRecienCreada();
-            const ruta = obtenerRutaPdf();
-            const pagIdx = obtenerPaginaIdx();
-            if (ruta && typeof eel !== 'undefined' && typeof eel.eliminar_elemento_pdf === 'function') {
-                eel.eliminar_elemento_pdf(ruta, pagIdx, el)().then(async (res) => {
-                    if (res && res.success && typeof cargarPagina === 'function') {
-                        await cargarPagina(pagIdx);
-                    }
-                }).catch((err) => {
-                    console.error('[FigurasPdf] Error al eliminar figura con Delete:', err);
-                });
-            }
+            _eliminarFiguraActivaPdf(figuraRecienCreada, false);
             return;
         }
 

@@ -128,116 +128,132 @@ function cambiarModoSalidaIA(nuevoModo) {
 }
 window.cambiarModoSalidaIA = cambiarModoSalidaIA;
 
-// --- GESTIÓN DE PROVEEDORES DE IA (MODO HÍBRIDO) ---
-function cambiarProveedorIA(proveedor) {
-    if (!proveedor) proveedor = 'ollama';
-
-    // 1. Preservar estado actual del proveedor anterior antes de cambiar
+function _preservarEstadoProveedorAnteriorIA() {
     const prevProv = configProveedores.proveedorActivo;
-    if (prevProv && prevProv !== 'ollama') {
-        const currentKey = document.getElementById('txt-ia-api-key')?.value;
-        const currentModel = document.getElementById('sel-ia-modelo-cloud')?.value;
-        if (currentKey && currentKey.trim()) {
-            configProveedores.keys[prevProv] = currentKey.trim();
-        }
-        if (currentModel && currentModel !== '__custom_model_prompt__') {
-            configProveedores.modelos[prevProv] = currentModel.trim();
-        }
+    if (!prevProv || prevProv === 'ollama') return;
+    const currentKey = document.getElementById('txt-ia-api-key')?.value;
+    const currentModel = document.getElementById('sel-ia-modelo-cloud')?.value;
+    if (currentKey && currentKey.trim()) configProveedores.keys[prevProv] = currentKey.trim();
+    if (currentModel && currentModel !== '__custom_model_prompt__') configProveedores.modelos[prevProv] = currentModel.trim();
+}
+
+function _poblarSelectModelosCloudIA(selModeloCloud, modelosBase, modeloGuardado, fallbackPrimero = false, prov = null) {
+    if (!selModeloCloud) return;
+    selModeloCloud.innerHTML = '';
+    const lista = [...(modelosBase || [])];
+    if (modeloGuardado && !lista.some(m => m.id === modeloGuardado)) {
+        lista.unshift({ id: modeloGuardado, nombre: `${modeloGuardado} (Guardado / Personalizado)` });
     }
 
-    configProveedores.proveedorActivo = proveedor;
+    let matchFound = false;
+    lista.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.text = m.nombre || m.id;
+        if (m.id === modeloGuardado) {
+            opt.selected = true;
+            matchFound = true;
+        }
+        selModeloCloud.appendChild(opt);
+    });
 
-    const cardLocal = document.getElementById('ia-card-local-ollama');
-    const cardCloud = document.getElementById('ia-card-cloud-config');
-    const selProveedor = document.getElementById('sel-ia-proveedor');
+    const optCustom = document.createElement('option');
+    optCustom.value = '__custom_model_prompt__';
+    optCustom.text = '✍️ Escribir otro modelo...';
+    selModeloCloud.appendChild(optCustom);
+
+    if (matchFound) {
+        selModeloCloud.value = modeloGuardado;
+    } else if (fallbackPrimero && lista.length > 0) {
+        selModeloCloud.value = lista[0].id;
+        if (prov) configProveedores.modelos[prov] = lista[0].id;
+    }
+}
+
+function _configurarUICloudProveedorIA(proveedor, info) {
     const cardTitle = document.getElementById('ia-cloud-card-title');
     const btnObtenerKey = document.getElementById('btn-ia-obtener-key');
     const txtApiKey = document.getElementById('txt-ia-api-key');
     const selModeloCloud = document.getElementById('sel-ia-modelo-cloud');
-    const testStatus = document.getElementById('ia-cloud-test-status');
-    const lblInfo = document.getElementById('lbl-info-modelos-cloud');
 
-    if (selProveedor && selProveedor.value !== proveedor) {
-        selProveedor.value = proveedor;
+    if (cardTitle) cardTitle.innerText = info.cardTitulo;
+    if (btnObtenerKey) {
+        btnObtenerKey.innerText = info.linkTexto;
+        btnObtenerKey.title = `Abrir consola oficial de ${info.nombre}`;
     }
+    if (txtApiKey) {
+        txtApiKey.placeholder = info.placeholder;
+        txtApiKey.value = configProveedores.keys[proveedor] || '';
+    }
+    const activeModel = configProveedores.modelos[proveedor] || info.defaultModelo;
+    _poblarSelectModelosCloudIA(selModeloCloud, info.modelos, activeModel, false, proveedor);
+    actualizarBadgeEstadoIA(proveedor);
+
+    const activeKey = configProveedores.keys[proveedor] || '';
+    if (typeof eel !== 'undefined' && eel.rag_configurar_proveedor) {
+        eel.rag_configurar_proveedor(proveedor, activeKey, activeModel)();
+    }
+    refrescarModelosProveedorActual(false);
+}
+
+function _alternarTarjetasProveedorIA(esOllama) {
+    const cardLocal = document.getElementById('ia-card-local-ollama');
+    const cardCloud = document.getElementById('ia-card-cloud-config');
+    if (cardLocal) cardLocal.style.display = esOllama ? 'block' : 'none';
+    if (cardCloud) cardCloud.style.display = esOllama ? 'none' : 'block';
+}
+
+// --- GESTIÓN DE PROVEEDORES DE IA (MODO HÍBRIDO) ---
+function cambiarProveedorIA(proveedor) {
+    if (!proveedor) proveedor = 'ollama';
+    _preservarEstadoProveedorAnteriorIA();
+    configProveedores.proveedorActivo = proveedor;
+
+    const selProveedor = document.getElementById('sel-ia-proveedor');
+    if (selProveedor && selProveedor.value !== proveedor) selProveedor.value = proveedor;
+    const testStatus = document.getElementById('ia-cloud-test-status');
     if (testStatus) testStatus.innerHTML = '';
+    const lblInfo = document.getElementById('lbl-info-modelos-cloud');
     if (lblInfo) lblInfo.innerHTML = '';
 
-    if (proveedor === 'ollama') {
-        if (cardLocal) cardLocal.style.display = 'block';
-        if (cardCloud) cardCloud.style.display = 'none';
+    const esOllama = proveedor === 'ollama';
+    _alternarTarjetasProveedorIA(esOllama);
+
+    if (esOllama) {
         actualizarBadgeEstadoIA('ollama');
         if (typeof eel !== 'undefined' && eel.rag_configurar_proveedor) {
             eel.rag_configurar_proveedor('ollama', '', '')();
         }
-    } else {
-        if (cardLocal) cardLocal.style.display = 'none';
-        if (cardCloud) cardCloud.style.display = 'block';
+    } else if (PROVEEDORES_CLOUD[proveedor]) {
+        _configurarUICloudProveedorIA(proveedor, PROVEEDORES_CLOUD[proveedor]);
+    }
 
-        const info = PROVEEDORES_CLOUD[proveedor];
-        if (info) {
-            if (cardTitle) cardTitle.innerText = info.cardTitulo;
-            if (btnObtenerKey) {
-                btnObtenerKey.innerText = info.linkTexto;
-                btnObtenerKey.title = `Abrir consola oficial de ${info.nombre}`;
-            }
-            if (txtApiKey) {
-                txtApiKey.placeholder = info.placeholder;
-                txtApiKey.value = configProveedores.keys[proveedor] || '';
-            }
-            if (selModeloCloud) {
-                selModeloCloud.innerHTML = '';
-                const modeloGuardado = configProveedores.modelos[proveedor] || info.defaultModelo;
-                let matchFound = false;
+    if (typeof guardarTodosAjustes === 'function') guardarTodosAjustes(false);
+    if (typeof actualizarGaugeTokensUI === 'function') actualizarGaugeTokensUI(true);
+}
 
-                const listaModelos = [...(info.modelos || [])];
-                if (modeloGuardado && !listaModelos.some(m => m.id === modeloGuardado)) {
-                    listaModelos.unshift({
-                        id: modeloGuardado,
-                        nombre: `${modeloGuardado} (Guardado / Personalizado)`
-                    });
-                }
-
-                listaModelos.forEach(m => {
-                    const opt = document.createElement('option');
-                    opt.value = m.id;
-                    opt.text = m.nombre || m.id;
-                    if (m.id === modeloGuardado) {
-                        opt.selected = true;
-                        matchFound = true;
-                    }
-                    selModeloCloud.appendChild(opt);
-                });
-
-                // Opción para ingresar manualmente cualquier modelo
-                const optCustom = document.createElement('option');
-                optCustom.value = '__custom_model_prompt__';
-                optCustom.text = '✍️ Escribir otro modelo...';
-                selModeloCloud.appendChild(optCustom);
-
-                if (matchFound) {
-                    selModeloCloud.value = modeloGuardado;
-                }
-            }
-            actualizarBadgeEstadoIA(proveedor);
-
-            const activeKey = configProveedores.keys[proveedor] || '';
-            const activeModel = configProveedores.modelos[proveedor] || info.defaultModelo;
-            if (typeof eel !== 'undefined' && eel.rag_configurar_proveedor) {
-                eel.rag_configurar_proveedor(proveedor, activeKey, activeModel)();
-            }
-
-            // Consultar modelos actualizados en vivo si hay API Key configurada
-            refrescarModelosProveedorActual(false);
+function _actualizarEstadoModelosCloudUI(lblInfo, res, prov, notificarUsuario) {
+    if (lblInfo) {
+        if (res.origen === 'live') {
+            lblInfo.innerHTML = `<span style="color:#27ae60; font-weight:600;">🟢 ${res.modelos.length} modelos actualizados en vivo</span>`;
+        } else if (res.origen === 'fallback_sin_key') {
+            lblInfo.innerHTML = `<span style="color:#e67e22;">ℹ️ Ingresa tu clave para listar los modelos en vivo.</span>`;
+        } else {
+            lblInfo.innerHTML = `<span style="color:#747d8c;">ℹ️ Modelos estándar recomendados.</span>`;
         }
     }
+    if (!notificarUsuario) return;
+    if (res.origen === 'live') {
+        mostrarToastLira(`Modelos de ${PROVEEDORES_CLOUD[prov]?.nombre || prov} actualizados.`, 'exito');
+    } else if (res.error) {
+        mostrarToastLira(`Usando lista base (${res.error})`, 'advertencia');
+    }
+}
 
-    if (typeof guardarTodosAjustes === 'function') {
-        guardarTodosAjustes(false);
-    }
-    if (typeof actualizarGaugeTokensUI === 'function') {
-        actualizarGaugeTokensUI(true);
-    }
+async function _obtenerModelosProveedorBackendIA(prov, key) {
+    if (typeof eel === 'undefined' || !eel.rag_obtener_modelos_proveedor) return null;
+    const res = await eel.rag_obtener_modelos_proveedor(prov, key)();
+    return (res && Array.isArray(res.modelos) && res.modelos.length > 0) ? res : null;
 }
 
 async function refrescarModelosProveedorActual(notificarUsuario = false) {
@@ -247,71 +263,16 @@ async function refrescarModelosProveedorActual(notificarUsuario = false) {
     const btnRefresh = document.getElementById('btn-refrescar-modelos-cloud');
     const selModeloCloud = document.getElementById('sel-ia-modelo-cloud');
     const lblInfo = document.getElementById('lbl-info-modelos-cloud');
-    const key = configProveedores.keys[prov] || '';
 
     if (btnRefresh) btnRefresh.innerText = '⏳ Cargando...';
     if (lblInfo) lblInfo.innerHTML = `<span style="color:#747d8c;">Consultando modelos activos de ${PROVEEDORES_CLOUD[prov]?.nombre || prov}...</span>`;
 
     try {
-        if (typeof eel !== 'undefined' && eel.rag_obtener_modelos_proveedor) {
-            const res = await eel.rag_obtener_modelos_proveedor(prov, key)();
-            if (res && Array.isArray(res.modelos) && res.modelos.length > 0) {
-                if (selModeloCloud) {
-                    const modeloGuardado = configProveedores.modelos[prov] || PROVEEDORES_CLOUD[prov]?.defaultModelo;
-                    selModeloCloud.innerHTML = '';
-                    let matchFound = false;
-
-                    const lista = [...res.modelos];
-                    if (modeloGuardado && !lista.some(m => m.id === modeloGuardado)) {
-                        lista.unshift({
-                            id: modeloGuardado,
-                            nombre: `${modeloGuardado} (Guardado / Personalizado)`
-                        });
-                    }
-
-                    lista.forEach(m => {
-                        const opt = document.createElement('option');
-                        opt.value = m.id;
-                        opt.text = m.nombre || m.id;
-                        if (m.id === modeloGuardado) {
-                            opt.selected = true;
-                            matchFound = true;
-                        }
-                        selModeloCloud.appendChild(opt);
-                    });
-
-                    const optCustom = document.createElement('option');
-                    optCustom.value = '__custom_model_prompt__';
-                    optCustom.text = '✍️ Escribir otro modelo...';
-                    selModeloCloud.appendChild(optCustom);
-
-                    if (matchFound) {
-                        selModeloCloud.value = modeloGuardado;
-                    } else if (lista.length > 0) {
-                        selModeloCloud.value = lista[0].id;
-                        configProveedores.modelos[prov] = lista[0].id;
-                    }
-                }
-
-                if (lblInfo) {
-                    if (res.origen === 'live') {
-                        lblInfo.innerHTML = `<span style="color:#27ae60; font-weight:600;">🟢 ${res.modelos.length} modelos actualizados en vivo</span>`;
-                    } else if (res.origen === 'fallback_sin_key') {
-                        lblInfo.innerHTML = `<span style="color:#e67e22;">ℹ️ Ingresa tu clave para listar los modelos en vivo.</span>`;
-                    } else {
-                        lblInfo.innerHTML = `<span style="color:#747d8c;">ℹ️ Modelos estándar recomendados.</span>`;
-                    }
-                }
-
-                if (notificarUsuario) {
-                    if (res.origen === 'live') {
-                        mostrarToastLira(`Modelos de ${PROVEEDORES_CLOUD[prov]?.nombre || prov} actualizados.`, 'exito');
-                    } else if (res.error) {
-                        mostrarToastLira(`Usando lista base (${res.error})`, 'advertencia');
-                    }
-                }
-                return;
-            }
+        const res = await _obtenerModelosProveedorBackendIA(prov, configProveedores.keys[prov] || '');
+        if (res) {
+            const modeloGuardado = configProveedores.modelos[prov] || PROVEEDORES_CLOUD[prov]?.defaultModelo;
+            _poblarSelectModelosCloudIA(selModeloCloud, res.modelos, modeloGuardado, true, prov);
+            _actualizarEstadoModelosCloudUI(lblInfo, res, prov, notificarUsuario);
         }
     } catch (e) {
         console.warn("⚠️ [LiraAI] Error consultando modelos en tiempo real:", e);
@@ -384,34 +345,46 @@ function actualizarApiKeyProveedorActual(val) {
     }
 }
 
+const _SUGERENCIAS_MODELO_CLOUD = {
+    gemini: 'gemini-2.0-flash',
+    deepseek: 'deepseek-reasoner',
+    groq: 'llama-3.3-70b-versatile'
+};
+
+async function _solicitarYAgregarModeloCustomCloud(prov) {
+    const modeloActual = configProveedores.modelos[prov] || '';
+    const sugerencia = _SUGERENCIAS_MODELO_CLOUD[prov] || '';
+    const nuevoModelo = await liraPrompt(
+        `Ingresa el nombre/ID exacto del modelo para ${PROVEEDORES_CLOUD[prov]?.nombre || prov}:\n(Ej: gemini-2.0-flash, deepseek-reasoner, llama-3.3-70b-versatile, etc.)`,
+        modeloActual || sugerencia,
+        'ia'
+    );
+    const sel = document.getElementById('sel-ia-modelo-cloud');
+    if (!nuevoModelo || !nuevoModelo.trim()) {
+        if (sel) sel.value = configProveedores.modelos[prov] || PROVEEDORES_CLOUD[prov]?.defaultModelo;
+        return false;
+    }
+    const modTrim = nuevoModelo.trim();
+    configProveedores.modelos[prov] = modTrim;
+    if (sel) {
+        if (!Array.from(sel.options).some(o => o.value === modTrim)) {
+            const opt = document.createElement('option');
+            opt.value = modTrim;
+            opt.text = `${modTrim} (Personalizado)`;
+            sel.insertBefore(opt, sel.firstChild);
+        }
+        sel.value = modTrim;
+    }
+    return true;
+}
+
 async function actualizarModeloCloudActual(val) {
     const prov = configProveedores.proveedorActivo;
     if (!prov || prov === 'ollama') return;
 
     if (val === '__custom_model_prompt__') {
-        const modeloActual = configProveedores.modelos[prov] || '';
-        const sugerencia = prov === 'gemini' ? 'gemini-2.0-flash' : (prov === 'deepseek' ? 'deepseek-reasoner' : (prov === 'groq' ? 'llama-3.3-70b-versatile' : ''));
-        const nuevoModelo = await liraPrompt(`Ingresa el nombre/ID exacto del modelo para ${PROVEEDORES_CLOUD[prov]?.nombre || prov}:\n(Ej: gemini-2.0-flash, deepseek-reasoner, llama-3.3-70b-versatile, etc.)`, modeloActual || sugerencia, 'ia');
-        
-        const sel = document.getElementById('sel-ia-modelo-cloud');
-        if (nuevoModelo && nuevoModelo.trim()) {
-            const modTrim = nuevoModelo.trim();
-            configProveedores.modelos[prov] = modTrim;
-            
-            if (sel) {
-                let existe = Array.from(sel.options).find(o => o.value === modTrim);
-                if (!existe) {
-                    const opt = document.createElement('option');
-                    opt.value = modTrim;
-                    opt.text = `${modTrim} (Personalizado)`;
-                    sel.insertBefore(opt, sel.firstChild);
-                }
-                sel.value = modTrim;
-            }
-        } else {
-            if (sel) sel.value = configProveedores.modelos[prov] || PROVEEDORES_CLOUD[prov]?.defaultModelo;
-            return;
-        }
+        const ok = await _solicitarYAgregarModeloCustomCloud(prov);
+        if (!ok) return;
     } else {
         configProveedores.modelos[prov] = (val || '').trim();
     }
@@ -421,12 +394,8 @@ async function actualizarModeloCloudActual(val) {
     if (typeof eel !== 'undefined' && eel.rag_configurar_proveedor) {
         eel.rag_configurar_proveedor(prov, key, activeMod)();
     }
-    if (typeof guardarTodosAjustes === 'function') {
-        guardarTodosAjustes(false);
-    }
-    if (typeof actualizarGaugeTokensUI === 'function') {
-        actualizarGaugeTokensUI(false);
-    }
+    if (typeof guardarTodosAjustes === 'function') guardarTodosAjustes(false);
+    if (typeof actualizarGaugeTokensUI === 'function') actualizarGaugeTokensUI(false);
 }
 
 function abrirConsolaProveedorActual() {
@@ -448,6 +417,12 @@ function toggleVisibilidadApiKey() {
     }
 }
 
+function _setEstadoTestCloudIA(testStatus, color, texto, negrita = true) {
+    if (!testStatus) return;
+    const weight = negrita ? ' font-weight:600;' : '';
+    testStatus.innerHTML = `<span style="color:${color};${weight}">${texto}</span>`;
+}
+
 async function probarConexionCloudIA() {
     const prov = configProveedores.proveedorActivo;
     if (prov === 'ollama') return;
@@ -456,11 +431,10 @@ async function probarConexionCloudIA() {
     const testStatus = document.getElementById('ia-cloud-test-status');
     const key = configProveedores.keys[prov] || '';
     const modelo = configProveedores.modelos[prov] || '';
+    const nombreProv = PROVEEDORES_CLOUD[prov]?.nombre || prov;
 
     if (!key) {
-        if (testStatus) {
-            testStatus.innerHTML = `<span style="color:#e74c3c; font-weight:600;">⚠️ Por favor ingresa primero la API Key de ${PROVEEDORES_CLOUD[prov]?.nombre || prov}.</span>`;
-        }
+        _setEstadoTestCloudIA(testStatus, '#e74c3c', `⚠️ Por favor ingresa primero la API Key de ${nombreProv}.`);
         return;
     }
 
@@ -468,31 +442,22 @@ async function probarConexionCloudIA() {
         btnTest.disabled = true;
         btnTest.innerText = '⏳ Verificando conexión...';
     }
-    if (testStatus) {
-        testStatus.innerHTML = `<span style="color:#747d8c;">📡 Conectando con servidor de ${PROVEEDORES_CLOUD[prov]?.nombre || prov}...</span>`;
-    }
+    _setEstadoTestCloudIA(testStatus, '#747d8c', `📡 Conectando con servidor de ${nombreProv}...`, false);
 
     try {
         if (typeof eel !== 'undefined' && eel.rag_verificar_conexion_cloud) {
             const res = await eel.rag_verificar_conexion_cloud(prov, key, modelo)();
             if (res && res.exito) {
-                if (testStatus) {
-                    testStatus.innerHTML = `<span style="color:#27ae60; font-weight:600;">✅ ${res.mensaje || '¡Conexión exitosa!'}</span>`;
-                }
-                mostrarToastLira(`Conexión exitosa con ${PROVEEDORES_CLOUD[prov]?.nombre || prov}`, 'exito');
+                _setEstadoTestCloudIA(testStatus, '#27ae60', `✅ ${res.mensaje || '¡Conexión exitosa!'}`);
+                mostrarToastLira(`Conexión exitosa con ${nombreProv}`, 'exito');
                 refrescarModelosProveedorActual(false);
-                actualizarGaugeTokensUI(true);
             } else {
-                if (testStatus) {
-                    testStatus.innerHTML = `<span style="color:#e74c3c; font-weight:600;">❌ Error: ${res?.error || 'No se pudo conectar'}</span>`;
-                }
-                actualizarGaugeTokensUI(true);
+                _setEstadoTestCloudIA(testStatus, '#e74c3c', `❌ Error: ${res?.error || 'No se pudo conectar'}`);
             }
+            actualizarGaugeTokensUI(true);
         }
     } catch (e) {
-        if (testStatus) {
-            testStatus.innerHTML = `<span style="color:#e74c3c; font-weight:600;">❌ Error de comunicación: ${e.message || e}</span>`;
-        }
+        _setEstadoTestCloudIA(testStatus, '#e74c3c', `❌ Error de comunicación: ${e.message || e}`);
         actualizarGaugeTokensUI(true);
     } finally {
         if (btnTest) {
@@ -532,75 +497,90 @@ function cerrarModalIA() {
     }
 }
 
+async function _obtenerStatsTokensIA(prov, key, forzarSyncAPI) {
+    let stats = null;
+    if (forzarSyncAPI && eel.rag_sincronizar_tokens_api) {
+        stats = await eel.rag_sincronizar_tokens_api(prov, key)();
+    }
+    if (!stats && eel.rag_obtener_estadisticas_tokens) {
+        stats = await eel.rag_obtener_estadisticas_tokens(prov)();
+    }
+    return stats;
+}
+
+function _colorGaugePorPorcentajeIA(pct) {
+    if (pct <= 20) return '#ff4757';
+    if (pct <= 50) return '#ffa502';
+    if (pct <= 80) return '#1e90ff';
+    return '#2ed573';
+}
+
+function _aplicarAnilloGaugeTokensDOM(pct) {
+    const circum = 2 * Math.PI * 48;
+    const offset = circum - (pct / 100.0) * circum;
+    const bar = document.getElementById('ia-token-gauge-bar');
+    const miniDot = document.querySelector('#ia-chat-mini-tokens .ia-mini-dot');
+    if (!bar) return;
+    bar.style.strokeDasharray = `${circum.toFixed(1)}`;
+    bar.style.strokeDashoffset = `${offset.toFixed(1)}`;
+    const color = _colorGaugePorPorcentajeIA(pct);
+    bar.style.stroke = color;
+    if (miniDot) miniDot.style.background = color;
+}
+
+function _aplicarTextosGaugeTokensDOM(prov, stats, pct) {
+    const setTxt = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val; };
+    const fmt = (n) => (typeof n === 'number' ? n.toLocaleString() : (n || '0'));
+
+    setTxt('ia-gauge-percent', `${pct.toFixed(pct < 100 && pct > 0 ? 1 : 0)}%`);
+    setTxt('ia-mini-tokens-texto', `Tokens: ${pct.toFixed(0)}%`);
+    setTxt('ia-stat-tokens-restantes', `${fmt(stats.tokens_restantes)} / ${fmt(stats.limite_tokens)}`);
+    setTxt('ia-stat-tokens-sesion', `${fmt(stats.tokens_usados_sesion)} tokens`);
+    setTxt('ia-stat-tokens-ultimo', `${fmt(stats.ultimo_prompt_tokens)} in + ${fmt(stats.ultimo_completion_tokens)} out`);
+
+    const nomProv = PROVEEDORES_CLOUD[prov]?.nombre || (prov === 'ollama' ? 'Local Ollama' : prov.toUpperCase());
+    const modeloActual = (prov === 'ollama') ? (estadoIA.modeloChatSeleccionado || 'Ollama') : (configProveedores.modelos[prov] || '');
+    setTxt('ia-token-badge-text', `Motor: ${nomProv} (${modeloActual})`);
+
+    const txtDetalle = document.getElementById('ia-stat-tokens-detalle');
+    if (txtDetalle) {
+        txtDetalle.innerText = stats.detalle_api || 'Información de cuota sincronizada';
+        txtDetalle.title = stats.detalle_api || '';
+    }
+}
+
 // --- MONITOR Y GRÁFICO CIRCULAR DE TOKENS EN TIEMPO REAL ---
 async function actualizarGaugeTokensUI(forzarSyncAPI = false) {
     try {
         if (typeof eel === 'undefined') return;
         const prov = configProveedores.proveedorActivo || 'ollama';
-        const key = configProveedores.keys[prov] || '';
-        
-        let stats = null;
-        if (forzarSyncAPI && eel.rag_sincronizar_tokens_api) {
-            stats = await eel.rag_sincronizar_tokens_api(prov, key)();
-        }
-        if (!stats && eel.rag_obtener_estadisticas_tokens) {
-            stats = await eel.rag_obtener_estadisticas_tokens(prov)();
-        }
+        const stats = await _obtenerStatsTokensIA(prov, configProveedores.keys[prov] || '', forzarSyncAPI);
         if (!stats) return;
 
-        const circum = 2 * Math.PI * 48; // r=48 -> 301.59
         const pct = Math.max(0, Math.min(100, parseFloat(stats.porcentaje_restante ?? 100)));
-        const offset = circum - (pct / 100.0) * circum;
-
-        const bar = document.getElementById('ia-token-gauge-bar');
-        const txtPct = document.getElementById('ia-gauge-percent');
-        const txtRest = document.getElementById('ia-stat-tokens-restantes');
-        const txtSesion = document.getElementById('ia-stat-tokens-sesion');
-        const txtUltimo = document.getElementById('ia-stat-tokens-ultimo');
-        const badgeProv = document.getElementById('ia-token-badge-text');
-        const miniTxt = document.getElementById('ia-mini-tokens-texto');
-        const miniDot = document.querySelector('#ia-chat-mini-tokens .ia-mini-dot');
-        const txtDetalle = document.getElementById('ia-stat-tokens-detalle');
-
-        if (bar) {
-            bar.style.strokeDasharray = `${circum.toFixed(1)}`;
-            bar.style.strokeDashoffset = `${offset.toFixed(1)}`;
-            
-            let color = '#2ed573'; // Verde (>50%)
-            if (pct <= 20) color = '#ff4757'; // Rojo (<20%)
-            else if (pct <= 50) color = '#ffa502'; // Ámbar (20-50%)
-            else if (pct <= 80) color = '#1e90ff'; // Azul
-            bar.style.stroke = color;
-            if (miniDot) miniDot.style.background = color;
-        }
-
-        if (txtPct) txtPct.innerText = `${pct.toFixed(pct < 100 && pct > 0 ? 1 : 0)}%`;
-        if (miniTxt) miniTxt.innerText = `Tokens: ${pct.toFixed(0)}%`;
-
-        const fmt = (n) => (typeof n === 'number' ? n.toLocaleString() : (n || '0'));
-        const restantes = fmt(stats.tokens_restantes);
-        const limite = fmt(stats.limite_tokens);
-        const sesion = fmt(stats.tokens_usados_sesion);
-        const pPrompt = fmt(stats.ultimo_prompt_tokens);
-        const pComp = fmt(stats.ultimo_completion_tokens);
-
-        if (txtRest) txtRest.innerText = `${restantes} / ${limite}`;
-        if (txtSesion) txtSesion.innerText = `${sesion} tokens`;
-        if (txtUltimo) txtUltimo.innerText = `${pPrompt} in + ${pComp} out`;
-
-        const nomProv = PROVEEDORES_CLOUD[prov]?.nombre || (prov === 'ollama' ? 'Local Ollama' : prov.toUpperCase());
-        const modeloActual = (prov === 'ollama') ? (estadoIA.modeloChatSeleccionado || 'Ollama') : (configProveedores.modelos[prov] || '');
-        if (badgeProv) badgeProv.innerText = `Motor: ${nomProv} (${modeloActual})`;
-
-        if (txtDetalle) {
-            txtDetalle.innerText = stats.detalle_api || 'Información de cuota sincronizada';
-            txtDetalle.title = stats.detalle_api || '';
-        }
+        _aplicarAnilloGaugeTokensDOM(pct);
+        _aplicarTextosGaugeTokensDOM(prov, stats, pct);
     } catch (err) {
         console.warn("⚠️ [LiraAI] Error actualizando gauge de tokens:", err);
     }
 }
 window.actualizarGaugeTokensUI = actualizarGaugeTokensUI;
+
+function _obtenerNombreDocumentoActivoIA(docIdParam = null, fallback = "Documento actual") {
+    let nombreDoc = docIdParam;
+    if (!nombreDoc && typeof rutaPDFActual !== 'undefined' && rutaPDFActual) {
+        nombreDoc = rutaPDFActual.split('\\').pop().split('/').pop();
+    }
+    return (nombreDoc && nombreDoc.trim()) ? nombreDoc : fallback;
+}
+
+function _renderizarMensajesHistorialIA(historial, mensajes) {
+    historial.innerHTML = '';
+    for (const msg of mensajes) {
+        if (msg.role === 'user') agregarMensajeUsuarioChat(msg.texto);
+        else agregarMensajeAIChat(msg.texto, msg.fuentes || []);
+    }
+}
 
 // --- CARGAR Y RESTAURAR HISTORIAL DE CHAT POR DOCUMENTO ---
 async function cargarHistorialChatDocumento(docIdParam = null) {
@@ -608,14 +588,7 @@ async function cargarHistorialChatDocumento(docIdParam = null) {
     const historial = document.getElementById('ia-chat-historial');
     if (!historial) return;
 
-    let nombreDoc = docIdParam;
-    if (!nombreDoc && typeof rutaPDFActual !== 'undefined' && rutaPDFActual) {
-        nombreDoc = rutaPDFActual.split('\\').pop().split('/').pop();
-    }
-    if (!nombreDoc || nombreDoc.trim() === '') {
-        nombreDoc = "Documento actual";
-    }
-
+    const nombreDoc = _obtenerNombreDocumentoActivoIA(docIdParam, "Documento actual");
     if (lblDoc) {
         lblDoc.innerText = `📄 ${nombreDoc}`;
         lblDoc.title = nombreDoc;
@@ -627,14 +600,7 @@ async function cargarHistorialChatDocumento(docIdParam = null) {
             const res = await eel.rag_obtener_historial_chat(nombreDoc)();
             console.log(`🤖 [LiraAI] Respuesta historial:`, res);
             if (res && res.exito && Array.isArray(res.historial) && res.historial.length > 0) {
-                historial.innerHTML = '';
-                for (const msg of res.historial) {
-                    if (msg.role === 'user') {
-                        agregarMensajeUsuarioChat(msg.texto);
-                    } else {
-                        agregarMensajeAIChat(msg.texto, msg.fuentes || []);
-                    }
-                }
+                _renderizarMensajesHistorialIA(historial, res.historial);
                 return;
             }
         }
@@ -642,7 +608,6 @@ async function cargarHistorialChatDocumento(docIdParam = null) {
         console.warn("⚠️ [LiraAI] No se pudo cargar historial de chat:", e);
     }
 
-    // Si no hay historial previo, mostrar saludo inicial
     mostrarSaludoInicialChat(nombreDoc);
 }
 
@@ -777,12 +742,25 @@ async function indexarDocumentoActual() {
     return indexarDocumentoActualIA();
 }
 
+function _aplicarResultadoIndexacionIA(res, barProgreso, txtProgreso) {
+    if (res && res.exito) {
+        estadoIA.documentoIndexado = true;
+        estadoIA.totalChunks = res.total_chunks || 0;
+        if (barProgreso) barProgreso.style.width = '100%';
+        if (txtProgreso) {
+            txtProgreso.innerHTML = `✅ <b>Indexado con éxito:</b> ${res.total_chunks} fragmentos estructurados (${res.total_paginas || 1} páginas).`;
+        }
+        agregarMensajeAIChat(`He indexado el documento actual (**${res.doc_id || 'PDF'}**) con **${res.total_chunks} fragmentos semánticos** y memoria completa. ¡Ahora puedes hacerme cualquier consulta clínica, metodológica o pedirme resúmenes detallados!`);
+    } else if (txtProgreso) {
+        txtProgreso.innerHTML = `❌ <span style="color:#e74c3c;">Error al indexar: ${res?.error || 'Desconocido'}</span>`;
+    }
+}
+
 async function indexarDocumentoActualIA() {
     const btn = document.getElementById('btn-ia-indexar');
     const txtProgreso = document.getElementById('ia-index-progreso-texto') || document.getElementById('ia-txt-progreso-index');
     const barProgreso = document.getElementById('ia-index-progreso') || document.getElementById('ia-progress-bar');
     const contProgreso = document.getElementById('ia-progress-container');
-
     if (!btn) return;
 
     btn.disabled = true;
@@ -795,29 +773,11 @@ async function indexarDocumentoActualIA() {
         if (typeof eel !== 'undefined' && eel.rag_indexar_documento_actual) {
             const dictActivo = (typeof diccionario_usuario !== 'undefined') ? diccionario_usuario : {};
             const res = await eel.rag_indexar_documento_actual(dictActivo)();
-
-            if (res && res.exito) {
-                estadoIA.documentoIndexado = true;
-                estadoIA.totalChunks = res.total_chunks || 0;
-
-                if (barProgreso) barProgreso.style.width = '100%';
-                if (txtProgreso) {
-                    txtProgreso.innerHTML = `✅ <b>Indexado con éxito:</b> ${res.total_chunks} fragmentos estructurados (${res.total_paginas || 1} páginas).`;
-                }
-
-                // Notificar en el chat
-                agregarMensajeAIChat(`He indexado el documento actual (**${res.doc_id || 'PDF'}**) con **${res.total_chunks} fragmentos semánticos** y memoria completa. ¡Ahora puedes hacerme cualquier consulta clínica, metodológica o pedirme resúmenes detallados!`);
-            } else {
-                if (txtProgreso) {
-                    txtProgreso.innerHTML = `❌ <span style="color:#e74c3c;">Error al indexar: ${res?.error || 'Desconocido'}</span>`;
-                }
-            }
+            _aplicarResultadoIndexacionIA(res, barProgreso, txtProgreso);
         }
     } catch (e) {
         console.error("❌ [LiraAI] Error indexando documento:", e);
-        if (txtProgreso) {
-            txtProgreso.innerHTML = `❌ <span style="color:#e74c3c;">Excepción: ${e.message}</span>`;
-        }
+        if (txtProgreso) txtProgreso.innerHTML = `❌ <span style="color:#e74c3c;">Excepción: ${e.message}</span>`;
     } finally {
         btn.disabled = false;
         btn.innerHTML = `📥 Indexar / Re-indexar Documento Actual`;
@@ -868,196 +828,212 @@ function parsearRangoPaginas(strRango) {
     return paginas.size > 0 ? paginas : null;
 }
 
+const _MAPA_COLORES_EXACTOS_IA = {
+    '#ffff00': 'amarillo', '#ffff33': 'amarillo', '#ffeaa7': 'amarillo', '#ffd32a': 'amarillo',
+    '#00ff00': 'verde', '#55efc4': 'verde', '#2ed573': 'verde', '#27ae60': 'verde',
+    '#00ffff': 'cian', '#74b9ff': 'cian', '#1e90ff': 'cian', '#0984e3': 'cian', '#00ced1': 'cian',
+    '#ff00ff': 'magenta', '#fd79a8': 'magenta', '#e84393': 'magenta', '#ff69b4': 'magenta',
+    '#f1c40f': 'dorado', '#f39c12': 'dorado', '#e67e22': 'dorado', '#d4ac0d': 'dorado',
+    '#e74c3c': 'rojo', '#ff0000': 'rojo', '#ff7675': 'rojo', '#ff4757': 'rojo', '#c0392b': 'rojo'
+};
+
+const _PALETA_MARCATEXTOS_IA = [
+    { name: 'amarillo', r: 255, g: 255, b: 0 },
+    { name: 'verde',    r: 0,   g: 255, b: 0 },
+    { name: 'cian',     r: 0,   g: 255, b: 255 },
+    { name: 'magenta',  r: 255, g: 0,   b: 255 },
+    { name: 'dorado',   r: 241, g: 196, b: 15 },
+    { name: 'rojo',     r: 231, g: 76,  b: 60 }
+];
+
 function clasificarColorHex(hex) {
     if (!hex) return 'amarillo';
-    hex = hex.toLowerCase().trim();
-    if (hex === '#ffff00' || hex === '#ffff33' || hex === '#ffeaa7' || hex === '#ffd32a') return 'amarillo';
-    if (hex === '#00ff00' || hex === '#55efc4' || hex === '#2ed573' || hex === '#27ae60') return 'verde';
-    if (hex === '#00ffff' || hex === '#74b9ff' || hex === '#1e90ff' || hex === '#0984e3' || hex === '#00ced1') return 'cian';
-    if (hex === '#ff00ff' || hex === '#fd79a8' || hex === '#e84393' || hex === '#ff69b4') return 'magenta';
-    if (hex === '#f1c40f' || hex === '#f39c12' || hex === '#e67e22' || hex === '#d4ac0d') return 'dorado';
-    if (hex === '#e74c3c' || hex === '#ff0000' || hex === '#ff7675' || hex === '#ff4757' || hex === '#c0392b') return 'rojo';
+    const norm = hex.toLowerCase().trim();
+    if (_MAPA_COLORES_EXACTOS_IA[norm]) return _MAPA_COLORES_EXACTOS_IA[norm];
+    if (!norm.startsWith('#') || norm.length !== 7) return 'amarillo';
 
-    if (hex.startsWith('#') && hex.length === 7) {
-        const r = parseInt(hex.substring(1, 3), 16);
-        const g = parseInt(hex.substring(3, 5), 16);
-        const b = parseInt(hex.substring(5, 7), 16);
+    const r = parseInt(norm.substring(1, 3), 16);
+    const g = parseInt(norm.substring(3, 5), 16);
+    const b = parseInt(norm.substring(5, 7), 16);
 
-        // Paleta oficial de 6 colores de marcatextos de LiraLoud
-        const paleta = [
-            { name: 'amarillo', r: 255, g: 255, b: 0 },
-            { name: 'verde',    r: 0,   g: 255, b: 0 },
-            { name: 'cian',     r: 0,   g: 255, b: 255 },
-            { name: 'magenta',  r: 255, g: 0,   b: 255 },
-            { name: 'dorado',   r: 241, g: 196, b: 15 },
-            { name: 'rojo',     r: 231, g: 76,  b: 60 }
-        ];
-
-        let minD = Infinity;
-        let mejor = 'amarillo';
-        for (const p of paleta) {
-            const d = (r - p.r) ** 2 + (g - p.g) ** 2 + (b - p.b) ** 2;
-            if (d < minD) {
-                minD = d;
-                mejor = p.name;
-            }
+    let minD = Infinity;
+    let mejor = 'amarillo';
+    for (const p of _PALETA_MARCATEXTOS_IA) {
+        const d = (r - p.r) ** 2 + (g - p.g) ** 2 + (b - p.b) ** 2;
+        if (d < minD) {
+            minD = d;
+            mejor = p.name;
         }
-        return mejor;
     }
-    return 'amarillo';
+    return mejor;
+}
+
+const _CLAVES_COLOR_SUBRAYADO_IA = ['amarillo', 'verde', 'cian', 'magenta', 'dorado', 'rojo'];
+
+function _leerCheckIA(id, defVal) {
+    const el = document.getElementById(id);
+    return el ? el.checked : defVal;
+}
+
+function _leerValorIA(id, defVal) {
+    const el = document.getElementById(id);
+    return (el && el.value) ? el.value : defVal;
 }
 
 function obtenerConfigFuentesIA() {
-    const pdfActivo = document.getElementById('chk-ia-fuente-pdf')?.checked ?? true;
-    const subrayadosActivo = document.getElementById('chk-ia-fuente-subrayados')?.checked ?? false;
-    const notasActivo = document.getElementById('chk-ia-fuente-notas')?.checked ?? false;
-
-    // Alcance (Solo este libro vs Todos los libros)
-    const subAlcance = document.getElementById('sel-ia-sub-alcance')?.value || 'libro_actual';
-    const notasAlcance = document.getElementById('sel-ia-notas-alcance')?.value || 'libro_actual';
-
-    // Los 6 colores de marcatextos
-    const colores = {
-        amarillo: document.getElementById('chk-ia-sub-amarillo')?.checked ?? true,
-        verde: document.getElementById('chk-ia-sub-verde')?.checked ?? true,
-        cian: document.getElementById('chk-ia-sub-cian')?.checked ?? true,
-        magenta: document.getElementById('chk-ia-sub-magenta')?.checked ?? true,
-        dorado: document.getElementById('chk-ia-sub-dorado')?.checked ?? true,
-        rojo: document.getElementById('chk-ia-sub-rojo')?.checked ?? true
-    };
-
-    const paginasSubrayados = parsearRangoPaginas(document.getElementById('txt-ia-sub-paginas')?.value || '');
-    const paginasNotas = parsearRangoPaginas(document.getElementById('txt-ia-notas-paginas')?.value || '');
-    const clasifNotas = (document.getElementById('txt-ia-notas-clasif')?.value || '').trim();
+    const coloresSubrayados = {};
+    _CLAVES_COLOR_SUBRAYADO_IA.forEach(c => {
+        coloresSubrayados[c] = _leerCheckIA(`chk-ia-sub-${c}`, true);
+    });
 
     return {
-        pdf: pdfActivo,
-        subrayados: subrayadosActivo,
-        notas: notasActivo,
-        subAlcance,
-        notasAlcance,
-        coloresSubrayados: colores,
-        paginasSubrayados,
-        paginasNotas,
-        clasifNotas
+        pdf: _leerCheckIA('chk-ia-fuente-pdf', true),
+        subrayados: _leerCheckIA('chk-ia-fuente-subrayados', false),
+        notas: _leerCheckIA('chk-ia-fuente-notas', false),
+        subAlcance: _leerValorIA('sel-ia-sub-alcance', 'libro_actual'),
+        notasAlcance: _leerValorIA('sel-ia-notas-alcance', 'libro_actual'),
+        coloresSubrayados,
+        paginasSubrayados: parsearRangoPaginas(_leerValorIA('txt-ia-sub-paginas', '')),
+        paginasNotas: parsearRangoPaginas(_leerValorIA('txt-ia-notas-paginas', '')),
+        clasifNotas: _leerValorIA('txt-ia-notas-clasif', '').trim()
     };
+}
+
+function _construirTextoResumenFuentesIA(config) {
+    const partes = [];
+    if (config.pdf) partes.push("PDF");
+    if (config.subrayados) {
+        partes.push(`Subrayados${config.subAlcance === 'todos_libros' ? ' (Todos libros)' : ''}`);
+    }
+    if (config.notas) {
+        partes.push(`Apuntes${config.notasAlcance === 'todos_libros' ? ' (Todos libros)' : ''}`);
+    }
+    const base = partes.length > 0 ? partes.join(" + ") : "Ninguna (Se usará PDF)";
+    return (!config.pdf && (config.subrayados || config.notas)) ? `${base} (Sin PDF)` : base;
 }
 
 function actualizarEstadoFuentesUI() {
     const config = obtenerConfigFuentesIA();
+    const textoResumen = _construirTextoResumenFuentesIA(config);
     const bannerTexto = document.getElementById('ia-fuentes-resumen-texto');
     const badgeChat = document.getElementById('ia-badge-fuentes-activas');
 
-    const partes = [];
-    if (config.pdf) partes.push("PDF");
-    if (config.subrayados) {
-        const alc = config.subAlcance === 'todos_libros' ? ' (Todos libros)' : '';
-        partes.push(`Subrayados${alc}`);
-    }
-    if (config.notas) {
-        const alc = config.notasAlcance === 'todos_libros' ? ' (Todos libros)' : '';
-        partes.push(`Apuntes${alc}`);
-    }
-
-    let textoResumen = partes.length > 0 ? partes.join(" + ") : "Ninguna (Se usará PDF)";
-    if (!config.pdf && (config.subrayados || config.notas)) {
-        textoResumen += " (Sin PDF)";
-    }
-
     if (bannerTexto) bannerTexto.innerText = textoResumen;
-    if (badgeChat) {
-        badgeChat.innerHTML = `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:2px;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> Fuentes: ${textoResumen}`;
-        badgeChat.style.background = !config.pdf ? '#fef3c7' : '#e0e7ff';
-        badgeChat.style.color = !config.pdf ? '#92400e' : '#3730a3';
-        badgeChat.style.borderColor = !config.pdf ? '#fde68a' : '#c7d2fe';
+    if (!badgeChat) return;
+
+    badgeChat.innerHTML = `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle; margin-right:2px;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> Fuentes: ${textoResumen}`;
+    badgeChat.style.background = !config.pdf ? '#fef3c7' : '#e0e7ff';
+    badgeChat.style.color = !config.pdf ? '#92400e' : '#3730a3';
+    badgeChat.style.borderColor = !config.pdf ? '#fde68a' : '#c7d2fe';
+}
+
+function _formatearSubrayadosParaContextoIA(lista, subAlcance) {
+    const textoSubs = lista.map((s, idx) => {
+        const pagNum = (s.pagina ?? 0) + 1;
+        const infoLibro = s.libro ? ` | Libro: ${s.libro}` : '';
+        return `[Subrayado ${idx + 1}${infoLibro} | Pág. ${pagNum}]: "${s.texto}"`;
+    }).join("\n\n");
+    const etiquetaAlcance = subAlcance === 'todos_libros' ? 'TODOS LOS LIBROS' : 'ESTE LIBRO';
+    return `=== 🖍️ TEXTOS SUBRAYADOS POR EL USUARIO (${etiquetaAlcance}: ${lista.length} resaltados) ===\n${textoSubs}`;
+}
+
+async function _consultarSubrayadosBackendIA(subAlcance) {
+    if (subAlcance === 'todos_libros' && eel.obtener_todos_subrayados_biblioteca) {
+        return eel.obtener_todos_subrayados_biblioteca()();
+    }
+    if (eel.obtener_todos_subrayados && typeof rutaPDFActual !== 'undefined' && rutaPDFActual) {
+        return eel.obtener_todos_subrayados(rutaPDFActual)();
+    }
+    return null;
+}
+
+async function _obtenerBloqueSubrayadosIA(config) {
+    if (!config.subrayados || typeof eel === 'undefined') return null;
+    try {
+        const resSubs = await _consultarSubrayadosBackendIA(config.subAlcance);
+        if (!resSubs || !resSubs.success || !Array.isArray(resSubs.subrayados)) return null;
+
+        let lista = resSubs.subrayados;
+        if (config.paginasSubrayados) lista = lista.filter(s => config.paginasSubrayados.has((s.pagina ?? 0) + 1));
+        lista = lista.filter(s => config.coloresSubrayados[clasificarColorHex(s.color)] !== false);
+        return lista.length > 0 ? _formatearSubrayadosParaContextoIA(lista, config.subAlcance) : null;
+    } catch (e) {
+        console.warn("⚠️ [LiraAI Fuentes] Error obteniendo subrayados:", e);
+        return null;
+    }
+}
+
+function _filtrarNotasParaContextoIA(notas, config) {
+    let lista = notas;
+    if (config.paginasNotas) {
+        lista = lista.filter(n => config.paginasNotas.has(parseInt(n.pagina || 1)));
+    }
+    if (config.clasifNotas && config.clasifNotas.toLowerCase() !== "todas") {
+        const qClasif = config.clasifNotas.toLowerCase().trim();
+        lista = lista.filter(n => (n.clasificacion || '').toLowerCase().includes(qClasif));
+    }
+    return lista;
+}
+
+function _formatearNotasParaContextoIA(lista, notasAlcance) {
+    const textoNotas = lista.map((n, idx) => {
+        const pagNum = n.pagina || 1;
+        const titulo = n.titulo || `Nota ${idx + 1}`;
+        const area = n.clasificacion ? ` | Área: ${n.clasificacion}` : '';
+        const infoLibro = n.libro ? ` | Libro: ${n.libro}` : '';
+        return `--- NOTA: "${titulo}" (Pág. ${pagNum}${infoLibro}${area}) ---\n${n.contenido || ''}`;
+    }).join("\n\n");
+    const etiquetaAlcance = notasAlcance === 'todos_libros' ? 'TODOS LOS LIBROS' : 'ESTE LIBRO';
+    return `=== 📝 APUNTES Y NOTAS DEL USUARIO (${etiquetaAlcance}: ${lista.length} notas) ===\n${textoNotas}`;
+}
+
+async function _obtenerBloqueNotasIA(config) {
+    if (!config.notas || typeof eel === 'undefined' || !eel.notas_listar) return null;
+    try {
+        const libroFiltro = config.notasAlcance === 'todos_libros'
+            ? null
+            : (typeof obtenerNombreLibroActivo === 'function' ? obtenerNombreLibroActivo() : null);
+        const resNotas = await eel.notas_listar(window.rutaNotasPersonalizada || "", libroFiltro)();
+        if (!resNotas || !resNotas.exito || !Array.isArray(resNotas.notas)) return null;
+
+        const lista = _filtrarNotasParaContextoIA(resNotas.notas, config);
+        return lista.length > 0 ? _formatearNotasParaContextoIA(lista, config.notasAlcance) : null;
+    } catch (e) {
+        console.warn("⚠️ [LiraAI Fuentes] Error obteniendo notas:", e);
+        return null;
     }
 }
 
 async function construirContextoFuentesParaIA() {
     const config = obtenerConfigFuentesIA();
-    let bloquesContexto = [];
     const ignorarPdf = (!config.pdf) && (config.subrayados || config.notas);
+    const bloques = [
+        await _obtenerBloqueSubrayadosIA(config),
+        await _obtenerBloqueNotasIA(config)
+    ].filter(Boolean);
 
-    // 1. Extraer Subrayados si está activo
-    if (config.subrayados && typeof eel !== 'undefined') {
-        try {
-            let resSubs = null;
-            if (config.subAlcance === 'todos_libros' && eel.obtener_todos_subrayados_biblioteca) {
-                resSubs = await eel.obtener_todos_subrayados_biblioteca()();
-            } else if (eel.obtener_todos_subrayados && typeof rutaPDFActual !== 'undefined' && rutaPDFActual) {
-                resSubs = await eel.obtener_todos_subrayados(rutaPDFActual)();
-            }
-
-            if (resSubs && resSubs.success && Array.isArray(resSubs.subrayados)) {
-                let listaFiltrada = resSubs.subrayados;
-
-                // Filtrar por página si se especificó rango (solo aplica si es un libro específico o por número de página global)
-                if (config.paginasSubrayados) {
-                    listaFiltrada = listaFiltrada.filter(s => config.paginasSubrayados.has((s.pagina ?? 0) + 1));
-                }
-
-                // Filtrar por color de la paleta
-                listaFiltrada = listaFiltrada.filter(s => {
-                    const tipoColor = clasificarColorHex(s.color);
-                    return config.coloresSubrayados[tipoColor] !== false;
-                });
-
-                if (listaFiltrada.length > 0) {
-                    const textoSubs = listaFiltrada.map((s, idx) => {
-                        const pagNum = (s.pagina ?? 0) + 1;
-                        const infoLibro = s.libro ? ` | Libro: ${s.libro}` : '';
-                        return `[Subrayado ${idx + 1}${infoLibro} | Pág. ${pagNum}]: "${s.texto}"`;
-                    }).join("\n\n");
-                    const etiquetaAlcance = config.subAlcance === 'todos_libros' ? 'TODOS LOS LIBROS' : 'ESTE LIBRO';
-                    bloquesContexto.push(`=== 🖍️ TEXTOS SUBRAYADOS POR EL USUARIO (${etiquetaAlcance}: ${listaFiltrada.length} resaltados) ===\n${textoSubs}`);
-                }
-            }
-        } catch (e) {
-            console.warn("⚠️ [LiraAI Fuentes] Error obteniendo subrayados:", e);
-        }
-    }
-
-    // 2. Extraer Apuntes y Notas si está activo
-    if (config.notas && typeof eel !== 'undefined' && eel.notas_listar) {
-        try {
-            const libroFiltro = config.notasAlcance === 'todos_libros' ? null : (typeof obtenerNombreLibroActivo === 'function' ? obtenerNombreLibroActivo() : null);
-            const resNotas = await eel.notas_listar(window.rutaNotasPersonalizada || "", libroFiltro)();
-            if (resNotas && resNotas.exito && Array.isArray(resNotas.notas)) {
-                let listaNotas = resNotas.notas;
-
-                // Filtrar por página si se especificó rango
-                if (config.paginasNotas) {
-                    listaNotas = listaNotas.filter(n => config.paginasNotas.has(parseInt(n.pagina || 1)));
-                }
-
-                // Filtrar por clasificación si se especificó
-                if (config.clasifNotas && config.clasifNotas !== "Todas" && config.clasifNotas !== "TODAS") {
-                    const qClasif = config.clasifNotas.toLowerCase().trim();
-                    listaNotas = listaNotas.filter(n => (n.clasificacion || '').toLowerCase().includes(qClasif));
-                }
-
-                if (listaNotas.length > 0) {
-                    const textoNotas = listaNotas.map((n, idx) => {
-                        const pagNum = n.pagina || 1;
-                        const titulo = n.titulo || `Nota ${idx + 1}`;
-                        const area = n.clasificacion ? ` | Área: ${n.clasificacion}` : '';
-                        const infoLibro = n.libro ? ` | Libro: ${n.libro}` : '';
-                        return `--- NOTA: "${titulo}" (Pág. ${pagNum}${infoLibro}${area}) ---\n${n.contenido || ''}`;
-                    }).join("\n\n");
-                    const etiquetaAlcance = config.notasAlcance === 'todos_libros' ? 'TODOS LOS LIBROS' : 'ESTE LIBRO';
-                    bloquesContexto.push(`=== 📝 APUNTES Y NOTAS DEL USUARIO (${etiquetaAlcance}: ${listaNotas.length} notas) ===\n${textoNotas}`);
-                }
-            }
-        } catch (e) {
-            console.warn("⚠️ [LiraAI Fuentes] Error obteniendo notas:", e);
-        }
-    }
-
-    const textoContextoFinal = bloquesContexto.join("\n\n");
     return {
-        contextoExtra: textoContextoFinal,
-        ignorarPdf: ignorarPdf
+        contextoExtra: bloques.join("\n\n"),
+        ignorarPdf
     };
+}
+
+function _obtenerModoSalidaActivoIA() {
+    return window.modoSalidaIA || document.getElementById('sel-ia-modo-salida')?.value || 'trazabilidad';
+}
+
+async function _consultarChatBackendIA(pregunta, loadingId) {
+    if (typeof eel === 'undefined' || !eel.rag_preguntar) {
+        removerMensajeChat(loadingId);
+        agregarMensajeAIChat("⚠️ El backend de LiraAI no está conectado a Eel.");
+        return;
+    }
+    const docId = _obtenerNombreDocumentoActivoIA(null, null);
+    const fuentesCtx = await construirContextoFuentesParaIA();
+    const res = await eel.rag_preguntar(pregunta, docId, 10, _obtenerModoSalidaActivoIA(), fuentesCtx.contextoExtra, fuentesCtx.ignorarPdf)();
+    removerMensajeChat(loadingId);
+    if (res && res.exito) agregarMensajeAIChat(res.respuesta, res.fuentes);
+    else agregarMensajeAIChat(`⚠️ **Nota de LiraAI:** ${res?.error || 'No se pudo generar respuesta.'}`);
 }
 
 // --- CHAT CON EL DOCUMENTO ---
@@ -1065,7 +1041,6 @@ async function enviarMensajeChatIA(preguntaDirecta = null) {
     const input = document.getElementById('ia-chat-input');
     const btnEnviar = document.getElementById('btn-ia-chat-enviar');
     const pregunta = (preguntaDirecta || (input ? input.value : '')).trim();
-
     if (!pregunta || estadoIA.enProceso) return;
 
     if (input && !preguntaDirecta) {
@@ -1073,10 +1048,7 @@ async function enviarMensajeChatIA(preguntaDirecta = null) {
         autoAjustarTextarea(input);
     }
 
-    // 1. Renderizar mensaje del usuario
     agregarMensajeUsuarioChat(pregunta);
-
-    // 2. Renderizar burbuja de "Pensando..."
     const loadingId = 'ia-loading-' + Date.now();
     agregarMensajeLoadingChat(loadingId);
 
@@ -1084,33 +1056,14 @@ async function enviarMensajeChatIA(preguntaDirecta = null) {
     if (btnEnviar) btnEnviar.disabled = true;
 
     try {
-        if (typeof eel !== 'undefined' && eel.rag_preguntar) {
-            let docId = (typeof rutaPDFActual !== 'undefined' && rutaPDFActual) ? rutaPDFActual.split('\\').pop().split('/').pop() : null;
-            const modoActual = window.modoSalidaIA || document.getElementById('sel-ia-modo-salida')?.value || 'trazabilidad';
-            
-            // Construir fuentes seleccionadas por el usuario
-            const fuentesCtx = await construirContextoFuentesParaIA();
-            const res = await eel.rag_preguntar(pregunta, docId, 10, modoActual, fuentesCtx.contextoExtra, fuentesCtx.ignorarPdf)();
-            removerMensajeChat(loadingId);
-
-            if (res && res.exito) {
-                agregarMensajeAIChat(res.respuesta, res.fuentes);
-            } else {
-                agregarMensajeAIChat(`⚠️ **Nota de LiraAI:** ${res?.error || 'No se pudo generar respuesta.'}`);
-            }
-        } else {
-            removerMensajeChat(loadingId);
-            agregarMensajeAIChat("⚠️ El backend de LiraAI no está conectado a Eel.");
-        }
+        await _consultarChatBackendIA(pregunta, loadingId);
     } catch (e) {
         removerMensajeChat(loadingId);
         agregarMensajeAIChat(`❌ **Error en la consulta:** ${e.message}`);
     } finally {
         estadoIA.enProceso = false;
         if (btnEnviar) btnEnviar.disabled = false;
-        if (typeof actualizarGaugeTokensUI === 'function') {
-            actualizarGaugeTokensUI(false);
-        }
+        if (typeof actualizarGaugeTokensUI === 'function') actualizarGaugeTokensUI(false);
     }
 }
 
@@ -1240,6 +1193,110 @@ function _registrarSnippetCitaIA(texto) {
     return key;
 }
 
+function _acumularTextoPrevioNodoCitaIA(blk, btnEl) {
+    let textoPrevio = '';
+    const walker = document.createTreeWalker(blk, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, null);
+    let nodo = walker.nextNode();
+    while (nodo && nodo !== btnEl) {
+        if (nodo.nodeType === Node.ELEMENT_NODE) {
+            if (nodo.matches && nodo.matches('.ia-cite-badge, button')) {
+                nodo = walker.nextSibling() || walker.nextNode();
+                continue;
+            }
+            if (nodo.tagName === 'BR') textoPrevio += '\n';
+        } else if (nodo.nodeType === Node.TEXT_NODE && !nodo.parentElement?.closest('.ia-cite-badge, button')) {
+            textoPrevio += nodo.nodeValue || '';
+        }
+        nodo = walker.nextNode();
+    }
+    return textoPrevio;
+}
+
+function _extraerTextoPrevioBadgeCitaIA(btnEl) {
+    if (!btnEl || typeof btnEl.closest !== 'function') return '';
+    const blk = btnEl.closest('li, p, blockquote, div');
+    if (!blk) return '';
+
+    let textoPrevio = '';
+    try {
+        textoPrevio = _acumularTextoPrevioNodoCitaIA(blk, btnEl);
+    } catch (_) {
+        return '';
+    }
+
+    const limpioPrev = textoPrevio.replace(/[ \t]+/g, ' ').trim();
+    if (!limpioPrev || /^(?:📍|❓|Fuentes verificadas|Fragmentos consultados|Pregunta:)/i.test(limpioPrev)) return '';
+    const partes = limpioPrev.split(/(?:[\.\?!]\s+|\n+)/);
+    const ultima = (partes[partes.length - 1] || limpioPrev).trim();
+    return ultima.length >= 15 ? ultima : limpioPrev;
+}
+
+async function _navegarAPaginaPdfIA(numPag, pagObjetivo) {
+    if (typeof paginaActual !== 'undefined' && paginaActual === pagObjetivo) return false;
+    if (typeof cargarPagina === 'function') {
+        await cargarPagina(pagObjetivo);
+    } else {
+        const inputPag = document.getElementById('input-pagina-actual');
+        if (inputPag) inputPag.value = numPag;
+        if (typeof irAPaginaDirecta === 'function') irAPaginaDirecta();
+    }
+    await new Promise(r => setTimeout(r, 120));
+    return true;
+}
+
+function _desplazarVisorHaciaFuenteIA(res, pagObjetivoReal) {
+    if (typeof paginaActual !== 'undefined' && paginaActual !== pagObjetivoReal) return;
+    const factorZoom = (typeof datosPagina !== 'undefined' && datosPagina?.factor_zoom) ? datosPagina.factor_zoom : 1.0;
+    const cssZoom = (typeof nivelZoomPDF === 'number') ? nivelZoomPDF : 1.0;
+    const targetY = res.bbox ? res.bbox[1] : (res.rects ? res.rects[0][1] : res.coords[1]);
+    const visor = document.getElementById('visor-container') || document.querySelector('.contenedor-visor') || document.getElementById('contenedor-canvas');
+    if (visor) visor.scrollTo({ top: Math.max(0, targetY * factorZoom * cssZoom - 120), behavior: 'smooth' });
+}
+
+function _aplicarResaltadoYScrollFuenteIA(res, pagObjetivoReal) {
+    const rectsToUse = res.rects || [res.coords];
+    window.resaltadoBusqueda = rectsToUse;
+    window.resaltadoBBox = res.bbox || null;
+    window.resaltadoPagina = pagObjetivoReal;
+    if (typeof resaltadoBusqueda !== 'undefined') resaltadoBusqueda = rectsToUse;
+    if (typeof dibujar === 'function') dibujar();
+    setTimeout(() => _desplazarVisorHaciaFuenteIA(res, pagObjetivoReal), 100);
+}
+
+function _iaFuenteAunVigente(docObjetivo) {
+    const modalIA = document.getElementById('modal-ia');
+    const iaCerrado = modalIA && modalIA.style.display === 'none';
+    return !iaCerrado && (typeof rutaPDFActual === 'undefined' || rutaPDFActual === docObjetivo);
+}
+
+function _resolverSnippetYAfirmacionFuenteIA(textoSnippet, btnEl) {
+    const map = window._liraSnippetsMap;
+    const snippetReal = (textoSnippet && map && Object.prototype.hasOwnProperty.call(map, textoSnippet))
+        ? map[textoSnippet]
+        : (textoSnippet || '');
+    const textoAfirmacion = snippetReal ? '' : _extraerTextoPrevioBadgeCitaIA(btnEl);
+    return { snippetReal, textoAfirmacion };
+}
+
+async function _buscarYResaltarCoordenadasFuenteIA(numPag, numPagFin, snippetReal, textoAfirmacion, docObjetivo) {
+    if (typeof eel === 'undefined' || !eel.rag_buscar_coordenadas_fuente) return;
+    const res = await eel.rag_buscar_coordenadas_fuente(numPag, snippetReal, numPagFin, textoAfirmacion)();
+    if (!_iaFuenteAunVigente(docObjetivo)) return;
+
+    console.log("🔍 [LiraAI] Coordenadas recibidas:", res);
+    if (!res || !res.exito || !(res.rects || res.coords)) {
+        console.warn("⚠️ [LiraAI] No se encontraron rects:", res);
+        return;
+    }
+
+    const pagReal = (res.pagina && !isNaN(res.pagina)) ? parseInt(res.pagina) : numPag;
+    const pagObjetivoReal = pagReal - 1;
+    await _navegarAPaginaPdfIA(pagReal, pagObjetivoReal);
+    if (typeof paginaActual !== 'undefined' && paginaActual !== pagObjetivoReal) return;
+
+    _aplicarResaltadoYScrollFuenteIA(res, pagObjetivoReal);
+}
+
 // --- NAVEGACIÓN Y RESALTADO INTERACTIVO DE FUENTES EN EL PDF ---
 window.liraNavegarYResaltarFuente = async function (pagina, textoSnippet, btnEl = null, paginaFin = null) {
     if (!pagina || isNaN(pagina)) {
@@ -1248,132 +1305,19 @@ window.liraNavegarYResaltarFuente = async function (pagina, textoSnippet, btnEl 
     }
     const numPag = parseInt(pagina);
     const numPagFin = (paginaFin !== null && paginaFin !== undefined && !isNaN(paginaFin)) ? parseInt(paginaFin) : null;
-    const pagObjetivo = numPag - 1;
     const docObjetivo = (typeof rutaPDFActual !== 'undefined') ? rutaPDFActual : '';
-    let snippetReal = (textoSnippet && window._liraSnippetsMap && Object.prototype.hasOwnProperty.call(window._liraSnippetsMap, textoSnippet))
-        ? window._liraSnippetsMap[textoSnippet]
-        : (textoSnippet || '');
-    let textoAfirmacion = '';
-    // Solo extraer la oración inmediatamente anterior cuando NO hay snippet de chunk (modo bypass [Pág. X])
-    if (!snippetReal && btnEl && typeof btnEl.closest === 'function') {
-        const blk = btnEl.closest('li, p, blockquote, div');
-        if (blk) {
-            let textoPrevio = '';
-            try {
-                const walker = document.createTreeWalker(blk, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, null);
-                let nodo = walker.nextNode();
-                while (nodo && nodo !== btnEl) {
-                    if (nodo.nodeType === Node.ELEMENT_NODE) {
-                        if (nodo.matches && nodo.matches('.ia-cite-badge, button')) {
-                            // Saltar el contenido interno de otros badges de cita
-                            nodo = walker.nextSibling() || walker.nextNode();
-                            continue;
-                        }
-                        if (nodo.tagName === 'BR') {
-                            textoPrevio += '\n';
-                        }
-                    } else if (nodo.nodeType === Node.TEXT_NODE) {
-                        if (!nodo.parentElement || !nodo.parentElement.closest('.ia-cite-badge, button')) {
-                            textoPrevio += nodo.nodeValue || '';
-                        }
-                    }
-                    nodo = walker.nextNode();
-                }
-            } catch (_) {
-                textoPrevio = '';
-            }
-            const limpioPrev = textoPrevio.replace(/[ \t]+/g, ' ').trim();
-            if (limpioPrev && !/^(?:📍|❓|Fuentes verificadas|Fragmentos consultados|Pregunta:)/i.test(limpioPrev)) {
-                const partesOracion = limpioPrev.split(/(?:[\.\?!]\s+|\n+)/);
-                const ultimaOracion = (partesOracion[partesOracion.length - 1] || limpioPrev).trim();
-                textoAfirmacion = ultimaOracion.length >= 15 ? ultimaOracion : limpioPrev;
-            }
-        }
-    }
+    const { snippetReal, textoAfirmacion } = _resolverSnippetYAfirmacionFuenteIA(textoSnippet, btnEl);
 
     console.log(`🎯 [LiraAI] Navegando a página ${numPag} y resaltando fragmento...`);
-
-    // 1. Mostrar feedback visual inmediato (Toast)
     mostrarToastLira(`Saltando a Página ${numPag} del PDF...`, 'objetivo');
 
-    // 2. Si no estamos en esa página, cambiar (cargarPagina limpia resaltados previos)
-    if (typeof paginaActual !== 'undefined' && paginaActual !== pagObjetivo) {
-        if (typeof cargarPagina === 'function') {
-            await cargarPagina(pagObjetivo);
-        } else {
-            const inputPag = document.getElementById('input-pagina-actual');
-            if (inputPag) inputPag.value = numPag;
-            if (typeof irAPaginaDirecta === 'function') irAPaginaDirecta();
-        }
-        // Breve pausa para asegurar sincronización del canvas
-        await new Promise(r => setTimeout(r, 120));
-    } else if (typeof window.limpiarResaltadoBusqueda === 'function') {
-        // Limpiar resaltado previo antes de pintar el nuevo en la misma página
+    const cambioPag = await _navegarAPaginaPdfIA(numPag, numPag - 1);
+    if (!cambioPag && typeof window.limpiarResaltadoBusqueda === 'function') {
         window.limpiarResaltadoBusqueda(true);
     }
 
-    // 3. Obtener coordenadas exactas de las líneas del chunk desde PyMuPDF
     try {
-        if (typeof eel !== 'undefined' && eel.rag_buscar_coordenadas_fuente) {
-            const res = await eel.rag_buscar_coordenadas_fuente(numPag, snippetReal, numPagFin, textoAfirmacion)();
-
-            // Evitar dibujar si el usuario ya cerró LiraAI o abrió otro PDF durante la consulta
-            const modalIA = document.getElementById('modal-ia');
-            const iaCerrado = modalIA && modalIA.style.display === 'none';
-            if (iaCerrado || (typeof rutaPDFActual !== 'undefined' && rutaPDFActual !== docObjetivo)) {
-                return;
-            }
-
-            console.log("🔍 [LiraAI] Coordenadas recibidas:", res);
-            if (res && res.exito && (res.rects || res.coords)) {
-                const pagReal = (res.pagina && !isNaN(res.pagina)) ? parseInt(res.pagina) : numPag;
-                const pagObjetivoReal = pagReal - 1;
-
-                // Si el backend encontró el fragmento en pagina_fin, saltar automáticamente a esa página real
-                if (typeof paginaActual !== 'undefined' && paginaActual !== pagObjetivoReal) {
-                    if (typeof cargarPagina === 'function') {
-                        await cargarPagina(pagObjetivoReal);
-                    } else {
-                        const inputPag = document.getElementById('input-pagina-actual');
-                        if (inputPag) inputPag.value = pagReal;
-                        if (typeof irAPaginaDirecta === 'function') irAPaginaDirecta();
-                    }
-                    await new Promise(r => setTimeout(r, 120));
-                }
-
-                if (typeof paginaActual !== 'undefined' && paginaActual !== pagObjetivoReal) {
-                    return;
-                }
-
-                const rectsToUse = res.rects || [res.coords];
-                window.resaltadoBusqueda = rectsToUse;
-                window.resaltadoBBox = res.bbox || null;
-                window.resaltadoPagina = pagObjetivoReal;
-                if (typeof resaltadoBusqueda !== 'undefined') {
-                    resaltadoBusqueda = rectsToUse;
-                }
-
-                // Redibujar el canvas inmediatamente
-                if (typeof dibujar === 'function') {
-                    dibujar();
-                }
-
-                // 4. Auto-Scroll suave del visor PDF hacia la posición resaltada
-                setTimeout(() => {
-                    if ((typeof paginaActual !== 'undefined' && paginaActual !== pagObjetivoReal)) return;
-                    const factorZoom = (typeof datosPagina !== 'undefined' && datosPagina?.factor_zoom) ? datosPagina.factor_zoom : 1.0;
-                    const cssZoom = (typeof nivelZoomPDF === 'number') ? nivelZoomPDF : 1.0;
-                    const targetY = res.bbox ? res.bbox[1] : (res.rects ? res.rects[0][1] : res.coords[1]);
-                    const yPos = targetY * factorZoom * cssZoom;
-                    const visor = document.getElementById('visor-container') || document.querySelector('.contenedor-visor') || document.getElementById('contenedor-canvas');
-                    if (visor) {
-                        visor.scrollTo({ top: Math.max(0, yPos - 120), behavior: 'smooth' });
-                    }
-                }, 100);
-            } else {
-                console.warn("⚠️ [LiraAI] No se encontraron rects:", res);
-            }
-        }
+        await _buscarYResaltarCoordenadasFuenteIA(numPag, numPagFin, snippetReal, textoAfirmacion, docObjetivo);
     } catch (err) {
         console.warn("⚠️ [LiraAI] No se pudieron obtener coordenadas del fragmento:", err);
     }
@@ -1402,25 +1346,24 @@ function mostrarToastLira(mensaje, icono) {
 }
 window.mostrarToastLira = mostrarToastLira;
 
+const _TITULOS_SOLICITUD_IA = {
+    academico: '🎓 Síntesis Académica y Metodológica',
+    resumen: '📝 Resumen Estructurado',
+    conclusiones: '🎯 Conclusiones y Hallazgos Estadísticos',
+    conceptos: '💡 Glosario y Abreviaturas',
+    flashcards: '❓ Flashcards y Preguntas de Estudio',
+    personalizado: '✍️ Análisis Personalizado'
+};
+
 // --- SOLICITUDES RÁPIDAS (PROMPTS TEMPLATE) ---
 async function ejecutarSolicitudIA(tipo, promptCustom = null) {
     const box = document.getElementById('ia-resultado-box');
     const titulo = document.getElementById('ia-resultado-titulo');
     const cuerpoResultado = document.getElementById('ia-resultado-cuerpo');
-
     if (!box || !cuerpoResultado) return;
 
     box.style.display = 'flex';
-    const titulos = {
-        'academico': '🎓 Síntesis Académica y Metodológica',
-        'resumen': '📝 Resumen Estructurado',
-        'conclusiones': '🎯 Conclusiones y Hallazgos Estadísticos',
-        'conceptos': '💡 Glosario y Abreviaturas',
-        'flashcards': '❓ Flashcards y Preguntas de Estudio',
-        'personalizado': '✍️ Análisis Personalizado'
-    };
-    if (titulo) titulo.innerText = titulos[tipo] || 'Resultado de la Solicitud';
-
+    if (titulo) titulo.innerText = _TITULOS_SOLICITUD_IA[tipo] || 'Resultado de la Solicitud';
     cuerpoResultado.innerHTML = `
         <div style="display: flex; align-items: center; gap: 8px; color: #7f8c8d; padding: 15px 0;">
             <span class="ia-spinner"></span>
@@ -1430,9 +1373,8 @@ async function ejecutarSolicitudIA(tipo, promptCustom = null) {
 
     try {
         if (typeof eel !== 'undefined' && eel.rag_ejecutar_solicitud) {
-            const modoActual = window.modoSalidaIA || document.getElementById('sel-ia-modo-salida')?.value || 'trazabilidad';
             const fuentesCtx = await construirContextoFuentesParaIA();
-            const res = await eel.rag_ejecutar_solicitud(tipo, null, promptCustom, modoActual, fuentesCtx.contextoExtra, fuentesCtx.ignorarPdf)();
+            const res = await eel.rag_ejecutar_solicitud(tipo, null, promptCustom, _obtenerModoSalidaActivoIA(), fuentesCtx.contextoExtra, fuentesCtx.ignorarPdf)();
             if (res && res.exito) {
                 const txt = res.respuesta || res.resumen || '';
                 cuerpoResultado.innerHTML = formatearMarkdown(txt, res.fuentes || []);
@@ -1445,9 +1387,7 @@ async function ejecutarSolicitudIA(tipo, promptCustom = null) {
         console.error("❌ [LiraAI] Error ejecutando solicitud:", e);
         cuerpoResultado.innerHTML = `❌ <span style="color:#e74c3c;">Excepción: ${e.message}</span>`;
     } finally {
-        if (typeof actualizarGaugeTokensUI === 'function') {
-            actualizarGaugeTokensUI(false);
-        }
+        if (typeof actualizarGaugeTokensUI === 'function') actualizarGaugeTokensUI(false);
     }
 }
 

@@ -34,6 +34,22 @@
         return proxyMapa;
     }
 
+    function _crearProxyReturnValuesRoot(actual) {
+        return new Proxy(actual, {
+            get(target, fnName) {
+                if (typeof fnName === 'symbol') return Reflect.get(target, fnName);
+                const entry = target[fnName];
+                if (entry && typeof entry === 'object') return _envolverMapaCallbacks(entry);
+                if (entry === undefined) return _envolverMapaCallbacks({});
+                return entry;
+            },
+            set(target, fnName, val) {
+                target[fnName] = (val && typeof val === 'object') ? _envolverMapaCallbacks(val) : val;
+                return true;
+            }
+        });
+    }
+
     function _protegerReturnValuesCallbacks() {
         if (!window.pywebview || typeof window.pywebview !== 'object') return;
         const actual = window.pywebview._returnValuesCallbacks;
@@ -45,23 +61,7 @@
             }
         }
 
-        const proxyRoot = new Proxy(actual, {
-            get(target, fnName) {
-                if (typeof fnName === 'symbol') return Reflect.get(target, fnName);
-                const entry = target[fnName];
-                if (entry && typeof entry === 'object') {
-                    return _envolverMapaCallbacks(entry);
-                }
-                if (entry === undefined) {
-                    return _envolverMapaCallbacks({});
-                }
-                return entry;
-            },
-            set(target, fnName, val) {
-                target[fnName] = (val && typeof val === 'object') ? _envolverMapaCallbacks(val) : val;
-                return true;
-            }
-        });
+        const proxyRoot = _crearProxyReturnValuesRoot(actual);
         _wrappedCallbackMaps.add(proxyRoot);
         window.pywebview._returnValuesCallbacks = proxyRoot;
     }

@@ -165,58 +165,63 @@ function actualizarContrasteEditor(editorArea, colorFallback = '#000000') {
     }
 }
 
-function toggleModoEditorTexto(activo) {
-    console.log('[Editor] toggleModo activo=', activo);
-    console.log('[Editor] rutaPDFActual=', typeof rutaPDFActual !== 'undefined' ? rutaPDFActual : 'NO DEFINIDA');
-    console.log('[Editor] paginaActual=', typeof paginaActual !== 'undefined' ? paginaActual : 'NO DEFINIDA');
-    window.modoEditorTextoActivo = activo;
-    const btn = document.getElementById('btn-text-editor');
-    const btnZen = document.getElementById('btn-edit-pdf');
+const _MODOS_A_DESACTIVAR_EDITOR = [
+    ['modoBorradorActivo', () => typeof toggleModoBorrador === 'function' && toggleModoBorrador(false)],
+    ['modoSubrayadorActivo', () => typeof toggleModoSubrayador === 'function' && toggleModoSubrayador(false)],
+    ['modoCuadroTextoActivo', () => typeof activarModoCuadroTexto === 'function' && activarModoCuadroTexto(false)],
+    ['modoRecorteActivo', () => typeof toggleModoRecorteExtraccion === 'function' && toggleModoRecorteExtraccion(false)],
+    ['modoMoverElementosActivo', () => typeof toggleModoMoverElementos === 'function' && toggleModoMoverElementos(false)],
+    ['capturandoCorte', () => typeof toggleCapturaCorte === 'function' && toggleCapturaCorte(false)]
+];
+
+function _desactivarOtrosModosEditor() {
+    _MODOS_A_DESACTIVAR_EDITOR.forEach(([flag, fn]) => {
+        if (window[flag]) fn();
+    });
+    const chkLimites = document.getElementById('chk-dibujar-limites');
+    if (chkLimites && chkLimites.checked) {
+        chkLimites.checked = false;
+        if (typeof toggleDibujoLimites === 'function') toggleDibujoLimites(false);
+    }
+}
+
+function _actualizarBotonesUIEditorTexto(activo) {
     const btnGroup = document.getElementById('group-text-editor');
-    const capa = document.getElementById('lira-pdf-text-editor-layer');
-    
     if (btnGroup) btnGroup.classList.toggle('active', activo);
+    const btn = document.getElementById('btn-text-editor');
     if (btn) {
         btn.classList.toggle('activo', activo);
         btn.classList.toggle('active', activo);
     }
-    if (btnZen) {
-        btnZen.classList.toggle('activo', activo);
-    }
-
-    // Actualizar estilo subrayado activo en botones de Modo Zen (Ctrl+U)
+    const btnZen = document.getElementById('btn-edit-pdf');
+    if (btnZen) btnZen.classList.toggle('activo', activo);
     document.querySelectorAll('.zen-item-editor-texto').forEach(el => {
         el.classList.toggle('tool-active-underline', activo);
     });
     if (typeof window.actualizarEstadoInteractivoCapaSoloLectura === 'function') {
         window.actualizarEstadoInteractivoCapaSoloLectura();
     }
+}
+
+function toggleModoEditorTexto(activo) {
+    console.log('[Editor] toggleModo activo=', activo);
+    console.log('[Editor] rutaPDFActual=', typeof rutaPDFActual !== 'undefined' ? rutaPDFActual : 'NO DEFINIDA');
+    console.log('[Editor] paginaActual=', typeof paginaActual !== 'undefined' ? paginaActual : 'NO DEFINIDA');
+    window.modoEditorTextoActivo = activo;
+    const capa = document.getElementById('lira-pdf-text-editor-layer');
+    _actualizarBotonesUIEditorTexto(activo);
 
     if (activo) {
         if (capa) capa.classList.add('activo');
-        
-        // Desactivar otros modos
-        if (typeof toggleModoBorrador === 'function' && window.modoBorradorActivo) toggleModoBorrador(false);
-        if (typeof toggleModoSubrayador === 'function' && window.modoSubrayadorActivo) toggleModoSubrayador(false);
-        if (typeof activarModoCuadroTexto === 'function' && window.modoCuadroTextoActivo) activarModoCuadroTexto(false);
-        if (typeof toggleModoRecorteExtraccion === 'function' && window.modoRecorteActivo) toggleModoRecorteExtraccion(false);
-        if (typeof toggleModoMoverElementos === 'function' && window.modoMoverElementosActivo) toggleModoMoverElementos(false);
-        if (typeof toggleCapturaCorte === 'function' && window.capturandoCorte) toggleCapturaCorte(false);
-        const chkLimites = document.getElementById('chk-dibujar-limites');
-        if (chkLimites && chkLimites.checked) {
-            chkLimites.checked = false;
-            if (typeof toggleDibujoLimites === 'function') toggleDibujoLimites(false);
-        }
-
+        _desactivarOtrosModosEditor();
         cargarCatalogoFuentesEditor(false);
         renderizarBloquesEditor();
 
-        // Registrar handler de resize para recalcular posiciones
         if (!editorResizeHandler) {
             editorResizeHandler = () => {
                 if (window.modoEditorTextoActivo) {
                     cargarCatalogoFuentesEditor(false);
-        renderizarBloquesEditor();
+                    renderizarBloquesEditor();
                 }
             };
             window.addEventListener('resize', editorResizeHandler);
@@ -227,8 +232,6 @@ function toggleModoEditorTexto(activo) {
             capa.innerHTML = '';
         }
         cerrarEditorTexto();
-
-        // Limpiar handler de resize
         if (editorResizeHandler) {
             window.removeEventListener('resize', editorResizeHandler);
             editorResizeHandler = null;
@@ -286,67 +289,54 @@ async function renderizarBloquesEditor() {
     }
 }
 
-function calcRectCanvas(bboxPdf) {
+function _obtenerContextoProyeccionEditor() {
     const memPag = (typeof memoriaLayout !== 'undefined' && memoriaLayout) ? memoriaLayout[paginaActual.toString()] : null;
     const baseEscala = memPag?.escala || (typeof datosPagina !== 'undefined' && datosPagina?.factor_zoom) || 0;
-    if (!baseEscala) return {x:0, y:0, w:0, h:0};
+    if (!baseEscala) return null;
 
     const wrapper = document.getElementById('pdf-crop-wrapper');
     const canvas = document.getElementById('lienzo-pdf');
     const container = document.getElementById('visor-container');
-
-    if (!wrapper || !canvas || !container) return {x:0, y:0, w:0, h:0};
+    if (!wrapper || !canvas || !container) return null;
 
     const sc = baseEscala * (typeof nivelZoomPDF !== 'undefined' ? nivelZoomPDF : 1.0);
+    return { wrapper, canvas, container, sc };
+}
 
-    const wrapperLeft = wrapper.offsetLeft;
-    const wrapperTop = wrapper.offsetTop;
-    const canvasLeft = canvas.offsetLeft;
-    const canvasTop = canvas.offsetTop;
+function calcRectCanvas(bboxPdf) {
+    const ctx = _obtenerContextoProyeccionEditor();
+    if (!ctx) return { x: 0, y: 0, w: 0, h: 0 };
 
+    const { wrapper, canvas, sc } = ctx;
     const x0 = bboxPdf[0] * sc;
     const y0 = bboxPdf[1] * sc;
-    const x1 = bboxPdf[2] * sc;
-    const y1 = bboxPdf[3] * sc;
-
-    const w = Math.max(x1 - x0, 1);
-    const h = Math.max(y1 - y0, 1);
+    const w = Math.max(bboxPdf[2] * sc - x0, 1);
+    const h = Math.max(bboxPdf[3] * sc - y0, 1);
 
     const visual = {
-        x: wrapperLeft + canvasLeft + x0,
-        y: wrapperTop + canvasTop + y0,
-        w: w,
-        h: h
+        x: wrapper.offsetLeft + canvas.offsetLeft + x0,
+        y: wrapper.offsetTop + canvas.offsetTop + y0,
+        w,
+        h
     };
 
     const CLICK_MIN = 24;
     const clickW = Math.max(w, CLICK_MIN);
     const clickH = Math.max(h, CLICK_MIN);
-    const clickX = visual.x + (w - clickW) / 2;
-    const clickY = visual.y + (h - clickH) / 2;
-
     return {
         ...visual,
-        clickX: clickX,
-        clickY: clickY,
-        clickW: clickW,
-        clickH: clickH
+        clickX: visual.x + (w - clickW) / 2,
+        clickY: visual.y + (h - clickH) / 2,
+        clickW,
+        clickH
     };
 }
 
 function pdfRectFromCanvas(rectVisual) {
-    const memPag = (typeof memoriaLayout !== 'undefined' && memoriaLayout) ? memoriaLayout[paginaActual.toString()] : null;
-    const baseEscala = memPag?.escala || (typeof datosPagina !== 'undefined' && datosPagina?.factor_zoom) || 0;
-    if (!baseEscala) return [0,0,0,0];
+    const ctx = _obtenerContextoProyeccionEditor();
+    if (!ctx) return [0, 0, 0, 0];
 
-    const wrapper = document.getElementById('pdf-crop-wrapper');
-    const canvas = document.getElementById('lienzo-pdf');
-    const container = document.getElementById('visor-container');
-
-    if (!wrapper || !canvas || !container) return [0,0,0,0];
-
-    const sc = baseEscala * (typeof nivelZoomPDF !== 'undefined' ? nivelZoomPDF : 1.0);
-
+    const { wrapper, canvas, container, sc } = ctx;
     const containerRect = container.getBoundingClientRect();
     const wrapperRect = wrapper.getBoundingClientRect();
     const canvasLeft = (typeof canvas.offsetLeft === 'number') ? canvas.offsetLeft : (parseFloat(canvas.style.left) || 0);
@@ -355,12 +345,12 @@ function pdfRectFromCanvas(rectVisual) {
     const wrapperLeft = wrapperRect.left - containerRect.left + (container.scrollLeft || 0) - (container.clientLeft || 0);
     const wrapperTop = wrapperRect.top - containerRect.top + (container.scrollTop || 0) - (container.clientTop || 0);
 
-    const x0 = (rectVisual.x - wrapperLeft - canvasLeft) / sc;
-    const y0 = (rectVisual.y - wrapperTop - canvasTop) / sc;
-    const x1 = (rectVisual.x + rectVisual.w - wrapperLeft - canvasLeft) / sc;
-    const y1 = (rectVisual.y + rectVisual.h - wrapperTop - canvasTop) / sc;
-
-    return [x0, y0, x1, y1];
+    return [
+        (rectVisual.x - wrapperLeft - canvasLeft) / sc,
+        (rectVisual.y - wrapperTop - canvasTop) / sc,
+        (rectVisual.x + rectVisual.w - wrapperLeft - canvasLeft) / sc,
+        (rectVisual.y + rectVisual.h - wrapperTop - canvasTop) / sc
+    ];
 }
 
 function poblarSelectFuentesEditor(selFuente, familiasExtra = [], seleccionActual = '') {
@@ -468,17 +458,21 @@ function aplicarEstilosSpanDOM(span) {
     span.style.textDecoration = sub ? 'underline' : 'none';
 }
 
-function crearSpanDOM(meta) {
-    const span = document.createElement('span');
-    span.className = 'editor-rich-span';
+function _aplicarMetaASpanDOM(span, meta) {
     span.dataset.fuente = limpiarNombreFuenteJS(meta.fuente_limpia || meta.fuente || 'Helvetica');
     span.dataset.tamano = String(Number(meta.tamano || 12));
     span.dataset.color = normalizarColorHex(meta.color || '#000000');
     span.dataset.negrita = meta.negrita ? '1' : '0';
     span.dataset.cursiva = meta.cursiva ? '1' : '0';
     span.dataset.subrayado = meta.subrayado ? '1' : '0';
-    span.textContent = meta.texto ?? '';
     aplicarEstilosSpanDOM(span);
+}
+
+function crearSpanDOM(meta) {
+    const span = document.createElement('span');
+    span.className = 'editor-rich-span';
+    span.textContent = meta.texto ?? '';
+    _aplicarMetaASpanDOM(span, meta);
     return span;
 }
 
@@ -525,48 +519,46 @@ function fusionarSegmentosContiguos(segmentos) {
     return res;
 }
 
-function extraerSegmentosPlanos(editorArea, fallbackMeta) {
-    const raw = [];
+function _heredarMetaElementoEditor(nodo, tag, metaActual) {
+    if (nodo.classList && nodo.classList.contains('editor-rich-span')) {
+        return leerMetaDeSpanDOM(nodo, metaActual);
+    }
+    const nuevoMeta = { ...metaActual };
+    if (tag === 'B' || tag === 'STRONG') nuevoMeta.negrita = true;
+    if (tag === 'I' || tag === 'EM') nuevoMeta.cursiva = true;
+    if (tag === 'U') nuevoMeta.subrayado = true;
+    if (nodo.style && nodo.style.color) nuevoMeta.color = normalizarColorHex(nodo.style.color);
+    return nuevoMeta;
+}
 
-    function recorrer(nodo, metaActual, esPrimerHijoBloque = false) {
-        if (!nodo) return;
-        if (nodo.nodeType === Node.TEXT_NODE) {
-            const txt = (nodo.nodeValue || '').replace(/\u200B/g, '');
-            if (txt.length > 0) {
-                raw.push({ ...metaActual, texto: txt });
-            }
-            return;
-        }
-        if (nodo.nodeType !== Node.ELEMENT_NODE) return;
+function _recorrerNodoSegmentosEditor(nodo, metaActual, editorArea, raw) {
+    if (!nodo) return;
+    if (nodo.nodeType === Node.TEXT_NODE) {
+        const txt = (nodo.nodeValue || '').replace(/\u200B/g, '');
+        if (txt.length > 0) raw.push({ ...metaActual, texto: txt });
+        return;
+    }
+    if (nodo.nodeType !== Node.ELEMENT_NODE) return;
 
-        const tag = nodo.tagName.toUpperCase();
-        if (tag === 'BR') {
-            raw.push({ ...metaActual, texto: '\n' });
-            return;
-        }
-
-        let nuevoMeta = { ...metaActual };
-        if (nodo.classList && nodo.classList.contains('editor-rich-span')) {
-            nuevoMeta = leerMetaDeSpanDOM(nodo, metaActual);
-        } else {
-            if (tag === 'B' || tag === 'STRONG') nuevoMeta.negrita = true;
-            if (tag === 'I' || tag === 'EM') nuevoMeta.cursiva = true;
-            if (tag === 'U') nuevoMeta.subrayado = true;
-            if (nodo.style && nodo.style.color) nuevoMeta.color = normalizarColorHex(nodo.style.color);
-        }
-
-        if ((tag === 'DIV' || tag === 'P') && nodo !== editorArea && raw.length > 0) {
-            const ultimoTxt = raw[raw.length - 1].texto;
-            if (!ultimoTxt.endsWith('\n')) {
-                raw.push({ ...nuevoMeta, texto: '\n' });
-            }
-        }
-
-        const hijos = Array.from(nodo.childNodes);
-        hijos.forEach((h, idx) => recorrer(h, nuevoMeta, idx === 0));
+    const tag = nodo.tagName.toUpperCase();
+    if (tag === 'BR') {
+        raw.push({ ...metaActual, texto: '\n' });
+        return;
     }
 
-    recorrer(editorArea, fallbackMeta);
+    const nuevoMeta = _heredarMetaElementoEditor(nodo, tag, metaActual);
+    if ((tag === 'DIV' || tag === 'P') && nodo !== editorArea && raw.length > 0) {
+        if (!raw[raw.length - 1].texto.endsWith('\n')) {
+            raw.push({ ...nuevoMeta, texto: '\n' });
+        }
+    }
+
+    Array.from(nodo.childNodes).forEach(h => _recorrerNodoSegmentosEditor(h, nuevoMeta, editorArea, raw));
+}
+
+function extraerSegmentosPlanos(editorArea, fallbackMeta) {
+    const raw = [];
+    _recorrerNodoSegmentosEditor(editorArea, fallbackMeta, editorArea, raw);
     return fusionarSegmentosContiguos(raw);
 }
 
@@ -608,8 +600,7 @@ function obtenerOffsetsSeleccionEnEditor(editorArea, range) {
     return { start, end };
 }
 
-function restaurarSeleccionPorOffsets(editorArea, startOffset, endOffset) {
-    if (!editorArea) return null;
+function _resolverLimitesTextoPorOffsets(editorArea, startOffset, endOffset) {
     const walker = document.createTreeWalker(editorArea, NodeFilter.SHOW_TEXT, null);
     let nodo;
     let acumulado = 0;
@@ -634,14 +625,18 @@ function restaurarSeleccionPorOffsets(editorArea, startOffset, endOffset) {
         acumulado += len;
     }
 
-    if (!startNode && ultimoTextNode) {
-        startNode = ultimoTextNode;
-        startLocal = (ultimoTextNode.nodeValue || '').length;
-    }
-    if (!endNode && ultimoTextNode) {
-        endNode = ultimoTextNode;
-        endLocal = (ultimoTextNode.nodeValue || '').length;
-    }
+    const fallbackLen = ultimoTextNode ? (ultimoTextNode.nodeValue || '').length : 0;
+    return {
+        startNode: startNode || ultimoTextNode,
+        startLocal: startNode ? startLocal : fallbackLen,
+        endNode: endNode || ultimoTextNode,
+        endLocal: endNode ? endLocal : fallbackLen
+    };
+}
+
+function restaurarSeleccionPorOffsets(editorArea, startOffset, endOffset) {
+    if (!editorArea) return null;
+    const { startNode, startLocal, endNode, endLocal } = _resolverLimitesTextoPorOffsets(editorArea, startOffset, endOffset);
 
     const range = document.createRange();
     if (startNode && endNode) {
@@ -658,48 +653,28 @@ function restaurarSeleccionPorOffsets(editorArea, startOffset, endOffset) {
     return range.cloneRange();
 }
 
-function abrirEditorTexto(bloquePdf, rectVisual) {
-    cerrarEditorTexto();
-    const capa = document.getElementById('lira-pdf-text-editor-layer');
-    if (!capa) return;
+function _normalizarSpanInicialEditor(sp, bloquePdf, defaults) {
+    return {
+        texto: sp.texto ?? '',
+        fuente: limpiarNombreFuenteJS(sp.fuente_limpia || sp.fuente || defaults.familiaInicial),
+        tamano: Number(sp.tamano || defaults.tamanoInicial),
+        color: normalizarColorHex(rgbPdfToHex(sp.color || bloquePdf.color)),
+        negrita: sp.negrita !== undefined ? Boolean(sp.negrita) : defaults.negritaInicial,
+        cursiva: sp.cursiva !== undefined ? Boolean(sp.cursiva) : defaults.cursivaInicial,
+        subrayado: Boolean(sp.subrayado)
+    };
+}
 
-    let editor = document.createElement('div');
-    editor.id = 'lira-editor-popup';
-    editor.className = 'editor-wrapper';
-
-    const containerRect = document.getElementById('visor-container').getBoundingClientRect();
-    let left = Math.min(rectVisual.x, containerRect.width - 620);
-    let top = Math.max(10, rectVisual.y - 36);
-    let w = Math.max(620, rectVisual.w + 24);
-    let h = Math.max(200, rectVisual.h + 64);
-
-    editor.style.left = left + 'px';
-    editor.style.top = top + 'px';
-    editor.style.width = w + 'px';
-    editor.style.height = h + 'px';
-    editor.style.maxWidth = (containerRect.width - 20) + 'px';
-    editor.style.maxHeight = (containerRect.height - 20) + 'px';
-
-    let hasUnsavedChanges = false;
-    let sincronizandoToolbar = false;
-    let ultimoRangoSeleccion = null;
-
+function _construirSpansInicialesEditor(bloquePdf) {
     const familiaInicial = limpiarNombreFuenteJS(bloquePdf.fuente_limpia || bloquePdf.fuente || 'Helvetica');
     const tamanoInicial = Number(bloquePdf.tamano || 12);
     const colorInicial = normalizarColorHex(rgbPdfToHex(bloquePdf.color));
     const negritaInicial = Boolean((bloquePdf.flags || 0) & 16);
     const cursivaInicial = Boolean((bloquePdf.flags || 0) & 2);
+    const defaults = { familiaInicial, tamanoInicial, negritaInicial, cursivaInicial };
 
     const spansIniciales = (Array.isArray(bloquePdf.spans) && bloquePdf.spans.length > 0)
-        ? bloquePdf.spans.map(sp => ({
-            texto: sp.texto ?? '',
-            fuente: limpiarNombreFuenteJS(sp.fuente_limpia || sp.fuente || familiaInicial),
-            tamano: Number(sp.tamano || tamanoInicial),
-            color: normalizarColorHex(rgbPdfToHex(sp.color || bloquePdf.color)),
-            negrita: sp.negrita !== undefined ? Boolean(sp.negrita) : negritaInicial,
-            cursiva: sp.cursiva !== undefined ? Boolean(sp.cursiva) : cursivaInicial,
-            subrayado: Boolean(sp.subrayado)
-        }))
+        ? bloquePdf.spans.map(sp => _normalizarSpanInicialEditor(sp, bloquePdf, defaults))
         : [{
             texto: bloquePdf.texto ?? '',
             fuente: familiaInicial,
@@ -710,31 +685,90 @@ function abrirEditorTexto(bloquePdf, rectVisual) {
             subrayado: false
         }];
 
-    const serializacionInicial = JSON.stringify(fusionarSegmentosContiguos(spansIniciales));
+    return { familiaInicial, tamanoInicial, colorInicial, spansIniciales };
+}
 
-    let barra = document.createElement('div');
+function _esSpanRicoEditor(nodo) {
+    return Boolean(nodo && nodo.classList && nodo.classList.contains('editor-rich-span'));
+}
+
+function _obtenerSpanActivoDesdeRangoEditor(editorArea, range) {
+    if (!range) return editorArea.querySelector('.editor-rich-span');
+    let nodo = range.startContainer;
+    if (nodo && nodo.nodeType === Node.TEXT_NODE) {
+        const prev = nodo.previousSibling;
+        nodo = (range.startOffset === 0 && _esSpanRicoEditor(prev)) ? prev : nodo.parentElement;
+    }
+    const sp = nodo && nodo.closest ? nodo.closest('.editor-rich-span') : null;
+    if (sp && editorArea.contains(sp)) return sp;
+
+    if (nodo === editorArea && editorArea.childNodes.length > 0) {
+        const idx = Math.min(Math.max(0, range.startOffset - 1), editorArea.childNodes.length - 1);
+        const cand = editorArea.childNodes[idx];
+        if (_esSpanRicoEditor(cand)) return cand;
+    }
+    return editorArea.querySelector('.editor-rich-span');
+}
+
+function _dividirSegmentosPorSeleccion(segmentos, start, end) {
+    const partidos = [];
+    let pos = 0;
+    segmentos.forEach(seg => {
+        const len = seg.texto.length;
+        const segStart = pos;
+        const segEnd = pos + len;
+        pos = segEnd;
+
+        if (segEnd <= start || segStart >= end) {
+            partidos.push({ ...seg, enSeleccion: false });
+            return;
+        }
+        const cut0 = Math.max(0, start - segStart);
+        const cut1 = Math.min(len, end - segStart);
+        if (cut0 > 0) partidos.push({ ...seg, texto: seg.texto.slice(0, cut0), enSeleccion: false });
+        if (cut1 > cut0) partidos.push({ ...seg, texto: seg.texto.slice(cut0, cut1), enSeleccion: true });
+        if (cut1 < len) partidos.push({ ...seg, texto: seg.texto.slice(cut1), enSeleccion: false });
+    });
+    return partidos;
+}
+
+function _crearDOMPopupEditorTexto(rectVisual, metaInicial) {
+    const { familiaInicial, tamanoInicial, colorInicial, spansIniciales } = metaInicial;
+    const primero = spansIniciales[0] || {};
+    const containerRect = document.getElementById('visor-container').getBoundingClientRect();
+
+    const editor = document.createElement('div');
+    editor.id = 'lira-editor-popup';
+    editor.className = 'editor-wrapper';
+    Object.assign(editor.style, {
+        left: Math.min(rectVisual.x, containerRect.width - 620) + 'px',
+        top: Math.max(10, rectVisual.y - 36) + 'px',
+        width: Math.max(620, rectVisual.w + 24) + 'px',
+        height: Math.max(200, rectVisual.h + 64) + 'px',
+        maxWidth: (containerRect.width - 20) + 'px',
+        maxHeight: (containerRect.height - 20) + 'px'
+    });
+
+    const barra = document.createElement('div');
     barra.className = 'barra-superior';
 
-    let handle = document.createElement('div');
+    const handle = document.createElement('div');
     handle.className = 'drag-handle';
     handle.title = 'Arrastrar para mover';
 
-    let toolbar = document.createElement('div');
+    const toolbar = document.createElement('div');
     toolbar.className = 'editor-toolbar';
-    toolbar.style.display = 'flex';
-    toolbar.style.gap = '4px';
-    toolbar.style.flexWrap = 'wrap';
-    toolbar.style.padding = '4px 6px';
-    toolbar.style.background = '#21262d';
-    toolbar.style.borderBottom = '1px solid #30363d';
-    toolbar.style.flexShrink = '0';
+    Object.assign(toolbar.style, {
+        display: 'flex', gap: '4px', flexWrap: 'wrap', padding: '4px 6px',
+        background: '#21262d', borderBottom: '1px solid #30363d', flexShrink: '0'
+    });
 
-    let selFuente = document.createElement('select');
+    const selFuente = document.createElement('select');
     selFuente.className = 'editor-font-family';
     selFuente.title = 'Familia tipográfica';
     selFuente.style.maxWidth = '175px';
 
-    let btnDescargarFuente = document.createElement('button');
+    const btnDescargarFuente = document.createElement('button');
     btnDescargarFuente.type = 'button';
     btnDescargarFuente.className = 'editor-font-download-btn';
     btnDescargarFuente.title = 'Descargar e instalar esta familia tipográfica';
@@ -742,543 +776,470 @@ function abrirEditorTexto(bloquePdf, rectVisual) {
     btnDescargarFuente.onmousedown = (e) => e.preventDefault();
 
     const familiasEnBloque = [familiaInicial, ...spansIniciales.map(s => s.fuente)];
-    poblarSelectFuentesEditor(selFuente, familiasEnBloque, spansIniciales[0]?.fuente || familiaInicial);
+    poblarSelectFuentesEditor(selFuente, familiasEnBloque, primero.fuente || familiaInicial);
 
-    let inpTamano = document.createElement('input');
+    const inpTamano = document.createElement('input');
     inpTamano.type = 'number';
     inpTamano.className = 'editor-font-size';
-    inpTamano.value = Number(spansIniciales[0]?.tamano || tamanoInicial).toFixed(1);
+    inpTamano.value = Number(primero.tamano || tamanoInicial).toFixed(1);
     inpTamano.min = '4';
     inpTamano.max = '72';
     inpTamano.step = '0.5';
     inpTamano.style.width = '55px';
     inpTamano.title = 'Tamaño (pt)';
 
-    let inpColor = document.createElement('input');
+    const inpColor = document.createElement('input');
     inpColor.type = 'color';
     inpColor.className = 'editor-font-color';
-    inpColor.value = spansIniciales[0]?.color || colorInicial;
+    inpColor.value = primero.color || colorInicial;
     inpColor.title = 'Color de fuente';
 
-    let btnColorApply = document.createElement('button');
+    const btnColorApply = document.createElement('button');
     btnColorApply.type = 'button';
     btnColorApply.className = 'editor-format-btn color-apply';
     btnColorApply.innerHTML = 'A';
     btnColorApply.title = 'Aplicar color a selección o span activo';
-    btnColorApply.style.fontSize = '11px';
-    btnColorApply.style.fontWeight = '700';
-    btnColorApply.style.width = '28px';
-    btnColorApply.style.height = '24px';
-    btnColorApply.style.borderRadius = '3px';
-    btnColorApply.style.cursor = 'pointer';
+    Object.assign(btnColorApply.style, {
+        fontSize: '11px', fontWeight: '700', width: '28px', height: '24px', borderRadius: '3px', cursor: 'pointer'
+    });
     btnColorApply.onmousedown = (e) => e.preventDefault();
     actualizarContrasteBotonColor(btnColorApply, inpColor.value);
 
-    let btnBold = createFormatBtn('B', 'bold', 'Negrita (Ctrl+B)', Boolean(spansIniciales[0]?.negrita));
-    let btnItalic = createFormatBtn('I', 'italic', 'Cursiva (Ctrl+I)', Boolean(spansIniciales[0]?.cursiva));
-    let btnUnderline = createFormatBtn('U', 'underline', 'Subrayado (Ctrl+U)', Boolean(spansIniciales[0]?.subrayado));
-    btnBold.onmousedown = (e) => e.preventDefault();
-    btnItalic.onmousedown = (e) => e.preventDefault();
-    btnUnderline.onmousedown = (e) => e.preventDefault();
+    const btnBold = createFormatBtn('B', 'bold', 'Negrita (Ctrl+B)', Boolean(primero.negrita));
+    const btnItalic = createFormatBtn('I', 'italic', 'Cursiva (Ctrl+I)', Boolean(primero.cursiva));
+    const btnUnderline = createFormatBtn('U', 'underline', 'Subrayado (Ctrl+U)', Boolean(primero.subrayado));
+    [btnBold, btnItalic, btnUnderline].forEach(b => { b.onmousedown = (e) => e.preventDefault(); });
 
-    let btnG = document.createElement('button');
+    const btnG = document.createElement('button');
     btnG.className = 'btn-guardar';
     btnG.innerText = 'Guardar';
     btnG.style.marginLeft = 'auto';
 
-    let btnCancel = document.createElement('button');
+    const btnCancel = document.createElement('button');
     btnCancel.className = 'btn-cancelar';
     btnCancel.innerText = 'Cancelar';
-    btnCancel.style.marginLeft = '4px';
-    btnCancel.style.background = '#da3633';
-    btnCancel.style.border = '1px solid #f85149';
-    btnCancel.style.color = 'white';
-    btnCancel.style.borderRadius = '4px';
-    btnCancel.style.padding = '2px 10px';
-    btnCancel.style.fontSize = '11px';
-    btnCancel.style.fontWeight = '600';
-    btnCancel.style.cursor = 'pointer';
-    btnCancel.style.display = 'none';
+    Object.assign(btnCancel.style, {
+        marginLeft: '4px', background: '#da3633', border: '1px solid #f85149', color: 'white',
+        borderRadius: '4px', padding: '2px 10px', fontSize: '11px', fontWeight: '600',
+        cursor: 'pointer', display: 'none'
+    });
 
-    toolbar.appendChild(selFuente);
-    toolbar.appendChild(btnDescargarFuente);
-    toolbar.appendChild(inpTamano);
-    toolbar.appendChild(inpColor);
-    toolbar.appendChild(btnColorApply);
-    toolbar.appendChild(btnBold);
-    toolbar.appendChild(btnItalic);
-    toolbar.appendChild(btnUnderline);
+    [selFuente, btnDescargarFuente, inpTamano, inpColor, btnColorApply, btnBold, btnItalic, btnUnderline]
+        .forEach(el => toolbar.appendChild(el));
+    [handle, toolbar, btnG, btnCancel].forEach(el => barra.appendChild(el));
 
-    barra.appendChild(handle);
-    barra.appendChild(toolbar);
-    barra.appendChild(btnG);
-    barra.appendChild(btnCancel);
-
-    let editorArea = document.createElement('div');
+    const editorArea = document.createElement('div');
     editorArea.id = 'editor-contenteditable';
     editorArea.className = 'editor-contenteditable';
     editorArea.contentEditable = 'true';
     editorArea.spellcheck = false;
-    editorArea.style.flex = '1';
-    editorArea.style.padding = '10px';
-    editorArea.style.lineHeight = '1.5';
-    editorArea.style.overflow = 'auto';
-    editorArea.style.outline = 'none';
-    editorArea.style.whiteSpace = 'pre-wrap';
-    editorArea.style.wordBreak = 'break-word';
+    Object.assign(editorArea.style, {
+        flex: '1', padding: '10px', lineHeight: '1.5', overflow: 'auto',
+        outline: 'none', whiteSpace: 'pre-wrap', wordBreak: 'break-word'
+    });
     editorArea.dataset.fontFamily = selFuente.value;
     editorArea.dataset.fontSize = inpTamano.value;
     editorArea.dataset.fontColor = inpColor.value;
 
-    const estiloDefaultActual = () => ({
-        fuente: limpiarNombreFuenteJS(selFuente.value || familiaInicial),
-        tamano: Math.max(4, parseFloat(inpTamano.value) || tamanoInicial),
-        color: normalizarColorHex(inpColor.value || colorInicial),
-        negrita: btnBold.classList.contains('activo'),
-        cursiva: btnItalic.classList.contains('activo'),
-        subrayado: btnUnderline.classList.contains('activo')
-    });
-
-    renderizarSegmentosEnEditor(editorArea, spansIniciales, estiloDefaultActual());
-    actualizarContrasteEditor(editorArea, inpColor.value);
-
-    let tooltip = document.createElement('div');
+    const tooltip = document.createElement('div');
     tooltip.className = 'editor-tooltip';
 
-    function actualizarBotonDescargaFuente() {
-        const famActual = selFuente.value;
-        const info = buscarInfoFuenteCatalogo(famActual);
-        if (info && !info.instalada && info.descargable) {
-            btnDescargarFuente.style.display = 'inline-flex';
-            btnDescargarFuente.disabled = false;
-            btnDescargarFuente.innerHTML = `⬇ Instalar ${info.familia}`;
-        } else {
-            btnDescargarFuente.style.display = 'none';
-        }
-    }
+    editor.appendChild(barra);
+    editor.appendChild(editorArea);
+    editor.appendChild(tooltip);
 
-    function updateTooltip(metaOverride = null) {
-        const m = metaOverride || estiloDefaultActual();
-        const famLimpia = limpiarNombreFuenteJS(m.fuente || selFuente.value || familiaInicial);
-        const info = buscarInfoFuenteCatalogo(famLimpia);
-        const estadoFuente = info
-            ? (info.instalada ? '' : ' (Descargable)')
-            : (bloquePdf.fuente_disponible ? '' : '');
-        const flagsTxt = [
-            m.negrita ? 'B' : '',
-            m.cursiva ? 'I' : '',
-            m.subrayado ? 'U' : ''
-        ].filter(Boolean).join(' ');
-        const sufFlags = flagsTxt ? ` | ${flagsTxt}` : '';
-        tooltip.innerText = `Fuente: ${famLimpia}${estadoFuente} | Tamaño: ${Number(m.tamano).toFixed(1)}pt | Color: ${normalizarColorHex(m.color).toUpperCase()}${sufFlags}`;
-    }
-
-    // Cargar catálogo real desde Python y actualizar select sin perder la selección actual
-    cargarCatalogoFuentesEditor(false).then(() => {
-        const actual = selFuente.value || spansIniciales[0]?.fuente || familiaInicial;
-        poblarSelectFuentesEditor(selFuente, familiasEnBloque, actual);
-        actualizarBotonDescargaFuente();
-        updateTooltip();
-    });
-
-    btnDescargarFuente.onclick = async (e) => {
-        e.stopPropagation();
-        const fam = limpiarNombreFuenteJS(selFuente.value);
-        if (!fam || typeof eel === 'undefined' || typeof eel.descargar_fuente_editor !== 'function') return;
-
-        btnDescargarFuente.disabled = true;
-        btnDescargarFuente.innerHTML = '⏳ Descargando...';
-        try {
-            const res = await eel.descargar_fuente_editor(fam)();
-            if (res && res.success) {
-                await cargarCatalogoFuentesEditor(true);
-                const spansActuales = extraerSegmentosPlanos(editorArea, estiloDefaultActual());
-                const fams = [fam, ...familiasEnBloque, ...spansActuales.map(s => s.fuente)];
-                poblarSelectFuentesEditor(selFuente, fams, res.familia || fam);
-                actualizarBotonDescargaFuente();
-                updateTooltip();
-                if (typeof mostrarToastLira === 'function') {
-                    mostrarToastLira(`Tipografía "${res.familia || fam}" instalada.`);
-                }
-            } else {
-                const msg = (res && res.error) ? res.error : 'No se pudo descargar la tipografía.';
-                if (typeof liraAlert === 'function') await liraAlert(msg, 'advertencia');
-                actualizarBotonDescargaFuente();
-            }
-        } catch (err) {
-            console.error('[Editor] Error descargando fuente:', err);
-            actualizarBotonDescargaFuente();
-        }
+    return {
+        editor, handle, selFuente, btnDescargarFuente, inpTamano, inpColor, btnColorApply,
+        btnBold, btnItalic, btnUnderline, btnG, btnCancel, editorArea, tooltip, familiasEnBloque
     };
+}
 
-    function evaluarCambiosPendientes() {
-        const actualSerial = JSON.stringify(extraerSegmentosPlanos(editorArea, estiloDefaultActual()));
-        hasUnsavedChanges = actualSerial !== serializacionInicial;
-        btnG.innerText = hasUnsavedChanges ? 'Guardar cambios' : 'Guardar';
-        btnG.style.background = hasUnsavedChanges ? '#238636' : '';
-        btnCancel.style.display = hasUnsavedChanges ? 'inline-block' : 'none';
+function _actualizarBotonDescargaFuenteEditor(ctx) {
+    const info = buscarInfoFuenteCatalogo(ctx.selFuente.value);
+    if (info && !info.instalada && info.descargable) {
+        ctx.btnDescargarFuente.style.display = 'inline-flex';
+        ctx.btnDescargarFuente.disabled = false;
+        ctx.btnDescargarFuente.innerHTML = `⬇ Instalar ${info.familia}`;
+    } else {
+        ctx.btnDescargarFuente.style.display = 'none';
     }
+}
 
-    function obtenerRangoValido() {
-        const sel = window.getSelection();
-        if (sel && sel.rangeCount > 0) {
-            const r = sel.getRangeAt(0);
-            if (editorArea.contains(r.commonAncestorContainer)) {
-                ultimoRangoSeleccion = r.cloneRange();
-                return ultimoRangoSeleccion;
+function _actualizarTooltipEditor(ctx, metaOverride = null) {
+    const m = metaOverride || ctx.estiloDefaultActual();
+    const famLimpia = limpiarNombreFuenteJS(m.fuente || ctx.selFuente.value || ctx.familiaInicial);
+    const info = buscarInfoFuenteCatalogo(famLimpia);
+    const estadoFuente = (info && !info.instalada) ? ' (Descargable)' : '';
+    const flagsTxt = [m.negrita ? 'B' : '', m.cursiva ? 'I' : '', m.subrayado ? 'U' : ''].filter(Boolean).join(' ');
+    const sufFlags = flagsTxt ? ` | ${flagsTxt}` : '';
+    ctx.tooltip.innerText = `Fuente: ${famLimpia}${estadoFuente} | Tamaño: ${Number(m.tamano).toFixed(1)}pt | Color: ${normalizarColorHex(m.color).toUpperCase()}${sufFlags}`;
+}
+
+async function _descargarFuenteDesdeEditor(ctx) {
+    const fam = limpiarNombreFuenteJS(ctx.selFuente.value);
+    if (!fam || typeof eel === 'undefined' || typeof eel.descargar_fuente_editor !== 'function') return;
+
+    ctx.btnDescargarFuente.disabled = true;
+    ctx.btnDescargarFuente.innerHTML = '⏳ Descargando...';
+    try {
+        const res = await eel.descargar_fuente_editor(fam)();
+        if (res && res.success) {
+            await cargarCatalogoFuentesEditor(true);
+            const spansActuales = extraerSegmentosPlanos(ctx.editorArea, ctx.estiloDefaultActual());
+            const fams = [fam, ...ctx.familiasEnBloque, ...spansActuales.map(s => s.fuente)];
+            poblarSelectFuentesEditor(ctx.selFuente, fams, res.familia || fam);
+            _actualizarBotonDescargaFuenteEditor(ctx);
+            _actualizarTooltipEditor(ctx);
+            if (typeof mostrarToastLira === 'function') {
+                mostrarToastLira(`Tipografía "${res.familia || fam}" instalada.`);
             }
-        }
-        if (ultimoRangoSeleccion && editorArea.contains(ultimoRangoSeleccion.commonAncestorContainer)) {
-            return ultimoRangoSeleccion;
-        }
-        return null;
-    }
-
-    function obtenerSpanActivoDesdeRango(range) {
-        if (!range) return editorArea.querySelector('.editor-rich-span');
-        let nodo = range.startContainer;
-        if (nodo && nodo.nodeType === Node.TEXT_NODE) {
-            if (range.startOffset === 0 && nodo.previousSibling && nodo.previousSibling.classList?.contains('editor-rich-span')) {
-                nodo = nodo.previousSibling;
-            } else {
-                nodo = nodo.parentElement;
-            }
-        }
-        if (nodo && nodo.closest) {
-            const sp = nodo.closest('.editor-rich-span');
-            if (sp && editorArea.contains(sp)) return sp;
-        }
-        if (nodo === editorArea && editorArea.childNodes.length > 0) {
-            const idx = Math.min(Math.max(0, range.startOffset - 1), editorArea.childNodes.length - 1);
-            const cand = editorArea.childNodes[idx];
-            if (cand && cand.classList?.contains('editor-rich-span')) return cand;
-        }
-        return editorArea.querySelector('.editor-rich-span');
-    }
-
-    function sincronizarBarraConCursor() {
-        if (sincronizandoToolbar) return;
-        const r = obtenerRangoValido();
-        if (!r) return;
-        const sp = obtenerSpanActivoDesdeRango(r);
-        if (!sp) return;
-
-        sincronizandoToolbar = true;
-        try {
-            const meta = leerMetaDeSpanDOM(sp, estiloDefaultActual());
-            seleccionarFamiliaEnSelect(selFuente, meta.fuente);
-            actualizarBotonDescargaFuente();
-            if (document.activeElement !== inpTamano) {
-                inpTamano.value = Number(meta.tamano).toFixed(1);
-            }
-            inpColor.value = meta.color;
-            actualizarContrasteBotonColor(btnColorApply, meta.color);
-            btnBold.classList.toggle('activo', Boolean(meta.negrita));
-            btnItalic.classList.toggle('activo', Boolean(meta.cursiva));
-            btnUnderline.classList.toggle('activo', Boolean(meta.subrayado));
-            editorArea.dataset.fontFamily = meta.fuente;
-            editorArea.dataset.fontSize = String(meta.tamano);
-            editorArea.dataset.fontColor = meta.color;
-            updateTooltip(meta);
-        } finally {
-            sincronizandoToolbar = false;
-        }
-    }
-
-    function aplicarCambioDeEstilo(mutadorFn) {
-        const range = obtenerRangoValido();
-        const fallback = estiloDefaultActual();
-        const offsets = range ? obtenerOffsetsSeleccionEnEditor(editorArea, range) : null;
-        const segmentos = extraerSegmentosPlanos(editorArea, fallback);
-
-        if (offsets && offsets.end > offsets.start && segmentos.length > 0) {
-            // 1. Subdividir únicamente en las fronteras [start, end] de la selección
-            const partidos = [];
-            let pos = 0;
-            segmentos.forEach(seg => {
-                const len = seg.texto.length;
-                const segStart = pos;
-                const segEnd = pos + len;
-                pos = segEnd;
-
-                if (segEnd <= offsets.start || segStart >= offsets.end) {
-                    partidos.push({ ...seg, enSeleccion: false });
-                    return;
-                }
-
-                const cut0 = Math.max(0, offsets.start - segStart);
-                const cut1 = Math.min(len, offsets.end - segStart);
-
-                if (cut0 > 0) {
-                    partidos.push({ ...seg, texto: seg.texto.slice(0, cut0), enSeleccion: false });
-                }
-                if (cut1 > cut0) {
-                    partidos.push({ ...seg, texto: seg.texto.slice(cut0, cut1), enSeleccion: true });
-                }
-                if (cut1 < len) {
-                    partidos.push({ ...seg, texto: seg.texto.slice(cut1), enSeleccion: false });
-                }
-            });
-
-            const seleccionados = partidos.filter(p => p.enSeleccion);
-            const cambios = mutadorFn(seleccionados);
-            const actualizados = partidos.map(p => p.enSeleccion ? { ...p, ...cambios } : p);
-
-            renderizarSegmentosEnEditor(editorArea, actualizados, { ...fallback, ...cambios });
-            editorArea.focus();
-            ultimoRangoSeleccion = restaurarSeleccionPorOffsets(editorArea, offsets.start, offsets.end);
         } else {
-            // 2. Sin selección (solo cursor): aplicar al span activo bajo el cursor (o crear span base si está vacío)
-            const spActivo = obtenerSpanActivoDesdeRango(range);
-            if (spActivo) {
-                const metaActual = leerMetaDeSpanDOM(spActivo, fallback);
-                const cambios = mutadorFn([metaActual]);
-                const nuevoMeta = { ...metaActual, ...cambios };
-                spActivo.dataset.fuente = limpiarNombreFuenteJS(nuevoMeta.fuente);
-                spActivo.dataset.tamano = String(Number(nuevoMeta.tamano));
-                spActivo.dataset.color = normalizarColorHex(nuevoMeta.color);
-                spActivo.dataset.negrita = nuevoMeta.negrita ? '1' : '0';
-                spActivo.dataset.cursiva = nuevoMeta.cursiva ? '1' : '0';
-                spActivo.dataset.subrayado = nuevoMeta.subrayado ? '1' : '0';
-                aplicarEstilosSpanDOM(spActivo);
-                if (offsets) {
-                    editorArea.focus();
-                    ultimoRangoSeleccion = restaurarSeleccionPorOffsets(editorArea, offsets.start, offsets.start);
-                }
-            } else {
-                const cambios = mutadorFn([fallback]);
-                const nuevoMeta = { ...fallback, ...cambios, texto: '' };
-                renderizarSegmentosEnEditor(editorArea, [nuevoMeta], nuevoMeta);
-            }
+            const msg = (res && res.error) ? res.error : 'No se pudo descargar la tipografía.';
+            if (typeof liraAlert === 'function') await liraAlert(msg, 'advertencia');
+            _actualizarBotonDescargaFuenteEditor(ctx);
         }
-
-        actualizarContrasteEditor(editorArea, inpColor.value);
-        sincronizarBarraConCursor();
-        evaluarCambiosPendientes();
+    } catch (err) {
+        console.error('[Editor] Error descargando fuente:', err);
+        _actualizarBotonDescargaFuenteEditor(ctx);
     }
+}
 
-    selFuente.addEventListener('change', () => {
-        if (sincronizandoToolbar) return;
-        const nuevaFam = limpiarNombreFuenteJS(selFuente.value);
-        actualizarBotonDescargaFuente();
-        aplicarCambioDeEstilo(() => ({ fuente: nuevaFam }));
-    });
-
-    inpTamano.addEventListener('change', () => {
-        if (sincronizandoToolbar) return;
-        const nuevoTam = Math.max(4, Math.min(72, parseFloat(inpTamano.value) || tamanoInicial));
-        inpTamano.value = nuevoTam.toFixed(1);
-        aplicarCambioDeEstilo(() => ({ tamano: nuevoTam }));
-    });
-
-    inpColor.addEventListener('input', () => {
-        if (sincronizandoToolbar) return;
-        const nuevoColor = normalizarColorHex(inpColor.value);
-        actualizarContrasteBotonColor(btnColorApply, nuevoColor);
-        aplicarCambioDeEstilo(() => ({ color: nuevoColor }));
-    });
-
-    btnColorApply.addEventListener('click', () => {
-        const nuevoColor = normalizarColorHex(inpColor.value);
-        actualizarContrasteBotonColor(btnColorApply, nuevoColor);
-        aplicarCambioDeEstilo(() => ({ color: nuevoColor }));
-        btnColorApply.classList.add('activo');
-        setTimeout(() => btnColorApply.classList.remove('activo'), 200);
-    });
-
-    btnBold.addEventListener('click', () => {
-        aplicarCambioDeEstilo(lista => {
-            const todosActivos = lista.length > 0 && lista.every(s => Boolean(s.negrita));
-            return { negrita: !todosActivos };
-        });
-    });
-
-    btnItalic.addEventListener('click', () => {
-        aplicarCambioDeEstilo(lista => {
-            const todosActivos = lista.length > 0 && lista.every(s => Boolean(s.cursiva));
-            return { cursiva: !todosActivos };
-        });
-    });
-
-    btnUnderline.addEventListener('click', () => {
-        aplicarCambioDeEstilo(lista => {
-            const todosActivos = lista.length > 0 && lista.every(s => Boolean(s.subrayado));
-            return { subrayado: !todosActivos };
-        });
-    });
-
-    editorSelectionChangeHandler = () => {
-        const sel = window.getSelection();
-        if (!sel || sel.rangeCount === 0) return;
+function _obtenerRangoValidoEditor(ctx) {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
         const r = sel.getRangeAt(0);
-        if (editorArea.contains(r.commonAncestorContainer)) {
-            ultimoRangoSeleccion = r.cloneRange();
-            sincronizarBarraConCursor();
+        if (ctx.editorArea.contains(r.commonAncestorContainer)) {
+            ctx.ultimoRangoSeleccion = r.cloneRange();
+            return ctx.ultimoRangoSeleccion;
         }
-    };
-    document.addEventListener('selectionchange', editorSelectionChangeHandler);
+    }
+    if (ctx.ultimoRangoSeleccion && ctx.editorArea.contains(ctx.ultimoRangoSeleccion.commonAncestorContainer)) {
+        return ctx.ultimoRangoSeleccion;
+    }
+    return null;
+}
 
-    editorArea.addEventListener('keyup', sincronizarBarraConCursor);
-    editorArea.addEventListener('mouseup', sincronizarBarraConCursor);
+function _sincronizarBarraConCursorEditor(ctx) {
+    if (ctx.sincronizandoToolbar) return;
+    const r = _obtenerRangoValidoEditor(ctx);
+    if (!r) return;
+    const sp = _obtenerSpanActivoDesdeRangoEditor(ctx.editorArea, r);
+    if (!sp) return;
 
-    editorArea.addEventListener('keydown', (e) => {
-        if (e.ctrlKey || e.metaKey) {
-            const k = e.key.toLowerCase();
-            if (k === 'b') { e.preventDefault(); btnBold.click(); }
-            if (k === 'i') { e.preventDefault(); btnItalic.click(); }
-            if (k === 'u') { e.preventDefault(); btnUnderline.click(); }
-            if (k === 's') { e.preventDefault(); btnG.click(); }
-            if (e.key === 'Enter') { e.preventDefault(); btnG.click(); }
+    ctx.sincronizandoToolbar = true;
+    try {
+        const meta = leerMetaDeSpanDOM(sp, ctx.estiloDefaultActual());
+        seleccionarFamiliaEnSelect(ctx.selFuente, meta.fuente);
+        _actualizarBotonDescargaFuenteEditor(ctx);
+        if (document.activeElement !== ctx.inpTamano) {
+            ctx.inpTamano.value = Number(meta.tamano).toFixed(1);
         }
-        if (e.key === 'Escape') {
-            if (hasUnsavedChanges) { btnCancel.click(); } else { cerrarEditorTexto(); }
-        }
-    });
+        ctx.inpColor.value = meta.color;
+        actualizarContrasteBotonColor(ctx.btnColorApply, meta.color);
+        ctx.btnBold.classList.toggle('activo', Boolean(meta.negrita));
+        ctx.btnItalic.classList.toggle('activo', Boolean(meta.cursiva));
+        ctx.btnUnderline.classList.toggle('activo', Boolean(meta.subrayado));
+        ctx.editorArea.dataset.fontFamily = meta.fuente;
+        ctx.editorArea.dataset.fontSize = String(meta.tamano);
+        ctx.editorArea.dataset.fontColor = meta.color;
+        _actualizarTooltipEditor(ctx, meta);
+    } finally {
+        ctx.sincronizandoToolbar = false;
+    }
+}
 
-    editorArea.addEventListener('input', () => {
-        // Si el usuario escribió texto suelto fuera de un .editor-rich-span, envolverlo conservando cursor
-        const tieneTextoSuelto = Array.from(editorArea.childNodes).some(
-            n => n.nodeType === Node.TEXT_NODE && (n.nodeValue || '').length > 0
-        );
-        if (tieneTextoSuelto || editorArea.querySelectorAll('.editor-rich-span').length === 0) {
-            const r = obtenerRangoValido();
-            const off = r ? obtenerOffsetsSeleccionEnEditor(editorArea, r) : null;
-            const segs = extraerSegmentosPlanos(editorArea, estiloDefaultActual());
-            renderizarSegmentosEnEditor(editorArea, segs, estiloDefaultActual());
-            if (off) {
-                ultimoRangoSeleccion = restaurarSeleccionPorOffsets(editorArea, off.start, off.end);
-            }
-        }
-        actualizarContrasteEditor(editorArea, inpColor.value);
-        evaluarCambiosPendientes();
-    });
+function _aplicarCambioDeEstiloEditor(ctx, mutadorFn) {
+    const range = _obtenerRangoValidoEditor(ctx);
+    const fallback = ctx.estiloDefaultActual();
+    const offsets = range ? obtenerOffsetsSeleccionEnEditor(ctx.editorArea, range) : null;
+    const segmentos = extraerSegmentosPlanos(ctx.editorArea, fallback);
 
-    updateTooltip(spansIniciales[0]);
-
-    // --- GUARDAR ---
-    btnG.onclick = async (e) => {
-        e.stopPropagation();
-        const ew = parseFloat(editor.style.width);
-        const eh = parseFloat(editor.style.height);
-        const el = parseFloat(editor.style.left);
-        const et = parseFloat(editor.style.top) + 32;
-
-        let rectNewVisual = { x: el, y: et, w: ew, h: eh - 32 };
-        let rectPdf = pdfRectFromCanvas(rectNewVisual);
-
-        const fallback = estiloDefaultActual();
-        const segmentosFinales = extraerSegmentosPlanos(editorArea, fallback);
-        const spansSerializados = segmentosFinales.map(seg => ({
-            texto: seg.texto,
-            fuente: seg.fuente,
-            fuente_limpia: seg.fuente,
-            tamano: Number(seg.tamano) || fallback.tamano,
-            color: normalizarColorHex(seg.color),
-            negrita: Boolean(seg.negrita),
-            cursiva: Boolean(seg.cursiva),
-            subrayado: Boolean(seg.subrayado)
-        }));
-        const textoPlano = spansSerializados.map(s => s.texto).join('');
-
-        const spanDom = spansSerializados.find(s => s.texto.trim().length > 0) || fallback;
-        let flags = 0;
-        if (spanDom.negrita) flags |= 16;
-        if (spanDom.cursiva) flags |= 2;
-
-        const datosEnvio = {
-            id: bloquePdf.id,
-            bbox: rectPdf,
-            bbox_original: bloquePdf.bbox,
-            texto: textoPlano,
-            fuente: spanDom.fuente || selFuente.value,
-            flags: flags,
-            tamano: Number(spanDom.tamano) || parseFloat(inpTamano.value) || 12,
-            color: hexToRgbPdf(spanDom.color || inpColor.value),
-            spans: spansSerializados
-        };
-
-        btnG.innerText = '...';
-        btnG.disabled = true;
-        btnCancel.disabled = true;
-
-        try {
-            let r = await eel.editar_texto_pdf(rutaPDFActual, paginaActual, datosEnvio)();
-            if (r.success) {
-                hasUnsavedChanges = false;
-                cerrarEditorTexto();
-                if (typeof cargarPagina === 'function') {
-                    await cargarPagina(paginaActual);
-                }
-                await renderizarBloquesEditor();
-            } else {
-                console.error("Error de edición:", r.error);
-                if (typeof liraAlert === 'function') await liraAlert("Error guardando cambios.", "advertencia");
-                btnG.innerText = 'Guardar';
-                btnG.disabled = false;
-                btnCancel.disabled = false;
-            }
-        } catch(err) {
-            console.error(err);
-            btnG.innerText = 'Guardar';
-            btnG.disabled = false;
-            btnCancel.disabled = false;
-        }
-    };
-
-    // --- CANCELAR ---
-    btnCancel.onclick = async (e) => {
-        e.stopPropagation();
-        if (hasUnsavedChanges) {
-            if (await liraConfirm('Hay cambios sin guardar. ¿Descartar y cerrar?', 'advertencia')) {
-                cerrarEditorTexto();
+    if (offsets && offsets.end > offsets.start && segmentos.length > 0) {
+        const partidos = _dividirSegmentosPorSeleccion(segmentos, offsets.start, offsets.end);
+        const cambios = mutadorFn(partidos.filter(p => p.enSeleccion));
+        const actualizados = partidos.map(p => p.enSeleccion ? { ...p, ...cambios } : p);
+        renderizarSegmentosEnEditor(ctx.editorArea, actualizados, { ...fallback, ...cambios });
+        ctx.editorArea.focus();
+        ctx.ultimoRangoSeleccion = restaurarSeleccionPorOffsets(ctx.editorArea, offsets.start, offsets.end);
+    } else {
+        const spActivo = _obtenerSpanActivoDesdeRangoEditor(ctx.editorArea, range);
+        if (spActivo) {
+            const metaActual = leerMetaDeSpanDOM(spActivo, fallback);
+            _aplicarMetaASpanDOM(spActivo, { ...metaActual, ...mutadorFn([metaActual]) });
+            if (offsets) {
+                ctx.editorArea.focus();
+                ctx.ultimoRangoSeleccion = restaurarSeleccionPorOffsets(ctx.editorArea, offsets.start, offsets.start);
             }
         } else {
+            const nuevoMeta = { ...fallback, ...mutadorFn([fallback]), texto: '' };
+            renderizarSegmentosEnEditor(ctx.editorArea, [nuevoMeta], nuevoMeta);
+        }
+    }
+
+    actualizarContrasteEditor(ctx.editorArea, ctx.inpColor.value);
+    _sincronizarBarraConCursorEditor(ctx);
+    ctx.evaluarCambiosPendientes();
+}
+
+function _construirPayloadGuardarEditor(ctx) {
+    const rectNewVisual = {
+        x: parseFloat(ctx.editor.style.left),
+        y: parseFloat(ctx.editor.style.top) + 32,
+        w: parseFloat(ctx.editor.style.width),
+        h: parseFloat(ctx.editor.style.height) - 32
+    };
+    const fallback = ctx.estiloDefaultActual();
+    const spansSerializados = extraerSegmentosPlanos(ctx.editorArea, fallback).map(seg => ({
+        texto: seg.texto,
+        fuente: seg.fuente,
+        fuente_limpia: seg.fuente,
+        tamano: Number(seg.tamano) || fallback.tamano,
+        color: normalizarColorHex(seg.color),
+        negrita: Boolean(seg.negrita),
+        cursiva: Boolean(seg.cursiva),
+        subrayado: Boolean(seg.subrayado)
+    }));
+    const spanDom = spansSerializados.find(s => s.texto.trim().length > 0) || fallback;
+    const flags = (spanDom.negrita ? 16 : 0) | (spanDom.cursiva ? 2 : 0);
+
+    return {
+        id: ctx.bloquePdf.id,
+        bbox: pdfRectFromCanvas(rectNewVisual),
+        bbox_original: ctx.bloquePdf.bbox,
+        texto: spansSerializados.map(s => s.texto).join(''),
+        fuente: spanDom.fuente || ctx.selFuente.value,
+        flags,
+        tamano: Number(spanDom.tamano) || parseFloat(ctx.inpTamano.value) || 12,
+        color: hexToRgbPdf(spanDom.color || ctx.inpColor.value),
+        spans: spansSerializados
+    };
+}
+
+async function _guardarCambiosEditorTexto(ctx) {
+    const datosEnvio = _construirPayloadGuardarEditor(ctx);
+    const restaurarBotones = () => {
+        ctx.btnG.innerText = 'Guardar';
+        ctx.btnG.disabled = false;
+        ctx.btnCancel.disabled = false;
+    };
+
+    ctx.btnG.innerText = '...';
+    ctx.btnG.disabled = true;
+    ctx.btnCancel.disabled = true;
+
+    try {
+        const r = await eel.editar_texto_pdf(rutaPDFActual, paginaActual, datosEnvio)();
+        if (r.success) {
+            ctx.hasUnsavedChanges = false;
+            cerrarEditorTexto();
+            if (typeof cargarPagina === 'function') await cargarPagina(paginaActual);
+            await renderizarBloquesEditor();
+        } else {
+            console.error("Error de edición:", r.error);
+            if (typeof liraAlert === 'function') await liraAlert("Error guardando cambios.", "advertencia");
+            restaurarBotones();
+        }
+    } catch (err) {
+        console.error(err);
+        restaurarBotones();
+    }
+}
+
+function _vincularEventosBarraEditor(ctx) {
+    ctx.btnDescargarFuente.onclick = (e) => {
+        e.stopPropagation();
+        _descargarFuenteDesdeEditor(ctx);
+    };
+
+    ctx.selFuente.addEventListener('change', () => {
+        if (ctx.sincronizandoToolbar) return;
+        const nuevaFam = limpiarNombreFuenteJS(ctx.selFuente.value);
+        _actualizarBotonDescargaFuenteEditor(ctx);
+        _aplicarCambioDeEstiloEditor(ctx, () => ({ fuente: nuevaFam }));
+    });
+
+    ctx.inpTamano.addEventListener('change', () => {
+        if (ctx.sincronizandoToolbar) return;
+        const nuevoTam = Math.max(4, Math.min(72, parseFloat(ctx.inpTamano.value) || ctx.tamanoInicial));
+        ctx.inpTamano.value = nuevoTam.toFixed(1);
+        _aplicarCambioDeEstiloEditor(ctx, () => ({ tamano: nuevoTam }));
+    });
+
+    const aplicarColor = () => {
+        const nuevoColor = normalizarColorHex(ctx.inpColor.value);
+        actualizarContrasteBotonColor(ctx.btnColorApply, nuevoColor);
+        _aplicarCambioDeEstiloEditor(ctx, () => ({ color: nuevoColor }));
+    };
+
+    ctx.inpColor.addEventListener('input', () => {
+        if (!ctx.sincronizandoToolbar) aplicarColor();
+    });
+    ctx.btnColorApply.addEventListener('click', () => {
+        aplicarColor();
+        ctx.btnColorApply.classList.add('activo');
+        setTimeout(() => ctx.btnColorApply.classList.remove('activo'), 200);
+    });
+
+    [
+        [ctx.btnBold, 'negrita'],
+        [ctx.btnItalic, 'cursiva'],
+        [ctx.btnUnderline, 'subrayado']
+    ].forEach(([btn, prop]) => {
+        btn.addEventListener('click', () => {
+            _aplicarCambioDeEstiloEditor(ctx, (lista) => ({
+                [prop]: !(lista.length > 0 && lista.every(s => Boolean(s[prop])))
+            }));
+        });
+    });
+}
+
+function _manejarKeydownAreaEditor(e, ctx) {
+    if (e.ctrlKey || e.metaKey) {
+        const mapa = { b: ctx.btnBold, i: ctx.btnItalic, u: ctx.btnUnderline, s: ctx.btnG };
+        const targetBtn = mapa[e.key.toLowerCase()] || (e.key === 'Enter' ? ctx.btnG : null);
+        if (targetBtn) {
+            e.preventDefault();
+            targetBtn.click();
+        }
+    }
+    if (e.key === 'Escape') {
+        if (ctx.hasUnsavedChanges) ctx.btnCancel.click();
+        else cerrarEditorTexto();
+    }
+}
+
+function _manejarInputAreaEditor(ctx) {
+    const tieneTextoSuelto = Array.from(ctx.editorArea.childNodes).some(
+        n => n.nodeType === Node.TEXT_NODE && (n.nodeValue || '').length > 0
+    );
+    if (tieneTextoSuelto || ctx.editorArea.querySelectorAll('.editor-rich-span').length === 0) {
+        const r = _obtenerRangoValidoEditor(ctx);
+        const off = r ? obtenerOffsetsSeleccionEnEditor(ctx.editorArea, r) : null;
+        const segs = extraerSegmentosPlanos(ctx.editorArea, ctx.estiloDefaultActual());
+        renderizarSegmentosEnEditor(ctx.editorArea, segs, ctx.estiloDefaultActual());
+        if (off) ctx.ultimoRangoSeleccion = restaurarSeleccionPorOffsets(ctx.editorArea, off.start, off.end);
+    }
+    actualizarContrasteEditor(ctx.editorArea, ctx.inpColor.value);
+    ctx.evaluarCambiosPendientes();
+}
+
+function _vincularAccionesVentanaEditor(ctx) {
+    ctx.btnG.onclick = (e) => {
+        e.stopPropagation();
+        _guardarCambiosEditorTexto(ctx);
+    };
+
+    ctx.btnCancel.onclick = async (e) => {
+        e.stopPropagation();
+        if (!ctx.hasUnsavedChanges || await liraConfirm('Hay cambios sin guardar. ¿Descartar y cerrar?', 'advertencia')) {
             cerrarEditorTexto();
         }
     };
 
-    // --- CLIC DERECHO FUERA PARA CERRAR ---
-    editor.addEventListener('contextmenu', async (e) => {
-        if (editor.contains(e.target)) return;
+    ctx.editor.addEventListener('contextmenu', async (e) => {
+        if (ctx.editor.contains(e.target)) return;
         e.preventDefault();
-        if (hasUnsavedChanges) {
+        if (ctx.hasUnsavedChanges) {
             if (typeof liraAlert === 'function') await liraAlert('Hay cambios sin guardar. Usa "Guardar" o "Cancelar".', 'info');
         } else {
             cerrarEditorTexto();
         }
     });
 
-    editor.appendChild(barra);
-    editor.appendChild(editorArea);
-    editor.appendChild(tooltip);
-    capa.appendChild(editor);
-
-    // Focus al editor y cursor al final
-    setTimeout(() => {
-        editorArea.focus();
-        const range = document.createRange();
-        range.selectNodeContents(editorArea);
-        range.collapse(false);
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(range);
-        ultimoRangoSeleccion = range.cloneRange();
-        sincronizarBarraConCursor();
-    }, 50);
-
-    // Draggable
-    handle.onmousedown = (e) => {
+    ctx.handle.onmousedown = (e) => {
         e.preventDefault();
         dragInfo = {
-            el: editor,
+            el: ctx.editor,
             startX: e.clientX,
             startY: e.clientY,
-            startLeft: parseFloat(editor.style.left) || 0,
-            startTop: parseFloat(editor.style.top) || 0
+            startLeft: parseFloat(ctx.editor.style.left) || 0,
+            startTop: parseFloat(ctx.editor.style.top) || 0
         };
         document.addEventListener('mousemove', dragMouse);
         document.addEventListener('mouseup', dropMouse);
     };
+}
+
+function _vincularEventosAreaEditor(ctx) {
+    editorSelectionChangeHandler = () => {
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return;
+        const r = sel.getRangeAt(0);
+        if (ctx.editorArea.contains(r.commonAncestorContainer)) {
+            ctx.ultimoRangoSeleccion = r.cloneRange();
+            _sincronizarBarraConCursorEditor(ctx);
+        }
+    };
+    document.addEventListener('selectionchange', editorSelectionChangeHandler);
+
+    ctx.editorArea.addEventListener('keyup', () => _sincronizarBarraConCursorEditor(ctx));
+    ctx.editorArea.addEventListener('mouseup', () => _sincronizarBarraConCursorEditor(ctx));
+    ctx.editorArea.addEventListener('keydown', (e) => _manejarKeydownAreaEditor(e, ctx));
+    ctx.editorArea.addEventListener('input', () => _manejarInputAreaEditor(ctx));
+    _vincularAccionesVentanaEditor(ctx);
+}
+
+function abrirEditorTexto(bloquePdf, rectVisual) {
+    cerrarEditorTexto();
+    const capa = document.getElementById('lira-pdf-text-editor-layer');
+    if (!capa) return;
+
+    const metaInicial = _construirSpansInicialesEditor(bloquePdf);
+    const serializacionInicial = JSON.stringify(fusionarSegmentosContiguos(metaInicial.spansIniciales));
+    const dom = _crearDOMPopupEditorTexto(rectVisual, metaInicial);
+
+    const ctx = {
+        ...metaInicial,
+        ...dom,
+        bloquePdf,
+        hasUnsavedChanges: false,
+        sincronizandoToolbar: false,
+        ultimoRangoSeleccion: null
+    };
+
+    ctx.estiloDefaultActual = () => ({
+        fuente: limpiarNombreFuenteJS(ctx.selFuente.value || ctx.familiaInicial),
+        tamano: Math.max(4, parseFloat(ctx.inpTamano.value) || ctx.tamanoInicial),
+        color: normalizarColorHex(ctx.inpColor.value || ctx.colorInicial),
+        negrita: ctx.btnBold.classList.contains('activo'),
+        cursiva: ctx.btnItalic.classList.contains('activo'),
+        subrayado: ctx.btnUnderline.classList.contains('activo')
+    });
+
+    ctx.evaluarCambiosPendientes = () => {
+        const actualSerial = JSON.stringify(extraerSegmentosPlanos(ctx.editorArea, ctx.estiloDefaultActual()));
+        ctx.hasUnsavedChanges = actualSerial !== serializacionInicial;
+        ctx.btnG.innerText = ctx.hasUnsavedChanges ? 'Guardar cambios' : 'Guardar';
+        ctx.btnG.style.background = ctx.hasUnsavedChanges ? '#238636' : '';
+        ctx.btnCancel.style.display = ctx.hasUnsavedChanges ? 'inline-block' : 'none';
+    };
+
+    renderizarSegmentosEnEditor(ctx.editorArea, ctx.spansIniciales, ctx.estiloDefaultActual());
+    actualizarContrasteEditor(ctx.editorArea, ctx.inpColor.value);
+
+    cargarCatalogoFuentesEditor(false).then(() => {
+        const actual = ctx.selFuente.value || ctx.spansIniciales[0]?.fuente || ctx.familiaInicial;
+        poblarSelectFuentesEditor(ctx.selFuente, ctx.familiasEnBloque, actual);
+        _actualizarBotonDescargaFuenteEditor(ctx);
+        _actualizarTooltipEditor(ctx);
+    });
+
+    _vincularEventosBarraEditor(ctx);
+    _vincularEventosAreaEditor(ctx);
+    _actualizarTooltipEditor(ctx, ctx.spansIniciales[0]);
+    capa.appendChild(ctx.editor);
+
+    setTimeout(() => {
+        ctx.editorArea.focus();
+        const range = document.createRange();
+        range.selectNodeContents(ctx.editorArea);
+        range.collapse(false);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        ctx.ultimoRangoSeleccion = range.cloneRange();
+        _sincronizarBarraConCursorEditor(ctx);
+    }, 50);
 }
 
 // Helper: obtener nombre de familia legible para CSS

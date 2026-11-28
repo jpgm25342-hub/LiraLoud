@@ -235,15 +235,277 @@ function bloquearControlesNavegacion(bloqueado) {
     });
 }
 
-async function cargarPagina(num) {
-    if (typeof rutaPDFActual !== 'string' || !rutaPDFActual) return;
-    if (window.modoSoloLecturaActivo && typeof window.cargarPaginaSoloLecturaRapida === 'function') {
-        paginaActual = num;
-        const inpPag = document.getElementById('input-pagina-actual');
-        if (inpPag) inpPag.value = num + 1;
-        const ok = await window.cargarPaginaSoloLecturaRapida(num);
-        if (ok) return;
+function _clonarLayoutIA(layoutIA) {
+    return {
+        cortesV: Array.isArray(layoutIA.cortesV) ? [...layoutIA.cortesV] : [],
+        limitesH: (layoutIA.limitesH && typeof layoutIA.limitesH === 'object')
+            ? JSON.parse(JSON.stringify(layoutIA.limitesH))
+            : {},
+        zonasExcluidas: (Array.isArray(layoutIA.zonasExcluidas) && layoutIA.zonasExcluidas.length > 0)
+            ? JSON.parse(JSON.stringify(layoutIA.zonasExcluidas))
+            : [],
+    };
+}
+
+function _buscarPaginaReferenciaParidad(num, filtroFn) {
+    let bestEven = null, minEvenDist = Infinity;
+    let bestOdd = null, minOddDist = Infinity;
+    const savedPages = Object.keys(memoriaLayout).map(Number).filter(n => n !== num && filtroFn(memoriaLayout[n.toString()]));
+
+    for (const p of savedPages) {
+        const dist = Math.abs(num - p);
+        if (dist % 2 === 0) {
+            if (dist < minEvenDist || (dist === minEvenDist && p < num)) { minEvenDist = dist; bestEven = p; }
+        } else if (dist < minOddDist || (dist === minOddDist && p < num)) {
+            minOddDist = dist; bestOdd = p;
+        }
     }
+    return bestEven !== null ? bestEven : bestOdd;
+}
+
+function _animarFadeInLayout(miToken) {
+    if (typeof dibujar !== 'function') return;
+    const tInicio = performance.now();
+    const step = (ahora) => {
+        if (miToken !== tokenCargaActual) return;
+        const prog = Math.min(1, (ahora - tInicio) / 180);
+        window._alphaLayoutIA = prog;
+        dibujar();
+        if (prog < 1) requestAnimationFrame(step);
+        else delete window._alphaLayoutIA;
+    };
+    requestAnimationFrame(step);
+}
+
+function _aplicarImagenVistaRapida(vistaRapida, miToken, ctxCarga) {
+    const imgRapida = new Image();
+    imgRapida.onload = () => {
+        if (miToken !== tokenCargaActual) return;
+        if (canvas.width !== vistaRapida.ancho_img) canvas.width = vistaRapida.ancho_img;
+        if (canvas.height !== vistaRapida.alto_img) canvas.height = vistaRapida.alto_img;
+        canvas.style.width = (vistaRapida.ancho_img * nivelZoomPDF) + "px";
+        canvas.style.height = (vistaRapida.alto_img * nivelZoomPDF) + "px";
+        window.imagenCacheadaCanvas = imgRapida;
+        window.imagenCacheadaSrc = vistaRapida.imagen;
+        ctxCarga.imagenNuevaLista = true;
+        canvas.classList.remove('canvas-sin-imagen');
+        if (ctxCarga.layoutPendiente) {
+            cortesV = ctxCarga.layoutPendiente.cortesV;
+            limitesH = ctxCarga.layoutPendiente.limitesH;
+            zonasExcluidas = ctxCarga.layoutPendiente.zonasExcluidas;
+            ctxCarga.layoutPendiente = null;
+            canvas.classList.remove('canvas-procesando-layout');
+        } else if (ctxCarga.esperaAutoLayout) {
+            canvas.classList.add('canvas-procesando-layout');
+        }
+        ctx.drawImage(imgRapida, 0, 0);
+        if (typeof dibujar === 'function') dibujar();
+    };
+    imgRapida.src = vistaRapida.imagen;
+}
+
+function _iniciarVistaRapidaPagina(num, miToken, ctxCarga) {
+    if (typeof eel === 'undefined' || typeof eel.obtener_vista_rapida_pagina !== 'function') {
+        return Promise.resolve(null);
+    }
+    return eel.obtener_vista_rapida_pagina(num)().then(vistaRapida => {
+        if (miToken !== tokenCargaActual) return null;
+        if (vistaRapida?.imagen) {
+            ctxCarga.imagenVistaRapida = vistaRapida.imagen;
+            _aplicarImagenVistaRapida(vistaRapida, miToken, ctxCarga);
+        }
+        return vistaRapida;
+    }).catch(e => {
+        console.warn("[PDF] No se pudo cargar vista previa rápida:", e);
+        return null;
+    });
+}
+
+function _iniciarLayoutIAPagina(num, clave, miToken, ctxCarga) {
+    if (!ctxCarga.esperaAutoLayout || typeof eel === 'undefined' || typeof eel.autodetectar_layout_pagina !== 'function') {
+        return Promise.resolve(null);
+    }
+    return eel.autodetectar_layout_pagina(num)().then(layoutIA => {
+        if (miToken !== tokenCargaActual || !layoutIA?.exito) return layoutIA || null;
+        const clon = _clonarLayoutIA(layoutIA);
+        memoriaLayout[clave] = { ...(memoriaLayout[clave] || {}), ..._clonarLayoutIA(layoutIA), _autoDetectado: true };
+        if (ctxCarga.imagenNuevaLista) {
+            cortesV = clon.cortesV;
+            limitesH = clon.limitesH;
+            zonasExcluidas = clon.zonasExcluidas;
+            canvas.classList.remove('canvas-procesando-layout');
+            if (layoutIA.desde_cache) { if (typeof dibujar === 'function') dibujar(); }
+            else _animarFadeInLayout(miToken);
+        } else {
+            ctxCarga.layoutPendiente = clon;
+        }
+        return layoutIA;
+    }).catch(errLayout => {
+        console.warn("[PDF] No se pudo auto-detectar layout en navegación:", errLayout);
+        return null;
+    });
+}
+
+function _resolverCortesVDesdeMemoria(num, clave, yaConfigurado, usarAutoLayout) {
+    if (yaConfigurado) {
+        return Array.isArray(memoriaLayout[clave]?.cortesV) ? [...memoriaLayout[clave].cortesV] : [];
+    }
+    if (usarAutoLayout) return [];
+    const target = _buscarPaginaReferenciaParidad(num, l => l && Array.isArray(l.cortesV) && l.cortesV.length > 0);
+    return (target !== null && Array.isArray(memoriaLayout[target.toString()]?.cortesV))
+        ? [...memoriaLayout[target.toString()].cortesV]
+        : [];
+}
+
+function _calcularColumnaHeredada(sourceCol, sourceAlto, curAlto) {
+    if (!Array.isArray(sourceCol) || sourceCol.length !== 2) return null;
+    const topCut = sourceCol[0];
+    const bottomMargin = sourceAlto > 0 ? Math.max(0, sourceAlto - sourceCol[1]) : 0;
+    const bottomCut = curAlto > 0 ? Math.max(topCut + 15, curAlto - bottomMargin) : sourceCol[1];
+    return [topCut, bottomCut];
+}
+
+function _heredarLimitesHDesdeReferencia(num, layoutActual) {
+    const targetH = _buscarPaginaReferenciaParidad(num, l => l?.limitesH && tieneLimitesHActivos(l.limitesH, l.height));
+    const sourceLayout = targetH !== null ? memoriaLayout[targetH.toString()] : null;
+    if (!sourceLayout?.limitesH) return {};
+
+    const sourceH = sourceLayout.limitesH;
+    const sourceAlto = sourceLayout.height || datosPagina?.alto_pagina_pdf || 0;
+    const curAlto = layoutActual?.height || datosPagina?.alto_pagina_pdf || sourceAlto;
+    const numCols = cortesV.length > 0 ? cortesV.length + 1 : 1;
+    const res = {};
+    for (let i = 0; i < numCols; i++) {
+        const colKey = i.toString();
+        const calc = _calcularColumnaHeredada(sourceH[colKey] || sourceH["0"], sourceAlto, curAlto);
+        if (calc) res[colKey] = calc;
+    }
+    return res;
+}
+
+function _resolverLimitesHDesdeMemoria(num, clave, usarAutoLayout) {
+    const layoutActual = memoriaLayout[clave];
+    const yaTienePropios = layoutActual && (
+        layoutActual.limitesHManual || layoutActual._autoDetectado ||
+        (layoutActual.limitesH && tieneLimitesHActivos(layoutActual.limitesH, layoutActual.height))
+    );
+    if (yaTienePropios && layoutActual.limitesH && Object.keys(layoutActual.limitesH).length > 0) {
+        return JSON.parse(JSON.stringify(layoutActual.limitesH));
+    }
+    if (num === 0 || usarAutoLayout) {
+        return layoutActual?.limitesH ? JSON.parse(JSON.stringify(layoutActual.limitesH)) : {};
+    }
+    return _heredarLimitesHDesdeReferencia(num, layoutActual);
+}
+
+function _resolverLayoutEfectivoPagina(num, clave, layoutIA, ctxCarga) {
+    if (ctxCarga.esTextoEscrito) {
+        cortesV = []; limitesH = {}; zonasExcluidas = [];
+        return;
+    }
+    if (layoutIA?.exito) {
+        const clon = _clonarLayoutIA(layoutIA);
+        cortesV = clon.cortesV;
+        limitesH = clon.limitesH;
+        zonasExcluidas = clon.zonasExcluidas;
+        memoriaLayout[clave] = { ...(memoriaLayout[clave] || {}), ..._clonarLayoutIA(layoutIA), _autoDetectado: true };
+        return;
+    }
+    cortesV = _resolverCortesVDesdeMemoria(num, clave, ctxCarga.yaConfigurado, ctxCarga.usarAutoLayout);
+    limitesH = _resolverLimitesHDesdeMemoria(num, clave, ctxCarga.usarAutoLayout);
+    zonasExcluidas = Array.isArray(memoriaLayout[clave]?.zonasExcluidas)
+        ? JSON.parse(JSON.stringify(memoriaLayout[clave].zonasExcluidas))
+        : [];
+}
+
+function _normalizarLimitesHConAltoPagina(altoPagina) {
+    const numCols = cortesV.length > 0 ? cortesV.length + 1 : 1;
+    for (let i = 0; i < numCols; i++) {
+        const colKey = i.toString();
+        if (!Array.isArray(limitesH[colKey])) {
+            limitesH[colKey] = [0, altoPagina];
+        } else {
+            const yMin = Math.max(0, Math.min(altoPagina - 15, limitesH[colKey][0]));
+            const yMax = Math.max(yMin + 15, Math.min(altoPagina, limitesH[colKey][1]));
+            limitesH[colKey] = [yMin, yMax];
+        }
+    }
+}
+
+function _construirLayoutsBloquePreRender(paginasAProcesar, esTextoEscrito) {
+    const layoutsPorPagina = {};
+    if (esTextoEscrito) return layoutsPorPagina;
+    for (const pIdx of paginasAProcesar) {
+        const lPag = memoriaLayout[pIdx.toString()];
+        if (!lPag) continue;
+        layoutsPorPagina[pIdx.toString()] = {
+            cortesV: Array.isArray(lPag.cortesV) ? lPag.cortesV : [],
+            limitesH: (lPag.limitesH && typeof lPag.limitesH === 'object') ? lPag.limitesH : {},
+            zonasExcluidas: Array.isArray(lPag.zonasExcluidas) ? lPag.zonasExcluidas : [],
+        };
+    }
+    return layoutsPorPagina;
+}
+
+function _obtenerConfigTraduccionPreRender() {
+    if (!(document.getElementById('chk-traduccion-activa')?.checked ?? false)) return null;
+    return {
+        activa: true,
+        origen: document.getElementById('sel-traduccion-origen')?.value || 'auto',
+        destino: document.getElementById('sel-traduccion-destino')?.value || 'es',
+        motor: document.getElementById('sel-traduccion-motor')?.value || 'online',
+        modo: document.getElementById('sel-traduccion-modo')?.value || 'subtitulos',
+    };
+}
+
+function _programarBloquePreRender(num, esTextoEscrito, usarAutoLayout, dictActivo, bufferExtendido) {
+    if (window.timerRendimiento) clearTimeout(window.timerRendimiento);
+    window.timerRendimiento = setTimeout(() => {
+        const paginasAProcesar = [num];
+        if (bufferExtendido && num > 0) paginasAProcesar.push(num - 1);
+        if (bufferExtendido && num < totalPaginas - 1) paginasAProcesar.push(num + 1);
+        const layoutsPorPagina = _construirLayoutsBloquePreRender(paginasAProcesar, esTextoEscrito);
+        const vozAPre = window.vozActivaSnapshot || document.getElementById('selector-voz-live')?.value || vozPredeterminada || "";
+        const tradConfig = _obtenerConfigTraduccionPreRender();
+        if (typeof eel !== 'undefined' && typeof eel.pre_renderizar_bloque_paginas === 'function') {
+            eel.pre_renderizar_bloque_paginas(paginasAProcesar, vozAPre, velocidadLectura, dictActivo, tradConfig, layoutsPorPagina, usarAutoLayout)();
+        }
+    }, 250);
+}
+
+function _programarPreRenderizadoYPreTraduccion(num, data, esTextoEscrito, usarAutoLayout, dictActivo) {
+    const modoPotenciado = document.getElementById('chk-alto-rendimiento')?.checked;
+    const bufferExtendido = document.getElementById('chk-buffer-extendido')?.checked;
+    if (modoPotenciado && data.oraciones) {
+        _programarBloquePreRender(num, esTextoEscrito, usarAutoLayout, dictActivo, bufferExtendido);
+    }
+
+    const pretraducirActivo = document.getElementById('chk-pretraducir-paginas')?.checked ?? true;
+    const tradActiva = document.getElementById('chk-traduccion-activa')?.checked ?? false;
+    if (pretraducirActivo && tradActiva && typeof eel !== 'undefined' && typeof eel.pretraducir_bloque_paginas === 'function') {
+        eel.pretraducir_bloque_paginas(
+            num,
+            document.getElementById('sel-traduccion-origen')?.value || 'auto',
+            document.getElementById('sel-traduccion-destino')?.value || 'es',
+            document.getElementById('sel-traduccion-motor')?.value || 'online',
+            true
+        )();
+    }
+}
+
+function _finalizarCargaPagina(miToken, resolverCargaPagina) {
+    if (typeof resolverCargaPagina === 'function') resolverCargaPagina();
+    if (miToken !== tokenCargaActual) return;
+    if (typeof canvas !== 'undefined' && canvas) canvas.classList.remove('canvas-procesando-layout');
+    ocultarHUDScannerOCR();
+    bloquearControlesNavegacion(false);
+    if (window.autoContinuarLectura) {
+        window.autoContinuarLectura = false;
+        setTimeout(() => { if (typeof iniciarLectura === 'function') iniciarLectura(); }, 100);
+    }
+}
+
+function _prepararTransicionPagina(num) {
     detenerLectura();
     if (window._preservarResaltadoEnSalto && window.resaltadoPagina === num) {
         window._preservarResaltadoEnSalto = false;
@@ -252,447 +514,132 @@ async function cargarPagina(num) {
     }
     if (datosPagina) guardarEstadoPaginaActual();
 
-    // Incrementar token de transacción para invalidar peticiones anteriores en vuelo
-    const miToken = ++tokenCargaActual;
-    let resolverCargaPagina = null;
-    window._promesaCargaPaginaActual = new Promise(resolve => {
-        resolverCargaPagina = resolve;
-    });
     bloquearControlesNavegacion(true);
-
-    // Guardar si el editor o mover elementos estaban activos
-    const editorEstabaActivo = window.modoEditorTextoActivo === true;
-    const moverEstabaActivo = window.modoMoverElementosActivo === true;
-
-    // Limpiar editor de texto y capa de mover elementos si están activos al cambiar de página
+    const estadoHerramientas = {
+        editorEstabaActivo: window.modoEditorTextoActivo === true,
+        moverEstabaActivo: window.modoMoverElementosActivo === true,
+    };
     if (typeof cerrarEditorTexto === 'function') cerrarEditorTexto();
     const capaEditor = document.getElementById('lira-pdf-text-editor-layer');
     if (capaEditor) capaEditor.innerHTML = '';
     if (typeof window.limpiarCapaMoverElementos === 'function') window.limpiarCapaMoverElementos();
 
-    indiceOracion = -1; // Reset de índice
+    indiceOracion = -1;
     window.corteVSeleccionado = -1;
-
     paginaActual = num;
+    const inputPag = document.getElementById('input-pagina-actual');
+    if (inputPag) inputPag.value = num + 1;
+    return estadoHerramientas;
+}
+
+function _restaurarHerramientasYLookaheadOCR(num, estadoHerramientas, esTextoEscrito) {
+    if (estadoHerramientas.editorEstabaActivo && typeof renderizarBloquesEditor === 'function') renderizarBloquesEditor();
+    if ((estadoHerramientas.moverEstabaActivo || window.modoMoverElementosActivo) && typeof window.cargarYRenderizarElementosMover === 'function') {
+        window.cargarYRenderizarElementosMover();
+    }
+    if (!esTextoEscrito && num < totalPaginas - 1 && typeof eel !== 'undefined' && typeof eel.pre_cache_ocr_pagina === 'function') {
+        eel.pre_cache_ocr_pagina(num + 1)();
+    }
+}
+
+function _aplicarDatosPaginaRenderizados(num, clave, data, estadoHerramientas, esTextoEscrito) {
+    datosPagina = data;
+    totalPaginas = data.total_paginas;
+    _normalizarLimitesHConAltoPagina(data.alto_pagina_pdf);
+
+    memoriaLayout[clave] = {
+        ...(memoriaLayout[clave] || {}),
+        width: data.ancho_pagina_pdf,
+        height: data.alto_pagina_pdf,
+        escala: data.factor_zoom,
+        canvasWidth: data.ancho_img,
+        canvasHeight: data.alto_img,
+        cortesV: [...cortesV],
+        limitesH: JSON.parse(JSON.stringify(limitesH)),
+        limitesHManual: memoriaLayout[clave]?.limitesHManual || false,
+    };
+
+    guardarEstadoPaginaActual();
+    if (typeof window.compilarLibroTeatroPagina === 'function' && data?.oraciones) {
+        window.compilarLibroTeatroPagina(num, data.oraciones);
+    }
+
+    document.getElementById('input-pagina-actual').value = num + 1;
+    document.getElementById('total-paginas-texto').innerText = `/ ${totalPaginas}`;
+    if (canvas.width !== data.ancho_img) canvas.width = data.ancho_img;
+    if (canvas.height !== data.alto_img) canvas.height = data.alto_img;
+    dibujar();
+    _restaurarHerramientasYLookaheadOCR(num, estadoHerramientas, esTextoEscrito);
+}
+
+function _crearContextoCargaPagina(clave) {
+    const esTextoEscrito = (window.tipoDocumento === 'texto_escrito');
+    const esCapturaDoc = (window.tipoDocumento === 'captura');
+    const usarAutoLayout = Boolean(window.autoLayoutActivo && !esTextoEscrito && !esCapturaDoc);
+    const mem = memoriaLayout[clave];
+    const yaConfigurado = !esTextoEscrito && Boolean(mem && (mem.configuradaManualmente || mem.limitesHManual || mem._autoDetectado));
+    return {
+        esTextoEscrito, esCapturaDoc, usarAutoLayout, yaConfigurado,
+        esperaAutoLayout: usarAutoLayout && !yaConfigurado,
+        imagenVistaRapida: null, imagenNuevaLista: false, layoutPendiente: null,
+    };
+}
+
+async function _solicitarDatosPaginaBackend(num, dictActivo, ctxCarga) {
+    const recorteActual = parseInt(document.getElementById('rng-recorte-pdf')?.value || 0);
+    const autoOcrFlag = ctxCarga.esTextoEscrito ? false : (ctxCarga.esCapturaDoc ? true : window.autoOCRActivo);
     try {
-        let clave = num.toString();
-        const esTextoEscrito = (window.tipoDocumento === 'texto_escrito');
-        const esCapturaDoc = (window.tipoDocumento === 'captura');
-        const usarAutoLayout = Boolean(window.autoLayoutActivo && !esTextoEscrito && !esCapturaDoc);
+        return await eel.obtener_pagina_data(
+            num, cortesV.length > 0 ? cortesV : null, limitesH, dictActivo, false,
+            autoOcrFlag, zonasExcluidas, recorteActual, !ctxCarga.imagenVistaRapida
+        )();
+    } finally {
+        ocultarHUDScannerOCR();
+    }
+}
 
-        let yaFueConfigurada = !esTextoEscrito && memoriaLayout[clave] !== undefined &&
-            (memoriaLayout[clave].configuradaManualmente === true || memoriaLayout[clave].limitesHManual === true);
+async function _intentarCargaSoloLectura(num) {
+    if (!window.modoSoloLecturaActivo || typeof window.cargarPaginaSoloLecturaRapida !== 'function') return false;
+    paginaActual = num;
+    const inpPag = document.getElementById('input-pagina-actual');
+    if (inpPag) inpPag.value = num + 1;
+    return Boolean(await window.cargarPaginaSoloLecturaRapida(num));
+}
 
-        let yaAutoDetectado = !esTextoEscrito && memoriaLayout[clave] && memoriaLayout[clave]._autoDetectado === true;
+async function cargarPagina(num) {
+    if (typeof rutaPDFActual !== 'string' || !rutaPDFActual) return;
+    if (await _intentarCargaSoloLectura(num)) return;
 
-        // Actualizar indicador de página de inmediato en la UI
-        const inputPag = document.getElementById('input-pagina-actual');
-        if (inputPag) inputPag.value = num + 1;
+    const estadoHerramientas = _prepararTransicionPagina(num);
+    const miToken = ++tokenCargaActual;
+    let resolverCargaPagina = null;
+    window._promesaCargaPaginaActual = new Promise(resolve => { resolverCargaPagina = resolve; });
 
-        // 1. VISTA RÁPIDA + AUTODETECCIÓN DE LAYOUT EN PARALELO ANTES DE EXTRAER TEXTO
-        let imagenVistaRapidaCargada = null;
-        let imagenNuevaLista = false;
-        let layoutPendienteDeAplicar = false;
-        let cortesVPendientes = null;
-        let limitesHPendientes = null;
-        let zonasPendientes = null;
-
-        const _animarFadeInLayout = () => {
-            if (typeof dibujar !== 'function') return;
-            const _tInicio = performance.now();
-            const _duracion = 180;
-            const _step = (ahora) => {
-                if (miToken !== tokenCargaActual) return;
-                const prog = Math.min(1, (ahora - _tInicio) / _duracion);
-                window._alphaLayoutIA = prog;
-                dibujar();
-                if (prog < 1) {
-                    requestAnimationFrame(_step);
-                } else {
-                    delete window._alphaLayoutIA;
-                }
-            };
-            requestAnimationFrame(_step);
-        };
-
-        const promesaVistaRapida = (typeof eel !== 'undefined' && typeof eel.obtener_vista_rapida_pagina === 'function')
-            ? eel.obtener_vista_rapida_pagina(num)().then(vistaRapida => {
-                if (miToken !== tokenCargaActual) return null;
-                if (vistaRapida && vistaRapida.imagen) {
-                    imagenVistaRapidaCargada = vistaRapida.imagen;
-                    let imgRapida = new Image();
-                    imgRapida.onload = () => {
-                        if (miToken === tokenCargaActual) {
-                            if (canvas.width !== vistaRapida.ancho_img) canvas.width = vistaRapida.ancho_img;
-                            if (canvas.height !== vistaRapida.alto_img) canvas.height = vistaRapida.alto_img;
-                            canvas.style.width = (vistaRapida.ancho_img * nivelZoomPDF) + "px";
-                            canvas.style.height = (vistaRapida.alto_img * nivelZoomPDF) + "px";
-                            window.imagenCacheadaCanvas = imgRapida;
-                            window.imagenCacheadaSrc = vistaRapida.imagen;
-                            imagenNuevaLista = true;
-                            canvas.classList.remove('canvas-sin-imagen');
-                            if (layoutPendienteDeAplicar) {
-                                cortesV = cortesVPendientes;
-                                limitesH = limitesHPendientes;
-                                zonasExcluidas = zonasPendientes;
-                                layoutPendienteDeAplicar = false;
-                                canvas.classList.remove('canvas-procesando-layout');
-                            } else if (usarAutoLayout && !yaFueConfigurada && !yaAutoDetectado) {
-                                canvas.classList.add('canvas-procesando-layout');
-                            }
-                            ctx.drawImage(imgRapida, 0, 0);
-                            if (typeof dibujar === 'function') dibujar();
-                        }
-                    };
-                    imgRapida.src = vistaRapida.imagen;
-                }
-                return vistaRapida;
-            }).catch(e => {
-                console.warn("[PDF] No se pudo cargar vista previa rápida:", e);
-                return null;
-            })
-            : Promise.resolve(null);
-
-        const promesaLayoutIA = (usarAutoLayout && !yaFueConfigurada && !yaAutoDetectado && typeof eel !== 'undefined' && typeof eel.autodetectar_layout_pagina === 'function')
-            ? eel.autodetectar_layout_pagina(num)().then(layoutIA => {
-                if (miToken !== tokenCargaActual) return null;
-                if (layoutIA && layoutIA.exito) {
-                    cortesVPendientes = Array.isArray(layoutIA.cortesV) ? [...layoutIA.cortesV] : [];
-                    limitesHPendientes = (layoutIA.limitesH && typeof layoutIA.limitesH === 'object')
-                        ? JSON.parse(JSON.stringify(layoutIA.limitesH))
-                        : {};
-                    zonasPendientes = (Array.isArray(layoutIA.zonasExcluidas) && layoutIA.zonasExcluidas.length > 0)
-                        ? JSON.parse(JSON.stringify(layoutIA.zonasExcluidas))
-                        : [];
-                    memoriaLayout[clave] = {
-                        ...(memoriaLayout[clave] || {}),
-                        cortesV: [...cortesVPendientes],
-                        limitesH: JSON.parse(JSON.stringify(limitesHPendientes)),
-                        zonasExcluidas: JSON.parse(JSON.stringify(zonasPendientes)),
-                        _autoDetectado: true
-                    };
-                    if (imagenNuevaLista) {
-                        cortesV = cortesVPendientes;
-                        limitesH = limitesHPendientes;
-                        zonasExcluidas = zonasPendientes;
-                        canvas.classList.remove('canvas-procesando-layout');
-                        if (layoutIA.desde_cache) {
-                            if (typeof dibujar === 'function') dibujar();
-                        } else {
-                            _animarFadeInLayout();
-                        }
-                    } else {
-                        layoutPendienteDeAplicar = true;
-                    }
-                }
-                return layoutIA;
-            }).catch(errLayout => {
-                console.warn("[PDF] No se pudo auto-detectar layout en navegación:", errLayout);
-                return null;
-            })
-            : Promise.resolve(null);
-
-        const [, layoutIA] = await Promise.all([promesaVistaRapida, promesaLayoutIA]);
+    try {
+        const clave = num.toString();
+        const ctxCarga = _crearContextoCargaPagina(clave);
+        const [, layoutIA] = await Promise.all([
+            _iniciarVistaRapidaPagina(num, miToken, ctxCarga),
+            _iniciarLayoutIAPagina(num, clave, miToken, ctxCarga),
+        ]);
         if (miToken !== tokenCargaActual) return;
 
-        if (esTextoEscrito) {
-            cortesV = [];
-            limitesH = {};
-            zonasExcluidas = [];
-        } else if (layoutIA && layoutIA.exito) {
-            cortesV = Array.isArray(layoutIA.cortesV) ? [...layoutIA.cortesV] : [];
-            limitesH = (layoutIA.limitesH && typeof layoutIA.limitesH === 'object')
-                ? JSON.parse(JSON.stringify(layoutIA.limitesH))
-                : {};
-            zonasExcluidas = (Array.isArray(layoutIA.zonasExcluidas) && layoutIA.zonasExcluidas.length > 0)
-                ? JSON.parse(JSON.stringify(layoutIA.zonasExcluidas))
-                : [];
-            memoriaLayout[clave] = {
-                ...(memoriaLayout[clave] || {}),
-                cortesV: [...cortesV],
-                limitesH: JSON.parse(JSON.stringify(limitesH)),
-                zonasExcluidas: JSON.parse(JSON.stringify(zonasExcluidas)),
-                _autoDetectado: true
-            };
-        } else {
-            if (yaFueConfigurada || yaAutoDetectado) {
-                cortesV = Array.isArray(memoriaLayout[clave]?.cortesV) ? [...memoriaLayout[clave].cortesV] : [];
-            } else if (!usarAutoLayout) {
-                cortesV = [];
-                let bestEven = null;
-                let minEvenDist = Infinity;
-                let bestOdd = null;
-                let minOddDist = Infinity;
-
-                let savedPages = Object.keys(memoriaLayout).map(Number).filter(n => {
-                    let l = memoriaLayout[n.toString()];
-                    return l && Array.isArray(l.cortesV) && (l.cortesV.length > 0) && (n !== num);
-                });
-
-                for (let p of savedPages) {
-                    let dist = Math.abs(num - p);
-                    if (dist % 2 === 0) {
-                        if (dist < minEvenDist || (dist === minEvenDist && p < num)) {
-                            minEvenDist = dist;
-                            bestEven = p;
-                        }
-                    } else {
-                        if (dist < minOddDist || (dist === minOddDist && p < num)) {
-                            minOddDist = dist;
-                            bestOdd = p;
-                        }
-                    }
-                }
-
-                let target = (bestEven !== null) ? bestEven : bestOdd;
-                if (target !== null && memoriaLayout[target.toString()] && Array.isArray(memoriaLayout[target.toString()].cortesV)) {
-                    cortesV = [...memoriaLayout[target.toString()].cortesV];
-                }
-            } else {
-                cortesV = [];
-            }
-
-            // Resolución de memoria para límites horizontales (Azul)
-            let layoutActual = memoriaLayout[clave];
-            let yaTieneLimitesHPropios = layoutActual && (
-                layoutActual.limitesHManual ||
-                layoutActual._autoDetectado ||
-                (layoutActual.limitesH && tieneLimitesHActivos(layoutActual.limitesH, layoutActual.height))
-            );
-
-            if (yaTieneLimitesHPropios && layoutActual.limitesH && Object.keys(layoutActual.limitesH).length > 0) {
-                limitesH = JSON.parse(JSON.stringify(layoutActual.limitesH));
-            } else if (num === 0 || usarAutoLayout) {
-                limitesH = (layoutActual && layoutActual.limitesH) ? JSON.parse(JSON.stringify(layoutActual.limitesH)) : {};
-            } else {
-                limitesH = {};
-                let bestEvenH = null;
-                let minEvenDistH = Infinity;
-                let bestOddH = null;
-                let minOddDistH = Infinity;
-
-                let savedPagesH = Object.keys(memoriaLayout).map(Number).filter(n => {
-                    let l = memoriaLayout[n.toString()];
-                    return l && l.limitesH && tieneLimitesHActivos(l.limitesH, l.height) && (n !== num);
-                });
-
-                for (let p of savedPagesH) {
-                    let dist = Math.abs(num - p);
-                    if (dist % 2 === 0) {
-                        if (dist < minEvenDistH || (dist === minEvenDistH && p < num)) {
-                            minEvenDistH = dist;
-                            bestEvenH = p;
-                        }
-                    } else {
-                        if (dist < minOddDistH || (dist === minOddDistH && p < num)) {
-                            minOddDistH = dist;
-                            bestOddH = p;
-                        }
-                    }
-                }
-
-                let targetH = (bestEvenH !== null) ? bestEvenH : bestOddH;
-                if (targetH !== null && memoriaLayout[targetH.toString()] && memoriaLayout[targetH.toString()].limitesH) {
-                    let sourceLayout = memoriaLayout[targetH.toString()];
-                    let sourceH = sourceLayout.limitesH;
-                    let sourceAlto = sourceLayout.height || (datosPagina ? datosPagina.alto_pagina_pdf : 0);
-                    let curAlto = (layoutActual && layoutActual.height) || (datosPagina ? datosPagina.alto_pagina_pdf : sourceAlto);
-
-                    let numCols = cortesV.length > 0 ? cortesV.length + 1 : 1;
-                    for (let i = 0; i < numCols; i++) {
-                        let colKey = i.toString();
-                        let sourceCol = sourceH[colKey] || sourceH["0"];
-                        if (sourceCol && Array.isArray(sourceCol) && sourceCol.length === 2) {
-                            let topCut = sourceCol[0];
-                            let bottomMargin = (sourceAlto > 0) ? Math.max(0, sourceAlto - sourceCol[1]) : 0;
-                            let bottomCut = (curAlto > 0) ? Math.max(topCut + 15, curAlto - bottomMargin) : sourceCol[1];
-                            limitesH[colKey] = [topCut, bottomCut];
-                        }
-                    }
-                }
-            }
-
-            if (memoriaLayout[clave] && Array.isArray(memoriaLayout[clave].zonasExcluidas)) {
-                zonasExcluidas = JSON.parse(JSON.stringify(memoriaLayout[clave].zonasExcluidas));
-            } else {
-                zonasExcluidas = [];
-            }
-        }
-
-        // Precarga en segundo plano por ventana deslizante en backend (N+1 a N+5)
-        if (usarAutoLayout && typeof eel !== 'undefined' && typeof eel.iniciar_lookahead_layout === 'function') {
+        _resolverLayoutEfectivoPagina(num, clave, layoutIA, ctxCarga);
+        if (ctxCarga.usarAutoLayout && typeof eel !== 'undefined' && typeof eel.iniciar_lookahead_layout === 'function') {
             eel.iniciar_lookahead_layout(num, totalPaginas, true)();
         }
 
-        // 2. EXTRACCIÓN COMPLETA (Oraciones, palabras y RapidOCR si aplica)
-        let dictActivo = obtenerDiccionarioConsolidado();
-        let data = null;
-        let recorteActual = parseInt(document.getElementById('rng-recorte-pdf')?.value || 0);
-        const yaTenemosImagen = Boolean(imagenVistaRapidaCargada);
-        try {
-            data = await eel.obtener_pagina_data(
-                num,
-                cortesV.length > 0 ? cortesV : null,
-                limitesH,
-                dictActivo,
-                false,
-                esTextoEscrito ? false : (esCapturaDoc ? true : window.autoOCRActivo),
-                zonasExcluidas,
-                recorteActual,
-                !yaTenemosImagen // incluir_imagen: False si vista rápida ya la transfirió
-            )();
-        } finally {
-            ocultarHUDScannerOCR();
-        }
-
-        // Si una petición más nueva superó a esta, descartar datos obsoletos
+        const dictActivo = obtenerDiccionarioConsolidado();
+        const data = await _solicitarDatosPaginaBackend(num, dictActivo, ctxCarga);
         if (miToken !== tokenCargaActual || !data) return;
 
-        // Si no se incluyó imagen en la respuesta completa, reutilizar la de vista rápida
-        if (!data.imagen && imagenVistaRapidaCargada) {
-            data.imagen = imagenVistaRapidaCargada;
-        }
-
-        datosPagina = data;
-        totalPaginas = data.total_paginas;
-
-        let numCols = cortesV.length > 0 ? cortesV.length + 1 : 1;
-        for (let i = 0; i < numCols; i++) {
-            let colKey = i.toString();
-            if (!limitesH[colKey] || !Array.isArray(limitesH[colKey])) {
-                limitesH[colKey] = [0, data.alto_pagina_pdf];
-            } else {
-                let yMin = Math.max(0, Math.min(data.alto_pagina_pdf - 15, limitesH[colKey][0]));
-                let yMax = Math.max(yMin + 15, Math.min(data.alto_pagina_pdf, limitesH[colKey][1]));
-                limitesH[colKey] = [yMin, yMax];
-            }
-        }
-
-        // Guardar info de layout para el editor de texto (cálculo de rects en canvas) y persistencia
-        memoriaLayout[clave] = {
-            ...(memoriaLayout[clave] || {}),
-            width: data.ancho_pagina_pdf,
-            height: data.alto_pagina_pdf,
-            escala: data.factor_zoom,
-            canvasWidth: data.ancho_img,
-            canvasHeight: data.alto_img,
-            cortesV: [...cortesV],
-            limitesH: JSON.parse(JSON.stringify(limitesH)),
-            limitesHManual: memoriaLayout[clave]?.limitesHManual || false
-        };
-
-        guardarEstadoPaginaActual();
-        if (typeof window.compilarLibroTeatroPagina === 'function' && data?.oraciones) {
-            window.compilarLibroTeatroPagina(num, data.oraciones);
-        }
-
-        document.getElementById('input-pagina-actual').value = num + 1;
-        document.getElementById('total-paginas-texto').innerText = `/ ${totalPaginas}`;
-
-        // Solo redimensionar si cambiaron las dimensiones para no blanquear el lienzo
-        if (canvas.width !== data.ancho_img) canvas.width = data.ancho_img;
-        if (canvas.height !== data.alto_img) canvas.height = data.alto_img;
-        dibujar();
-
-        // Si el editor de texto estaba activo, volver a renderizar los bloques
-        if (editorEstabaActivo && typeof renderizarBloquesEditor === 'function') {
-            renderizarBloquesEditor();
-        }
-        // Si Mover elementos estaba activo, volver a renderizar los elementos de la página
-        if ((moverEstabaActivo || window.modoMoverElementosActivo) && typeof window.cargarYRenderizarElementosMover === 'function') {
-            window.cargarYRenderizarElementosMover();
-        }
-
-        // Lookahead OCR: Pre-cachear en segundo plano la siguiente página
-        if (!esTextoEscrito && num < totalPaginas - 1 && typeof eel !== 'undefined' && typeof eel.pre_cache_ocr_pagina === 'function') {
-            eel.pre_cache_ocr_pagina(num + 1)();
-        }
-
-        // --- BLOQUE DE RENDIMIENTO POTENCIADO (BUFFER EXTENDIDO) ---
-        const modoPotenciado = document.getElementById('chk-alto-rendimiento')?.checked;
-        const bufferExtendido = document.getElementById('chk-buffer-extendido')?.checked;
-
-        if (modoPotenciado && data.oraciones) {
-            if (window.timerRendimiento) clearTimeout(window.timerRendimiento);
-
-            window.timerRendimiento = setTimeout(() => {
-                let paginasAProcesar = [num];
-                if (bufferExtendido) {
-                    if (num > 0) paginasAProcesar.push(num - 1);
-                    if (num < totalPaginas - 1) paginasAProcesar.push(num + 1);
-                }
-
-                const layoutsPorPagina = {};
-                if (!esTextoEscrito) {
-                    for (const pIdx of paginasAProcesar) {
-                        const lPag = memoriaLayout[pIdx.toString()];
-                        if (lPag) {
-                            layoutsPorPagina[pIdx.toString()] = {
-                                cortesV: Array.isArray(lPag.cortesV) ? lPag.cortesV : [],
-                                limitesH: (lPag.limitesH && typeof lPag.limitesH === 'object') ? lPag.limitesH : {},
-                                zonasExcluidas: Array.isArray(lPag.zonasExcluidas) ? lPag.zonasExcluidas : []
-                            };
-                        }
-                    }
-                }
-
-                let vozAPre = window.vozActivaSnapshot || (document.getElementById('selector-voz-live')?.value) || vozPredeterminada || "";
-
-                let tradActiva = document.getElementById('chk-traduccion-activa')?.checked ?? false;
-                let tradConfig = null;
-                if (tradActiva) {
-                    tradConfig = {
-                        activa: true,
-                        origen: document.getElementById('sel-traduccion-origen')?.value || 'auto',
-                        destino: document.getElementById('sel-traduccion-destino')?.value || 'es',
-                        motor: document.getElementById('sel-traduccion-motor')?.value || 'online',
-                        modo: document.getElementById('sel-traduccion-modo')?.value || 'subtitulos'
-                    };
-                }
-
-                console.log("[PDF] Rendimiento: Estable en página. Iniciando ráfaga con voz:", vozAPre, "Trad:", tradConfig);
-                if (typeof eel !== 'undefined' && typeof eel.pre_renderizar_bloque_paginas === 'function') {
-                    eel.pre_renderizar_bloque_paginas(
-                        paginasAProcesar,
-                        vozAPre,
-                        velocidadLectura,
-                        dictActivo,
-                        tradConfig,
-                        layoutsPorPagina,
-                        usarAutoLayout
-                    )();
-                }
-            }, 250);
-        }
-
-        // --- BLOQUE DE PRE-TRADUCCIÓN EN FONDO ---
-        const pretraducirActivo = document.getElementById('chk-pretraducir-paginas')?.checked ?? true;
-        const tradActiva = document.getElementById('chk-traduccion-activa')?.checked ?? false;
-        if (pretraducirActivo && tradActiva && typeof eel !== 'undefined' && typeof eel.pretraducir_bloque_paginas === 'function') {
-            const origen = document.getElementById('sel-traduccion-origen')?.value || 'auto';
-            const destino = document.getElementById('sel-traduccion-destino')?.value || 'es';
-            const motor = document.getElementById('sel-traduccion-motor')?.value || 'online';
-            eel.pretraducir_bloque_paginas(num, origen, destino, motor, true)();
-        }
+        if (!data.imagen && ctxCarga.imagenVistaRapida) data.imagen = ctxCarga.imagenVistaRapida;
+        _aplicarDatosPaginaRenderizados(num, clave, data, estadoHerramientas, ctxCarga.esTextoEscrito);
+        _programarPreRenderizadoYPreTraduccion(num, data, ctxCarga.esTextoEscrito, ctxCarga.usarAutoLayout, dictActivo);
     } catch (err) {
         console.error("[PDF] Error en cargarPagina:", err);
     } finally {
-        if (typeof resolverCargaPagina === 'function') resolverCargaPagina();
-        if (miToken === tokenCargaActual) {
-            if (typeof canvas !== 'undefined' && canvas) {
-                canvas.classList.remove('canvas-procesando-layout');
-            }
-            ocultarHUDScannerOCR();
-            bloquearControlesNavegacion(false);
-            if (window.autoContinuarLectura) {
-                window.autoContinuarLectura = false;
-                setTimeout(() => {
-                    if (typeof iniciarLectura === 'function') {
-                        iniciarLectura();
-                    }
-                }, 100);
-            }
-        }
+        _finalizarCargaPagina(miToken, resolverCargaPagina);
     }
 }
 
@@ -722,50 +669,41 @@ function cambiarPagina(delta) {
     }
 }
 
+function _aplicarResultadoRecalculoLayout(num, data, imagenPrevia) {
+    if (!data.imagen && imagenPrevia) data.imagen = imagenPrevia;
+    datosPagina = data;
+    guardarEstadoPaginaActual();
+    if (typeof window.compilarLibroTeatroPagina === 'function' && data?.oraciones) {
+        window.compilarLibroTeatroPagina(num, data.oraciones);
+    }
+    if (typeof dibujar === 'function') dibujar();
+}
+
 async function recalcularLayoutPaginaActual() {
     if (!datosPagina) return;
     if (typeof dibujar === 'function') dibujar();
 
-    let pagKey = paginaActual.toString();
-    if (!memoriaLayout[pagKey]) memoriaLayout[pagKey] = {};
+    const pagKey = paginaActual.toString();
+    memoriaLayout[pagKey] = memoriaLayout[pagKey] || {};
     memoriaLayout[pagKey].cortesV = [...cortesV];
     memoriaLayout[pagKey].limitesH = JSON.parse(JSON.stringify(limitesH));
-
-    if (window.tutorialActivo || window.modoSoloLecturaActivo) {
-        guardarEstadoPaginaActual();
-        return;
-    }
-
     guardarEstadoPaginaActual();
+
+    if (window.tutorialActivo || window.modoSoloLecturaActivo) return;
     if (typeof eel === 'undefined' || typeof eel.obtener_pagina_data !== 'function') return;
 
     const miToken = ++tokenCargaActual;
     const num = paginaActual;
     const imagenPrevia = datosPagina.imagen;
     const esTextoEscrito = (window.tipoDocumento === 'texto_escrito');
-    const dictActivo = obtenerDiccionarioConsolidado();
     const recorteActual = parseInt(document.getElementById('rng-recorte-pdf')?.value || 0);
 
     try {
         const data = await eel.obtener_pagina_data(
-            num,
-            cortesV.length > 0 ? cortesV : null,
-            limitesH,
-            dictActivo,
-            false,
-            esTextoEscrito ? false : window.autoOCRActivo,
-            zonasExcluidas,
-            recorteActual,
-            false // incluir_imagen: false (la imagen ya está en canvas)
+            num, cortesV.length > 0 ? cortesV : null, limitesH, obtenerDiccionarioConsolidado(),
+            false, esTextoEscrito ? false : window.autoOCRActivo, zonasExcluidas, recorteActual, false
         )();
-        if (miToken !== tokenCargaActual || !data) return;
-        if (!data.imagen && imagenPrevia) data.imagen = imagenPrevia;
-        datosPagina = data;
-        guardarEstadoPaginaActual();
-        if (typeof window.compilarLibroTeatroPagina === 'function' && data?.oraciones) {
-            window.compilarLibroTeatroPagina(num, data.oraciones);
-        }
-        if (typeof dibujar === 'function') dibujar();
+        if (miToken === tokenCargaActual && data) _aplicarResultadoRecalculoLayout(num, data, imagenPrevia);
     } catch (e) {
         console.warn('[PDF] Error recalculando layout de página actual:', e);
     }
@@ -872,87 +810,49 @@ function limpiarZonasExcluidas() {
 }
 window.limpiarZonasExcluidas = limpiarZonasExcluidas;
 
+function _toastSeguroPdf(msg) {
+    if (typeof mostrarToastLira === 'function') mostrarToastLira(msg);
+}
+
+async function _aplicarLayoutAutodetectadoManual(res) {
+    const clon = _clonarLayoutIA(res);
+    cortesV = clon.cortesV;
+    if (res.limitesH && typeof res.limitesH === 'object') limitesH = clon.limitesH;
+    zonasExcluidas = clon.zonasExcluidas;
+
+    const clave = paginaActual.toString();
+    memoriaLayout[clave] = {
+        ...(memoriaLayout[clave] || {}),
+        cortesV: [...cortesV],
+        limitesH: JSON.parse(JSON.stringify(limitesH)),
+        zonasExcluidas: JSON.parse(JSON.stringify(zonasExcluidas)),
+        _autoDetectado: true,
+    };
+    guardarEstadoPaginaActual();
+    if (typeof dibujar === 'function') dibujar();
+    await cargarPagina(paginaActual);
+
+    const colsTxt = cortesV.length > 0 ? `${cortesV.length + 1} columnas` : "1 columna";
+    const zonasTxt = zonasExcluidas.length > 0 ? ` (${zonasExcluidas.length} zonas excluidas)` : "";
+    _toastSeguroPdf(`Diseño detectado: ${colsTxt}${zonasTxt}`);
+}
+
 async function autoDetectarLayoutActual() {
-    if (!datosPagina || !rutaPDFActual) {
-        if (typeof mostrarToastLira === 'function') {
-            mostrarToastLira("Abre un documento para auto-detectar el diseño");
-        }
-        return;
-    }
-    if (window.modoMoverElementosActivo && typeof toggleModoMoverElementos === 'function') {
-        toggleModoMoverElementos(false);
-    }
-    if (window.tipoDocumento === 'texto_escrito') {
-        if (typeof mostrarToastLira === 'function') {
-            mostrarToastLira("El modo texto libre no requiere detección de diseño");
-        }
-        return;
-    }
+    if (!datosPagina || !rutaPDFActual) { _toastSeguroPdf("Abre un documento para auto-detectar el diseño"); return; }
+    if (window.modoMoverElementosActivo && typeof toggleModoMoverElementos === 'function') toggleModoMoverElementos(false);
+    if (window.tipoDocumento === 'texto_escrito') { _toastSeguroPdf("El modo texto libre no requiere detección de diseño"); return; }
 
     const btnAuto = document.getElementById('btn-auto-layout');
-    if (btnAuto) {
-        btnAuto.classList.add('rotando-icono');
-        btnAuto.disabled = true;
-    }
-
-    if (typeof mostrarToastLira === 'function') {
-        mostrarToastLira("Analizando diseño y columnas con IA...");
-    }
+    if (btnAuto) { btnAuto.classList.add('rotando-icono'); btnAuto.disabled = true; }
+    _toastSeguroPdf("Analizando diseño y columnas con IA...");
 
     try {
-        let res = await eel.autodetectar_layout_pagina(paginaActual)();
-        if (res && res.exito) {
-            // Aplicar columnas verticales
-            cortesV = Array.isArray(res.cortesV) ? [...res.cortesV] : [];
-
-            // Aplicar límites horizontales
-            if (res.limitesH && typeof res.limitesH === 'object') {
-                limitesH = JSON.parse(JSON.stringify(res.limitesH));
-            }
-
-            // Aplicar zonas excluidas si las detectó
-            if (Array.isArray(res.zonasExcluidas) && res.zonasExcluidas.length > 0) {
-                zonasExcluidas = JSON.parse(JSON.stringify(res.zonasExcluidas));
-            } else {
-                zonasExcluidas = [];
-            }
-
-            const clave = paginaActual.toString();
-            memoriaLayout[clave] = {
-                ...(memoriaLayout[clave] || {}),
-                cortesV: [...cortesV],
-                limitesH: JSON.parse(JSON.stringify(limitesH)),
-                zonasExcluidas: JSON.parse(JSON.stringify(zonasExcluidas)),
-                _autoDetectado: true
-            };
-
-            guardarEstadoPaginaActual();
-            if (typeof dibujar === 'function') dibujar();
-            await cargarPagina(paginaActual);
-
-            let msg = "Diseño detectado: ";
-            if (cortesV.length > 0) {
-                msg += `${cortesV.length + 1} columnas`;
-            } else {
-                msg += "1 columna";
-            }
-            if (zonasExcluidas.length > 0) {
-                msg += ` (${zonasExcluidas.length} zonas excluidas)`;
-            }
-
-            if (typeof mostrarToastLira === 'function') {
-                mostrarToastLira(msg);
-            }
-        } else {
-            if (typeof mostrarToastLira === 'function') {
-                mostrarToastLira("No se pudo detectar el diseño: " + (res?.error || "Error desconocido"));
-            }
-        }
+        const res = await eel.autodetectar_layout_pagina(paginaActual)();
+        if (res?.exito) await _aplicarLayoutAutodetectadoManual(res);
+        else _toastSeguroPdf("No se pudo detectar el diseño: " + (res?.error || "Error desconocido"));
     } catch (err) {
         console.error("Error auto-detectando layout:", err);
-        if (typeof mostrarToastLira === 'function') {
-            mostrarToastLira("Error en auto-detección de diseño");
-        }
+        _toastSeguroPdf("Error en auto-detección de diseño");
     } finally {
         if (btnAuto) {
             btnAuto.classList.remove('rotando-icono');

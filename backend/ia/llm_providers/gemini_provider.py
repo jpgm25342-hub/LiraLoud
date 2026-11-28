@@ -5,7 +5,12 @@
 import json
 import logging
 from typing import List, Dict, Any, Optional
-from .base_provider import BaseLLMProvider, crear_httpx_async_client, obtener_ssl_context
+from .base_provider import (
+    BaseLLMProvider,
+    crear_httpx_async_client,
+    extraer_mensaje_error_http,
+    obtener_ssl_context,
+)
 
 logger = logging.getLogger("LiraGeminiProvider")
 
@@ -69,13 +74,7 @@ class GeminiProvider(BaseLLMProvider):
             )
 
             if resp.status_code != 200:
-                err_body = resp.text
-                try:
-                    err_json = resp.json()
-                    msg = err_json.get("error", {}).get("message", err_body)
-                except Exception:
-                    msg = err_body
-                raise RuntimeError(f"Error Google Gemini ({resp.status_code}): {msg}")
+                raise RuntimeError(f"Error Google Gemini ({resp.status_code}): {extraer_mensaje_error_http(resp)}")
 
             res_json = resp.json()
             candidates = res_json.get("candidates", [])
@@ -101,31 +100,6 @@ class GeminiProvider(BaseLLMProvider):
                 "modelo": mod,
                 "detalle": f"Gemini {mod}: {p_tok} entrada + {c_tok} salida = {t_tok} tokens"
             }
-
-    async def verificar_conexion_async(self, api_key: str, modelo: str = "") -> Dict[str, Any]:
-        key = str(api_key or "").strip()
-        if not key:
-            return {"exito": False, "error": "No se proporcionó API Key para la prueba de Gemini."}
-        
-        mod = modelo or self.default_model
-        try:
-            res = await self.generar_respuesta_async(
-                system_prompt="Eres un asistente de verificación técnica.",
-                mensajes_previos=[],
-                user_prompt="Responde únicamente con la palabra: OK",
-                api_key=key,
-                modelo=mod
-            )
-            return {
-                "exito": True,
-                "proveedor": "gemini",
-                "modelo": mod,
-                "respuesta": res.get("texto", "OK"),
-                "mensaje": f"¡Conexión exitosa con GEMINI ({mod})!"
-            }
-        except Exception as e:
-            logger.error(f"❌ [GeminiProvider] Error de verificación: {e}")
-            return {"exito": False, "proveedor": "gemini", "error": str(e)}
 
     async def obtener_modelos_async(self, api_key: str = "") -> Dict[str, Any]:
         key = str(api_key or "").strip()

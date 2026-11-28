@@ -385,23 +385,22 @@ function appendExtractedText(text, colorHex, id, pageNum) {
     container.prepend(card);
 }
 
+function _coincideTarjetaExtraccionFiltros(card, tabActiva, colorFilter, pageFilter) {
+    const esCaptura = card.classList.contains('capture-card') || card.dataset.tipo === 'captura';
+    const matchTab = (tabActiva === 'todas') || (tabActiva === 'capturas' ? esCaptura : !esCaptura);
+    const matchColor = !colorFilter || esCaptura || card.dataset.color === colorFilter;
+    const matchPage = !pageFilter || card.dataset.page === pageFilter;
+    return { visible: matchTab && matchColor && matchPage, esCaptura };
+}
+
 function aplicarFiltrosSubrayados() {
-    const colorFilter = document.getElementById('filter-color') ? document.getElementById('filter-color').value.toUpperCase() : '';
-    const pageFilter = document.getElementById('filter-page') ? document.getElementById('filter-page').value : '';
+    const colorFilter = (document.getElementById('filter-color')?.value || '').toUpperCase();
+    const pageFilter = document.getElementById('filter-page')?.value || '';
     const tabActiva = window.tabExtraccionActual || 'todas';
-    
-    const cards = document.querySelectorAll('#extracted-texts .text-card');
-    cards.forEach(card => {
-        const esCaptura = card.classList.contains('capture-card') || card.dataset.tipo === 'captura';
-        const matchTab = (tabActiva === 'todas') || (tabActiva === 'capturas' && esCaptura) || (tabActiva === 'textos' && !esCaptura);
-        const matchColor = colorFilter === '' || esCaptura || card.dataset.color === colorFilter;
-        const matchPage = pageFilter === '' || card.dataset.page === pageFilter;
-        
-        if (matchTab && matchColor && matchPage) {
-            card.style.display = esCaptura ? 'flex' : 'block';
-        } else {
-            card.style.display = 'none';
-        }
+
+    document.querySelectorAll('#extracted-texts .text-card').forEach(card => {
+        const { visible, esCaptura } = _coincideTarjetaExtraccionFiltros(card, tabActiva, colorFilter, pageFilter);
+        card.style.display = visible ? (esCaptura ? 'flex' : 'block') : 'none';
     });
 }
 

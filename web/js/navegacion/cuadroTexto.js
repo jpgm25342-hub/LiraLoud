@@ -5,74 +5,77 @@
 window.modoCuadroTextoActivo = false;
 window.cuadroTextoActivoUI = null;
 
-function activarModoCuadroTexto(activo) {
-    if (typeof activo === 'undefined') {
-        window.modoCuadroTextoActivo = !window.modoCuadroTextoActivo;
-    } else {
-        window.modoCuadroTextoActivo = activo;
-    }
-    
+const _CURSOR_CUADRO_TEXTO_SVG = 'url("data:image/svg+xml;utf8,<svg width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' xmlns=\'http://www.w3.org/2000/svg\'><path fill-rule=\'evenodd\' clip-rule=\'evenodd\' d=\'M8.25 9C8.25 8.58579 8.58579 8.25 9 8.25H15C15.4142 8.25 15.75 8.58579 15.75 9C15.75 9.41421 15.4142 9.75 15 9.75H12.75V15C12.75 15.4142 12.4142 15.75 12 15.75C11.5858 15.75 11.25 15.4142 11.25 15V9.75H9C8.58579 9.75 8.25 9.41421 8.25 9Z\' fill=\'%232980b9\'></path><path fill-rule=\'evenodd\' clip-rule=\'evenodd\' d=\'M5.85986 3.26307C5.56645 2.5232 4.84432 2 4 2C2.89543 2 2 2.89543 2 4C2 4.84433 2.5232 5.56645 3.26307 5.85986C3.25449 5.90526 3.25 5.9521 3.25 6L3.25 18C3.25 18.0479 3.25449 18.0947 3.26307 18.1401C2.5232 18.4335 2 19.1557 2 20C2 21.1046 2.89543 22 4 22C4.84433 22 5.56645 21.4768 5.85986 20.7369C5.90526 20.7455 5.9521 20.75 6 20.75H18C18.0479 20.75 18.0947 20.7455 18.1401 20.7369C18.4335 21.4768 19.1557 22 20 22C21.1046 22 22 21.1046 22 20C22 19.1557 21.4768 18.4335 20.7369 18.1401C20.7455 18.0947 20.75 18.0479 20.75 18L20.75 6C20.75 5.9521 20.7455 5.90526 20.7369 5.85986C21.4768 5.56645 22 4.84433 22 4C22 2.89543 21.1046 2 20 2C19.1557 2 18.4335 2.5232 18.1401 3.26307C18.0947 3.25449 18.0479 3.25 18 3.25H6C5.9521 3.25 5.90526 3.25449 5.85986 3.26307ZM4.73693 5.85986C4.74551 5.90526 4.75 5.9521 4.75 6L4.75 18C4.75 18.0479 4.74551 18.0947 4.73693 18.1401C5.24875 18.3431 5.65689 18.7512 5.85986 19.2631C5.90526 19.2545 5.9521 19.25 6 19.25H18C18.0479 19.25 18.0947 19.2545 18.1401 19.2631C18.3431 18.7512 18.7512 18.3431 19.2631 18.1401C19.2545 18.0947 19.25 18.0479 19.25 18V6C19.25 5.9521 19.2545 5.90526 19.2631 5.85986C18.7512 5.65689 18.3431 5.24875 18.1401 4.73693C18.0947 4.74551 18.0479 4.75 18 4.75H6C5.9521 4.75 5.90526 4.74551 5.85986 4.73693C5.65689 5.24875 5.24875 5.65689 4.73693 5.85986Z\' fill=\'%232980b9\'></path></svg>") 12 12, crosshair';
+
+function _sincronizarBotonesCuadroTexto(activo) {
     const btnGroup = document.getElementById('group-text-box');
-    if (btnGroup) btnGroup.classList.toggle('active', window.modoCuadroTextoActivo);
-    
+    if (btnGroup) btnGroup.classList.toggle('active', activo);
+
     const btn = document.getElementById('btn-text-box');
     if (btn) {
-        btn.classList.toggle('activo', window.modoCuadroTextoActivo);
-        btn.classList.toggle('active', window.modoCuadroTextoActivo);
+        btn.classList.toggle('activo', activo);
+        btn.classList.toggle('active', activo);
     }
-    
-    // Actualizar estilo subrayado activo en botones de Modo Zen (Ctrl+U)
+
     document.querySelectorAll('.zen-item-cuadro-texto').forEach(el => {
-        el.classList.toggle('tool-active-underline', window.modoCuadroTextoActivo);
+        el.classList.toggle('tool-active-underline', activo);
     });
-    
+}
+
+function _desactivarOtrosModosParaCuadroTexto() {
+    const modosExcluyentes = [
+        ['modoEditorTextoActivo', 'toggleModoEditorTexto'],
+        ['modoBorradorActivo', 'toggleModoBorrador'],
+        ['modoSubrayadorActivo', 'toggleModoSubrayador'],
+        ['modoRecorteActivo', 'toggleModoRecorteExtraccion'],
+        ['modoMoverElementosActivo', 'toggleModoMoverElementos'],
+        ['capturandoCorte', 'toggleCapturaCorte']
+    ];
+    modosExcluyentes.forEach(([flag, fnNombre]) => {
+        if (window[flag] && typeof window[fnNombre] === 'function') {
+            window[fnNombre](false);
+        }
+    });
+
+    const chkLimites = document.getElementById('chk-dibujar-limites');
+    if (chkLimites && chkLimites.checked) {
+        chkLimites.checked = false;
+        if (typeof toggleDibujoLimites === 'function') toggleDibujoLimites(false);
+    }
+}
+
+function _aplicarInteraccionVisorCuadroTexto(activo) {
     const container = document.getElementById('visor-container');
     const canvas = document.getElementById('lienzo-pdf');
     const canvasWrapper = document.getElementById('pdf-crop-wrapper') || container;
-    const cursorSvg = 'url("data:image/svg+xml;utf8,<svg width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' xmlns=\'http://www.w3.org/2000/svg\'><path fill-rule=\'evenodd\' clip-rule=\'evenodd\' d=\'M8.25 9C8.25 8.58579 8.58579 8.25 9 8.25H15C15.4142 8.25 15.75 8.58579 15.75 9C15.75 9.41421 15.4142 9.75 15 9.75H12.75V15C12.75 15.4142 12.4142 15.75 12 15.75C11.5858 15.75 11.25 15.4142 11.25 15V9.75H9C8.58579 9.75 8.25 9.41421 8.25 9Z\' fill=\'%232980b9\'></path><path fill-rule=\'evenodd\' clip-rule=\'evenodd\' d=\'M5.85986 3.26307C5.56645 2.5232 4.84432 2 4 2C2.89543 2 2 2.89543 2 4C2 4.84433 2.5232 5.56645 3.26307 5.85986C3.25449 5.90526 3.25 5.9521 3.25 6L3.25 18C3.25 18.0479 3.25449 18.0947 3.26307 18.1401C2.5232 18.4335 2 19.1557 2 20C2 21.1046 2.89543 22 4 22C4.84433 22 5.56645 21.4768 5.85986 20.7369C5.90526 20.7455 5.9521 20.75 6 20.75H18C18.0479 20.75 18.0947 20.7455 18.1401 20.7369C18.4335 21.4768 19.1557 22 20 22C21.1046 22 22 21.1046 22 20C22 19.1557 21.4768 18.4335 20.7369 18.1401C20.7455 18.0947 20.75 18.0479 20.75 18L20.75 6C20.75 5.9521 20.7455 5.90526 20.7369 5.85986C21.4768 5.56645 22 4.84433 22 4C22 2.89543 21.1046 2 20 2C19.1557 2 18.4335 2.5232 18.1401 3.26307C18.0947 3.25449 18.0479 3.25 18 3.25H6C5.9521 3.25 5.90526 3.25449 5.85986 3.26307ZM4.73693 5.85986C4.74551 5.90526 4.75 5.9521 4.75 6L4.75 18C4.75 18.0479 4.74551 18.0947 4.73693 18.1401C5.24875 18.3431 5.65689 18.7512 5.85986 19.2631C5.90526 19.2545 5.9521 19.25 6 19.25H18C18.0479 19.25 18.0947 19.2545 18.1401 19.2631C18.3431 18.7512 18.7512 18.3431 19.2631 18.1401C19.2545 18.0947 19.25 18.0479 19.25 18V6C19.25 5.9521 19.2545 5.90526 19.2631 5.85986C18.7512 5.65689 18.3431 5.24875 18.1401 4.73693C18.0947 4.74551 18.0479 4.75 18 4.75H6C5.9521 4.75 5.90526 4.74551 5.85986 4.73693C5.65689 5.24875 5.24875 5.65689 4.73693 5.85986Z\' fill=\'%232980b9\'></path></svg>") 12 12, crosshair';
-    
-    if (window.modoCuadroTextoActivo) {
-        if (container) {
-            container.classList.add('modo-cuadro-texto-activo');
-            container.style.cursor = cursorSvg;
-        }
-        if (canvas) canvas.style.cursor = cursorSvg;
-        
-        // Desactivar otros modos
-        if (typeof toggleModoEditorTexto === 'function' && window.modoEditorTextoActivo) toggleModoEditorTexto(false);
-        if (typeof toggleModoBorrador === 'function' && window.modoBorradorActivo) toggleModoBorrador(false);
-        if (typeof toggleModoSubrayador === 'function' && window.modoSubrayadorActivo) toggleModoSubrayador(false);
-        if (typeof toggleModoRecorteExtraccion === 'function' && window.modoRecorteActivo) toggleModoRecorteExtraccion(false);
-        if (typeof toggleModoMoverElementos === 'function' && window.modoMoverElementosActivo) toggleModoMoverElementos(false);
-        if (typeof toggleCapturaCorte === 'function' && window.capturandoCorte) toggleCapturaCorte(false);
-        const chkLimites = document.getElementById('chk-dibujar-limites');
-        if (chkLimites && chkLimites.checked) {
-            chkLimites.checked = false;
-            if (typeof toggleDibujoLimites === 'function') toggleDibujoLimites(false);
-        }
-        
-        if (canvasWrapper) {
-            canvasWrapper.addEventListener('mousedown', iniciarCreacionCuadroTexto);
-        }
-    } else {
-        if (container) {
-            container.classList.remove('modo-cuadro-texto-activo');
-            container.style.cursor = '';
-        }
-        if (canvas) {
-            canvas.style.cursor = '';
-        }
-        if (canvasWrapper) {
-            canvasWrapper.removeEventListener('mousedown', iniciarCreacionCuadroTexto);
-        }
+
+    if (container) {
+        container.classList.toggle('modo-cuadro-texto-activo', activo);
+        container.style.cursor = activo ? _CURSOR_CUADRO_TEXTO_SVG : '';
     }
-    
+    if (canvas) canvas.style.cursor = activo ? _CURSOR_CUADRO_TEXTO_SVG : '';
+    if (!canvasWrapper) return;
+
+    if (activo) {
+        canvasWrapper.addEventListener('mousedown', iniciarCreacionCuadroTexto);
+    } else {
+        canvasWrapper.removeEventListener('mousedown', iniciarCreacionCuadroTexto);
+    }
+}
+
+function activarModoCuadroTexto(activo) {
+    window.modoCuadroTextoActivo = (typeof activo === 'undefined') ? !window.modoCuadroTextoActivo : activo;
+
+    _sincronizarBotonesCuadroTexto(window.modoCuadroTextoActivo);
+    if (window.modoCuadroTextoActivo) {
+        _desactivarOtrosModosParaCuadroTexto();
+    }
+    _aplicarInteraccionVisorCuadroTexto(window.modoCuadroTextoActivo);
+
     window.textoEditandoActivo = window.modoCuadroTextoActivo;
     if (typeof window.actualizarEstadoInteractivoCapaSoloLectura === 'function') {
         window.actualizarEstadoInteractivoCapaSoloLectura();
     }
-
-    // Save to config
     if (typeof guardarTodosAjustes === 'function') guardarTodosAjustes();
 }
 

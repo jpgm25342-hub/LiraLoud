@@ -66,6 +66,18 @@ def _extraer_candidato_linea_subrayado(item, tiene_trazo, width, pw, verticales)
             return (hy, hx0, hx1, width)
     return None
 
+def _extraer_candidato_rect_subrayado(item, tiene_relleno, tiene_trazo, width, pw, verticales):
+    if not (item[0] == "re" and len(item) >= 2 and (tiene_relleno or tiene_trazo)):
+        return None
+    rr = fitz.Rect(item[1])
+    if 0.1 <= rr.height <= 3.0 and 3.0 <= rr.width < pw * 0.78:
+        hy = (rr.y0 + rr.y1) / 2.0
+        if not _segmento_toca_vertical(hy, rr.x0, rr.x1, verticales):
+            sw_re = rr.height + (width if tiene_trazo else 0.0)
+            return (hy, rr.x0, rr.x1, sw_re)
+    return None
+
+
 def _extraer_candidatos_subrayado_detalle(page):
     """
     Extrae segmentos horizontales candidatos a subrayado de texto (excluyendo bordes de tabla y divisores),
@@ -79,27 +91,20 @@ def _extraer_candidatos_subrayado_detalle(page):
         drawings = page.get_drawings()
         verticales = _recopilar_segmentos_verticales(drawings, pw, ph)
 
-        def _registrar(hy, hx0, hx1, sw):
-            k = (round(hy, 2), round(hx0, 2), round(hx1, 2))
-            prev = vistos.get(k)
-            if prev is None or sw > prev[3]:
-                vistos[k] = (hy, hx0, hx1, sw)
-
         for d in drawings:
             tiene_trazo = _drawing_tiene_trazo(d)
             tiene_relleno = d.get("fill") is not None
             width = float(d.get("width") or 0.0) if d.get("width") is not None else 1.0
             for item in d.get("items", []):
-                cand_l = _extraer_candidato_linea_subrayado(item, tiene_trazo, width, pw, verticales)
-                if cand_l is not None:
-                    _registrar(*cand_l)
-                elif item[0] == "re" and len(item) >= 2 and (tiene_relleno or tiene_trazo):
-                    rr = fitz.Rect(item[1])
-                    if 0.1 <= rr.height <= 3.0 and 3.0 <= rr.width < pw * 0.78:
-                        hy = (rr.y0 + rr.y1) / 2.0
-                        if not _segmento_toca_vertical(hy, rr.x0, rr.x1, verticales):
-                            sw_re = rr.height + (width if tiene_trazo else 0.0)
-                            _registrar(hy, rr.x0, rr.x1, sw_re)
+                cand = _extraer_candidato_linea_subrayado(item, tiene_trazo, width, pw, verticales)
+                if cand is None:
+                    cand = _extraer_candidato_rect_subrayado(item, tiene_relleno, tiene_trazo, width, pw, verticales)
+                if cand is not None:
+                    hy, hx0, hx1, sw = cand
+                    k = (round(hy, 2), round(hx0, 2), round(hx1, 2))
+                    prev = vistos.get(k)
+                    if prev is None or sw > prev[3]:
+                        vistos[k] = cand
     except Exception:
         pass
     return list(vistos.values())

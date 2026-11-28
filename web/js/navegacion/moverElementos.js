@@ -92,36 +92,25 @@ window.rotacionLibreActiva = false;
     }
 
     function desactivarOtrosModos() {
-        if (typeof toggleModoEditorTexto === 'function' && window.modoEditorTextoActivo) {
-            toggleModoEditorTexto(false);
-        }
-        if (typeof activarModoCuadroTexto === 'function' && window.modoCuadroTextoActivo) {
-            activarModoCuadroTexto(false);
-        }
-        if (typeof toggleModoFiguras === 'function' && window.modoFigurasActivo) {
-            toggleModoFiguras(false);
-        }
-        if (typeof toggleModoSubrayador === 'function' && window.modoSubrayadorActivo) {
-            toggleModoSubrayador(false);
-        }
-        if (typeof toggleModoBorrador === 'function' && window.modoBorradorActivo) {
-            toggleModoBorrador(false);
-        }
-        if (typeof toggleModoRecorteExtraccion === 'function' && window.modoRecorteActivo) {
-            toggleModoRecorteExtraccion(false);
-        }
-        if (typeof toggleCapturaCorte === 'function' && window.capturandoCorte) {
-            toggleCapturaCorte(false);
-        }
+        const modosExcluyentes = [
+            ['modoEditorTextoActivo', 'toggleModoEditorTexto'],
+            ['modoCuadroTextoActivo', 'activarModoCuadroTexto'],
+            ['modoFigurasActivo', 'toggleModoFiguras'],
+            ['modoSubrayadorActivo', 'toggleModoSubrayador'],
+            ['modoBorradorActivo', 'toggleModoBorrador'],
+            ['modoRecorteActivo', 'toggleModoRecorteExtraccion'],
+            ['capturandoCorte', 'toggleCapturaCorte']
+        ];
+        modosExcluyentes.forEach(([flag, fn]) => {
+            if (window[flag] && typeof window[fn] === 'function') window[fn](false);
+        });
         const chkLimites = document.getElementById('chk-dibujar-limites');
         if (chkLimites && chkLimites.checked) {
             chkLimites.checked = false;
             if (typeof toggleDibujoLimites === 'function') toggleDibujoLimites(false);
         }
         const detailsLimites = document.getElementById('zen-details-limites');
-        if (detailsLimites && detailsLimites.open) {
-            detailsLimites.open = false;
-        }
+        if (detailsLimites && detailsLimites.open) detailsLimites.open = false;
         if (typeof arrastre !== 'undefined' && arrastre) {
             arrastre = { tipo: null, index: -1, colKey: null, cual: null };
         }
@@ -129,22 +118,19 @@ window.rotacionLibreActiva = false;
         window.arrastreZonaExcluida = null;
     }
 
-    function esContextoEditableConFoco(e) {
-        if (window.textoEditandoActivo) return true;
-        if (document.getElementById('lira-editor-popup')) return true;
-        const dialogOverlay = document.getElementById('lira-dialog-overlay');
-        if (dialogOverlay && dialogOverlay.classList.contains('activo')) return true;
+    function _esNodoEditableMover(node) {
+        if (!node || !node.tagName) return false;
+        const tag = node.tagName.toUpperCase();
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+        if (node.isContentEditable) return true;
+        if (typeof node.getAttribute === 'function' && node.getAttribute('contenteditable') === 'true') return true;
+        return typeof node.closest === 'function' && Boolean(node.closest('[contenteditable="true"]'));
+    }
 
-        const candidatos = [document.activeElement, e?.target].filter(Boolean);
-        for (const node of candidatos) {
-            if (!node || !node.tagName) continue;
-            const tag = node.tagName.toUpperCase();
-            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
-            if (node.isContentEditable) return true;
-            if (typeof node.getAttribute === 'function' && node.getAttribute('contenteditable') === 'true') return true;
-            if (typeof node.closest === 'function' && node.closest('[contenteditable="true"]')) return true;
-        }
-        return false;
+    function esContextoEditableConFoco(e) {
+        if (window.textoEditandoActivo || document.getElementById('lira-editor-popup')) return true;
+        if (document.getElementById('lira-dialog-overlay')?.classList.contains('activo')) return true;
+        return [document.activeElement, e?.target].some(_esNodoEditableMover);
     }
 
     function mostrarAvisoToast(msg, tipo = 'info') {
@@ -190,6 +176,28 @@ window.rotacionLibreActiva = false;
         });
     }
 
+    function _iniciarOperacionCajaMover(modo, el, box, e, fallbackRect, handle = null) {
+        const origRect = {
+            x: parseFloat(box.style.left) || fallbackRect.x || 0,
+            y: parseFloat(box.style.top) || fallbackRect.y || 0,
+            w: parseFloat(box.style.width) || fallbackRect.w || box.offsetWidth || MIN_PX,
+            h: parseFloat(box.style.height) || fallbackRect.h || box.offsetHeight || MIN_PX
+        };
+        operacionActiva = {
+            modo,
+            handle,
+            el,
+            boxEl: box,
+            startClientX: e.clientX,
+            startClientY: e.clientY,
+            origRect,
+            currentRect: { ...origRect },
+            bounds: obtenerLimitesPaginaCanvas()
+        };
+        box.classList.add('manipulando');
+        setEstadoManipulacion(true);
+    }
+
     function agregarHandlesACaja(box, el) {
         HANDLES.forEach((dir) => {
             const handle = document.createElement('div');
@@ -199,28 +207,8 @@ window.rotacionLibreActiva = false;
                 if (e.button !== 0 || window.rotacionLibreActiva || mutacionEnCurso) return;
                 e.preventDefault();
                 e.stopPropagation();
-                if (typeof window.cerrarMenuContextualElementos === 'function') {
-                    window.cerrarMenuContextualElementos();
-                }
-                const origRect = {
-                    x: parseFloat(box.style.left) || 0,
-                    y: parseFloat(box.style.top) || 0,
-                    w: parseFloat(box.style.width) || box.offsetWidth || MIN_PX,
-                    h: parseFloat(box.style.height) || box.offsetHeight || MIN_PX
-                };
-                operacionActiva = {
-                    modo: 'resize',
-                    handle: dir,
-                    el: el,
-                    boxEl: box,
-                    startClientX: e.clientX,
-                    startClientY: e.clientY,
-                    origRect: origRect,
-                    currentRect: { ...origRect },
-                    bounds: obtenerLimitesPaginaCanvas()
-                };
-                box.classList.add('manipulando');
-                setEstadoManipulacion(true);
+                if (typeof window.cerrarMenuContextualElementos === 'function') window.cerrarMenuContextualElementos();
+                _iniciarOperacionCajaMover('resize', el, box, e, {}, dir);
             });
             box.appendChild(handle);
         });
@@ -237,6 +225,44 @@ window.rotacionLibreActiva = false;
         return window.LiraPdfEditorUtils.calcularRectRedimensionado(op, clientX, clientY, shiftKey, MIN_PX);
     }
 
+    function _esTipoElementoMoverValido(el) {
+        return Boolean(el && ['imagen', 'freetext', 'figura'].includes(el.tipo));
+    }
+
+    function _vincularEventosCajaElemento(box, el, rectInicial) {
+        box.addEventListener('dblclick', (e) => {
+            if (el.tipo !== 'figura' || typeof window.abrirPopoverEstiloFigura !== 'function') return;
+            e.preventDefault();
+            e.stopPropagation();
+            window.abrirPopoverEstiloFigura(el, box);
+        });
+
+        box.addEventListener('mousedown', (e) => {
+            if (e.button !== 0 || mutacionEnCurso || e.target?.classList.contains('mover-handle')) return;
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof window.cerrarMenuContextualElementos === 'function') window.cerrarMenuContextualElementos();
+
+            if (window.rotacionLibreActiva && rotacionLibreTarget) {
+                if (rotacionLibreTarget.el.id === el.id) iniciarArrastreRotacion(e);
+                return;
+            }
+            seleccionarElementoMover(el.id);
+            _iniciarOperacionCajaMover('move', el, box, e, rectInicial);
+        });
+
+        box.addEventListener('contextmenu', (e) => {
+            if (!window.modoMoverElementosActivo || mutacionEnCurso) return;
+            e.preventDefault();
+            e.stopPropagation();
+            if (window.rotacionLibreActiva) finalizarRotacionLibre(false);
+            seleccionarElementoMover(el.id);
+            if (typeof window.abrirMenuContextualElemento === 'function') {
+                window.abrirMenuContextualElemento(el, e.clientX, e.clientY);
+            }
+        });
+    }
+
     function renderizarElementosDesdeCache() {
         if (!window.modoMoverElementosActivo) return;
         const layer = asegurarCapaMoverElementos();
@@ -247,9 +273,7 @@ window.rotacionLibreActiva = false;
         layer.innerHTML = '';
 
         elementosPaginaActual.forEach((el) => {
-            if (!el || (el.tipo !== 'imagen' && el.tipo !== 'freetext' && el.tipo !== 'figura')) return;
-            if (!Array.isArray(el.bbox) || el.bbox.length < 4) return;
-
+            if (!_esTipoElementoMoverValido(el) || !Array.isArray(el.bbox) || el.bbox.length < 4) return;
             const r = proyectarPdfACanvas(el.bbox);
             const box = document.createElement('div');
             box.className = 'mover-el-box';
@@ -261,67 +285,7 @@ window.rotacionLibreActiva = false;
                 box.classList.add('seleccionado');
                 agregarHandlesACaja(box, el);
             }
-
-            box.addEventListener('dblclick', (e) => {
-                if (el.tipo === 'figura' && typeof window.abrirPopoverEstiloFigura === 'function') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    window.abrirPopoverEstiloFigura(el, box);
-                }
-            });
-
-            box.addEventListener('mousedown', (e) => {
-                if (e.button !== 0 || mutacionEnCurso) return;
-                if (e.target && e.target.classList.contains('mover-handle')) return;
-                e.preventDefault();
-                e.stopPropagation();
-
-                if (typeof window.cerrarMenuContextualElementos === 'function') {
-                    window.cerrarMenuContextualElementos();
-                }
-
-                if (window.rotacionLibreActiva && rotacionLibreTarget) {
-                    if (rotacionLibreTarget.el.id === el.id) {
-                        iniciarArrastreRotacion(e);
-                    }
-                    return;
-                }
-
-                seleccionarElementoMover(el.id);
-
-                const origRect = {
-                    x: parseFloat(box.style.left) || r.x,
-                    y: parseFloat(box.style.top) || r.y,
-                    w: parseFloat(box.style.width) || r.w,
-                    h: parseFloat(box.style.height) || r.h
-                };
-                operacionActiva = {
-                    modo: 'move',
-                    el: el,
-                    boxEl: box,
-                    startClientX: e.clientX,
-                    startClientY: e.clientY,
-                    origRect: origRect,
-                    currentRect: { ...origRect },
-                    bounds: obtenerLimitesPaginaCanvas()
-                };
-                box.classList.add('manipulando');
-                setEstadoManipulacion(true);
-            });
-
-            box.addEventListener('contextmenu', (e) => {
-                if (!window.modoMoverElementosActivo || mutacionEnCurso) return;
-                e.preventDefault();
-                e.stopPropagation();
-                if (window.rotacionLibreActiva) {
-                    finalizarRotacionLibre(false);
-                }
-                seleccionarElementoMover(el.id);
-                if (typeof window.abrirMenuContextualElemento === 'function') {
-                    window.abrirMenuContextualElemento(el, e.clientX, e.clientY);
-                }
-            });
-
+            _vincularEventosCajaElemento(box, el, r);
             layer.appendChild(box);
         });
     }
@@ -375,28 +339,21 @@ window.rotacionLibreActiva = false;
             limpiarCapaMoverElementos();
             return;
         }
-        if (typeof eel === 'undefined' || typeof eel.obtener_elementos_pagina !== 'function') {
-            return;
-        }
+        if (typeof eel === 'undefined' || typeof eel.obtener_elementos_pagina !== 'function') return;
 
         const miToken = ++cargaToken;
-        const pagIdx = obtenerPaginaIdx();
-
         try {
-            const res = await eel.obtener_elementos_pagina(ruta, pagIdx)();
+            const res = await eel.obtener_elementos_pagina(ruta, obtenerPaginaIdx())();
             if (miToken !== cargaToken || !window.modoMoverElementosActivo) return;
 
-            if (res && res.success && Array.isArray(res.elementos)) {
-                elementosPaginaActual = res.elementos.filter(
-                    (el) => el && (el.tipo === 'imagen' || el.tipo === 'freetext' || el.tipo === 'figura')
-                );
+            if (res?.success && Array.isArray(res.elementos)) {
+                elementosPaginaActual = res.elementos.filter(_esTipoElementoMoverValido);
                 resolverSeleccionPendiente();
-                renderizarElementosDesdeCache();
             } else {
                 elementosPaginaActual = [];
                 elementoSeleccionadoId = null;
-                renderizarElementosDesdeCache();
             }
+            renderizarElementosDesdeCache();
         } catch (err) {
             console.error('[MoverElementos] Error obteniendo elementos de página:', err);
         }
@@ -411,145 +368,116 @@ window.rotacionLibreActiva = false;
         }
     }
 
-    async function ejecutarMoverElemento(el, nuevoBbox) {
-        if (!el || mutacionEnCurso) return;
-        if (typeof eel === 'undefined' || typeof eel.mover_elemento_pdf !== 'function') return;
+    async function _procesarRespuestaMutacionElementoPdf(cfg, res, pagIdx) {
+        if (!res || res.cancelado) return;
+        if (res.success) {
+            if (cfg.limpiarSeleccion) {
+                elementoSeleccionadoId = null;
+                pendienteSeleccion = null;
+            } else {
+                pendienteSeleccion = cfg.construirSeleccion(res);
+            }
+            await recargarPaginaTrasMutacion(pagIdx);
+            return;
+        }
+        mostrarAvisoToast(res.error || cfg.msgError, 'error');
+        if (cfg.redibujarEnError) renderizarElementosDesdeCache();
+    }
+
+    async function _ejecutarMutacionElementoPdf(cfg) {
+        if (!cfg.el || mutacionEnCurso) return;
+        if (cfg.soloImagen && cfg.el.tipo !== 'imagen') return;
+        if (typeof eel === 'undefined' || typeof eel[cfg.rpcName] !== 'function') return;
+
         mutacionEnCurso = true;
         const pagIdx = obtenerPaginaIdx();
         try {
-            const res = await eel.mover_elemento_pdf(obtenerRutaPdf(), pagIdx, el, nuevoBbox)();
-            if (res && res.success) {
-                pendienteSeleccion = { tipo: el.tipo, xref: res.xref || el.xref, bbox: res.bbox || nuevoBbox };
-                await recargarPaginaTrasMutacion(pagIdx);
-            } else {
-                mostrarAvisoToast(res?.error || 'No se pudo mover el elemento.', 'error');
-                renderizarElementosDesdeCache();
-            }
+            const res = await cfg.invocar(obtenerRutaPdf(), pagIdx);
+            await _procesarRespuestaMutacionElementoPdf(cfg, res, pagIdx);
         } catch (err) {
-            console.error('[MoverElementos] Error moviendo elemento:', err);
-            renderizarElementosDesdeCache();
+            console.error(cfg.logError, err);
+            if (cfg.redibujarEnError) renderizarElementosDesdeCache();
         } finally {
             mutacionEnCurso = false;
         }
+    }
+
+    async function ejecutarMoverElemento(el, nuevoBbox) {
+        return _ejecutarMutacionElementoPdf({
+            el,
+            rpcName: 'mover_elemento_pdf',
+            invocar: (ruta, pagIdx) => eel.mover_elemento_pdf(ruta, pagIdx, el, nuevoBbox)(),
+            construirSeleccion: (res) => ({ tipo: el.tipo, xref: res.xref || el.xref, bbox: res.bbox || nuevoBbox }),
+            msgError: 'No se pudo mover el elemento.',
+            logError: '[MoverElementos] Error moviendo elemento:',
+            redibujarEnError: true
+        });
     }
 
     async function ejecutarRedimensionarElemento(el, nuevoBbox) {
-        if (!el || mutacionEnCurso) return;
-        if (typeof eel === 'undefined' || typeof eel.redimensionar_elemento_pdf !== 'function') return;
-        mutacionEnCurso = true;
-        const pagIdx = obtenerPaginaIdx();
-        try {
-            const res = await eel.redimensionar_elemento_pdf(obtenerRutaPdf(), pagIdx, el, nuevoBbox)();
-            if (res && res.success) {
-                pendienteSeleccion = { tipo: el.tipo, xref: res.xref || el.xref, bbox: res.bbox || nuevoBbox };
-                await recargarPaginaTrasMutacion(pagIdx);
-            } else {
-                mostrarAvisoToast(res?.error || 'No se pudo redimensionar el elemento.', 'error');
-                renderizarElementosDesdeCache();
-            }
-        } catch (err) {
-            console.error('[MoverElementos] Error redimensionando elemento:', err);
-            renderizarElementosDesdeCache();
-        } finally {
-            mutacionEnCurso = false;
-        }
+        return _ejecutarMutacionElementoPdf({
+            el,
+            rpcName: 'redimensionar_elemento_pdf',
+            invocar: (ruta, pagIdx) => eel.redimensionar_elemento_pdf(ruta, pagIdx, el, nuevoBbox)(),
+            construirSeleccion: (res) => ({ tipo: el.tipo, xref: res.xref || el.xref, bbox: res.bbox || nuevoBbox }),
+            msgError: 'No se pudo redimensionar el elemento.',
+            logError: '[MoverElementos] Error redimensionando elemento:',
+            redibujarEnError: true
+        });
     }
 
     async function reemplazarImagenElementoMover(el) {
-        if (!el || el.tipo !== 'imagen' || mutacionEnCurso) return;
-        if (typeof eel === 'undefined' || typeof eel.reemplazar_imagen_pdf !== 'function') return;
-
-        mutacionEnCurso = true;
-        const pagIdx = obtenerPaginaIdx();
-        try {
-            let rutaImg = null;
-            if (typeof eel.seleccionar_imagen_reemplazo === 'function') {
-                rutaImg = await eel.seleccionar_imagen_reemplazo()();
-                if (!rutaImg) return;
-            }
-            const res = await eel.reemplazar_imagen_pdf(obtenerRutaPdf(), pagIdx, el, rutaImg)();
-            if (res && res.cancelado) return;
-            if (res && res.success) {
-                pendienteSeleccion = { tipo: 'imagen', xref: res.xref || el.xref, bbox: res.bbox || el.bbox };
-                await recargarPaginaTrasMutacion(pagIdx);
-            } else {
-                mostrarAvisoToast(res?.error || 'No se pudo reemplazar la imagen.', 'error');
-            }
-        } catch (err) {
-            console.error('[MoverElementos] Error reemplazando imagen:', err);
-        } finally {
-            mutacionEnCurso = false;
-        }
+        return _ejecutarMutacionElementoPdf({
+            el,
+            soloImagen: true,
+            rpcName: 'reemplazar_imagen_pdf',
+            invocar: async (ruta, pagIdx) => {
+                let rutaImg = null;
+                if (typeof eel.seleccionar_imagen_reemplazo === 'function') {
+                    rutaImg = await eel.seleccionar_imagen_reemplazo()();
+                    if (!rutaImg) return { cancelado: true };
+                }
+                return eel.reemplazar_imagen_pdf(ruta, pagIdx, el, rutaImg)();
+            },
+            construirSeleccion: (res) => ({ tipo: 'imagen', xref: res.xref || el.xref, bbox: res.bbox || el.bbox }),
+            msgError: 'No se pudo reemplazar la imagen.',
+            logError: '[MoverElementos] Error reemplazando imagen:'
+        });
     }
 
     async function rotarImagenElementoMover(el, anguloGrados) {
-        if (!el || el.tipo !== 'imagen' || mutacionEnCurso) return;
-        if (typeof eel === 'undefined' || typeof eel.rotar_imagen_pdf !== 'function') return;
-
-        mutacionEnCurso = true;
-        const pagIdx = obtenerPaginaIdx();
-        try {
-            const res = await eel.rotar_imagen_pdf(obtenerRutaPdf(), pagIdx, el, anguloGrados)();
-            if (res && res.success) {
-                pendienteSeleccion = { tipo: 'imagen', xref: res.xref || el.xref, bbox: res.bbox || el.bbox };
-                await recargarPaginaTrasMutacion(pagIdx);
-            } else {
-                mostrarAvisoToast(res?.error || 'No se pudo rotar la imagen.', 'error');
-                renderizarElementosDesdeCache();
-            }
-        } catch (err) {
-            console.error('[MoverElementos] Error rotando imagen:', err);
-            renderizarElementosDesdeCache();
-        } finally {
-            mutacionEnCurso = false;
-        }
+        return _ejecutarMutacionElementoPdf({
+            el,
+            soloImagen: true,
+            rpcName: 'rotar_imagen_pdf',
+            invocar: (ruta, pagIdx) => eel.rotar_imagen_pdf(ruta, pagIdx, el, anguloGrados)(),
+            construirSeleccion: (res) => ({ tipo: 'imagen', xref: res.xref || el.xref, bbox: res.bbox || el.bbox }),
+            msgError: 'No se pudo rotar la imagen.',
+            logError: '[MoverElementos] Error rotando imagen:',
+            redibujarEnError: true
+        });
     }
 
     async function eliminarElementoMover(el) {
-        if (!el || mutacionEnCurso) return;
-        if (typeof eel === 'undefined' || typeof eel.eliminar_elemento_pdf !== 'function') return;
-
-        mutacionEnCurso = true;
-        const pagIdx = obtenerPaginaIdx();
-        try {
-            const res = await eel.eliminar_elemento_pdf(obtenerRutaPdf(), pagIdx, el)();
-            if (res && res.success) {
-                elementoSeleccionadoId = null;
-                pendienteSeleccion = null;
-                await recargarPaginaTrasMutacion(pagIdx);
-            } else {
-                mostrarAvisoToast(res?.error || 'No se pudo eliminar el elemento.', 'error');
-            }
-        } catch (err) {
-            console.error('[MoverElementos] Error eliminando elemento:', err);
-        } finally {
-            mutacionEnCurso = false;
-        }
+        return _ejecutarMutacionElementoPdf({
+            el,
+            rpcName: 'eliminar_elemento_pdf',
+            invocar: (ruta, pagIdx) => eel.eliminar_elemento_pdf(ruta, pagIdx, el)(),
+            limpiarSeleccion: true,
+            msgError: 'No se pudo eliminar el elemento.',
+            logError: '[MoverElementos] Error eliminando elemento:'
+        });
     }
 
     async function cambiarCapaElementoMover(el, accion) {
-        if (!el || mutacionEnCurso) return;
-        if (typeof eel === 'undefined' || typeof eel.cambiar_capa_elemento_rpc !== 'function') return;
-
-        mutacionEnCurso = true;
-        const pagIdx = obtenerPaginaIdx();
-        try {
-            const res = await eel.cambiar_capa_elemento_rpc(obtenerRutaPdf(), pagIdx, el, accion)();
-            if (res && res.success) {
-                pendienteSeleccion = {
-                    tipo: res.tipo || el.tipo,
-                    xref: res.xref || el.xref,
-                    bbox: res.bbox || el.bbox
-                };
-                await recargarPaginaTrasMutacion(pagIdx);
-            } else {
-                mostrarAvisoToast(res?.error || 'No se pudo cambiar la capa del elemento.', 'error');
-            }
-        } catch (err) {
-            console.error('[MoverElementos] Error cambiando capa:', err);
-        } finally {
-            mutacionEnCurso = false;
-        }
+        return _ejecutarMutacionElementoPdf({
+            el,
+            rpcName: 'cambiar_capa_elemento_rpc',
+            invocar: (ruta, pagIdx) => eel.cambiar_capa_elemento_rpc(ruta, pagIdx, el, accion)(),
+            construirSeleccion: (res) => ({ tipo: res.tipo || el.tipo, xref: res.xref || el.xref, bbox: res.bbox || el.bbox }),
+            msgError: 'No se pudo cambiar la capa del elemento.',
+            logError: '[MoverElementos] Error cambiando capa:'
+        });
     }
 
     function seleccionarElementoPendienteMover(sel) {
@@ -690,130 +618,134 @@ window.rotacionLibreActiva = false;
         }
     }
 
+    function _onLayerMouseDownMover(e, layer) {
+        if (!window.modoMoverElementosActivo) return;
+        if (window.rotacionLibreActiva && rotacionLibreTarget) {
+            if (e.button === 0) {
+                e.preventDefault();
+                e.stopPropagation();
+                iniciarArrastreRotacion(e);
+            }
+            return;
+        }
+        if (e.target === layer) {
+            if (typeof window.cerrarMenuContextualElementos === 'function') {
+                window.cerrarMenuContextualElementos();
+            }
+            seleccionarElementoMover(null);
+        }
+    }
+
+    function _actualizarRotacionLibreEnMove(e) {
+        const t = rotacionLibreTarget;
+        const curAngle = Math.atan2(e.clientY - t.cy, e.clientX - t.cx) * (180 / Math.PI);
+        let delta = curAngle - t.startPointerAngle;
+        while (delta > 180) delta -= 360;
+        while (delta < -180) delta += 360;
+        if (e.shiftKey) delta = Math.round(delta / 15) * 15;
+        t.currentDeg = Math.round(delta * 10) / 10;
+        if (t.boxEl) t.boxEl.style.transform = `rotate(${t.currentDeg}deg)`;
+        actualizarBadgeAngulo(t.currentDeg, e.clientX, e.clientY);
+    }
+
+    function _onDocMouseMoveMover(e) {
+        if (window.rotacionLibreActiva && rotacionLibreTarget && rotacionLibreTarget.arrastrando) {
+            _actualizarRotacionLibreEnMove(e);
+            return;
+        }
+        if (!operacionActiva) return;
+        const op = operacionActiva;
+        if (op.modo === 'move') {
+            const dx = e.clientX - op.startClientX;
+            const dy = e.clientY - op.startClientY;
+            const newX = clamp(op.origRect.x + dx, op.bounds.minX, Math.max(op.bounds.minX, op.bounds.maxX - op.origRect.w));
+            const newY = clamp(op.origRect.y + dy, op.bounds.minY, Math.max(op.bounds.minY, op.bounds.maxY - op.origRect.h));
+            op.currentRect = { x: newX, y: newY, w: op.origRect.w, h: op.origRect.h };
+            aplicarRectACaja(op.boxEl, op.currentRect);
+        } else if (op.modo === 'resize') {
+            op.currentRect = calcularRectRedimensionado(op, e.clientX, e.clientY, e.shiftKey);
+            aplicarRectACaja(op.boxEl, op.currentRect);
+        }
+    }
+
+    function _onDocMouseUpMover() {
+        if (window.rotacionLibreActiva && rotacionLibreTarget && rotacionLibreTarget.arrastrando) {
+            finalizarRotacionLibre(true);
+            return;
+        }
+        if (!operacionActiva) return;
+        const op = operacionActiva;
+        operacionActiva = null;
+        if (op.boxEl) op.boxEl.classList.remove('manipulando');
+        setEstadoManipulacion(false);
+
+        const deltaMax = Math.max(
+            Math.abs(op.currentRect.x - op.origRect.x),
+            Math.abs(op.currentRect.y - op.origRect.y),
+            Math.abs(op.currentRect.w - op.origRect.w),
+            Math.abs(op.currentRect.h - op.origRect.h)
+        );
+        if (deltaMax <= 1.0) return;
+
+        const nuevoBbox = proyectarCanvasAPdf(op.currentRect);
+        if (op.modo === 'move') {
+            ejecutarMoverElemento(op.el, nuevoBbox);
+        } else if (op.modo === 'resize') {
+            ejecutarRedimensionarElemento(op.el, nuevoBbox);
+        }
+    }
+
+    function _manejarEscapeMover(e) {
+        if (window.rotacionLibreActiva) {
+            e.preventDefault();
+            e.stopPropagation();
+            finalizarRotacionLibre(false);
+            return;
+        }
+        if (typeof window.cerrarMenuContextualElementos === 'function') {
+            window.cerrarMenuContextualElementos();
+        }
+        seleccionarElementoMover(null);
+    }
+
+    function _onDocKeyDownMover(e) {
+        if (!window.modoMoverElementosActivo || esContextoEditableConFoco(e)) return;
+
+        if (e.key === 'Escape') {
+            _manejarEscapeMover(e);
+            return;
+        }
+
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+            const elSel = obtenerElementoPorId(elementoSeleccionadoId);
+            if (!elSel) return;
+            e.preventDefault();
+            e.stopPropagation();
+            eliminarElementoMover(elSel);
+            return;
+        }
+
+        const esUndo = (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey;
+        if (esUndo && e.key && e.key.toLowerCase() === 'z') {
+            e.preventDefault();
+            e.stopPropagation();
+            ejecutarDeshacerMoverElementos();
+        }
+    }
+
     function registrarListenersGlobales() {
         if (listenersInicializados) return;
         listenersInicializados = true;
 
         const layer = asegurarCapaMoverElementos();
         if (layer) {
-            layer.addEventListener('mousedown', (e) => {
-                if (!window.modoMoverElementosActivo) return;
-                if (window.rotacionLibreActiva && rotacionLibreTarget) {
-                    if (e.button === 0) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        iniciarArrastreRotacion(e);
-                    }
-                    return;
-                }
-                if (e.target === layer) {
-                    if (typeof window.cerrarMenuContextualElementos === 'function') {
-                        window.cerrarMenuContextualElementos();
-                    }
-                    seleccionarElementoMover(null);
-                }
-            });
+            layer.addEventListener('mousedown', (e) => _onLayerMouseDownMover(e, layer));
         }
-
-        document.addEventListener('mousemove', (e) => {
-            if (window.rotacionLibreActiva && rotacionLibreTarget && rotacionLibreTarget.arrastrando) {
-                const t = rotacionLibreTarget;
-                const curAngle = Math.atan2(e.clientY - t.cy, e.clientX - t.cx) * (180 / Math.PI);
-                let delta = curAngle - t.startPointerAngle;
-                while (delta > 180) delta -= 360;
-                while (delta < -180) delta += 360;
-                if (e.shiftKey) {
-                    delta = Math.round(delta / 15) * 15;
-                }
-                t.currentDeg = Math.round(delta * 10) / 10;
-                if (t.boxEl) {
-                    t.boxEl.style.transform = `rotate(${t.currentDeg}deg)`;
-                }
-                actualizarBadgeAngulo(t.currentDeg, e.clientX, e.clientY);
-                return;
-            }
-
-            if (!operacionActiva) return;
-            const op = operacionActiva;
-            if (op.modo === 'move') {
-                const dx = e.clientX - op.startClientX;
-                const dy = e.clientY - op.startClientY;
-                const newX = clamp(op.origRect.x + dx, op.bounds.minX, Math.max(op.bounds.minX, op.bounds.maxX - op.origRect.w));
-                const newY = clamp(op.origRect.y + dy, op.bounds.minY, Math.max(op.bounds.minY, op.bounds.maxY - op.origRect.h));
-                op.currentRect = { x: newX, y: newY, w: op.origRect.w, h: op.origRect.h };
-                aplicarRectACaja(op.boxEl, op.currentRect);
-            } else if (op.modo === 'resize') {
-                op.currentRect = calcularRectRedimensionado(op, e.clientX, e.clientY, e.shiftKey);
-                aplicarRectACaja(op.boxEl, op.currentRect);
-            }
-        });
-
-        document.addEventListener('mouseup', () => {
-            if (window.rotacionLibreActiva && rotacionLibreTarget && rotacionLibreTarget.arrastrando) {
-                finalizarRotacionLibre(true);
-                return;
-            }
-
-            if (!operacionActiva) return;
-            const op = operacionActiva;
-            operacionActiva = null;
-            if (op.boxEl) op.boxEl.classList.remove('manipulando');
-            setEstadoManipulacion(false);
-
-            const deltaMax = Math.max(
-                Math.abs(op.currentRect.x - op.origRect.x),
-                Math.abs(op.currentRect.y - op.origRect.y),
-                Math.abs(op.currentRect.w - op.origRect.w),
-                Math.abs(op.currentRect.h - op.origRect.h)
-            );
-            if (deltaMax <= 1.0) return;
-
-            const nuevoBbox = proyectarCanvasAPdf(op.currentRect);
-            if (op.modo === 'move') {
-                ejecutarMoverElemento(op.el, nuevoBbox);
-            } else if (op.modo === 'resize') {
-                ejecutarRedimensionarElemento(op.el, nuevoBbox);
-            }
-        });
-
-        document.addEventListener('keydown', (e) => {
-            if (!window.modoMoverElementosActivo) return;
-            if (esContextoEditableConFoco(e)) return;
-
-            if (e.key === 'Escape') {
-                if (window.rotacionLibreActiva) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    finalizarRotacionLibre(false);
-                    return;
-                }
-                if (typeof window.cerrarMenuContextualElementos === 'function') {
-                    window.cerrarMenuContextualElementos();
-                }
-                seleccionarElementoMover(null);
-                return;
-            }
-
-            if (e.key === 'Delete' || e.key === 'Backspace') {
-                const elSel = obtenerElementoPorId(elementoSeleccionadoId);
-                if (!elSel) return;
-                e.preventDefault();
-                e.stopPropagation();
-                eliminarElementoMover(elSel);
-                return;
-            }
-
-            if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key && e.key.toLowerCase() === 'z') {
-                e.preventDefault();
-                e.stopPropagation();
-                ejecutarDeshacerMoverElementos();
-            }
-        });
-
+        document.addEventListener('mousemove', _onDocMouseMoveMover);
+        document.addEventListener('mouseup', _onDocMouseUpMover);
+        document.addEventListener('keydown', _onDocKeyDownMover);
         window.addEventListener('resize', () => {
-            if (window.modoMoverElementosActivo) {
-                reproyectarElementosMover();
-            }
+            if (window.modoMoverElementosActivo) reproyectarElementosMover();
         });
     }
 

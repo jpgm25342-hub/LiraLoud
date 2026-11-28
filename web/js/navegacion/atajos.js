@@ -136,124 +136,101 @@ function formatearTecla(combo) {
     formatted = formatted.replace("ARROWRIGHT", translateDynamicText("key-right") !== "key-right" ? translateDynamicText("key-right") : "DER");
     return formatted; 
 }
+function _esElementoEditableTeclado(target) {
+    if (!target) return false;
+    return target.tagName === 'INPUT'
+        || target.tagName === 'TEXTAREA'
+        || target.isContentEditable
+        || target.getAttribute('contenteditable') === 'true'
+        || (typeof target.closest === 'function' && Boolean(target.closest('[contenteditable="true"]')));
+}
+
+function _manejarEscapeGlobal(e) {
+    e.preventDefault();
+    cerrarBuscadorPDF();
+    cerrarModalesAbiertos();
+    if (typeof window.corteVSeleccionado === 'number' && window.corteVSeleccionado >= 0) {
+        window.corteVSeleccionado = -1;
+        if (typeof dibujar === 'function') dibujar();
+    }
+}
+
+function _manejarBorradoCorteVertical(e) {
+    if (typeof eliminarCorteVPorIndice !== 'function') return false;
+    let idxBorrar = -1;
+    if (typeof arrastre !== 'undefined' && arrastre && ['V', 'V_TOP', 'V_BOTTOM'].includes(arrastre.tipo)) {
+        idxBorrar = arrastre.index;
+        arrastre = { tipo: null, index: -1 };
+    } else if (typeof window.corteVSeleccionado === 'number' && window.corteVSeleccionado >= 0) {
+        idxBorrar = window.corteVSeleccionado;
+    }
+    if (idxBorrar < 0 || !eliminarCorteVPorIndice(idxBorrar)) return false;
+    e.preventDefault();
+    const toastFn = window.mostrarToast || (typeof mostrarToastLira === 'function' ? mostrarToastLira : null);
+    if (toastFn) toastFn("Columna vertical eliminada", "borrar");
+    return true;
+}
+
+function _construirComboTeclado(e) {
+    const combo = [];
+    if (e.ctrlKey) combo.push("control");
+    if (e.altKey) combo.push("alt");
+    if (e.shiftKey) combo.push("shift");
+    if (!['Control', 'Alt', 'Shift'].includes(e.key)) {
+        combo.push(e.key.toLowerCase());
+    }
+    return combo.join("+");
+}
+
+function _esAtajoBloqueadoEnCambioPagina(pulsado) {
+    if (typeof bloqueoCambioPagina === 'undefined' || !bloqueoCambioPagina) return false;
+    return [misAtajos.play_pause, misAtajos.prev_page, misAtajos.next_page, misAtajos.prev_sentence, misAtajos.next_sentence].includes(pulsado);
+}
+
+function _despacharAtajoRegistrado(e, pulsado) {
+    const acciones = [
+        [misAtajos.play_pause, () => { if (!window.tutorialBloquearEspacio) toggleLectura(); }],
+        [misAtajos.add_limit, () => agregarCorteV()],
+        [misAtajos.add_abbr, () => agregarTerminoRapido()],
+        [misAtajos.open_pdf, () => abrirBuscador()],
+        [misAtajos.toggle_dicc, () => toggleDiccionarioModal()],
+        [misAtajos.speed_up, () => cambiarValorInput('rng-velocidad', 0.1)],
+        [misAtajos.speed_down, () => cambiarValorInput('rng-velocidad', -0.1)],
+        [misAtajos.prev_page, () => cambiarPagina(-1)],
+        [misAtajos.next_page, () => cambiarPagina(1)],
+        [misAtajos.prev_sentence, () => navegarOracion(-1)],
+        [misAtajos.next_sentence, () => navegarOracion(1)],
+        [misAtajos.cycle_voice, () => ciclarVoz()],
+        [misAtajos.toggle_highlighter, () => { if (typeof toggleModoSubrayador === 'function') toggleModoSubrayador(); if (typeof guardarTodosAjustes === 'function') guardarTodosAjustes(); }],
+        [misAtajos.toggle_eraser, () => { if (typeof toggleModoBorrador === 'function') toggleModoBorrador(); if (typeof guardarTodosAjustes === 'function') guardarTodosAjustes(); }],
+        [misAtajos.crear_nota, () => { if (typeof togglePanelNotaRapida === 'function') togglePanelNotaRapida(); }],
+        [misAtajos.toggle_notas, () => { if (typeof toggleModalNotas === 'function') toggleModalNotas(); }],
+        [misAtajos.capturar_recorte, () => { if (typeof toggleModoRecorteExtraccion === 'function') toggleModoRecorteExtraccion(); }],
+    ];
+    for (const [tecla, fn] of acciones) {
+        if (pulsado === tecla) {
+            e.preventDefault();
+            fn();
+        }
+    }
+}
+
+function _manejarKeydownAtajos(e) {
+    if (window.textoEditandoActivo) return;
+    if (_esElementoEditableTeclado(e.target)) {
+        if (e.key === "Escape") { cerrarModalesAbiertos(); e.target.blur(); }
+        return;
+    }
+    if (e.key === "Escape") { _manejarEscapeGlobal(e); return; }
+    if ((e.key === "Backspace" || e.key === "Delete") && _manejarBorradoCorteVertical(e)) return;
+
+    const pulsado = _construirComboTeclado(e);
+    if (_esAtajoBloqueadoEnCambioPagina(pulsado)) { e.preventDefault(); return; }
+    _despacharAtajoRegistrado(e, pulsado);
+}
+
 function aplicarAtajosAlNavegador() {
-    document.onkeydown = function(e) {
-        // 0. Desactivar atajos si se está editando texto en el PDF (cuadro libre, FreeText, etc.)
-        if (window.textoEditandoActivo) {
-            return;
-        }
-
-        // 1. Manejo de inputs, textareas, elementos contenteditable y Escape
-        const isEditable = e.target.tagName === 'INPUT' || 
-                           e.target.tagName === 'TEXTAREA' || 
-                           e.target.isContentEditable || 
-                           e.target.getAttribute('contenteditable') === 'true' || 
-                           (typeof e.target.closest === 'function' && e.target.closest('[contenteditable="true"]'));
-                           
-        if (isEditable) {
-            if (e.key === "Escape") {
-                cerrarModalesAbiertos();
-                e.target.blur(); 
-            }
-            return;
-        }
-
-        // 2. Gatillo Universal Escape (fuera de inputs)
-        if (e.key === "Escape") {
-            e.preventDefault();
-			cerrarBuscadorPDF();
-            cerrarModalesAbiertos();
-            if (typeof window.corteVSeleccionado === 'number' && window.corteVSeleccionado >= 0) {
-                window.corteVSeleccionado = -1;
-                if (typeof dibujar === 'function') dibujar();
-            }
-            return; // Detenemos aquí para no procesar combos vacíos
-        }
-
-        // 2b. Borrar columna vertical seleccionada o arrastrada con Backspace / Delete
-        if ((e.key === "Backspace" || e.key === "Delete") && typeof eliminarCorteVPorIndice === 'function') {
-            let idxBorrar = -1;
-            if (typeof arrastre !== 'undefined' && arrastre && (arrastre.tipo === 'V' || arrastre.tipo === 'V_TOP' || arrastre.tipo === 'V_BOTTOM')) {
-                idxBorrar = arrastre.index;
-                arrastre = { tipo: null, index: -1 };
-            } else if (typeof window.corteVSeleccionado === 'number' && window.corteVSeleccionado >= 0) {
-                idxBorrar = window.corteVSeleccionado;
-            }
-            if (idxBorrar >= 0 && eliminarCorteVPorIndice(idxBorrar)) {
-                e.preventDefault();
-                if (typeof window.mostrarToast === 'function') {
-                    window.mostrarToast("Columna vertical eliminada", "borrar");
-                } else if (typeof mostrarToastLira === 'function') {
-                    mostrarToastLira("Columna vertical eliminada", "borrar");
-                }
-                return;
-            }
-        }
-
-        // 3. CONSTRUCCIÓN DEL COMBO (Orden Bayesiano)
-        let combo = []; 
-        if (e.ctrlKey) combo.push("control"); 
-        if (e.altKey) combo.push("alt"); 
-        if (e.shiftKey) combo.push("shift");
-        
-        // Solo agregamos la tecla si no es un modificador puro
-        if (e.key !== "Control" && e.key !== "Alt" && e.key !== "Shift") {
-            combo.push(e.key.toLowerCase());
-        }
-
-        // UNIFICACIÓN: Ahora sí generamos el string final para comparar
-        let pulsado = combo.join("+");
-
-        // 🛡️ ESCUDO DE PROCESAMIENTO: Si una página o el OCR se están procesando, ignorar atajos que cambien de página o inicien lectura
-        if (typeof bloqueoCambioPagina !== 'undefined' && bloqueoCambioPagina) {
-            if (pulsado === misAtajos.play_pause || pulsado === misAtajos.prev_page || pulsado === misAtajos.next_page || pulsado === misAtajos.prev_sentence || pulsado === misAtajos.next_sentence) {
-                e.preventDefault();
-                return;
-            }
-        }
-
-        // 4. VERIFICACIÓN DE ATAJOS REGISTRADOS
-        if (pulsado === misAtajos.play_pause) {
-            e.preventDefault();
-            if (typeof window.tutorialBloquearEspacio !== 'undefined' && window.tutorialBloquearEspacio) {
-                return;
-            }
-            toggleLectura();
-        }
-        if (pulsado === misAtajos.add_limit) { e.preventDefault(); agregarCorteV(); }
-        if (pulsado === misAtajos.add_abbr) { e.preventDefault(); agregarTerminoRapido(); } 
-        if (pulsado === misAtajos.open_pdf) { e.preventDefault(); abrirBuscador(); }
-        if (pulsado === misAtajos.toggle_dicc) { e.preventDefault(); toggleDiccionarioModal(); }
-        if (pulsado === misAtajos.speed_up) { e.preventDefault(); cambiarValorInput('rng-velocidad', 0.1); }
-        if (pulsado === misAtajos.speed_down) { e.preventDefault(); cambiarValorInput('rng-velocidad', -0.1); }
-        if (pulsado === misAtajos.prev_page) { e.preventDefault(); cambiarPagina(-1); }
-        if (pulsado === misAtajos.next_page) { e.preventDefault(); cambiarPagina(1); }
-        if (pulsado === misAtajos.prev_sentence) { e.preventDefault(); navegarOracion(-1); }
-        if (pulsado === misAtajos.next_sentence) { e.preventDefault(); navegarOracion(1); }
-        if (pulsado === misAtajos.cycle_voice) { e.preventDefault(); ciclarVoz(); }
-        if (pulsado === misAtajos.toggle_highlighter) {
-            e.preventDefault();
-            if (typeof toggleModoSubrayador === 'function') toggleModoSubrayador();
-            if (typeof guardarTodosAjustes === 'function') guardarTodosAjustes();
-        }
-        if (pulsado === misAtajos.toggle_eraser) {
-            e.preventDefault();
-            if (typeof toggleModoBorrador === 'function') toggleModoBorrador();
-            if (typeof guardarTodosAjustes === 'function') guardarTodosAjustes();
-        }
-        if (pulsado === misAtajos.crear_nota) {
-            e.preventDefault();
-            if (typeof togglePanelNotaRapida === 'function') togglePanelNotaRapida();
-        }
-        if (pulsado === misAtajos.toggle_notas) {
-            e.preventDefault();
-            if (typeof toggleModalNotas === 'function') toggleModalNotas();
-        }
-        if (pulsado === misAtajos.capturar_recorte) {
-            e.preventDefault();
-            if (typeof toggleModoRecorteExtraccion === 'function') toggleModoRecorteExtraccion();
-        }
-    };
+    document.onkeydown = _manejarKeydownAtajos;
 }
 function navegarOracion(delta) {
     if (!datosPagina || !datosPagina.oraciones) return;

@@ -158,6 +158,18 @@ def _calcular_puntos_division_vertical(cortes, alto_pag):
             y_splits.add(c["yMax"])
     return sorted(y_splits)
 
+def _recopilar_franja_y_cortes(palabras_raw, cortes, f_y0, f_y1):
+    franja_palabras = [
+        p for p in palabras_raw
+        if f_y0 <= ((p[1] + p[3]) / 2.0) < f_y1
+    ]
+    cortes_activos = [
+        c["x"] for c in cortes
+        if c["yMin"] <= f_y0 + 2 and c["yMax"] >= f_y1 - 2
+    ]
+    return franja_palabras, cortes_activos
+
+
 def organizar_palabras_con_cortes_y_limites(palabras_raw, lista_cortes_v, limites_h, ancho_pag, alto_pag):
     """
     Organiza palabras según cortes verticales (que pueden ser segmentados con yMin/yMax)
@@ -175,28 +187,14 @@ def organizar_palabras_con_cortes_y_limites(palabras_raw, lista_cortes_v, limite
     palabras_ordenadas = []
 
     for f_idx in range(len(sorted_y) - 1):
-        f_y0 = sorted_y[f_idx]
-        f_y1 = sorted_y[f_idx + 1]
-
-        # Palabras cuyo centroide Y cae en esta franja horizontal
-        franja_palabras = [
-            p for p in palabras_raw
-            if ((p[1] + p[3]) / 2.0) >= f_y0 and ((p[1] + p[3]) / 2.0) < f_y1
-        ]
+        f_y0, f_y1 = sorted_y[f_idx], sorted_y[f_idx + 1]
+        franja_palabras, cortes_activos = _recopilar_franja_y_cortes(palabras_raw, cortes, f_y0, f_y1)
         if not franja_palabras:
             continue
-
-        # Cortes activos en esta franja
-        cortes_activos = [
-            c["x"] for c in cortes
-            if c["yMin"] <= f_y0 + 2 and c["yMax"] >= f_y1 - 2
-        ]
-
         palabras_ordenadas.extend(
             _ordenar_franja_horizontal(franja_palabras, f_y0, f_y1, cortes_activos, limites_h, ancho_pag)
         )
 
-    # Aseguramos que no se pierdan palabras en bordes exactos, sin re-inyectar texto excluido por limites_h
     sobrantes = _filtrar_palabras_sobrantes_por_limites(palabras_raw, palabras_ordenadas, limites_h)
     if sobrantes:
         palabras_ordenadas.extend(ordenar_palabras_por_lineas_top_down(sobrantes))

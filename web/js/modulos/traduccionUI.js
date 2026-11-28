@@ -80,54 +80,42 @@ window.mostrarSubtituloTraduccion = function (texto, origen = 'AUTO', destino = 
     if (typeof aplicarSubtituloEspaciado === 'function') aplicarSubtituloEspaciado();
 };
 
-window.actualizarKaraokeSubtitulos = function (tiempoAudioActual, pAudio, pIdx) {
-    const flotante = document.getElementById('subtitulo-traduccion-flotante');
-    if (!flotante || flotante.style.display === 'none' || !window.subtituloPalabrasActuales || window.subtituloPalabrasActuales.length === 0) {
-        return;
-    }
-
-    const totalSubPalabras = window.subtituloPalabrasActuales.length;
-    let targetIdx = -1;
-
-    // Si hay partitura sincronizamos
+function _calcularIndiceSubtituloObjetivo(tiempoAudioActual, pAudio, pIdx, totalSubPalabras) {
     if (window.partituraActual && window.partituraActual.length > 0) {
+        if (window.subtituloEsAudioDirecto && pAudio && pAudio.vIdx !== undefined) {
+            return Math.min(totalSubPalabras - 1, Math.max(0, pAudio.vIdx));
+        }
         const ultimaRebanada = window.partituraActual[window.partituraActual.length - 1];
         const durTotal = (ultimaRebanada && ultimaRebanada.e > 0) ? ultimaRebanada.e : 1.0;
-
-        // Si el audio es directo de la traducción (modo solo_traduccion o 2da fase aprendizaje)
-        if (window.subtituloEsAudioDirecto && pAudio && pAudio.vIdx !== undefined) {
-            targetIdx = Math.min(totalSubPalabras - 1, Math.max(0, pAudio.vIdx));
-        } else {
-            // Modo subtítulos (audio original): sincronizamos por tiempo relativo
-            const progresoRel = Math.max(0, Math.min(1, tiempoAudioActual / durTotal));
-            targetIdx = Math.min(totalSubPalabras - 1, Math.floor(progresoRel * totalSubPalabras));
-        }
-    } else if (pIdx !== -1) {
-        targetIdx = Math.min(totalSubPalabras - 1, pIdx);
+        const progresoRel = Math.max(0, Math.min(1, tiempoAudioActual / durTotal));
+        return Math.min(totalSubPalabras - 1, Math.floor(progresoRel * totalSubPalabras));
     }
+    return (pIdx !== -1) ? Math.min(totalSubPalabras - 1, pIdx) : -1;
+}
 
-    if (targetIdx === window.ultimoIdxSubtituloKaraoke) {
+function _pintarClasesSubtituloKaraoke(palabras, targetIdx) {
+    for (let i = 0; i < palabras.length; i++) {
+        const el = palabras[i];
+        if (!el) continue;
+        let claseEsperada = 'sub-palabra';
+        if (i < targetIdx) claseEsperada = 'sub-palabra sub-leida';
+        else if (i === targetIdx) claseEsperada = 'sub-palabra sub-activa';
+        if (el.className !== claseEsperada) el.className = claseEsperada;
+    }
+}
+
+window.actualizarKaraokeSubtitulos = function (tiempoAudioActual, pAudio, pIdx) {
+    const flotante = document.getElementById('subtitulo-traduccion-flotante');
+    const palabras = window.subtituloPalabrasActuales;
+    if (!flotante || flotante.style.display === 'none' || !palabras || palabras.length === 0) {
         return;
     }
-    window.ultimoIdxSubtituloKaraoke = targetIdx;
 
-    for (let i = 0; i < totalSubPalabras; i++) {
-        const el = window.subtituloPalabrasActuales[i];
-        if (!el) continue;
-        if (i < targetIdx) {
-            if (el.className !== 'sub-palabra sub-leida') {
-                el.className = 'sub-palabra sub-leida';
-            }
-        } else if (i === targetIdx) {
-            if (el.className !== 'sub-palabra sub-activa') {
-                el.className = 'sub-palabra sub-activa';
-            }
-        } else {
-            if (el.className !== 'sub-palabra') {
-                el.className = 'sub-palabra';
-            }
-        }
-    }
+    const targetIdx = _calcularIndiceSubtituloObjetivo(tiempoAudioActual, pAudio, pIdx, palabras.length);
+    if (targetIdx === window.ultimoIdxSubtituloKaraoke) return;
+
+    window.ultimoIdxSubtituloKaraoke = targetIdx;
+    _pintarClasesSubtituloKaraoke(palabras, targetIdx);
 };
 
 window.cerrarSubtituloTraduccion = function () {

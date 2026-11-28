@@ -84,25 +84,41 @@ def _reubicar_imagen(pdf_path, pagina_idx, elemento, nuevo_bbox, doc_obj=None):
                 overlay=usar_overlay,
             )
 
-        page = _recargar_pagina_segura(doc, page)
-        return _llamar_guardar_cambio_pdf(
-            doc,
-            pdf_path,
-            doc_obj,
-            extra_result={
-                "bbox": [
-                    float(rect_dest_vis.x0),
-                    float(rect_dest_vis.y0),
-                    float(rect_dest_vis.x1),
-                    float(rect_dest_vis.y1),
-                ],
-                "xref": int(new_xref),
-            },
-        )
+        return _guardar_resultado_imagen(doc, page, pdf_path, doc_obj, rect_dest_vis, new_xref)
     except Exception as e:
         return {"success": False, "error": str(e)}
     finally:
         _cerrar_si_propio(doc, owns_doc)
+
+
+def _guardar_resultado_imagen(doc, page, pdf_path, doc_obj, rect_dest, new_xref, incluir_tipo=False):
+    """Recarga la página, guarda el cambio del PDF y construye el payload estándar de imagen."""
+    _recargar_pagina_segura(doc, page)
+    extra = {
+        "bbox": [
+            float(rect_dest.x0),
+            float(rect_dest.y0),
+            float(rect_dest.x1),
+            float(rect_dest.y1),
+        ],
+        "xref": int(new_xref),
+    }
+    if incluir_tipo:
+        extra["tipo"] = "imagen"
+    return _llamar_guardar_cambio_pdf(doc, pdf_path, doc_obj, extra_result=extra)
+
+
+def _reemplazar_instancia_por_stream(doc, page, target_xref, bbox_unrot, idx_info, rect_dest_vis, stream_bytes, rot_pag):
+    page, _ = _remover_instancia_imagen(doc, page, target_xref, bbox_unrot, index=idx_info)
+    rect_insert = _rect_para_insert_image(rect_dest_vis, page)
+    new_xref = page.insert_image(
+        rect_insert,
+        stream=stream_bytes,
+        rotate=rot_pag,
+        keep_proportion=False,
+        overlay=True,
+    )
+    return page, new_xref
 
 
 def insertar_imagen_pdf(pdf_path, pagina_idx, ruta_imagen, bbox=None, doc_obj=None):
@@ -149,21 +165,8 @@ def insertar_imagen_pdf(pdf_path, pagina_idx, ruta_imagen, bbox=None, doc_obj=No
             keep_proportion=False,
             overlay=True,
         )
-        page = _recargar_pagina_segura(doc, page)
-        return _llamar_guardar_cambio_pdf(
-            doc,
-            pdf_path,
-            doc_obj,
-            extra_result={
-                "tipo": "imagen",
-                "xref": int(new_xref),
-                "bbox": [
-                    float(rect_dest_vis.x0),
-                    float(rect_dest_vis.y0),
-                    float(rect_dest_vis.x1),
-                    float(rect_dest_vis.y1),
-                ],
-            },
+        return _guardar_resultado_imagen(
+            doc, page, pdf_path, doc_obj, rect_dest_vis, new_xref, incluir_tipo=True
         )
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -227,21 +230,7 @@ def reemplazar_imagen(pdf_path, pagina_idx, elemento, ruta_imagen, doc_obj=None)
             keep_proportion=False,
             overlay=True,
         )
-        page = _recargar_pagina_segura(doc, page)
-        return _llamar_guardar_cambio_pdf(
-            doc,
-            pdf_path,
-            doc_obj,
-            extra_result={
-                "bbox": [
-                    float(rect_dest_vis.x0),
-                    float(rect_dest_vis.y0),
-                    float(rect_dest_vis.x1),
-                    float(rect_dest_vis.y1),
-                ],
-                "xref": int(new_xref),
-            },
-        )
+        return _guardar_resultado_imagen(doc, page, pdf_path, doc_obj, rect_dest_vis, new_xref)
     except Exception as e:
         return {"success": False, "error": str(e)}
     finally:
@@ -416,21 +405,7 @@ def rotar_imagen(pdf_path, pagina_idx, elemento, angulo_grados, doc_obj=None):
                 overlay=True,
             )
 
-        page = _recargar_pagina_segura(doc, page)
-        return _llamar_guardar_cambio_pdf(
-            doc,
-            pdf_path,
-            doc_obj,
-            extra_result={
-                "bbox": [
-                    float(rect_dest_vis.x0),
-                    float(rect_dest_vis.y0),
-                    float(rect_dest_vis.x1),
-                    float(rect_dest_vis.y1),
-                ],
-                "xref": int(new_xref),
-            },
-        )
+        return _guardar_resultado_imagen(doc, page, pdf_path, doc_obj, rect_dest_vis, new_xref)
     except Exception as e:
         return {"success": False, "error": str(e)}
     finally:
@@ -519,21 +494,8 @@ def recortar_zona_como_imagen_pdf(
             keep_proportion=False,
             overlay=True,
         )
-        page = _recargar_pagina_segura(doc, page)
-        return _llamar_guardar_cambio_pdf(
-            doc,
-            pdf_path,
-            doc_obj,
-            extra_result={
-                "tipo": "imagen",
-                "xref": int(new_xref),
-                "bbox": [
-                    float(rect_dest.x0),
-                    float(rect_dest.y0),
-                    float(rect_dest.x1),
-                    float(rect_dest.y1),
-                ],
-            },
+        return _guardar_resultado_imagen(
+            doc, page, pdf_path, doc_obj, rect_dest, new_xref, incluir_tipo=True
         )
     except Exception as e:
         return {"success": False, "error": str(e)}

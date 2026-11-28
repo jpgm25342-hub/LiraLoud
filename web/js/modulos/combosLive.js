@@ -53,51 +53,75 @@ async function filtrarVocesPorIdiomaLive() {
     actualizarListaVocesUI();
 }
 
-// --- 2. CONTROLADORES DE INTERFAZ REACTIVA ---
-function abrirComboLive(tipo) {
-    const sel = document.getElementById(tipo === 'idioma' ? 'filtro-idioma' : 'selector-voz-live');
-    Array.from(sel.options).forEach(opt => opt.style.display = "block");
+// --- 2. HELPERS COMPARTIDOS Y CONTROLADORES DE INTERFAZ REACTIVA ---
+function abrirComboSelect(selectId) {
+    const sel = document.getElementById(selectId);
+    if (!sel) return;
+    Array.from(sel.options).forEach(opt => { opt.style.display = "block"; });
     sel.style.display = 'block';
 }
 
-function filtrarComboLive(tipo) {
-    const query = document.getElementById(`busqueda-${tipo}-live`).value.toLowerCase();
-    const sel = document.getElementById(tipo === 'idioma' ? 'filtro-idioma' : 'selector-voz-live');
-    if (!sel) return;
+function filtrarComboSelect(selectId, inputId, { incluirAliases = false, autoseleccionarUnico = false } = {}) {
+    const inp = document.getElementById(inputId);
+    const sel = document.getElementById(selectId);
+    if (!sel || !inp) return [];
+    const query = (inp.value || '').toLowerCase();
     sel.style.display = 'block';
 
-    let visibles = [];
+    const visibles = [];
     Array.from(sel.options).forEach(opt => {
-        const aliases = (opt.dataset?.aliases || '').toLowerCase();
+        const aliases = incluirAliases ? (opt.dataset?.aliases || '').toLowerCase() : '';
         const coincide = !opt.disabled && (
-            opt.text.toLowerCase().includes(query)
-            || opt.value.toLowerCase() === query
-            || aliases.includes(query)
+            (opt.text || '').toLowerCase().includes(query)
+            || (incluirAliases && (opt.value || '').toLowerCase() === query)
+            || (incluirAliases && aliases.includes(query))
         );
         opt.style.display = coincide ? "block" : "none";
         if (coincide) visibles.push(opt);
     });
 
-    if (visibles.length === 1) {
+    if (autoseleccionarUnico && visibles.length === 1) {
         sel.value = visibles[0].value;
     }
+    return visibles;
+}
 
+function seleccionarComboSelect(selectId, inputId, onSeleccion) {
+    const sel = document.getElementById(selectId);
+    const inp = document.getElementById(inputId);
+    if (!sel || !inp || sel.selectedIndex === -1) return null;
+
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt || opt.disabled) return null;
+
+    const valorNuevo = opt.text;
+    const yaTeniaMismoTexto = (inp.value === valorNuevo);
+    sel.style.display = 'none';
+    inp.value = valorNuevo;
+
+    if (typeof onSeleccion === 'function') {
+        onSeleccion({ sel, inp, opt, valorNuevo, yaTeniaMismoTexto });
+    }
+    return opt;
+}
+
+window.abrirComboSelect = abrirComboSelect;
+window.filtrarComboSelect = filtrarComboSelect;
+window.seleccionarComboSelect = seleccionarComboSelect;
+
+function abrirComboLive(tipo) {
+    abrirComboSelect(tipo === 'idioma' ? 'filtro-idioma' : 'selector-voz-live');
+}
+
+function filtrarComboLive(tipo) {
+    const selectId = tipo === 'idioma' ? 'filtro-idioma' : 'selector-voz-live';
+    filtrarComboSelect(selectId, `busqueda-${tipo}-live`, { incluirAliases: true, autoseleccionarUnico: true });
     if (tipo === 'idioma') filtrarVocesPorIdiomaLive();
 }
 
 function seleccionarComboLive(tipo) {
-    const sel = document.getElementById(tipo === 'idioma' ? 'filtro-idioma' : 'selector-voz-live');
-    const inp = document.getElementById(`busqueda-${tipo}-live`);
-
-    if (sel && sel.selectedIndex !== -1) {
-        const opt = sel.options[sel.selectedIndex];
-        if (opt.disabled) return;
-        const valorNuevo = opt.text;
-
-        sel.style.display = 'none';
-        const yaTeniaMismoTexto = (inp.value === valorNuevo);
-        inp.value = valorNuevo;
-
+    const selectId = tipo === 'idioma' ? 'filtro-idioma' : 'selector-voz-live';
+    seleccionarComboSelect(selectId, `busqueda-${tipo}-live`, ({ sel, opt, valorNuevo, yaTeniaMismoTexto }) => {
         if (!yaTeniaMismoTexto) {
             if (tipo === 'idioma') {
                 sel.value = opt.value;
@@ -110,7 +134,7 @@ function seleccionarComboLive(tipo) {
         window.dispatchEvent(new CustomEvent('lira:combo-live-seleccionado', {
             detail: { tipo, valor: opt.value, texto: valorNuevo }
         }));
-    }
+    });
 }
 
 // --- SENSOR DE CIERRE INTELIGENTE (HUD + MODAL) ---

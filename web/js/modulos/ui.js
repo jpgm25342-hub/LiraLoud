@@ -183,6 +183,15 @@ window.obtenerLimitesVisiblesRecorte = obtenerLimitesVisiblesRecorte;
 // Usa position:relative en el canvas para desplazarlo hacia arriba/izquierda,
 // mientras el wrapper (overflow:hidden) oculta lo que sobresale por fuera.
 // El flex del visor-container centra automáticamente el wrapper resultante.
+function _programarRecargaTrasRecorte() {
+    if (window.timerDebounceRecorte) clearTimeout(window.timerDebounceRecorte);
+    if (typeof rutaPDFActual !== 'string' || !rutaPDFActual) return;
+    window.timerDebounceRecorte = setTimeout(() => {
+        const listo = typeof cargarPagina === 'function' && typeof paginaActual !== 'undefined' && !window.bloqueoCambioPagina;
+        if (listo && typeof rutaPDFActual === 'string' && rutaPDFActual) cargarPagina(paginaActual);
+    }, 400);
+}
+
 function aplicarRecorteDinamico(valor) {
     const v = parseInt(valor) || 0;
     const wrapper = document.getElementById('pdf-crop-wrapper');
@@ -191,42 +200,22 @@ function aplicarRecorteDinamico(valor) {
     if (spanVal) spanVal.innerText = v + '%';
     if (!canvas || !wrapper) return;
 
-    // Obtenemos las dimensiones actuales del canvas en pantalla (px CSS)
     const canvasW = parseFloat(canvas.style.width) || canvas.offsetWidth || canvas.width;
     const canvasH = parseFloat(canvas.style.height) || canvas.offsetHeight || canvas.height;
-
-    // Calculamos cuántos píxeles recortamos de CADA LADO (máx ~20% por lado al 100%)
     const cropH = Math.round((v / 100) * canvasW * 0.20);
     const cropV = Math.round((v / 100) * canvasH * 0.12);
 
-    // Posicionamos el canvas simétricamente:
-    // mover -cropH a la izquierda y -cropV hacia arriba → el recorte es igual en ambos lados
     canvas.style.position = 'relative';
     canvas.style.left = '-' + cropH + 'px';
     canvas.style.top = '-' + cropV + 'px';
-    canvas.style.margin = '0'; // limpiamos cualquier margin anterior
+    canvas.style.margin = '0';
 
-    // El wrapper muestra exactamente la zona central
-    const newW = Math.max(100, canvasW - cropH * 2);
-    const newH = Math.max(100, canvasH - cropV * 2);
-    wrapper.style.width = newW + 'px';
-    wrapper.style.height = newH + 'px';
+    wrapper.style.width = Math.max(100, canvasW - cropH * 2) + 'px';
+    wrapper.style.height = Math.max(100, canvasH - cropV * 2) + 'px';
     wrapper.style.overflow = 'hidden';
 
-    // Redibujar controles y líneas de recorte adaptadas al nuevo margen visible
-    if (datosPagina && typeof dibujar === 'function') {
-        dibujar();
-    }
-
-    // Debounce para sincronizar oraciones y omitir el texto recortado de la lectura
-    if (window.timerDebounceRecorte) clearTimeout(window.timerDebounceRecorte);
-    if (typeof rutaPDFActual === 'string' && rutaPDFActual) {
-        window.timerDebounceRecorte = setTimeout(() => {
-            if (typeof cargarPagina === 'function' && typeof paginaActual !== 'undefined' && !window.bloqueoCambioPagina && typeof rutaPDFActual === 'string' && rutaPDFActual) {
-                cargarPagina(paginaActual);
-            }
-        }, 400);
-    }
+    if (datosPagina && typeof dibujar === 'function') dibujar();
+    _programarRecargaTrasRecorte();
 }
 
 // Zoom Dinámico: ajusta el nivel de zoom del canvas y redibuja
@@ -292,116 +281,111 @@ function toggleBotonKofi(mostrar) {
 }
 window.toggleBotonKofi = toggleBotonKofi;
 
+function _leerNumUI(id, def, esFloat = false) {
+    const raw = document.getElementById(id)?.value;
+    if (raw === undefined || raw === null || raw === '') return def;
+    const n = esFloat ? parseFloat(raw) : parseInt(raw, 10);
+    return Number.isNaN(n) ? def : n;
+}
+
+function _leerChkUI(id, def) {
+    const el = document.getElementById(id);
+    return el ? Boolean(el.checked) : def;
+}
+
+function _capturarPackAjustesLecturaUI() {
+    velocidadLectura = _leerNumUI('rng-velocidad', 1.0, true);
+    pitchLectura = _leerNumUI('rng-tono', 1.0, true);
+    pausaPunto = _leerNumUI('rng-pausa', 300);
+    volumenPorcentaje = _leerNumUI('rng-volumen-master', _leerNumUI('num-volumen-master', 100));
+    toggleBotonKofi(_leerChkUI('chk-kofi', true));
+
+    return {
+        velocidad: velocidadLectura,
+        tono: pitchLectura,
+        pausa: pausaPunto,
+        volumen: volumenPorcentaje,
+        color: document.getElementById('color-resaltado')?.value || "#ffff00",
+        padKaraoke: _leerNumUI('rng-pad-karaoke', 2),
+        colorGuia: document.getElementById('color-guia-oracion')?.value || "#00b4ff",
+        padGuia: _leerNumUI('rng-pad-guia', 2),
+        llenado: _leerChkUI('chk-llenado-fluido', false),
+        margenPDF: _leerNumUI('rng-margen-pdf', 20),
+        seguirTexto: _leerChkUI('chk-seguir-texto', true),
+        omitirParen: _leerChkUI('chk-paren', true),
+        omitirCorch: _leerChkUI('chk-corch', true),
+        omitirLlaves: _leerChkUI('chk-llaves', true),
+        omitirUrls: _leerChkUI('chk-urls', true)
+    };
+}
+
+function _detenerFuentesYColaLecturaUI(detenerBackend) {
+    if (detenerBackend) {
+        if (piperQueueTimer) clearInterval(piperQueueTimer);
+        isPlayingPiper = false;
+        try { eel.detener_streaming_backend()(); } catch (e) {}
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+    } else {
+        detenerLectura(false);
+    }
+    if (window.activeAudioSources && window.activeAudioSources.length > 0) {
+        window.activeAudioSources.forEach(s => { try { s.stop(); } catch (e) {} });
+        window.activeAudioSources = [];
+        if (!detenerBackend && synth) synth.cancel();
+    }
+}
+
+async function _reaplicarSnapshotAjustes(packAjustes) {
+    if (typeof datosPagina === 'undefined' || !datosPagina?.oraciones) return;
+    const dictActual = dbDiccionario[seccionActual]?.terms || {};
+    const filtrosActuales = {
+        'chk-urls': packAjustes.omitirUrls,
+        'chk-paren': packAjustes.omitirParen,
+        'chk-corch': packAjustes.omitirCorch,
+        'chk-llaves': packAjustes.omitirLlaves
+    };
+    console.log("📤 [JS -> PY] Enviando Snapshot con filtros reales:", filtrosActuales);
+    const nuevasOraciones = await eel.reaplicar_filtros_desde_snapshot(dictActual, filtrosActuales)();
+    if (nuevasOraciones) {
+        datosPagina.oraciones = nuevasOraciones;
+        console.log("⚡ Snapshot y Filtros aplicados con éxito.");
+    }
+}
+
+function _reanudarLecturaTrasAjustes() {
+    if (!leyendo || indiceOracion === -1) {
+        window.palabraKaraoke = null;
+        dibujar();
+        return;
+    }
+    if (window.timerReanudacionFiltros) clearTimeout(window.timerReanudacionFiltros);
+    window.timerReanudacionFiltros = setTimeout(() => {
+        if (!leyendo) return;
+        console.log("▶️ Reanudación tras cambio de filtros (Fase Sincronizada)");
+        window.palabraKaraoke = null;
+        dibujar();
+        reproducirSecuencia(indiceOracion);
+    }, 150);
+}
+
 async function aplicarCambiosLectura() {
     try {
         console.log("🔍 [AUDITORÍA] Iniciando recolección de datos para guardado masivo...");
+        const packAjustes = _capturarPackAjustesLecturaUI();
 
-        // --- 1. CAPTURA DE DATOS DESDE LA INTERFAZ ---
-        // Audio (Velocidad, Tono, Pausa, Volumen)
-        velocidadLectura = parseFloat(document.getElementById('rng-velocidad')?.value || 1.0);
-        pitchLectura = parseFloat(document.getElementById('rng-tono')?.value || 1.0);
-        pausaPunto = parseInt(document.getElementById('rng-pausa')?.value || 300);
-
-        // El volumen suele estar en un input específico, asegúrate de que el ID coincida con tu HTML
-        volumenPorcentaje = parseInt(document.getElementById('rng-volumen-master')?.value ||
-            document.getElementById('num-volumen-master')?.value || 100);
-
-        // Estilo (Colores y Paddings independientes)
-        const colorK = document.getElementById('color-resaltado')?.value || "#ffff00";
-        const padK = parseInt(document.getElementById('rng-pad-karaoke')?.value || 2);
-        const colorG = document.getElementById('color-guia-oracion')?.value || "#00b4ff";
-        const padG = parseInt(document.getElementById('rng-pad-guia')?.value || 2);
-        const llenado = document.getElementById('chk-llenado-fluido')?.checked || false;
-        const mostrarKofi = document.getElementById('chk-kofi')?.checked ?? true;
-        toggleBotonKofi(mostrarKofi);
-
-        // Comportamiento (Márgenes, Scroll y Filtros de Símbolos)
-        const margV = parseInt(document.getElementById('rng-margen-pdf')?.value || 20);
-        const seguir = document.getElementById('chk-seguir-texto')?.checked ?? true;
-        const omitP = document.getElementById('chk-paren')?.checked ?? true;
-        const omitC = document.getElementById('chk-corch')?.checked ?? true;
-        const omitL = document.getElementById('chk-llaves')?.checked ?? true;
-        const omitU = document.getElementById('chk-urls')?.checked ?? true;
-
-        // --- 2. PARADA FÍSICA Y LIMPIEZA DE SESIÓN ---
-        detenerLectura(false);
-        if (window.activeAudioSources) {
-            window.activeAudioSources.forEach(s => { try { s.stop(); } catch (e) { } });
-            window.activeAudioSources = [];
-            if (synth) synth.cancel();
-        }
-
-
-        // Sincronía de sesión para evitar traslapes de audio
+        _detenerFuentesYColaLecturaUI(false);
         currentReadingSession += 10;
         window.currentReadingSession = currentReadingSession;
-        window.seguirTextoActivo = seguir;
+        window.seguirTextoActivo = packAjustes.seguirTexto;
 
-        // Limpiar caché de Python para que regenere audio con nuevos filtros/velocidad
         await eel.limpiar_pasteleria()();
-
-        // --- 3. ACTUALIZACIÓN POR SNAPSHOT (Solo si hay un PDF abierto) ---
-        if (typeof datosPagina !== 'undefined' && datosPagina && datosPagina.oraciones) {
-            let dictActual = dbDiccionario[seccionActual]?.terms || {};
-            const filtrosActuales = {
-                'chk-urls': omitU, 'chk-paren': omitP, 'chk-corch': omitC, 'chk-llaves': omitL
-            };
-
-            console.log("📤 [JS -> PY] Enviando Snapshot con filtros reales:", filtrosActuales);
-            let nuevasOraciones = await eel.reaplicar_filtros_desde_snapshot(dictActual, filtrosActuales)();
-
-            if (nuevasOraciones) {
-                datosPagina.oraciones = nuevasOraciones;
-                console.log("⚡ Snapshot y Filtros aplicados con éxito.");
-            }
-        }
-
-        // --- 4. PERSISTENCIA TOTAL (Empaquetado JSON) ---
-        const packAjustes = {
-            "velocidad": velocidadLectura,
-            "tono": pitchLectura,
-            "pausa": pausaPunto,
-            "volumen": volumenPorcentaje,
-            "color": colorK,
-            "padKaraoke": padK,
-            "colorGuia": colorG,
-            "padGuia": padG,
-            "llenado": llenado,
-            "margenPDF": margV,
-            "seguirTexto": seguir,
-            "omitirParen": omitP,
-            "omitirCorch": omitC,
-            "omitirLlaves": omitL,
-            "omitirUrls": omitU
-        };
-
-        // Guardado en ajustes_lectura.json
+        await _reaplicarSnapshotAjustes(packAjustes);
         await eel.guardar_ajustes_lectura(packAjustes)();
 
-        // Aplicar recorte si estaba activo
         const recorteGuardado = parseInt(document.getElementById('rng-recorte-pdf')?.value || 0);
         if (typeof aplicarRecorteDinamico === 'function') aplicarRecorteDinamico(recorteGuardado);
-
-        dibujar(); // Aplica colores y paddings nuevos al lienzo
-
-        if (leyendo && indiceOracion !== -1) {
-            // 1. Limpiamos cualquier timer de reanudación previo para evitar duplicados
-            if (window.timerReanudacionFiltros) clearTimeout(window.timerReanudacionFiltros);
-
-            // 2. Aplicamos el "Valle de Silencio" de 150ms
-            window.timerReanudacionFiltros = setTimeout(() => {
-                if (leyendo) {
-                    console.log("▶️ Reanudación tras cambio de filtros (Fase Sincronizada)");
-                    window.palabraKaraoke = null;
-                    dibujar();
-                    reproducirSecuencia(indiceOracion);
-                }
-            }, 150); // <--- Antibiótico contra la repetición
-        } else {
-            window.palabraKaraoke = null;
-            dibujar();
-        }
-
+        dibujar();
+        _reanudarLecturaTrasAjustes();
     } catch (e) {
         console.error("🔥 Error en el Hot Swap del Snapshot:", e);
     }
@@ -476,73 +460,48 @@ function buscarEnPDF() {
     }
 }
 window.buscarEnPDF = buscarEnPDF;
-function buscarOracionPorGeometria(palabra) {
-    if (!datosPagina || !datosPagina.oraciones || !palabra || !palabra.bbox) return -1;
-    let px = (palabra.bbox[0] + palabra.bbox[2]) / 2;
-    let py = (palabra.bbox[1] + palabra.bbox[3]) / 2;
-
-    // 1. Coincidencia por rectángulos agrupados de la oración (con tolerancia de 2px)
-    for (let i = 0; i < datosPagina.oraciones.length; i++) {
-        let oracion = datosPagina.oraciones[i];
-        if (oracion.rects) {
-            for (let r of oracion.rects) {
-                if (r[0] === 0 && r[1] === 0 && r[2] === 0 && r[3] === 0) continue;
-                if (px >= (r[0] - 2) && px <= (r[2] + 2) && py >= (r[1] - 2) && py <= (r[3] + 2)) {
-                    return i;
-                }
-            }
-        }
-    }
-
-    // 2. Coincidencia directa por palabras de la oración (Blindaje total para último párrafo/remanente)
-    for (let i = 0; i < datosPagina.oraciones.length; i++) {
-        let oracion = datosPagina.oraciones[i];
-        if (oracion.palabras && oracion.palabras.length > 0) {
-            for (let p of oracion.palabras) {
-                if (p.bbox) {
-                    let bx = (p.bbox[0] + p.bbox[2]) / 2;
-                    let by = (p.bbox[1] + p.bbox[3]) / 2;
-                    if (Math.abs(px - bx) <= 5 && Math.abs(py - by) <= 5) {
-                        return i;
-                    }
-                }
-            }
-        }
-    }
-
-    return -1;
+function _centroBBoxUI(bbox) {
+    return [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2];
 }
 
-// --- FUNCIONES AUXILIARES PARA KARAOKE ---
+function _puntoDentroDeRectsOracion(px, py, rects, tol) {
+    if (!Array.isArray(rects)) return false;
+    for (const r of rects) {
+        if (r[0] === 0 && r[1] === 0 && r[2] === 0 && r[3] === 0) continue;
+        if (px >= r[0] - tol && px <= r[2] + tol && py >= r[1] - tol && py <= r[3] + tol) return true;
+    }
+    return false;
+}
+
+function _oracionContienePalabraCercana(palabras, px, py) {
+    if (!Array.isArray(palabras)) return false;
+    return palabras.some(p => {
+        if (!p.bbox) return false;
+        const [bx, by] = _centroBBoxUI(p.bbox);
+        return Math.abs(px - bx) <= 5 && Math.abs(py - by) <= 5;
+    });
+}
+
+function buscarOracionPorGeometria(palabra) {
+    if (!datosPagina?.oraciones || !palabra?.bbox) return -1;
+    const [px, py] = _centroBBoxUI(palabra.bbox);
+
+    const idxRect = datosPagina.oraciones.findIndex(o => _puntoDentroDeRectsOracion(px, py, o.rects, 2));
+    if (idxRect !== -1) return idxRect;
+    return datosPagina.oraciones.findIndex(o => _oracionContienePalabraCercana(o.palabras, px, py));
+}
+
 function obtenerPalabrasDeOracion(oracion) {
     if (!oracion || !datosPagina) return [];
 
-    // Priorizar las palabras ya filtradas y ordenadas de la oración (sin superíndices/subíndices omitidos)
     const palabrasBase = oracion._palabrasOriginales || oracion.palabras;
-    if (Array.isArray(palabrasBase) && palabrasBase.length > 0) {
-        return [...palabrasBase];
-    }
+    if (Array.isArray(palabrasBase) && palabrasBase.length > 0) return [...palabrasBase];
+    if (!oracion.rects || oracion.rects.length === 0) return [];
 
-    let palabrasEncontradas = [];
-    let tol = 5;
-
-    if (oracion.rects && oracion.rects.length > 0) {
-        for (let p of (datosPagina.palabras || [])) {
-            let px = (p.bbox[0] + p.bbox[2]) / 2;
-            let py = (p.bbox[1] + p.bbox[3]) / 2;
-
-            for (let r of oracion.rects) {
-                if (r[0] === 0 && r[1] === 0 && r[2] === 0 && r[3] === 0) continue;
-                if (px >= r[0] - tol && px <= r[2] + tol &&
-                    py >= r[1] - tol && py <= r[3] + tol) {
-                    palabrasEncontradas.push(p);
-                    break;
-                }
-            }
-        }
-    }
-
-    return palabrasEncontradas;
+    return (datosPagina.palabras || []).filter(p => {
+        const [px, py] = _centroBBoxUI(p.bbox);
+        return _puntoDentroDeRectsOracion(px, py, oracion.rects, 5);
+    });
 }
 
 function restaurarOracionesRecortadas() {
@@ -560,128 +519,79 @@ function restaurarOracionesRecortadas() {
 }
 window.restaurarOracionesRecortadas = restaurarOracionesRecortadas;
 
+function _buscarIndicePalabraEnOracion(todasLasPalabras, palabraObj) {
+    let idx = todasLasPalabras.indexOf(palabraObj);
+    if (idx !== -1 || !palabraObj?.bbox) return idx === -1 ? 0 : idx;
+
+    idx = todasLasPalabras.findIndex(p =>
+        p.bbox && Math.abs(p.bbox[0] - palabraObj.bbox[0]) <= 4 && Math.abs(p.bbox[1] - palabraObj.bbox[1]) <= 4
+    );
+    if (idx !== -1) return idx;
+
+    let bestIdx = 0;
+    let bestDist = Infinity;
+    const targetX = palabraObj.bbox[0];
+    const targetY = (palabraObj.bbox[1] + palabraObj.bbox[3]) / 2;
+    for (let k = 0; k < todasLasPalabras.length; k++) {
+        const b = todasLasPalabras[k].bbox;
+        if (!b) continue;
+        const d = Math.abs(((b[1] + b[3]) / 2) - targetY) * 4 + Math.abs(b[0] - targetX);
+        if (d < bestDist) { bestDist = d; bestIdx = k; }
+    }
+    return bestIdx;
+}
+
+function _inyectarYLanzarFragmentoOracion(idx, fragmentoTexto, visualesFinales) {
+    const orac = datosPagina?.oraciones?.[idx];
+    if (!orac) {
+        hablarTexto(fragmentoTexto, () => { if (leyendo) reproducirSecuencia(idx + 1); }, visualesFinales, vozPredeterminada);
+        return;
+    }
+    if (orac._textoOriginal === undefined) orac._textoOriginal = orac.texto;
+    if (orac._palabrasOriginales === undefined) orac._palabrasOriginales = orac.palabras;
+    orac.texto = fragmentoTexto;
+    orac.palabras = visualesFinales;
+    window._oracionRecortadaActivaIdx = idx;
+    reproducirSecuencia(idx);
+}
+
 // --- FUNCIÓN DE LECTURA MANUAL (VERSIÓN INTEGRAL V23) ---
 function empezarDesdePalabra(palabraObj) {
     restaurarOracionesRecortadas();
     window.palabraPausada = null;
-    let idx = buscarOracionPorGeometria(palabraObj);
+    const idx = buscarOracionPorGeometria(palabraObj);
     if (idx === -1) return;
 
-    // ============================================================
-    // 1. LA GUILLOTINA (Limpieza Profunda y Cambio de Sesión)
-    // ============================================================
-    if (piperQueueTimer) clearInterval(piperQueueTimer);
-    isPlayingPiper = false;
-    try { eel.detener_streaming_backend()(); } catch (e) { }
-
-    if (window.speechSynthesis) window.speechSynthesis.cancel();
-
-    // Matar audios físicos
-    if (window.activeAudioSources && window.activeAudioSources.length > 0) {
-        window.activeAudioSources.forEach(src => {
-            try { src.stop(); } catch (e) { }
-        });
-        window.activeAudioSources = [];
-    }
-
-    // --- 🎯 EL ANCLA CRÍTICA: Cambiamos la sesión de inmediato ---
-    // Esto invalida cualquier chunk de audio que venga en camino de la frase anterior.
+    _detenerFuentesYColaLecturaUI(true);
     currentReadingSession++;
     window.currentReadingSession = currentReadingSession;
 
     leyendo = true;
     indiceOracion = idx;
     oracionActiva = datosPagina.oraciones[idx];
-
     document.getElementById('texto-lectura').innerText = oracionActiva.texto;
 
-    // Reset visual del motor gráfico
     if (window.requestID_Karaoke) cancelAnimationFrame(window.requestID_Karaoke);
     window.ultimoMomentoInicioPiper = 0;
     window.progresoFraccional = 0;
     dibujar();
 
-    // ============================================================
-    // 2. PREPARACIÓN DE DATOS CON FILTRO CLÍNICO
-    // ============================================================
-    let todasLasPalabras = obtenerPalabrasDeOracion(oracionActiva);
-    let indicePalabra = todasLasPalabras.indexOf(palabraObj);
-
-    if (indicePalabra === -1 && palabraObj && palabraObj.bbox) {
-        indicePalabra = todasLasPalabras.findIndex(p =>
-            p.bbox && Math.abs(p.bbox[0] - palabraObj.bbox[0]) <= 4 && Math.abs(p.bbox[1] - palabraObj.bbox[1]) <= 4
-        );
-    }
-    if (indicePalabra === -1 && palabraObj && palabraObj.bbox) {
-        // Si se hizo clic sobre un token filtrado (ej. superíndice), buscar la palabra válida más cercana en la misma línea
-        let bestIdx = -1;
-        let bestDist = Infinity;
-        const targetX = palabraObj.bbox[0];
-        const targetY = (palabraObj.bbox[1] + palabraObj.bbox[3]) / 2;
-        for (let k = 0; k < todasLasPalabras.length; k++) {
-            const b = todasLasPalabras[k].bbox;
-            if (!b) continue;
-            const cy = (b[1] + b[3]) / 2;
-            const d = Math.abs(cy - targetY) * 4 + Math.abs(b[0] - targetX);
-            if (d < bestDist) {
-                bestDist = d;
-                bestIdx = k;
-            }
-        }
-        if (bestIdx !== -1) indicePalabra = bestIdx;
-    }
-    if (indicePalabra === -1) indicePalabra = 0;
-
-    let visualesRecortados = todasLasPalabras.slice(indicePalabra);
-    const resultadoFiltrado = aplicarMascaraParentesis(visualesRecortados);
+    const todasLasPalabras = obtenerPalabrasDeOracion(oracionActiva);
+    const indicePalabra = _buscarIndicePalabraEnOracion(todasLasPalabras, palabraObj);
+    const resultadoFiltrado = aplicarMascaraParentesis(todasLasPalabras.slice(indicePalabra));
 
     let visualesFinales = resultadoFiltrado.listaVisual;
     let fragmentoTexto = resultadoFiltrado.textoClean;
-
-    // Respaldo de seguridad: si fragmentoTexto quedó vacío, usar texto de la oración
     if (!fragmentoTexto && oracionActiva.texto) {
         fragmentoTexto = oracionActiva.texto;
         visualesFinales = todasLasPalabras.length > 0 ? todasLasPalabras : (oracionActiva.palabras || []);
     }
 
-    // Actualizamos la lista global para que el motor de dibujo sepa qué pintar
     window.listaPalabrasActuales = visualesFinales;
-
-    // ============================================================
-    // 3. RESETEO DE CONTADORES (Sincronía de Fase Cero)
-    // ============================================================
-    window.lastProcessedSID = -1; // Obliga a procesarAudioRaw a fijar una nueva ancla
+    window.lastProcessedSID = -1;
     window.duracionAudioAcumulada = 0;
     window.nextScheduleTime = 0;
-
-    // ============================================================
-    // 4. INICIAR LECTURA (respetando el modo de traducción activo)
-    // ============================================================
-    // Inyectamos el fragmento recortado en la oración activa para que
-    // reproducirSecuencia use el texto correcto (desde la palabra clickeada).
-    // reproducirSecuencia ya maneja TODO: modo solo_traduccion, aprendizaje,
-    // subtítulos y lectura normal.
-    if (datosPagina && datosPagina.oraciones && datosPagina.oraciones[idx]) {
-        if (datosPagina.oraciones[idx]._textoOriginal === undefined) {
-            datosPagina.oraciones[idx]._textoOriginal = datosPagina.oraciones[idx].texto;
-        }
-        if (datosPagina.oraciones[idx]._palabrasOriginales === undefined) {
-            datosPagina.oraciones[idx]._palabrasOriginales = datosPagina.oraciones[idx].palabras;
-        }
-
-        // Sobreescribimos temporalmente con el fragmento recortado solo durante esta lectura parcial
-        datosPagina.oraciones[idx].texto = fragmentoTexto;
-        datosPagina.oraciones[idx].palabras = visualesFinales;
-        window._oracionRecortadaActivaIdx = idx;
-
-        // Lanzamos la secuencia completa (traducción incluida)
-        reproducirSecuencia(idx);
-    } else {
-        // Fallback: si no hay datos de oración, llamamos directo
-        hablarTexto(fragmentoTexto, () => {
-            if (leyendo) reproducirSecuencia(idx + 1);
-        }, visualesFinales, vozPredeterminada);
-    }
+    _inyectarYLanzarFragmentoOracion(idx, fragmentoTexto, visualesFinales);
 }
 
 

@@ -11,44 +11,43 @@ window.tabExtraccionActual = 'todas'; // 'todas' | 'textos' | 'capturas'
 /**
  * Activa o desactiva la herramienta de selección rectangular sobre el visor.
  */
+function _desactivarOtrosModosParaRecorte() {
+    const modosExcluyentes = [
+        ['modoSubrayadorActivo', 'toggleModoSubrayador'],
+        ['modoBorradorActivo', 'toggleModoBorrador'],
+        ['modoEditorTextoActivo', 'toggleModoEditorTexto'],
+        ['modoCuadroTextoActivo', 'activarModoCuadroTexto'],
+        ['modoMoverElementosActivo', 'toggleModoMoverElementos']
+    ];
+    modosExcluyentes.forEach(([flag, fnNombre]) => {
+        if (window[flag] && typeof window[fnNombre] === 'function') window[fnNombre](false);
+    });
+}
+
 function toggleModoRecorteExtraccion(forzarEstado) {
-    if (typeof forzarEstado === 'boolean') {
-        window.modoRecorteActivo = forzarEstado;
-    } else {
-        window.modoRecorteActivo = !window.modoRecorteActivo;
-    }
+    window.modoRecorteActivo = (typeof forzarEstado === 'boolean') ? forzarEstado : !window.modoRecorteActivo;
 
     const btnGroup = document.getElementById('group-crop-extract');
     if (btnGroup) btnGroup.classList.toggle('active', window.modoRecorteActivo);
-
     const btn = document.getElementById('btn-crop-extract');
     if (btn) {
         btn.classList.toggle('activo', window.modoRecorteActivo);
         btn.classList.toggle('active', window.modoRecorteActivo);
     }
-
     document.querySelectorAll('.zen-item-recorte').forEach(el => {
         el.classList.toggle('tool-active-underline', window.modoRecorteActivo);
     });
 
+    const cursor = window.modoRecorteActivo ? 'crosshair' : '';
     const visorContainer = document.getElementById('visor-container');
     const canvas = document.getElementById('lienzo-pdf');
+    if (visorContainer) visorContainer.style.cursor = cursor;
+    if (canvas) canvas.style.cursor = cursor;
 
     if (window.modoRecorteActivo) {
-        // Desactivar otros modos de edición incompatibles
-        if (typeof toggleModoSubrayador === 'function' && window.modoSubrayadorActivo) toggleModoSubrayador(false);
-        if (typeof toggleModoBorrador === 'function' && window.modoBorradorActivo) toggleModoBorrador(false);
-        if (typeof toggleModoEditorTexto === 'function' && window.modoEditorTextoActivo) toggleModoEditorTexto(false);
-        if (typeof activarModoCuadroTexto === 'function' && window.modoCuadroTextoActivo) activarModoCuadroTexto(false);
-        if (typeof toggleModoMoverElementos === 'function' && window.modoMoverElementosActivo) toggleModoMoverElementos(false);
-
-        if (visorContainer) visorContainer.style.cursor = 'crosshair';
-        if (canvas) canvas.style.cursor = 'crosshair';
-
+        _desactivarOtrosModosParaRecorte();
         iniciarCapaSeleccionRecorte();
     } else {
-        if (visorContainer) visorContainer.style.cursor = '';
-        if (canvas) canvas.style.cursor = '';
         removerCapaSeleccionRecorte();
     }
 }
@@ -276,19 +275,7 @@ function abrirModalGuardarCaptura(dataUrl, paginaIdx) {
     if (listenerModalGuardarTeclado) {
         window.removeEventListener('keydown', listenerModalGuardarTeclado, true);
     }
-    listenerModalGuardarTeclado = (e) => {
-        if (document.getElementById('lira-dialog-overlay')?.classList.contains('activo')) return;
-        if (modal.style.display !== 'flex') return;
-        if (e.key === 'Escape') {
-            e.preventDefault();
-            e.stopPropagation();
-            cerrarModalGuardarCaptura();
-        } else if (e.key === 'Enter') {
-            e.preventDefault();
-            e.stopPropagation();
-            confirmarGuardarCaptura();
-        }
-    };
+    listenerModalGuardarTeclado = _crearListenerTecladoModalCaptura(modal, cerrarModalGuardarCaptura, confirmarGuardarCaptura);
     window.addEventListener('keydown', listenerModalGuardarTeclado, true);
 
     setTimeout(() => {
@@ -306,76 +293,102 @@ function cerrarModalGuardarCaptura() {
     window.recorteDataTemp = null;
 }
 
-/**
- * Confirma el guardado enviando la imagen y metadatos a Python.
- */
-async function confirmarGuardarCaptura() {
-    if (!window.recorteDataTemp) {
-        cerrarModalGuardarCaptura();
-        return;
-    }
+function _crearListenerTecladoModalCaptura(modal, onEscape, onEnter = null) {
+    return (e) => {
+        if (document.getElementById('lira-dialog-overlay')?.classList.contains('activo')) return;
+        if (modal.style.display !== 'flex') return;
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            onEscape();
+        } else if (onEnter && e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            onEnter();
+        }
+    };
+}
 
-    const inputTitulo = document.getElementById('input-titulo-captura');
-    const btnGuardar = document.getElementById('btn-confirmar-captura');
-    let titulo = inputTitulo ? inputTitulo.value.trim() : "";
-    if (!titulo) {
-        titulo = `Captura Pág. ${window.recorteDataTemp.pagina + 1}`;
-    }
-
-    const { ruta, pagina, dataUrl } = window.recorteDataTemp;
-
-    // Verificar si el backend ya tiene cargada la función (requiere reinicio si la app estaba abierta)
-    if (typeof eel === 'undefined' || typeof eel.guardar_captura_extraccion !== 'function') {
-        cerrarModalGuardarCaptura();
-        const msgAviso = "Para guardar capturas en el disco, por favor reinicia la aplicación una vez para que Python cargue el nuevo módulo de extracciones.";
-        if (typeof liraAlert === 'function') {
-            await liraAlert(msgAviso, 'advertencia');
+function _manejarRespuestaGuardarCaptura(res) {
+    if (res && res.success) {
+        mostrarNotificacionToast("¡Captura guardada en el Gestor de Extracción!", 'exito');
+        const modalExt = document.getElementById('modal-subrayados');
+        if (modalExt && modalExt.style.display !== 'none' && typeof cargarExtraccionesCompletas === 'function') {
+            cargarExtraccionesCompletas();
         }
         return;
     }
-
-    if (btnGuardar) {
-        btnGuardar.disabled = true;
-        btnGuardar.innerText = "Guardando...";
-    }
-
-    try {
-        const res = await eel.guardar_captura_extraccion(ruta, pagina, titulo, dataUrl)();
-        cerrarModalGuardarCaptura();
-
-        if (res && res.success) {
-            mostrarNotificacionToast("¡Captura guardada en el Gestor de Extracción!", 'exito');
-            
-            // Si el panel de extracción está abierto, actualizarlo en vivo
-            const modalExt = document.getElementById('modal-subrayados');
-            if (modalExt && modalExt.style.display !== 'none') {
-                if (typeof cargarExtraccionesCompletas === 'function') {
-                    cargarExtraccionesCompletas();
-                }
-            }
-        } else {
-            console.error("Error guardando captura en backend:", res?.error);
-            if (typeof liraAlert === 'function') {
-                liraAlert("No se pudo guardar la captura: " + (res?.error || "Error desconocido"), 'error');
-            }
-        }
-    } catch (e) {
-        console.error("Excepción al guardar captura:", e);
-        cerrarModalGuardarCaptura();
-        if (typeof liraAlert === 'function') {
-            liraAlert("Error de conexión al guardar: " + e.message, 'error');
-        }
-    } finally {
-        if (btnGuardar) {
-            btnGuardar.disabled = false;
-            btnGuardar.innerText = "Guardar Captura";
-        }
+    console.error("Error guardando captura en backend:", res?.error);
+    if (typeof liraAlert === 'function') {
+        liraAlert("No se pudo guardar la captura: " + (res?.error || "Error desconocido"), 'error');
     }
 }
 
-/**
- * Carga unificada en el Gestor de Extracción: Subrayados de texto + Capturas visuales.
- */
+async function confirmarGuardarCaptura() {
+    if (!window.recorteDataTemp) { cerrarModalGuardarCaptura(); return; }
+
+    const inputTitulo = document.getElementById('input-titulo-captura');
+    const btnGuardar = document.getElementById('btn-confirmar-captura');
+    const { ruta, pagina, dataUrl } = window.recorteDataTemp;
+    const titulo = (inputTitulo?.value || '').trim() || `Captura Pág. ${pagina + 1}`;
+
+    if (typeof eel === 'undefined' || typeof eel.guardar_captura_extraccion !== 'function') {
+        cerrarModalGuardarCaptura();
+        if (typeof liraAlert === 'function') {
+            await liraAlert("Para guardar capturas en el disco, por favor reinicia la aplicación una vez para que Python cargue el nuevo módulo de extracciones.", 'advertencia');
+        }
+        return;
+    }
+
+    if (btnGuardar) { btnGuardar.disabled = true; btnGuardar.innerText = "Guardando..."; }
+    try {
+        const res = await eel.guardar_captura_extraccion(ruta, pagina, titulo, dataUrl)();
+        cerrarModalGuardarCaptura();
+        _manejarRespuestaGuardarCaptura(res);
+    } catch (e) {
+        console.error("Excepción al guardar captura:", e);
+        cerrarModalGuardarCaptura();
+        if (typeof liraAlert === 'function') liraAlert("Error de conexión al guardar: " + e.message, 'error');
+    } finally {
+        if (btnGuardar) { btnGuardar.disabled = false; btnGuardar.innerText = "Guardar Captura"; }
+    }
+}
+
+async function _obtenerSubrayadosYCapturasBackend(ruta) {
+    let subrayados = [];
+    let capturas = [];
+
+    if (typeof eel !== 'undefined' && typeof eel.obtener_todos_subrayados === 'function' && ruta) {
+        try {
+            const resSubs = await eel.obtener_todos_subrayados(ruta)();
+            if (resSubs?.success && Array.isArray(resSubs.subrayados)) subrayados = resSubs.subrayados;
+        } catch (errSubs) { console.warn("Error cargando subrayados:", errSubs); }
+    }
+    if (typeof eel !== 'undefined' && typeof eel.obtener_capturas_libro === 'function') {
+        try {
+            const resCaps = await eel.obtener_capturas_libro(ruta)();
+            if (resCaps?.success && Array.isArray(resCaps.capturas)) capturas = resCaps.capturas;
+        } catch (errCaps) { console.warn("Error cargando capturas visuales:", errCaps); }
+    }
+    return { subrayados, capturas };
+}
+
+function _inyectarDemosExtraccionSiTutorial(subrayados, capturas) {
+    if (!window.tutorialActivo) return { subrayados, capturas };
+    const caps = capturas.filter(c => !String(c.id).startsWith('cap_demo_'));
+    const subs = subrayados.filter(s => !String(s.id).startsWith('sub_demo_'));
+
+    (window.demoCapturasTutorial || []).forEach(dc => {
+        if ((!dc.data_url || !String(dc.data_url).startsWith('data:image')) && typeof window.generarMiniaturaDiagramaDemo === 'function') {
+            dc.data_url = window.generarMiniaturaDiagramaDemo();
+            dc.img_src = dc.data_url;
+        }
+        caps.unshift(dc);
+    });
+    (window.demoSubrayadosTutorial || []).forEach(ds => subs.unshift(ds));
+    return { subrayados: subs, capturas: caps };
+}
+
 async function cargarExtraccionesCompletas() {
     const container = document.getElementById('extracted-texts');
     if (!container) return;
@@ -389,60 +402,10 @@ async function cargarExtraccionesCompletas() {
 
     try {
         const ruta = typeof rutaPDFActual !== 'undefined' ? rutaPDFActual : "";
-        let subrayados = [];
-        let capturas = [];
+        const raw = await _obtenerSubrayadosYCapturasBackend(ruta);
+        const { subrayados, capturas } = _inyectarDemosExtraccionSiTutorial(raw.subrayados, raw.capturas);
 
-        // 1. Obtener subrayados de texto
-        if (typeof eel !== 'undefined' && typeof eel.obtener_todos_subrayados === 'function' && ruta) {
-            try {
-                const resSubs = await eel.obtener_todos_subrayados(ruta)();
-                if (resSubs && resSubs.success && Array.isArray(resSubs.subrayados)) {
-                    subrayados = resSubs.subrayados;
-                }
-            } catch (errSubs) {
-                console.warn("Error cargando subrayados:", errSubs);
-            }
-        }
-
-        // 2. Obtener capturas visuales
-        if (typeof eel !== 'undefined' && typeof eel.obtener_capturas_libro === 'function') {
-            try {
-                const resCaps = await eel.obtener_capturas_libro(ruta)();
-                if (resCaps && resCaps.success && Array.isArray(resCaps.capturas)) {
-                    capturas = resCaps.capturas;
-                }
-            } catch (errCaps) {
-                console.warn("Error cargando capturas visuales:", errCaps);
-            }
-        }
-
-        // Inyectar datos en vivo del tutorial si está activo
-        if (window.tutorialActivo) {
-            // Eliminar versiones previas de demos que puedan estar en disco con imagen vacía
-            capturas = capturas.filter(c => !String(c.id).startsWith('cap_demo_'));
-            subrayados = subrayados.filter(s => !String(s.id).startsWith('sub_demo_'));
-
-            if (window.demoCapturasTutorial && window.demoCapturasTutorial.length > 0) {
-                window.demoCapturasTutorial.forEach(dc => {
-                    if (!dc.data_url || !String(dc.data_url).startsWith('data:image')) {
-                        if (typeof window.generarMiniaturaDiagramaDemo === 'function') {
-                            dc.data_url = window.generarMiniaturaDiagramaDemo();
-                            dc.img_src = dc.data_url;
-                        }
-                    }
-                    capturas.unshift(dc);
-                });
-            }
-            if (window.demoSubrayadosTutorial && window.demoSubrayadosTutorial.length > 0) {
-                window.demoSubrayadosTutorial.forEach(ds => {
-                    subrayados.unshift(ds);
-                });
-            }
-        }
-
-        // Actualizar contadores de las pestañas
         actualizarContadoresExtraccion(subrayados.length, capturas.length);
-
         container.innerHTML = '';
 
         if (subrayados.length === 0 && capturas.length === 0) {
@@ -459,30 +422,47 @@ async function cargarExtraccionesCompletas() {
             return;
         }
 
-        // Renderizar capturas visuales (más recientes primero)
-        [...capturas].reverse().forEach(c => {
-            renderizarTarjetaCaptura(c, container);
-        });
-
-        // Renderizar subrayados de texto
+        [...capturas].reverse().forEach(c => renderizarTarjetaCaptura(c, container));
         [...subrayados].reverse().forEach(s => {
-            if (typeof appendExtractedText === 'function') {
-                appendExtractedText(s.texto, s.color, s.id, s.pagina);
-            }
+            if (typeof appendExtractedText === 'function') appendExtractedText(s.texto, s.color, s.id, s.pagina);
         });
-
-        // Aplicar filtro de pestaña activo
         filtrarPorPestanaExtraccion(window.tabExtraccionActual);
-
     } catch (e) {
         console.error("Error en cargarExtraccionesCompletas:", e);
         container.innerHTML = `<div style="color:#e74c3c; font-size:11px; padding:15px;">Error al cargar extracciones: ${e.message}</div>`;
     }
 }
 
-/**
- * Renderiza una tarjeta de captura visual (algoritmo / diagrama / foto) en el panel.
- */
+function _generarFallbackMiniaturaCaptura(titulo) {
+    if (typeof window.generarMiniaturaDiagramaDemo === 'function') return window.generarMiniaturaDiagramaDemo();
+    try {
+        const c = document.createElement('canvas');
+        c.width = 400; c.height = 140;
+        const ctx = c.getContext('2d');
+        if (ctx) {
+            ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, 0, 400, 140);
+            ctx.strokeStyle = '#0284c7'; ctx.lineWidth = 2; ctx.strokeRect(1, 1, 398, 138);
+            ctx.fillStyle = '#0284c7'; ctx.font = 'bold 13px system-ui, sans-serif';
+            ctx.fillText(titulo || "Diagrama Conceptual: Flujo de Aprendizaje", 18, 26);
+            ["1. Lectura", "2. Análisis", "3. Retención"].forEach((b, i) => {
+                const bx = 16 + i * 128;
+                ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 1.2;
+                ctx.fillRect(bx, 42, 110, 56); ctx.strokeRect(bx, 42, 110, 56);
+                ctx.fillStyle = '#0f172a'; ctx.font = 'bold 11px system-ui, sans-serif';
+                ctx.fillText(b, bx + 16, 75);
+            });
+            return c.toDataURL('image/png');
+        }
+    } catch (e) {}
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="90" viewBox="0 0 300 90"><rect width="300" height="90" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" rx="6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="#0284c7">Diagrama Conceptual: Flujo de Aprendizaje</text></svg>');
+}
+
+function _resolverSrcImagenCaptura(item) {
+    if (item.data_url && String(item.data_url).startsWith('data:image')) return item.data_url;
+    if (item.img_src && String(item.img_src).startsWith('data:image')) return item.img_src;
+    return _generarFallbackMiniaturaCaptura(item?.titulo);
+}
+
 function renderizarTarjetaCaptura(item, container) {
     const card = document.createElement('div');
     card.id = `card_${item.id}`;
@@ -490,28 +470,16 @@ function renderizarTarjetaCaptura(item, container) {
     card.dataset.tipo = 'captura';
     card.dataset.page = (item.pagina !== undefined ? (item.pagina + 1).toString() : '');
     card.dataset.color = '#3498DB';
-    card.style.borderColor = '#3498db';
-    card.style.borderLeftWidth = '4px';
-    card.style.background = '#ffffff';
-    card.style.padding = '10px 12px';
-    card.style.borderRadius = '6px';
-    card.style.boxShadow = '0 2px 5px rgba(0,0,0,0.04)';
-    card.style.display = 'flex';
-    card.style.flexDirection = 'column';
-    card.style.gap = '8px';
+    Object.assign(card.style, {
+        borderColor: '#3498db', borderLeftWidth: '4px', background: '#ffffff',
+        padding: '10px 12px', borderRadius: '6px', boxShadow: '0 2px 5px rgba(0,0,0,0.04)',
+        display: 'flex', flexDirection: 'column', gap: '8px'
+    });
 
-    // Cabecera de la tarjeta: Título e ícono
     const headerDiv = document.createElement('div');
-    headerDiv.style.display = 'flex';
-    headerDiv.style.justifyContent = 'space-between';
-    headerDiv.style.alignItems = 'flex-start';
-    headerDiv.style.gap = '8px';
-
+    Object.assign(headerDiv.style, { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' });
     const titleSpan = document.createElement('div');
-    titleSpan.style.fontWeight = '600';
-    titleSpan.style.fontSize = '12px';
-    titleSpan.style.color = '#2c3e50';
-    titleSpan.style.lineHeight = '1.3';
+    Object.assign(titleSpan.style, { fontWeight: '600', fontSize: '12px', color: '#2c3e50', lineHeight: '1.3' });
     const cameraSvg = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px; margin-right:4px; display:inline-block;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>`;
     titleSpan.innerHTML = `${cameraSvg}${escapeHtml(item.titulo)}`;
 
@@ -519,105 +487,33 @@ function renderizarTarjetaCaptura(item, container) {
     deleteBtn.className = 'capture-delete-btn';
     deleteBtn.innerHTML = '&times;';
     deleteBtn.title = 'Eliminar captura';
-    deleteBtn.style.background = 'none';
-    deleteBtn.style.border = 'none';
-    deleteBtn.style.color = '#475569';
-    deleteBtn.style.cursor = 'pointer';
-    deleteBtn.style.fontSize = '13px';
-    deleteBtn.style.padding = '0 4px';
-    deleteBtn.onmouseover = () => deleteBtn.style.color = '#b91c1c';
-    deleteBtn.onmouseout = () => deleteBtn.style.color = '#475569';
-    deleteBtn.onclick = (e) => {
-        e.stopPropagation();
-        eliminarCaptura(item.id);
-    };
-
+    Object.assign(deleteBtn.style, { background: 'none', border: 'none', color: '#475569', cursor: 'pointer', fontSize: '13px', padding: '0 4px' });
+    deleteBtn.onmouseover = () => { deleteBtn.style.color = '#b91c1c'; };
+    deleteBtn.onmouseout = () => { deleteBtn.style.color = '#475569'; };
+    deleteBtn.onclick = (e) => { e.stopPropagation(); eliminarCaptura(item.id); };
     headerDiv.appendChild(titleSpan);
     headerDiv.appendChild(deleteBtn);
 
-    // Contenedor de la miniatura de la imagen
     const imgWrapper = document.createElement('div');
-    imgWrapper.style.width = '100%';
-    imgWrapper.style.maxHeight = '160px';
-    imgWrapper.style.overflow = 'hidden';
-    imgWrapper.style.borderRadius = '4px';
-    imgWrapper.style.border = '1px solid #ecf0f1';
-    imgWrapper.style.cursor = 'zoom-in';
-    imgWrapper.style.background = '#f9f9f9';
-    imgWrapper.style.display = 'flex';
-    imgWrapper.style.justifyContent = 'center';
-    imgWrapper.style.alignItems = 'center';
-
+    Object.assign(imgWrapper.style, {
+        width: '100%', maxHeight: '160px', overflow: 'hidden', borderRadius: '4px',
+        border: '1px solid #ecf0f1', cursor: 'zoom-in', background: '#f9f9f9',
+        display: 'flex', justifyContent: 'center', alignItems: 'center'
+    });
+    const srcImagen = _resolverSrcImagenCaptura(item);
     const img = document.createElement('img');
-    const obtenerFallbackPng = () => {
-        if (typeof window.generarMiniaturaDiagramaDemo === 'function') {
-            return window.generarMiniaturaDiagramaDemo();
-        }
-        try {
-            const c = document.createElement('canvas');
-            c.width = 400;
-            c.height = 140;
-            const ctx = c.getContext('2d');
-            if (ctx) {
-                ctx.fillStyle = '#f8fafc';
-                ctx.fillRect(0, 0, 400, 140);
-                ctx.strokeStyle = '#0284c7';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(1, 1, 398, 138);
-                ctx.fillStyle = '#0284c7';
-                ctx.font = 'bold 13px system-ui, sans-serif';
-                ctx.fillText(item?.titulo || "Diagrama Conceptual: Flujo de Aprendizaje", 18, 26);
-                const boxes = ["1. Lectura", "2. Análisis", "3. Retención"];
-                boxes.forEach((b, i) => {
-                    const bx = 16 + i * 128;
-                    ctx.fillStyle = '#ffffff';
-                    ctx.strokeStyle = '#cbd5e1';
-                    ctx.lineWidth = 1.2;
-                    ctx.fillRect(bx, 42, 110, 56);
-                    ctx.strokeRect(bx, 42, 110, 56);
-                    ctx.fillStyle = '#0f172a';
-                    ctx.font = 'bold 11px system-ui, sans-serif';
-                    ctx.fillText(b, bx + 16, 75);
-                });
-                return c.toDataURL('image/png');
-            }
-        } catch (e) {}
-        return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="90" viewBox="0 0 300 90"><rect width="300" height="90" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" rx="6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="#0284c7">Diagrama Conceptual: Flujo de Aprendizaje</text></svg>');
-    };
-
-    let srcImagen = (item.data_url && String(item.data_url).startsWith('data:image'))
-        ? item.data_url
-        : ((item.img_src && String(item.img_src).startsWith('data:image')) ? item.img_src : obtenerFallbackPng());
-
     img.src = srcImagen;
     img.alt = item.titulo || "Captura";
-    img.onerror = () => {
-        img.onerror = null;
-        img.src = obtenerFallbackPng();
-    };
-    img.style.maxWidth = '100%';
-    img.style.maxHeight = '160px';
-    img.style.objectFit = 'contain';
-    img.style.display = 'block';
-
-    imgWrapper.onclick = (e) => {
-        e.stopPropagation();
-        abrirModalVerCaptura(srcImagen, item.titulo, item.pagina);
-    };
+    img.onerror = () => { img.onerror = null; img.src = _generarFallbackMiniaturaCaptura(item?.titulo); };
+    Object.assign(img.style, { maxWidth: '100%', maxHeight: '160px', objectFit: 'contain', display: 'block' });
+    imgWrapper.onclick = (e) => { e.stopPropagation(); abrirModalVerCaptura(srcImagen, item.titulo, item.pagina); };
     imgWrapper.appendChild(img);
 
-    // Pie de la tarjeta: Página de origen + Botones de Copiar / Ir
     const footerDiv = document.createElement('div');
-    footerDiv.style.display = 'flex';
-    footerDiv.style.justifyContent = 'space-between';
-    footerDiv.style.alignItems = 'center';
-    footerDiv.style.fontSize = '11px';
-    footerDiv.style.color = '#475569';
-
+    Object.assign(footerDiv.style, { display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#475569' });
     const pageSpan = document.createElement('span');
     pageSpan.innerText = item.pagina !== undefined ? `Pág. ${item.pagina + 1}` : '';
-    pageSpan.style.cursor = 'pointer';
-    pageSpan.style.textDecoration = 'underline';
+    Object.assign(pageSpan.style, { cursor: 'pointer', textDecoration: 'underline' });
     pageSpan.title = 'Ir a esta página';
     pageSpan.onclick = (e) => {
         e.stopPropagation();
@@ -628,20 +524,12 @@ function renderizarTarjetaCaptura(item, container) {
     };
 
     const actionDiv = document.createElement('div');
-    actionDiv.style.display = 'flex';
-    actionDiv.style.gap = '6px';
-
+    Object.assign(actionDiv.style, { display: 'flex', gap: '6px' });
     const copyBtn = document.createElement('button');
     copyBtn.className = 'capture-copy-btn';
     copyBtn.innerText = 'Copiar';
     copyBtn.title = 'Copiar imagen al portapapeles';
-    copyBtn.style.border = '1px solid #cbd5e1';
-    copyBtn.style.background = '#f1f5f9';
-    copyBtn.style.color = '#1e293b';
-    copyBtn.style.borderRadius = '4px';
-    copyBtn.style.padding = '2px 8px';
-    copyBtn.style.fontSize = '11px';
-    copyBtn.style.cursor = 'pointer';
+    Object.assign(copyBtn.style, { border: '1px solid #cbd5e1', background: '#f1f5f9', color: '#1e293b', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', cursor: 'pointer' });
     copyBtn.onclick = async (e) => {
         e.stopPropagation();
         await copiarImagenPortapapeles(srcImagen);
@@ -652,11 +540,9 @@ function renderizarTarjetaCaptura(item, container) {
     actionDiv.appendChild(copyBtn);
     footerDiv.appendChild(pageSpan);
     footerDiv.appendChild(actionDiv);
-
     card.appendChild(headerDiv);
     card.appendChild(imgWrapper);
     card.appendChild(footerDiv);
-
     container.appendChild(card);
 }
 
@@ -688,51 +574,41 @@ let listenerModalVerTeclado = null;
 /**
  * Abre el visor modal en grande (Lightbox) para inspeccionar la imagen recortada.
  */
+function _configurarBtnCopiarLightbox(btnCopiar, imgSrc) {
+    if (!btnCopiar) return;
+    const setCopiarLabel = (texto) => {
+        const spanTxt = btnCopiar.querySelector('#lightbox-btn-copiar-texto') || btnCopiar.querySelector('span');
+        if (spanTxt) {
+            spanTxt.textContent = texto;
+            return;
+        }
+        const svg = (typeof obtenerIconoDialogoSVG === 'function') ? obtenerIconoDialogoSVG('portapapeles') : '';
+        btnCopiar.innerHTML = `${svg} <span>${escapeHtml(texto)}</span>`;
+    };
+    setCopiarLabel('Copiar Imagen');
+    btnCopiar.onclick = async () => {
+        await copiarImagenPortapapeles(imgSrc);
+        setCopiarLabel('¡Copiada al portapapeles!');
+        setTimeout(() => setCopiarLabel('Copiar Imagen'), 2000);
+    };
+}
+
 function abrirModalVerCaptura(imgSrc, titulo, pagina) {
     const modal = document.getElementById('modal-ver-captura');
     const imgEl = document.getElementById('lightbox-img-captura');
-    const titEl = document.getElementById('lightbox-titulo-captura');
-    const pagEl = document.getElementById('lightbox-pag-captura');
-    const btnCopiar = document.getElementById('lightbox-btn-copiar');
-
     if (!modal || !imgEl) return;
 
     imgEl.src = imgSrc || '';
+    const titEl = document.getElementById('lightbox-titulo-captura');
+    const pagEl = document.getElementById('lightbox-pag-captura');
     if (titEl) titEl.innerText = titulo || 'Captura de pantalla';
     if (pagEl) pagEl.innerText = pagina !== undefined ? `Página ${pagina + 1}` : '';
 
-    if (btnCopiar) {
-        const setCopiarLabel = (texto) => {
-            const spanTxt = btnCopiar.querySelector('#lightbox-btn-copiar-texto') || btnCopiar.querySelector('span');
-            if (spanTxt) {
-                spanTxt.textContent = texto;
-            } else {
-                const svg = (typeof obtenerIconoDialogoSVG === 'function') ? obtenerIconoDialogoSVG('portapapeles') : '';
-                btnCopiar.innerHTML = `${svg} <span>${escapeHtml(texto)}</span>`;
-            }
-        };
-        setCopiarLabel('Copiar Imagen');
-        btnCopiar.onclick = async () => {
-            await copiarImagenPortapapeles(imgSrc);
-            setCopiarLabel('¡Copiada al portapapeles!');
-            setTimeout(() => { setCopiarLabel('Copiar Imagen'); }, 2000);
-        };
-    }
-
+    _configurarBtnCopiarLightbox(document.getElementById('lightbox-btn-copiar'), imgSrc);
     modal.style.display = 'flex';
 
-    if (listenerModalVerTeclado) {
-        window.removeEventListener('keydown', listenerModalVerTeclado, true);
-    }
-    listenerModalVerTeclado = (e) => {
-        if (document.getElementById('lira-dialog-overlay')?.classList.contains('activo')) return;
-        if (modal.style.display !== 'flex') return;
-        if (e.key === 'Escape') {
-            e.preventDefault();
-            e.stopPropagation();
-            cerrarModalVerCaptura();
-        }
-    };
+    if (listenerModalVerTeclado) window.removeEventListener('keydown', listenerModalVerTeclado, true);
+    listenerModalVerTeclado = _crearListenerTecladoModalCaptura(modal, cerrarModalVerCaptura);
     window.addEventListener('keydown', listenerModalVerTeclado, true);
 }
 

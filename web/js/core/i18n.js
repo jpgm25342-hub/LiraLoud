@@ -43,20 +43,26 @@ function _backupSpanishDefaultsFromDOM(root = document) {
     root.querySelectorAll('[data-i18n-aria-label]').forEach(el => saveAttr(el.getAttribute('data-i18n-aria-label'), el.getAttribute('aria-label')));
 }
 
+function _buscarTextoRawI18n(key, fallback) {
+    const dicts = _getDicts();
+    const candidatos = [
+        (dicts[currentLanguage || 'es'] || {})[key],
+        (dicts.es || {})[key],
+        (dicts.en || {})[key]
+    ];
+    for (const val of candidatos) {
+        if (val !== undefined && val !== null && val !== '') return val;
+    }
+    return fallback !== undefined ? fallback : key;
+}
+
 function t(key, fallbackOrParams, params) {
     if (!key) return '';
     const isObj = fallbackOrParams !== null && typeof fallbackOrParams === 'object';
     const fallback = typeof fallbackOrParams === 'string' ? fallbackOrParams : undefined;
     const vars = isObj ? fallbackOrParams : params;
 
-    const dicts = _getDicts();
-    const lang = currentLanguage || 'es';
-    let raw = (dicts[lang] || {})[key];
-    if (raw === undefined || raw === null || raw === '') raw = (dicts.es || {})[key];
-    if (raw === undefined || raw === null || raw === '') raw = (dicts.en || {})[key];
-    if (raw === undefined || raw === null || raw === '') raw = fallback !== undefined ? fallback : key;
-
-    let result = String(raw);
+    let result = String(_buscarTextoRawI18n(key, fallback));
     if (vars && typeof vars === 'object') {
         result = result.replace(/\{(\w+)\}/g, (match, k) => (vars[k] !== undefined && vars[k] !== null ? String(vars[k]) : match));
     }
@@ -76,6 +82,27 @@ function toggleIdioma() {
     toggleIdiomaDrop(currentLanguage === 'es' ? 'en' : 'es');
 }
 
+function _aplicarTraduccionConSvg(el, val) {
+    for (let i = el.childNodes.length - 1; i >= 0; i--) {
+        const node = el.childNodes[i];
+        if (node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0) {
+            node.textContent = ' ' + val.replace(/<[^>]*>/g, '').trim();
+            return;
+        }
+    }
+    const span = document.createElement('span');
+    span.innerHTML = val;
+    el.appendChild(span);
+}
+
+function _aplicarAtributoI18n(root, sel, attr, fallbackAttr) {
+    root.querySelectorAll(sel).forEach(el => {
+        const key = el.getAttribute(attr) || (fallbackAttr && el.getAttribute(fallbackAttr));
+        const val = _resolveValue(key);
+        if (val) el.setAttribute(attr.replace('data-i18n-', ''), val);
+    });
+}
+
 function applyTranslations(root = document) {
     _backupSpanishDefaultsFromDOM(root);
     if (root === document && document.documentElement) document.documentElement.lang = currentLanguage;
@@ -93,35 +120,15 @@ function applyTranslations(root = document) {
         const val = _resolveValue(el.getAttribute('data-i18n'));
         if (!val) return;
         if (el.querySelector(':scope > svg') !== null && !val.includes('<svg')) {
-            let updated = false;
-            for (let i = el.childNodes.length - 1; i >= 0; i--) {
-                const node = el.childNodes[i];
-                if (node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0) {
-                    node.textContent = ' ' + val.replace(/<[^>]*>/g, '').trim();
-                    updated = true;
-                    break;
-                }
-            }
-            if (!updated) {
-                const span = document.createElement('span');
-                span.innerHTML = val;
-                el.appendChild(span);
-            }
+            _aplicarTraduccionConSvg(el, val);
         } else {
             el.innerHTML = val;
         }
     });
 
-    const applyAttr = (sel, attr, fallbackAttr) => {
-        root.querySelectorAll(sel).forEach(el => {
-            const key = el.getAttribute(attr) || (fallbackAttr && el.getAttribute(fallbackAttr));
-            const val = _resolveValue(key);
-            if (val) el.setAttribute(attr.replace('data-i18n-', ''), val);
-        });
-    };
-    applyAttr('[data-i18n-placeholder], [data-i18n-ph]', 'data-i18n-placeholder', 'data-i18n-ph');
-    applyAttr('[data-i18n-title]', 'data-i18n-title');
-    applyAttr('[data-i18n-aria-label]', 'data-i18n-aria-label');
+    _aplicarAtributoI18n(root, '[data-i18n-placeholder], [data-i18n-ph]', 'data-i18n-placeholder', 'data-i18n-ph');
+    _aplicarAtributoI18n(root, '[data-i18n-title]', 'data-i18n-title');
+    _aplicarAtributoI18n(root, '[data-i18n-aria-label]', 'data-i18n-aria-label');
 
     if (root === document) {
         if (typeof renderizarAtajos === 'function') renderizarAtajos();

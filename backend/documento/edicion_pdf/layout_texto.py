@@ -193,6 +193,18 @@ def _tokenizar_parrafo_spans_en_clusters(parrafo):
     return elementos
 
 
+def _medir_cluster_y_espacio(cluster, espacio_pendiente, escala):
+    w_cluster = sum(
+        medir_texto(t_seg, m_seg["fuente_info"], m_seg["tamano"] * escala)
+        for t_seg, m_seg in cluster
+    )
+    w_sp = (
+        medir_texto(espacio_pendiente[0], espacio_pendiente[1]["fuente_info"], espacio_pendiente[1]["tamano"] * escala)
+        if espacio_pendiente is not None else 0.0
+    )
+    return w_cluster, w_sp
+
+
 def _envolver_parrafo_spans(parrafo, escala, ancho_max, permitir_corte_palabra):
     """Tokeniza un párrafo de spans en clústeres de palabra y los envuelve en líneas dentro de ancho_max."""
     elementos = _tokenizar_parrafo_spans_en_clusters(parrafo)
@@ -209,14 +221,7 @@ def _envolver_parrafo_spans(parrafo, escala, ancho_max, permitir_corte_palabra):
             continue
 
         cluster = elem[1]
-        w_cluster = sum(
-            medir_texto(t_seg, m_seg["fuente_info"], m_seg["tamano"] * escala)
-            for t_seg, m_seg in cluster
-        )
-        w_sp = (
-            medir_texto(espacio_pendiente[0], espacio_pendiente[1]["fuente_info"], espacio_pendiente[1]["tamano"] * escala)
-            if espacio_pendiente is not None else 0.0
-        )
+        w_cluster, w_sp = _medir_cluster_y_espacio(cluster, espacio_pendiente, escala)
 
         if linea_actual and (ancho_actual + w_sp + w_cluster <= ancho_max + 0.3):
             if espacio_pendiente is not None:

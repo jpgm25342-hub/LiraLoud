@@ -271,71 +271,38 @@ function cargarDemoExtraccion(subAzul = false, subRosa = false) {
     if (typeof dibujar === 'function') dibujar();
 }
 
-function simularSubrayadoDemo(color, siguiente) {
-    const langIso = detectarIdiomaTutorialActivo();
-    const cfg = DEMO_EXTRACCION_POR_IDIOMA[langIso] || DEMO_EXTRACCION_POR_IDIOMA.es;
+function _actualizarBurbujaTutorial(html) {
+    const bubble = document.getElementById('tour-card-body')?.querySelector('.tutorial-speech-bubble');
+    if (bubble) bubble.innerHTML = html;
+}
 
-    if (color === 'azul') {
-        demoSubrayadoAzulHecho = true;
-        cargarDemoExtraccion(true, demoSubrayadoRosaHecho);
-        const sObj = {
-            id: 'sub_demo_azul_1',
-            texto: cfg.oracion1,
-            color: '#00FFFF',
-            pagina: 0
-        };
-        window.demoSubrayadosTutorial = window.demoSubrayadosTutorial || [];
-        if (!window.demoSubrayadosTutorial.some(s => s.id === sObj.id)) {
-            window.demoSubrayadosTutorial.push(sObj);
-        }
-        if (typeof appendExtractedText === 'function') {
-            appendExtractedText(sObj.texto, sObj.color, sObj.id, sObj.pagina);
-        }
-        if (typeof actualizarContadoresExtraccion === 'function') {
-            actualizarContadoresExtraccion(window.demoSubrayadosTutorial.length, (window.demoCapturasTutorial || []).length);
-        }
-        removerMouseHintPaso3();
-        const bodyEl = document.getElementById('tour-card-body');
-        if (bodyEl) {
-            const bubble = bodyEl.querySelector('.tutorial-speech-bubble');
-            if (bubble) {
-                bubble.innerHTML = cfg.exitoSubrayadoAzul || `<span style="color:#00ffff; font-weight:bold;">✔ 1ª Oración Subrayada en Azul</span>`;
-            }
-        }
-        setTimeoutTutorial(() => {
-            if (typeof siguiente === 'function') siguiente();
-        }, 900);
-    } else if (color === 'rosa') {
-        demoSubrayadoRosaHecho = true;
-        cargarDemoExtraccion(true, true);
-        const sObj = {
-            id: 'sub_demo_rosa_2',
-            texto: cfg.oracion2,
-            color: '#FF00FF',
-            pagina: 0
-        };
-        window.demoSubrayadosTutorial = window.demoSubrayadosTutorial || [];
-        if (!window.demoSubrayadosTutorial.some(s => s.id === sObj.id)) {
-            window.demoSubrayadosTutorial.push(sObj);
-        }
-        if (typeof appendExtractedText === 'function') {
-            appendExtractedText(sObj.texto, sObj.color, sObj.id, sObj.pagina);
-        }
-        if (typeof actualizarContadoresExtraccion === 'function') {
-            actualizarContadoresExtraccion(window.demoSubrayadosTutorial.length, (window.demoCapturasTutorial || []).length);
-        }
-        removerMouseHintPaso3();
-        const bodyEl = document.getElementById('tour-card-body');
-        if (bodyEl) {
-            const bubble = bodyEl.querySelector('.tutorial-speech-bubble');
-            if (bubble) {
-                bubble.innerHTML = cfg.exitoSubrayadoRosa || cfg.exitoSubrayado;
-            }
-        }
-        setTimeoutTutorial(() => {
-            if (typeof siguiente === 'function') siguiente();
-        }, 1100);
+function _registrarSubrayadoDemoEnPanel(sObj) {
+    window.demoSubrayadosTutorial = window.demoSubrayadosTutorial || [];
+    if (!window.demoSubrayadosTutorial.some(s => s.id === sObj.id)) window.demoSubrayadosTutorial.push(sObj);
+    if (typeof appendExtractedText === 'function') appendExtractedText(sObj.texto, sObj.color, sObj.id, sObj.pagina);
+    if (typeof actualizarContadoresExtraccion === 'function') {
+        actualizarContadoresExtraccion(window.demoSubrayadosTutorial.length, (window.demoCapturasTutorial || []).length);
     }
+}
+
+function simularSubrayadoDemo(color, siguiente) {
+    if (color !== 'azul' && color !== 'rosa') return;
+    const cfg = DEMO_EXTRACCION_POR_IDIOMA[detectarIdiomaTutorialActivo()] || DEMO_EXTRACCION_POR_IDIOMA.es;
+    const esAzul = (color === 'azul');
+
+    if (esAzul) demoSubrayadoAzulHecho = true;
+    else demoSubrayadoRosaHecho = true;
+    cargarDemoExtraccion(true, esAzul ? demoSubrayadoRosaHecho : true);
+
+    _registrarSubrayadoDemoEnPanel(esAzul
+        ? { id: 'sub_demo_azul_1', texto: cfg.oracion1, color: '#00FFFF', pagina: 0 }
+        : { id: 'sub_demo_rosa_2', texto: cfg.oracion2, color: '#FF00FF', pagina: 0 });
+    removerMouseHintPaso3();
+    _actualizarBurbujaTutorial(esAzul
+        ? (cfg.exitoSubrayadoAzul || `<span style="color:#00ffff; font-weight:bold;">✔ 1ª Oración Subrayada en Azul</span>`)
+        : (cfg.exitoSubrayadoRosa || cfg.exitoSubrayado));
+
+    setTimeoutTutorial(() => { if (typeof siguiente === 'function') siguiente(); }, esAzul ? 900 : 1100);
 }
 
 function simularCapturaDemo(siguiente, customDataUrl) {
@@ -462,79 +429,117 @@ function cargarDemoTraduccion() {
     cargarTextoDemoEnVisor(cfg.textoDoc, cfg.tituloDoc, cfg.subtituloDoc);
 }
 
-function obtenerParVocesTeatroTutorial(langIso = 'es') {
-    const selIdioma = document.getElementById('select-idioma-teatro');
-    if (selIdioma) {
-        if (Array.from(selIdioma.options).length === 0 && typeof cargarIdiomasTeatro === 'function') {
-            cargarIdiomasTeatro();
-        }
-        if (Array.from(selIdioma.options).some(o => o.value === langIso)) {
-            selIdioma.value = langIso;
-        }
-    }
-    if (typeof filtrarVocesTeatroClon === 'function') {
-        filtrarVocesTeatroClon();
-    }
+const _EDGE_FALLBACKS_TEATRO_TOUR = {
+    es: ['es-MX-DaliaNeural', 'es-ES-AlvaroNeural', 'es-CL-LorenzoNeural'],
+    en: ['en-US-JennyNeural', 'en-US-GuyNeural'],
+    fr: ['fr-FR-DeniseNeural', 'fr-FR-HenriNeural'],
+    pt: ['pt-BR-FranciscaNeural', 'pt-BR-AntonioNeural'],
+    de: ['de-DE-KatjaNeural', 'de-DE-ConradNeural'],
+    zh: ['zh-CN-XiaoxiaoNeural', 'zh-CN-YunxiNeural'],
+    ru: ['ru-RU-SvetlanaNeural', 'ru-RU-DmitryNeural'],
+    ar: ['ar-SA-ZariyahNeural', 'ar-SA-HamedNeural'],
+    hi: ['hi-IN-SwaraNeural', 'hi-IN-MadhurNeural'],
+    bn: ['bn-IN-TanishaaNeural', 'bn-IN-BashkarNeural']
+};
 
-    const esVozEdge = (v) => {
-        const low = String(v || '').toLowerCase();
-        return low.includes('neural') && !low.includes('kokoro') && !low.includes('pocket');
-    };
-    const esVozPiper = (v) => {
-        const low = String(v || '').toLowerCase();
-        return low.endsWith('.onnx') && !low.includes('kokoro') && !low.includes('pocket');
-    };
-    const esVozRapidaEdge = (v) => esVozEdge(v) || esVozPiper(v);
+function _esVozEdgeTutorial(v) {
+    const low = String(v || '').toLowerCase();
+    return low.includes('neural') && !low.includes('kokoro') && !low.includes('pocket');
+}
 
-    const selVoz = document.getElementById('select-voz-teatro');
-    const opcionesTeatro = selVoz ? Array.from(selVoz.options).map(o => o.value).filter(Boolean) : [];
-    const opcionesEdge = opcionesTeatro.filter(esVozEdge);
-    const opcionesPiper = opcionesTeatro.filter(esVozPiper);
-    const opcionesRapidas = opcionesEdge.length > 0 ? opcionesEdge : opcionesPiper;
+function _esVozPiperTutorial(v) {
+    const low = String(v || '').toLowerCase();
+    return low.endsWith('.onnx') && !low.includes('kokoro') && !low.includes('pocket');
+}
 
-    const selLive = document.getElementById('selector-voz-live') || document.getElementById('modal-voz');
-    const todasLive = selLive ? Array.from(selLive.options).map(o => o.value).filter(Boolean) : [];
-    const todasLiveEdge = todasLive.filter(esVozEdge);
-    const todasLivePiper = todasLive.filter(esVozPiper);
-    const todasLiveRapidas = todasLiveEdge.length > 0 ? todasLiveEdge : todasLivePiper;
+function _esVozRapidaTutorial(v) {
+    return _esVozEdgeTutorial(v) || _esVozPiperTutorial(v);
+}
 
-    const edgeFallbacks = {
-        es: ['es-MX-DaliaNeural', 'es-ES-AlvaroNeural', 'es-CL-LorenzoNeural'],
-        en: ['en-US-JennyNeural', 'en-US-GuyNeural'],
-        fr: ['fr-FR-DeniseNeural', 'fr-FR-HenriNeural'],
-        pt: ['pt-BR-FranciscaNeural', 'pt-BR-AntonioNeural'],
-        de: ['de-DE-KatjaNeural', 'de-DE-ConradNeural'],
-        zh: ['zh-CN-XiaoxiaoNeural', 'zh-CN-YunxiNeural'],
-        ru: ['ru-RU-SvetlanaNeural', 'ru-RU-DmitryNeural'],
-        ar: ['ar-SA-ZariyahNeural', 'ar-SA-HamedNeural'],
-        hi: ['hi-IN-SwaraNeural', 'hi-IN-MadhurNeural'],
-        bn: ['bn-IN-TanishaaNeural', 'bn-IN-BashkarNeural']
-    };
-    const fallbackPar = edgeFallbacks[langIso] || edgeFallbacks.es;
+function _extraerVocesRapidasDeSelect(selEl) {
+    if (!selEl) return [];
+    const vals = Array.from(selEl.options).map(o => o.value).filter(Boolean);
+    const edges = vals.filter(_esVozEdgeTutorial);
+    return edges.length > 0 ? edges : vals.filter(_esVozPiperTutorial);
+}
 
-    const poolCombinado = [...new Set([...opcionesRapidas, ...todasLiveRapidas, ...fallbackPar])];
-    const vozBaseRaw = (selLive && selLive.value) ? selLive.value : '';
-    const vozNarrador = esVozRapidaEdge(vozBaseRaw) ? vozBaseRaw : (poolCombinado[0] || fallbackPar[0]);
-    const vozPersonaje = poolCombinado.find(v => v !== vozNarrador && v.toLowerCase().startsWith(langIso)) ||
-                         poolCombinado.find(v => v !== vozNarrador) ||
-                         fallbackPar.find(v => v !== vozNarrador) ||
-                         vozNarrador;
-
-    // Si vozPersonaje no existe aún como opción en #select-voz-teatro, inyectarla para que pueda seleccionarse en la UI
-    if (selVoz && vozPersonaje && !Array.from(selVoz.options).some(o => o.value === vozPersonaje)) {
+function _asegurarOpcionVozTeatroUI(selVoz, vozPersonaje, vozNarrador) {
+    if (!selVoz || !vozPersonaje) return;
+    if (!Array.from(selVoz.options).some(o => o.value === vozPersonaje)) {
         const opt = document.createElement('option');
         opt.value = vozPersonaje;
         opt.textContent = `🌐 ${vozPersonaje}`;
         selVoz.appendChild(opt);
     }
-    if (selVoz && vozPersonaje && (!esVozRapidaEdge(selVoz.value) || selVoz.value === vozNarrador)) {
+    if (!_esVozRapidaTutorial(selVoz.value) || selVoz.value === vozNarrador) {
         selVoz.value = vozPersonaje;
     }
+}
 
-    return {
-        vozNarrador: vozNarrador || vozPersonaje,
-        vozPersonaje: vozPersonaje || vozNarrador
-    };
+function _seleccionarIdiomaSelectTeatroTutorial(langIso) {
+    const selIdioma = document.getElementById('select-idioma-teatro');
+    if (selIdioma) {
+        if (selIdioma.options.length === 0 && typeof cargarIdiomasTeatro === 'function') cargarIdiomasTeatro();
+        if (Array.from(selIdioma.options).some(o => o.value === langIso)) selIdioma.value = langIso;
+    }
+    if (typeof filtrarVocesTeatroClon === 'function') filtrarVocesTeatroClon();
+}
+
+function _elegirVozPersonajeDistinta(poolCombinado, fallbackPar, vozNarrador, langIso) {
+    return poolCombinado.find(v => v !== vozNarrador && v.toLowerCase().startsWith(langIso))
+        || poolCombinado.find(v => v !== vozNarrador)
+        || fallbackPar.find(v => v !== vozNarrador)
+        || vozNarrador;
+}
+
+function obtenerParVocesTeatroTutorial(langIso = 'es') {
+    _seleccionarIdiomaSelectTeatroTutorial(langIso);
+    const selVoz = document.getElementById('select-voz-teatro');
+    const selLive = document.getElementById('selector-voz-live') || document.getElementById('modal-voz');
+    const fallbackPar = _EDGE_FALLBACKS_TEATRO_TOUR[langIso] || _EDGE_FALLBACKS_TEATRO_TOUR.es;
+
+    const poolCombinado = [...new Set([..._extraerVocesRapidasDeSelect(selVoz), ..._extraerVocesRapidasDeSelect(selLive), ...fallbackPar])];
+    const vozBaseRaw = selLive?.value || '';
+    const vozNarrador = _esVozRapidaTutorial(vozBaseRaw) ? vozBaseRaw : (poolCombinado[0] || fallbackPar[0]);
+    const vozPersonaje = _elegirVozPersonajeDistinta(poolCombinado, fallbackPar, vozNarrador, langIso);
+
+    _asegurarOpcionVozTeatroUI(selVoz, vozPersonaje, vozNarrador);
+    return { vozNarrador: vozNarrador || vozPersonaje, vozPersonaje: vozPersonaje || vozNarrador };
+}
+
+function _asegurarEstructuraObraTeatroTutorial() {
+    if (typeof dbTeatro === 'undefined' || !dbTeatro) window.dbTeatro = {};
+    if (typeof obraActualTeatro === 'undefined' || !obraActualTeatro) {
+        window.obraActualTeatro = Object.keys(dbTeatro)[0] || 'General';
+        obraActualTeatro = window.obraActualTeatro;
+    }
+    if (!dbTeatro[obraActualTeatro]) dbTeatro[obraActualTeatro] = { active: true, actors: {} };
+    dbTeatro[obraActualTeatro].active = true;
+    dbTeatro[obraActualTeatro].actors = dbTeatro[obraActualTeatro].actors || {};
+    return dbTeatro[obraActualTeatro].actors;
+}
+
+function _limpiarDuplicadosActoresTutorial(actorsObj, cfg, eliminarActorEjemplo) {
+    const norm = (s) => s.replace(/[:.,;]/g, '').trim().toLowerCase();
+    const preNorm = norm(cfg.actorPreRegistrado);
+    const ejNorm = norm(cfg.actorEjemplo);
+    for (const k of Object.keys(actorsObj)) {
+        const kNorm = norm(k);
+        if (kNorm === preNorm && k !== cfg.actorPreRegistrado) delete actorsObj[k];
+        if (kNorm === ejNorm && (eliminarActorEjemplo || k !== cfg.actorEjemplo)) delete actorsObj[k];
+    }
+}
+
+function _configurarActorEjemploTutorial(actorsObj, cfg, vozNarrador, vozPersonaje, incluirActorEjemplo, eliminarActorEjemplo) {
+    if (eliminarActorEjemplo) { delete actorsObj[cfg.actorEjemplo]; return; }
+    if (!incluirActorEjemplo) return;
+
+    const selVoz = document.getElementById('select-voz-teatro');
+    const vozElegida = (selVoz?.value && selVoz.value !== vozNarrador && _esVozRapidaTutorial(selVoz.value))
+        ? selVoz.value
+        : (vozPersonaje || vozNarrador);
+    if (selVoz && vozElegida) selVoz.value = vozElegida;
+    if (vozElegida) actorsObj[cfg.actorEjemplo] = { voz: vozElegida, on: true };
 }
 
 function asegurarEstadoTeatroTutorial(incluirActorEjemplo = true, eliminarActorEjemplo = false) {
@@ -543,137 +548,66 @@ function asegurarEstadoTeatroTutorial(incluirActorEjemplo = true, eliminarActorE
         const cfg = DEMO_TEATRO_POR_IDIOMA[langIso] || DEMO_TEATRO_POR_IDIOMA.es;
         const { vozNarrador, vozPersonaje } = obtenerParVocesTeatroTutorial(langIso);
 
-        if (typeof dbTeatro === 'undefined' || !dbTeatro) {
-            window.dbTeatro = {};
-        }
-        if (typeof obraActualTeatro === 'undefined' || !obraActualTeatro) {
-            window.obraActualTeatro = Object.keys(dbTeatro)[0] || 'General';
-            obraActualTeatro = window.obraActualTeatro;
-        }
-        if (!dbTeatro[obraActualTeatro]) {
-            dbTeatro[obraActualTeatro] = { active: true, actors: {} };
-        }
-        dbTeatro[obraActualTeatro].active = true;
-        if (!dbTeatro[obraActualTeatro].actors) {
-            dbTeatro[obraActualTeatro].actors = {};
-        }
+        const actorsObj = _asegurarEstructuraObraTeatroTutorial();
+        _limpiarDuplicadosActoresTutorial(actorsObj, cfg, eliminarActorEjemplo);
+        if (vozNarrador) actorsObj[cfg.actorPreRegistrado] = { voz: vozNarrador, on: true };
+        _configurarActorEjemploTutorial(actorsObj, cfg, vozNarrador, vozPersonaje, incluirActorEjemplo, eliminarActorEjemplo);
 
-        const actorsObj = dbTeatro[obraActualTeatro].actors;
-
-        // Limpiar duplicados con o sin dos puntos o diferente capitalización
-        for (const k of Object.keys(actorsObj)) {
-            const kNorm = k.replace(/[:.,;]/g, '').trim().toLowerCase();
-            const preNorm = cfg.actorPreRegistrado.replace(/[:.,;]/g, '').trim().toLowerCase();
-            const ejNorm = cfg.actorEjemplo.replace(/[:.,;]/g, '').trim().toLowerCase();
-            if (kNorm === preNorm && k !== cfg.actorPreRegistrado) {
-                delete actorsObj[k];
-            }
-            if (kNorm === ejNorm && (eliminarActorEjemplo || k !== cfg.actorEjemplo)) {
-                delete actorsObj[k];
-            }
-        }
-
-        if (vozNarrador) {
-            actorsObj[cfg.actorPreRegistrado] = {
-                voz: vozNarrador,
-                on: true
-            };
-        }
-
-        if (eliminarActorEjemplo) {
-            delete actorsObj[cfg.actorEjemplo];
-        } else if (incluirActorEjemplo) {
-            const selVoz = document.getElementById('select-voz-teatro');
-            const esValida = (v) => {
-                const low = String(v || '').toLowerCase();
-                return (low.includes('neural') || low.endsWith('.onnx')) && !low.includes('kokoro') && !low.includes('pocket');
-            };
-            const vozElegida = (selVoz && selVoz.value && selVoz.value !== vozNarrador && esValida(selVoz.value))
-                ? selVoz.value
-                : (vozPersonaje || vozNarrador);
-            if (selVoz && vozElegida) {
-                selVoz.value = vozElegida;
-            }
-            if (vozElegida) {
-                actorsObj[cfg.actorEjemplo] = {
-                    voz: vozElegida,
-                    on: true
-                };
-            }
-        }
-
-        // Activar el interruptor global de Modo Teatro para que la prueba de lectura funcione al 100%
         const chkGlobal = document.getElementById('chk-teatro-global');
-        if (chkGlobal) {
-            chkGlobal.checked = true;
-        }
-
+        if (chkGlobal) chkGlobal.checked = true;
         if (typeof renderizarSidebarTeatro === 'function') renderizarSidebarTeatro();
         if (typeof renderizarActores === 'function') renderizarActores();
-        if (typeof eel !== 'undefined' && typeof eel.guardar_diccionario_teatro === 'function') {
-            eel.guardar_diccionario_teatro(dbTeatro)();
-        }
-        if (typeof eel !== 'undefined' && typeof eel.limpiar_pasteleria === 'function') {
-            eel.limpiar_pasteleria()();
-        }
+        if (typeof eel !== 'undefined' && typeof eel.guardar_diccionario_teatro === 'function') eel.guardar_diccionario_teatro(dbTeatro)();
+        if (typeof eel !== 'undefined' && typeof eel.limpiar_pasteleria === 'function') eel.limpiar_pasteleria()();
     } catch (e) {
         console.warn("⚠️ Error sincronizando estado de Modo Teatro en tutorial:", e);
     }
 }
 
-function asegurarEstadoDiccionarioTutorial(activarEjemplo = true, eliminarEjemplo = false) {
-    try {
-        const langIso = detectarIdiomaTutorialActivo();
-        const cfg = DEMO_ABREVIATURAS_POR_IDIOMA[langIso] || DEMO_ABREVIATURAS_POR_IDIOMA.es;
-        if (typeof dbDiccionario !== 'undefined' && dbDiccionario) {
-            if (!seccionActual) seccionActual = Object.keys(dbDiccionario)[0] || 'GENERAL';
-            if (!dbDiccionario[seccionActual]) {
-                dbDiccionario[seccionActual] = { active: true, terms: {} };
-            }
-            dbDiccionario[seccionActual].active = true;
-            if (!dbDiccionario[seccionActual].terms) {
-                dbDiccionario[seccionActual].terms = {};
-            }
+function _debeEliminarClaveDiccionarioTour(sec, k, objetivo, forzar) {
+    if (!objetivo) return false;
+    if (k.toLowerCase() !== objetivo.toLowerCase()) return false;
+    return sec !== seccionActual || k !== objetivo || forzar;
+}
 
-            // Limpiar posibles claves duplicadas con diferente capitalización en todas las secciones
-            for (const sec in dbDiccionario) {
-                const termsObj = dbDiccionario[sec]?.terms;
-                if (!termsObj) continue;
-                for (const k of Object.keys(termsObj)) {
-                    if (cfg.siglaEjemplo && k.toLowerCase() === cfg.siglaEjemplo.toLowerCase() && (sec !== seccionActual || k !== cfg.siglaEjemplo || eliminarEjemplo)) {
-                        delete termsObj[k];
-                    }
-                    if (cfg.siglaExtra && k.toLowerCase() === cfg.siglaExtra.toLowerCase() && (sec !== seccionActual || k !== cfg.siglaExtra)) {
-                        delete termsObj[k];
-                    }
-                }
-            }
-
-            if (cfg.siglaExtra && cfg.significadoExtra) {
-                dbDiccionario[seccionActual].terms[cfg.siglaExtra] = {
-                    val: cfg.significadoExtra,
-                    on: true
-                };
-            }
-            if (cfg.siglaEjemplo && cfg.significadoEjemplo) {
-                if (eliminarEjemplo) {
-                    delete dbDiccionario[seccionActual].terms[cfg.siglaEjemplo];
-                } else {
-                    dbDiccionario[seccionActual].terms[cfg.siglaEjemplo] = {
-                        val: cfg.significadoEjemplo,
-                        on: Boolean(activarEjemplo)
-                    };
-                }
-            }
-
-            if (typeof renderizarTerminos === 'function') renderizarTerminos();
-            if (typeof eel !== 'undefined' && typeof eel.guardar_diccionario === 'function') {
-                eel.guardar_diccionario(dbDiccionario)();
-            }
-            if (typeof eel !== 'undefined' && typeof eel.limpiar_pasteleria === 'function') {
-                eel.limpiar_pasteleria()();
+function _limpiarDuplicadosDiccionarioTutorial(cfg, eliminarEjemplo) {
+    for (const sec in dbDiccionario) {
+        const termsObj = dbDiccionario[sec]?.terms;
+        if (!termsObj) continue;
+        for (const k of Object.keys(termsObj)) {
+            if (_debeEliminarClaveDiccionarioTour(sec, k, cfg.siglaEjemplo, eliminarEjemplo)
+                || _debeEliminarClaveDiccionarioTour(sec, k, cfg.siglaExtra, false)) {
+                delete termsObj[k];
             }
         }
+    }
+}
+
+function _persistirDiccionarioTutorial() {
+    if (typeof renderizarTerminos === 'function') renderizarTerminos();
+    if (typeof eel !== 'undefined' && typeof eel.guardar_diccionario === 'function') eel.guardar_diccionario(dbDiccionario)();
+    if (typeof eel !== 'undefined' && typeof eel.limpiar_pasteleria === 'function') eel.limpiar_pasteleria()();
+}
+
+function asegurarEstadoDiccionarioTutorial(activarEjemplo = true, eliminarEjemplo = false) {
+    try {
+        if (typeof dbDiccionario === 'undefined' || !dbDiccionario) return;
+        const cfg = DEMO_ABREVIATURAS_POR_IDIOMA[detectarIdiomaTutorialActivo()] || DEMO_ABREVIATURAS_POR_IDIOMA.es;
+
+        if (!seccionActual) seccionActual = Object.keys(dbDiccionario)[0] || 'GENERAL';
+        if (!dbDiccionario[seccionActual]) dbDiccionario[seccionActual] = { active: true, terms: {} };
+        dbDiccionario[seccionActual].active = true;
+        dbDiccionario[seccionActual].terms = dbDiccionario[seccionActual].terms || {};
+
+        _limpiarDuplicadosDiccionarioTutorial(cfg, eliminarEjemplo);
+
+        const terms = dbDiccionario[seccionActual].terms;
+        if (cfg.siglaExtra && cfg.significadoExtra) terms[cfg.siglaExtra] = { val: cfg.significadoExtra, on: true };
+        if (cfg.siglaEjemplo && cfg.significadoEjemplo) {
+            if (eliminarEjemplo) delete terms[cfg.siglaEjemplo];
+            else terms[cfg.siglaEjemplo] = { val: cfg.significadoEjemplo, on: Boolean(activarEjemplo) };
+        }
+        _persistirDiccionarioTutorial();
     } catch (e) {
         console.warn("⚠️ Error sincronizando estado de diccionario en tutorial:", e);
     }
@@ -869,201 +803,116 @@ function cargarTextoDemoEnVisor(textoOpcional = null, tituloOpcional = null, sub
     if (typeof dibujar === 'function') dibujar();
 }
 
+const _CJK_DEMO_RE = /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/;
+
+function _tokenizarTextoConCJKDemo(ctx, texto, maxWidth) {
+    const tokens = [];
+    for (const parte of String(texto || '').split(/\s+/).filter(Boolean)) {
+        if (_CJK_DEMO_RE.test(parte) && ctx.measureText(parte).width > maxWidth) {
+            for (const ch of Array.from(parte)) tokens.push({ t: ch, cjk: true });
+        } else {
+            tokens.push({ t: parte, cjk: false });
+        }
+    }
+    return tokens;
+}
+
+function _pintarBloqueTokensDemo(ctx, texto, opts, todasPalabras) {
+    const pals = [];
+    let curX = opts.x0;
+    let curY = opts.y0;
+    for (const { t: p, cjk } of _tokenizarTextoConCJKDemo(ctx, texto, opts.x1 - opts.x0)) {
+        const w = cjk ? Math.max(6, Math.round(ctx.measureText(p).width)) : Math.max(14, Math.round(ctx.measureText(p).width));
+        if (curX + w > opts.x1) { curX = opts.x0; curY += opts.lineHeight; }
+        ctx.fillText(p, curX, curY);
+        const objPal = { texto: p, bbox: [curX, curY - opts.topPad, curX + w, curY + opts.botPad] };
+        todasPalabras.push(objPal);
+        pals.push(objPal);
+        curX += w + (cjk ? 1 : opts.gap);
+    }
+    return pals;
+}
+
+function _dibujarColumnaPaso4(ctx, titulo, texto, colX0, colX1, todasPalabras) {
+    ctx.fillStyle = '#0284c7';
+    ctx.font = 'bold 15px system-ui, sans-serif';
+    ctx.fillText(titulo, colX0, 100);
+    ctx.fillStyle = '#0f172a';
+    ctx.font = '14px system-ui, sans-serif';
+    const palsCol = _pintarBloqueTokensDemo(ctx, texto, { x0: colX0, x1: colX1, y0: 128, lineHeight: 24, topPad: 14, botPad: 5, gap: 6 }, todasPalabras);
+    const minY = palsCol.length > 0 ? Math.min(...palsCol.map(w => w.bbox[1])) : 110;
+    const maxY = palsCol.length > 0 ? Math.max(...palsCol.map(w => w.bbox[3])) : 420;
+    return { pals: palsCol, rect: [colX0 - 4, minY - 4, colX1 + 4, maxY + 4] };
+}
+
+function _aplicarLimitesFasePaso4(fase) {
+    const mapaFases = {
+        columnas: { v: [], h: { "0": [0, 1100] } },
+        horizontales: { v: [275, 525], h: { "0": [0, 1100], "1": [0, 1100], "2": [0, 1100] } },
+        excluir: { v: [275, 525], h: { "0": [75, 990], "1": [75, 990], "2": [75, 990] } }
+    };
+    const cfgFase = mapaFases[fase];
+    if (cfgFase) {
+        cortesV = [...cfgFase.v];
+        limitesH = JSON.parse(JSON.stringify(cfgFase.h));
+    }
+    if (fase !== 'excluir') zonasExcluidas = [];
+}
+
 function cargarDemoPaso4Limites(fase = 'columnas') {
     const langIso = detectarIdiomaTutorialActivo();
     const cfg = DEMO_PASO4_POR_IDIOMA[langIso] || DEMO_PASO4_POR_IDIOMA.es;
 
     const offCanvas = document.createElement('canvas');
-    offCanvas.width = 800;
-    offCanvas.height = 1100;
+    offCanvas.width = 800; offCanvas.height = 1100;
     const ctx = offCanvas.getContext('2d');
 
-    // Fondo blanco nítido
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 800, 1100);
-
-    // Borde de página
-    ctx.strokeStyle = '#cbd5e1';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(2, 2, 796, 1096);
-
-    // Encabezado superior (a omitir con límite horizontal superior)
-    ctx.fillStyle = '#f8fafc';
-    ctx.fillRect(4, 4, 792, 55);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 800, 1100);
+    ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 2; ctx.strokeRect(2, 2, 796, 1096);
+    ctx.fillStyle = '#f8fafc'; ctx.fillRect(4, 4, 792, 55);
     ctx.strokeStyle = '#e2e8f0';
-    ctx.beginPath();
-    ctx.moveTo(4, 60);
-    ctx.lineTo(796, 60);
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(4, 60); ctx.lineTo(796, 60); ctx.stroke();
+    ctx.fillStyle = '#64748b'; ctx.font = 'bold 13px system-ui, sans-serif'; ctx.fillText(cfg.encabezado, 40, 36);
 
-    ctx.fillStyle = '#64748b';
-    ctx.font = 'bold 13px system-ui, sans-serif';
-    ctx.fillText(cfg.encabezado, 40, 36);
+    ctx.strokeStyle = '#f1f5f9'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(275, 75); ctx.lineTo(275, 975); ctx.moveTo(525, 75); ctx.lineTo(525, 975); ctx.stroke();
 
-    // Guías divisorias tenues en x=275 y x=525 (referencias visuales discretas)
-    ctx.strokeStyle = '#f1f5f9';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(275, 75);
-    ctx.lineTo(275, 975);
-    ctx.moveTo(525, 75);
-    ctx.lineTo(525, 975);
-    ctx.stroke();
-
-    let todasPalabras = [];
-
-    // Palabras del encabezado
+    const todasPalabras = [];
     cfg.encabezado.split(/\s+/).forEach((p, idx) => {
-        todasPalabras.push({
-            texto: p,
-            bbox: [40 + (idx * 55), 20, 90 + (idx * 55), 45]
-        });
+        todasPalabras.push({ texto: p, bbox: [40 + (idx * 55), 20, 90 + (idx * 55), 45] });
     });
 
-    // Helper para formatear columnas con precisión milimétrica de bboxes
-    const formatearColumna = (titulo, texto, colX0, colX1) => {
-        ctx.fillStyle = '#0284c7';
-        ctx.font = 'bold 15px system-ui, sans-serif';
-        ctx.fillText(titulo, colX0, 100);
+    const col1 = _dibujarColumnaPaso4(ctx, cfg.col1Titulo, cfg.col1Texto, 40, 260, todasPalabras);
+    const col2 = _dibujarColumnaPaso4(ctx, cfg.col2Titulo, cfg.col2Texto, 290, 510, todasPalabras);
+    const col3 = _dibujarColumnaPaso4(ctx, cfg.col3Titulo, cfg.col3Texto, 540, 760, todasPalabras);
 
-        const palsCol = [];
-        ctx.fillStyle = '#0f172a';
-        ctx.font = '14px system-ui, sans-serif';
-        let curY = 128;
-        let curX = colX0;
-        const maxColWidth = colX1 - colX0;
-        const cjkRe = /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/;
-        const tokensCol = [];
-        for (const parte of String(texto || '').split(/\s+/).filter(Boolean)) {
-            if (cjkRe.test(parte) && ctx.measureText(parte).width > maxColWidth) {
-                for (const ch of Array.from(parte)) tokensCol.push({ t: ch, cjk: true });
-            } else {
-                tokensCol.push({ t: parte, cjk: false });
-            }
-        }
-        tokensCol.forEach(({ t: p, cjk }) => {
-            const m = ctx.measureText(p);
-            const w = cjk ? Math.max(6, Math.round(m.width)) : Math.max(14, Math.round(m.width));
-            if (curX + w > colX1) {
-                curX = colX0;
-                curY += 24;
-            }
-            ctx.fillText(p, curX, curY);
-            const objPal = {
-                texto: p,
-                bbox: [curX, curY - 14, curX + w, curY + 5]
-            };
-            todasPalabras.push(objPal);
-            palsCol.push(objPal);
-            curX += w + (cjk ? 1 : 6);
-        });
+    ctx.fillStyle = '#fffbeb'; ctx.fillRect(538, 430, 222, 95);
+    ctx.strokeStyle = '#fde68a'; ctx.lineWidth = 1.5; ctx.strokeRect(538, 430, 222, 95);
+    ctx.fillStyle = '#b45309'; ctx.font = 'bold 12px system-ui, sans-serif'; ctx.fillText("📢 " + cfg.anuncioTitulo, 546, 452);
+    ctx.fillStyle = '#78350f'; ctx.font = '12px system-ui, sans-serif';
+    _pintarBloqueTokensDemo(ctx, cfg.anuncioTexto, { x0: 546, x1: 750, y0: 474, lineHeight: 20, topPad: 12, botPad: 4, gap: 5 }, todasPalabras);
 
-        const minY = palsCol.length > 0 ? Math.min(...palsCol.map(w => w.bbox[1])) : 110;
-        const maxY = palsCol.length > 0 ? Math.max(...palsCol.map(w => w.bbox[3])) : 420;
-        return { pals: palsCol, rect: [colX0 - 4, minY - 4, colX1 + 4, maxY + 4] };
-    };
-
-    // Columna 1 (Izquierda: 40 a 260)
-    const col1 = formatearColumna(cfg.col1Titulo, cfg.col1Texto, 40, 260);
-
-    // Columna 2 (Centro: 290 a 510)
-    const col2 = formatearColumna(cfg.col2Titulo, cfg.col2Texto, 290, 510);
-
-    // Columna 3 (Derecha: 540 a 760)
-    const col3 = formatearColumna(cfg.col3Titulo, cfg.col3Texto, 540, 760);
-
-    // Recuadro de Publicidad / Nota a excluir con Alt + Clic en Columna 3
-    ctx.fillStyle = '#fffbeb';
-    ctx.fillRect(538, 430, 222, 95);
-    ctx.strokeStyle = '#fde68a';
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(538, 430, 222, 95);
-
-    ctx.fillStyle = '#b45309';
-    ctx.font = 'bold 12px system-ui, sans-serif';
-    ctx.fillText("📢 " + cfg.anuncioTitulo, 546, 452);
-
-    ctx.fillStyle = '#78350f';
-    ctx.font = '12px system-ui, sans-serif';
-    let curYAnun = 474;
-    let curXAnun = 546;
-    const cjkAnunRe = /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/;
-    const tokensAnun = [];
-    for (const parte of String(cfg.anuncioTexto || '').split(/\s+/).filter(Boolean)) {
-        if (cjkAnunRe.test(parte) && ctx.measureText(parte).width > 204) {
-            for (const ch of Array.from(parte)) tokensAnun.push({ t: ch, cjk: true });
-        } else {
-            tokensAnun.push({ t: parte, cjk: false });
-        }
-    }
-    tokensAnun.forEach(({ t: p, cjk }) => {
-        const m = ctx.measureText(p);
-        const w = cjk ? Math.max(6, Math.round(m.width)) : Math.max(14, Math.round(m.width));
-        if (curXAnun + w > 750) {
-            curXAnun = 546;
-            curYAnun += 20;
-        }
-        ctx.fillText(p, curXAnun, curYAnun);
-        todasPalabras.push({
-            texto: p,
-            bbox: [curXAnun, curYAnun - 12, curXAnun + w, curYAnun + 4]
-        });
-        curXAnun += w + (cjk ? 1 : 5);
-    });
-
-    // Pie de página (Número de página inferior)
     ctx.strokeStyle = '#e2e8f0';
-    ctx.beginPath();
-    ctx.moveTo(4, 1000);
-    ctx.lineTo(796, 1000);
-    ctx.stroke();
-
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = 'italic 13px system-ui, sans-serif';
-    ctx.textAlign = 'center';
+    ctx.beginPath(); ctx.moveTo(4, 1000); ctx.lineTo(796, 1000); ctx.stroke();
+    ctx.fillStyle = '#94a3b8'; ctx.font = 'italic 13px system-ui, sans-serif'; ctx.textAlign = 'center';
     ctx.fillText(cfg.pieTexto, 400, 1032);
     ctx.textAlign = 'start';
-
     cfg.pieTexto.split(/\s+/).forEach((p, idx) => {
-        todasPalabras.push({
-            texto: p,
-            bbox: [320 + (idx * 40), 1018, 355 + (idx * 40), 1042]
-        });
+        todasPalabras.push({ texto: p, bbox: [320 + (idx * 40), 1018, 355 + (idx * 40), 1042] });
     });
 
-    const imgData = offCanvas.toDataURL('image/png');
-
     datosPagina = {
-        ancho_img: 800,
-        alto_img: 1100,
-        ancho_pagina_pdf: 800,
-        alto_pagina_pdf: 1100,
-        factor_zoom: 1.0,
-        palabras: todasPalabras,
-        lineas: [{ palabras: todasPalabras }],
+        ancho_img: 800, alto_img: 1100, ancho_pagina_pdf: 800, alto_pagina_pdf: 1100, factor_zoom: 1.0,
+        palabras: todasPalabras, lineas: [{ palabras: todasPalabras }],
         oraciones: [
             { texto: cfg.col1Texto, rects: [col1.rect], indice_global: 0, palabras: col1.pals },
             { texto: cfg.col2Texto, rects: [col2.rect], indice_global: 1, palabras: col2.pals },
             { texto: cfg.col3Texto, rects: [col3.rect], indice_global: 2, palabras: col3.pals }
         ],
-        imagen: imgData
+        imagen: offCanvas.toDataURL('image/png')
     };
 
-    if (fase === 'columnas') {
-        cortesV = [];
-        limitesH = { "0": [0, 1100] };
-    } else if (fase === 'horizontales') {
-        cortesV = [275, 525];
-        limitesH = { "0": [0, 1100], "1": [0, 1100], "2": [0, 1100] };
-    } else if (fase === 'excluir') {
-        cortesV = [275, 525];
-        limitesH = { "0": [75, 990], "1": [75, 990], "2": [75, 990] };
-    }
-
-    if (fase !== 'excluir') {
-        zonasExcluidas = [];
-    }
-
+    _aplicarLimitesFasePaso4(fase);
     if (typeof dibujar === 'function') dibujar();
 }
 

@@ -14,6 +14,60 @@ function _vincularBackdropTiendaOllama() {
     }
 }
 
+function _safeIdOllama(nombre) {
+    return String(nombre || '').replace(/[^a-zA-Z0-9]/g, '_');
+}
+
+function _asegurarEstadoDescargasOllama() {
+    window._ollamaEstadoDescarga = window._ollamaEstadoDescarga || {};
+    window._ollamaUltimoPct = window._ollamaUltimoPct || {};
+    window._ollamaTipoPendiente = window._ollamaTipoPendiente || {};
+}
+
+function _toastOllama(msg, tipo) {
+    if (typeof mostrarToastLira === 'function') mostrarToastLira(msg, tipo);
+}
+
+function _renderizarAlertaOllamaNoInstalado(hwBox, mensaje) {
+    const iconoWarn = (typeof window.obtenerIconoDialogoSVG === 'function')
+        ? window.obtenerIconoDialogoSVG('advertencia', 'lira-inline-svg') : '';
+    const msgSeguro = (typeof window.escapeHtml === 'function')
+        ? window.escapeHtml(mensaje) : String(mensaje ?? '');
+    hwBox.innerHTML = `<span class="tienda-hw-alerta">${iconoWarn} <b>${msgSeguro}</b></span>`;
+}
+
+async function _obtenerHardwareEIniciarOllama(hwBox) {
+    let info = { ram_gb: 8, recomendado: "qwen2.5:3b", instalados: [], ollama_activo: false };
+    if (typeof eel !== 'undefined' && typeof eel.obtener_info_hardware_ollama === 'function') {
+        try { info = await eel.obtener_info_hardware_ollama()(); } catch (e) { }
+    }
+    if (info.ollama_activo || typeof eel === 'undefined' || typeof eel.iniciar_ollama_local !== 'function') {
+        return { info, noInstalado: false };
+    }
+    try {
+        const initRes = await eel.iniciar_ollama_local()();
+        if (initRes?.exito) {
+            info = await eel.obtener_info_hardware_ollama()();
+        } else if (initRes && !initRes.instalado) {
+            _renderizarAlertaOllamaNoInstalado(hwBox, initRes.mensaje);
+            return { info, noInstalado: true };
+        }
+    } catch (e) {}
+    return { info, noInstalado: false };
+}
+
+function _renderizarBannerHardwareOllama(hwBox, info) {
+    const svgCpu = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/></svg>';
+    const svgStar = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#f39c12" stroke-width="2" style="vertical-align:-2px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+    const svgBox = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>';
+    const vramTxt = (info.vram_gb && info.vram_gb > 0) ? ` &nbsp;|&nbsp; <b>VRAM:</b> ${info.vram_gb} GB` : '';
+    const btnConsultar = `<button type="button" id="btn-consultar-modelos-hw" onclick="toggleRecomendacionHardwareOllama()" title="Consultar qué modelos soporta tu equipo" style="display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:6px; border:1px solid #6366f1; background:rgba(99,102,241,0.1); color:#4f46e5; font-size:11.5px; font-weight:700; cursor:pointer;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span>Escoge modelos</span></button>`;
+
+    hwBox.innerHTML = info.ollama_activo
+        ? `${svgCpu} <b>RAM:</b> ${info.ram_gb} GB${vramTxt} &nbsp;|&nbsp; ${svgStar} ${btnConsultar} &nbsp;|&nbsp; ${svgBox} <b>Instalados:</b> ${_ollamaInstaladosCache.length}`
+        : `<b>Ollama no detectado en localhost:11434.</b> Descarga Ollama desde ollama.com para acceder a los modelos locales. &nbsp; ${btnConsultar}`;
+}
+
 async function abrirTiendaOllama() {
     const modal = document.getElementById('modal-tienda-ollama');
     const hwBox = document.getElementById('tienda-ollama-hw');
@@ -23,44 +77,15 @@ async function abrirTiendaOllama() {
     modal.style.display = 'flex';
     hwBox.textContent = "Verificando Ollama y RAM...";
 
-    let info = { ram_gb: 8, recomendado: "qwen2.5:3b", instalados: [], ollama_activo: false };
-    if (typeof eel !== 'undefined' && typeof eel.obtener_info_hardware_ollama === 'function') {
-        try { info = await eel.obtener_info_hardware_ollama()(); } catch (e) {}
-    }
-    if (!info.ollama_activo && typeof eel !== 'undefined' && typeof eel.iniciar_ollama_local === 'function') {
-        try {
-            const initRes = await eel.iniciar_ollama_local()();
-            if (initRes && initRes.exito) {
-                info = await eel.obtener_info_hardware_ollama()();
-            } else if (initRes && !initRes.instalado) {
-                const iconoWarn = (typeof window.obtenerIconoDialogoSVG === 'function')
-                    ? window.obtenerIconoDialogoSVG('advertencia', 'lira-inline-svg')
-                    : '';
-                const msgSeguro = (typeof window.escapeHtml === 'function')
-                    ? window.escapeHtml(initRes.mensaje)
-                    : String(initRes.mensaje ?? '');
-                hwBox.innerHTML = `<span class="tienda-hw-alerta">${iconoWarn} <b>${msgSeguro}</b></span>`;
-                await cargarCatalogoHF();
-                return;
-            }
-        } catch (e) {}
-    }
+    const { info, noInstalado } = await _obtenerHardwareEIniciarOllama(hwBox);
+    if (noInstalado) { await cargarCatalogoHF(); return; }
+
     _ollamaInstaladosCache = info.instalados || [];
-
-    const svgCpu = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/></svg>';
-    const svgStar = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#f39c12" stroke-width="2" style="vertical-align:-2px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
-    const svgBox = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>';
-
-    const vramTxt = (info.vram_gb && info.vram_gb > 0) ? ` &nbsp;|&nbsp; <b>VRAM:</b> ${info.vram_gb} GB` : '';
     window._ollamaHardwareInfo = info;
-    const btnConsultar = `<button type="button" id="btn-consultar-modelos-hw" onclick="toggleRecomendacionHardwareOllama()" title="Consultar qué modelos soporta tu equipo" style="display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:6px; border:1px solid #6366f1; background:rgba(99,102,241,0.1); color:#4f46e5; font-size:11.5px; font-weight:700; cursor:pointer;"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span>Escoge modelos</span></button>`;
-    hwBox.innerHTML = info.ollama_activo
-        ? `${svgCpu} <b>RAM:</b> ${info.ram_gb} GB${vramTxt} &nbsp;|&nbsp; ${svgStar} ${btnConsultar} &nbsp;|&nbsp; ${svgBox} <b>Instalados:</b> ${_ollamaInstaladosCache.length}`
-        : `<b>Ollama no detectado en localhost:11434.</b> Descarga Ollama desde ollama.com para acceder a los modelos locales. &nbsp; ${btnConsultar}`;
+    _renderizarBannerHardwareOllama(hwBox, info);
 
     const recomPanel = document.getElementById('tienda-ollama-recom-panel');
     if (recomPanel) recomPanel.style.display = 'none';
-
     await cargarCatalogoHF();
 }
 
@@ -114,7 +139,7 @@ async function cargarCatalogoHF() {
     lista.innerHTML = '<div style="font-size:12px; color:#636e72; padding:12px; text-align:center;">Consultando Hugging Face API...</div>';
     let res = { exito: false, modelos: [] };
     if (typeof eel !== 'undefined' && typeof eel.buscar_modelos_hf_gguf === 'function') {
-        try { res = await eel.buscar_modelos_hf_gguf(query, 15)(); } catch (e) {}
+        try { res = await eel.buscar_modelos_hf_gguf(query, 15)(); } catch (e) { }
     }
 
     if (!res.exito || !res.modelos.length) {
@@ -227,24 +252,51 @@ function _actualizarControlesTarjetaTienda(nombre, mostrar, estaPausado) {
     }
 }
 
+function _actualizarProgresoTarjetaOllama(nombre, texto, color) {
+    const prog = document.getElementById(`ollama-prog-${_safeIdOllama(nombre)}`);
+    if (!prog) return;
+    prog.style.display = 'block';
+    prog.style.color = color;
+    prog.textContent = texto;
+}
+
+function _actualizarRegistroPanelDescarga(nombre, pct, estado, completado, esError) {
+    window._ollamaDescargasActivas = window._ollamaDescargasActivas || {};
+    if (!nombre) return;
+    if (completado || (esError && estado === 'Cancelado')) {
+        delete window._ollamaDescargasActivas[nombre];
+    } else {
+        window._ollamaDescargasActivas[nombre] = {
+            pct: Number(pct) || 0,
+            estado: String(estado || 'Descargando...'),
+            pausado: estado === 'Pausado',
+            esError: Boolean(esError)
+        };
+    }
+}
+
+function _construirFilasPanelDescargasOllama(claves) {
+    return `<div style="display:flex; flex-direction:column; gap:8px;">` + claves.map(mod => {
+        const safeId = _safeIdOllama(mod);
+        const infoM = window._ollamaDescargasActivas[mod];
+        return `
+            <div id="ollama-panel-row-${safeId}" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding-bottom:6px; border-bottom:1px solid rgba(148,163,184,0.2);">
+                <div style="flex:1; min-width:0;">
+                    <div style="font-weight:600; color:inherit; word-break:break-all; font-size:11.5px;">${mod}</div>
+                    <div id="ollama-panel-status-${safeId}" style="font-size:11px; color:${infoM.esError ? '#d63031' : '#0984e3'}; margin-top:2px;"></div>
+                </div>
+                <div style="display:flex; gap:6px; flex-shrink:0;">
+                    ${_renderBotonesControlOllama(mod, infoM.pausado, 'panel-' + safeId)}
+                </div>
+            </div>`;
+    }).join('') + `</div>`;
+}
+
 function renderizarPanelDescargasOllama(nombre, pct, estado, completado, esError) {
     const panel = document.getElementById('ollama-descargas-panel');
     if (!panel) return;
 
-    window._ollamaDescargasActivas = window._ollamaDescargasActivas || {};
-    if (nombre) {
-        if (completado || (esError && estado === 'Cancelado')) {
-            delete window._ollamaDescargasActivas[nombre];
-        } else {
-            window._ollamaDescargasActivas[nombre] = {
-                pct: Number(pct) || 0,
-                estado: String(estado || 'Descargando...'),
-                pausado: estado === 'Pausado',
-                esError: Boolean(esError)
-            };
-        }
-    }
-
+    _actualizarRegistroPanelDescarga(nombre, pct, estado, completado, esError);
     const claves = Object.keys(window._ollamaDescargasActivas);
     if (claves.length === 0) {
         panel.innerHTML = 'No hay modelos con descarga pendiente';
@@ -252,48 +304,29 @@ function renderizarPanelDescargasOllama(nombre, pct, estado, completado, esError
         return;
     }
 
-    // Reconstruir filas solo si cambió la lista de modelos o su estado pausado
     const firma = claves.map(k => `${k}:${window._ollamaDescargasActivas[k].pausado}`).join('|');
     if (panel.dataset.modelosActivos !== firma) {
         panel.dataset.modelosActivos = firma;
-        panel.innerHTML = `<div style="display:flex; flex-direction:column; gap:8px;">` + claves.map(mod => {
-            const safeId = mod.replace(/[^a-zA-Z0-9]/g, '_');
-            const infoM = window._ollamaDescargasActivas[mod];
-            return `
-                <div id="ollama-panel-row-${safeId}" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding-bottom:6px; border-bottom:1px solid rgba(148,163,184,0.2);">
-                    <div style="flex:1; min-width:0;">
-                        <div style="font-weight:600; color:inherit; word-break:break-all; font-size:11.5px;">${mod}</div>
-                        <div id="ollama-panel-status-${safeId}" style="font-size:11px; color:${infoM.esError ? '#d63031' : '#0984e3'}; margin-top:2px;"></div>
-                    </div>
-                    <div style="display:flex; gap:6px; flex-shrink:0;">
-                        ${_renderBotonesControlOllama(mod, infoM.pausado, 'panel-' + safeId)}
-                    </div>
-                </div>`;
-        }).join('') + `</div>`;
+        panel.innerHTML = _construirFilasPanelDescargasOllama(claves);
     }
 
     claves.forEach(mod => {
-        const safeId = mod.replace(/[^a-zA-Z0-9]/g, '_');
         const infoM = window._ollamaDescargasActivas[mod];
-        const stEl = document.getElementById(`ollama-panel-status-${safeId}`);
-        if (stEl) {
-            stEl.style.color = infoM.esError ? '#d63031' : (infoM.pausado ? '#e67e22' : '#0984e3');
-            stEl.textContent = infoM.esError ? infoM.estado : `${infoM.estado} (${infoM.pct}%)`;
-        }
+        const stEl = document.getElementById(`ollama-panel-status-${_safeIdOllama(mod)}`);
+        if (!stEl) return;
+        stEl.style.color = infoM.esError ? '#d63031' : (infoM.pausado ? '#e67e22' : '#0984e3');
+        stEl.textContent = infoM.esError ? infoM.estado : `${infoM.estado} (${infoM.pct}%)`;
     });
 }
 
 async function pausarDescargaOllama(nombre) {
-    window._ollamaEstadoDescarga = window._ollamaEstadoDescarga || {};
-    window._ollamaUltimoPct = window._ollamaUltimoPct || {};
+    _asegurarEstadoDescargasOllama();
     window._ollamaEstadoDescarga[nombre] = 'pausado';
     const pct = window._ollamaUltimoPct[nombre] || 0;
 
     renderizarPanelDescargasOllama(nombre, pct, 'Pausado', false, false);
-    const safeId = nombre.replace(/[^a-zA-Z0-9]/g, '_');
-    const prog = document.getElementById(`ollama-prog-${safeId}`);
-    const btn = document.getElementById(`btn-ollama-${safeId}`);
-    if (prog) { prog.style.display = 'block'; prog.style.color = '#e67e22'; prog.textContent = `Pausado (${pct}%)`; }
+    _actualizarProgresoTarjetaOllama(nombre, `Pausado (${pct}%)`, '#e67e22');
+    const btn = document.getElementById(`btn-ollama-${_safeIdOllama(nombre)}`);
     if (btn) { btn.disabled = true; btn.textContent = 'Pausado'; }
     _actualizarControlesTarjetaTienda(nombre, true, true);
 
@@ -308,16 +341,13 @@ async function reanudarDescargaOllama(nombre) {
 }
 
 async function cancelarDescargaOllama(nombre) {
-    window._ollamaEstadoDescarga = window._ollamaEstadoDescarga || {};
-    window._ollamaUltimoPct = window._ollamaUltimoPct || {};
+    _asegurarEstadoDescargasOllama();
     window._ollamaEstadoDescarga[nombre] = 'cancelado';
     window._ollamaUltimoPct[nombre] = 0;
 
     renderizarPanelDescargasOllama(nombre, 0, 'Cancelado', false, true);
-    const safeId = nombre.replace(/[^a-zA-Z0-9]/g, '_');
-    const prog = document.getElementById(`ollama-prog-${safeId}`);
-    const btn = document.getElementById(`btn-ollama-${safeId}`);
-    if (prog) { prog.style.display = 'block'; prog.style.color = '#d63031'; prog.textContent = 'Cancelado'; }
+    _actualizarProgresoTarjetaOllama(nombre, 'Cancelado', '#d63031');
+    const btn = document.getElementById(`btn-ollama-${_safeIdOllama(nombre)}`);
     if (btn) { btn.disabled = false; btn.textContent = 'Instalar y Usar'; }
     _actualizarControlesTarjetaTienda(nombre, false, false);
 
@@ -326,25 +356,39 @@ async function cancelarDescargaOllama(nombre) {
     }
 }
 
+function _debeDescartarEventoOllama(estadoLocal, estado, esError) {
+    if (estadoLocal === 'cancelado' && !(esError && estado === 'Cancelado')) return true;
+    return estadoLocal === 'pausado' && estado !== 'Pausado' && !esError;
+}
+
+function _aplicarTransicionBotonOllama(nombre, btn, estado, completado, esError) {
+    if (completado) {
+        _actualizarControlesTarjetaTienda(nombre, false, false);
+        if (btn) { btn.disabled = false; btn.textContent = 'Usar modelo'; btn.style.background = '#0984e3'; }
+        asignarModeloOllamaActivo(nombre, window._ollamaTipoPendiente?.[nombre] || 'chat');
+        return;
+    }
+    if (estado === 'Pausado') {
+        _actualizarControlesTarjetaTienda(nombre, true, true);
+        if (btn) { btn.disabled = true; btn.textContent = 'Pausado'; }
+        return;
+    }
+    if (esError) {
+        _actualizarControlesTarjetaTienda(nombre, false, false);
+        if (btn) { btn.disabled = false; btn.textContent = (estado === 'Cancelado') ? 'Instalar y Usar' : 'Reintentar'; }
+        return;
+    }
+    _actualizarControlesTarjetaTienda(nombre, true, false);
+}
+
 if (typeof eel !== 'undefined' && typeof eel.expose === 'function') {
     eel.expose(actualizarProgresoOllama);
 }
 function actualizarProgresoOllama(nombre, pct, estado, completado, esError) {
-    window._ollamaEstadoDescarga = window._ollamaEstadoDescarga || {};
-    window._ollamaUltimoPct = window._ollamaUltimoPct || {};
-    const estadoLocal = window._ollamaEstadoDescarga[nombre];
+    _asegurarEstadoDescargasOllama();
+    if (_debeDescartarEventoOllama(window._ollamaEstadoDescarga[nombre], estado, esError)) return;
 
-    // Descartar eventos rezagados que venían en vuelo si el usuario ya pausó o canceló
-    if (estadoLocal === 'cancelado' && !(esError && estado === 'Cancelado')) {
-        return;
-    }
-    if (estadoLocal === 'pausado' && estado !== 'Pausado' && !esError) {
-        return;
-    }
-
-    if (!completado && !esError && estado !== 'Pausado') {
-        window._ollamaUltimoPct[nombre] = pct;
-    }
+    if (!completado && !esError && estado !== 'Pausado') window._ollamaUltimoPct[nombre] = pct;
     if (completado) {
         delete window._ollamaEstadoDescarga[nombre];
         delete window._ollamaUltimoPct[nombre];
@@ -353,31 +397,9 @@ function actualizarProgresoOllama(nombre, pct, estado, completado, esError) {
     }
 
     renderizarPanelDescargasOllama(nombre, pct, estado, completado, esError);
-    const safeId = nombre.replace(/[^a-zA-Z0-9]/g, '_');
-    const prog = document.getElementById(`ollama-prog-${safeId}`);
-    const btn = document.getElementById(`btn-ollama-${safeId}`);
-    if (prog) {
-        prog.style.display = 'block';
-        prog.style.color = esError ? '#d63031' : (estado === 'Pausado' ? '#e67e22' : '#0984e3');
-        prog.textContent = esError ? estado : `${estado} (${pct}%)`;
-    }
-    if (completado) {
-        _actualizarControlesTarjetaTienda(nombre, false, false);
-        if (btn) { btn.disabled = false; btn.textContent = 'Usar modelo'; btn.style.background = '#0984e3'; }
-        const tipo = (window._ollamaTipoPendiente && window._ollamaTipoPendiente[nombre]) || 'chat';
-        asignarModeloOllamaActivo(nombre, tipo);
-    } else if (estado === 'Pausado') {
-        _actualizarControlesTarjetaTienda(nombre, true, true);
-        if (btn) { btn.disabled = true; btn.textContent = 'Pausado'; }
-    } else if (esError) {
-        _actualizarControlesTarjetaTienda(nombre, false, false);
-        if (btn) {
-            btn.disabled = false;
-            btn.textContent = (estado === 'Cancelado') ? 'Instalar y Usar' : 'Reintentar';
-        }
-    } else {
-        _actualizarControlesTarjetaTienda(nombre, true, false);
-    }
+    const color = esError ? '#d63031' : (estado === 'Pausado' ? '#e67e22' : '#0984e3');
+    _actualizarProgresoTarjetaOllama(nombre, esError ? estado : `${estado} (${pct}%)`, color);
+    _aplicarTransicionBotonOllama(nombre, document.getElementById(`btn-ollama-${_safeIdOllama(nombre)}`), estado, completado, esError);
 }
 
 
@@ -515,36 +537,39 @@ function recibirStreamIA(destino, textoParcial) {
     }
 }
 
-async function _guardarRespuestaIAEnNotas(tituloSugerido, contenidoHtmlOPlano) {
-    if (!contenidoHtmlOPlano || !String(contenidoHtmlOPlano).trim()) {
-        if (typeof mostrarToastLira === 'function') mostrarToastLira('No hay contenido para guardar en notas.');
-        return;
-    }
+function _construirDatosNotaIA(tituloSugerido, contenidoHtmlOPlano) {
     const pag = (typeof paginaActual === 'number' ? paginaActual + 1 : 1);
     const libro = (typeof obtenerNombreLibroActivo === 'function')
         ? obtenerNombreLibroActivo()
         : ((typeof rutaPDFActual === 'string' && rutaPDFActual) ? rutaPDFActual.split(/[\\/]/).pop() : 'General');
-    const notaData = {
+    return {
         titulo: tituloSugerido || `Análisis LiraAI - Pág. ${pag}`,
         clasificacion: 'LiraAI',
         pagina: pag,
-        libro: libro,
+        libro,
         contenido: String(contenidoHtmlOPlano).trim().replace(/\n/g, '<br>'),
         fecha_creacion: null,
         ruta_absoluta: null
     };
-    if (typeof eel !== 'undefined' && typeof eel.notas_guardar === 'function') {
-        try {
-            const res = await eel.notas_guardar(notaData, window.rutaNotasPersonalizada || '')();
-            if (res && res.exito) {
-                if (typeof cargarNotasDesdeBackend === 'function') cargarNotasDesdeBackend();
-                if (typeof mostrarToastLira === 'function') mostrarToastLira('Respuesta importada a tus Notas', 'exito');
-            } else {
-                if (typeof mostrarToastLira === 'function') mostrarToastLira('Error al guardar en notas', 'advertencia');
-            }
-        } catch (e) {
-            if (typeof mostrarToastLira === 'function') mostrarToastLira('Error al guardar en notas', 'advertencia');
+}
+
+async function _guardarRespuestaIAEnNotas(tituloSugerido, contenidoHtmlOPlano) {
+    if (!contenidoHtmlOPlano || !String(contenidoHtmlOPlano).trim()) {
+        _toastOllama('No hay contenido para guardar en notas.');
+        return;
+    }
+    if (typeof eel === 'undefined' || typeof eel.notas_guardar !== 'function') return;
+
+    try {
+        const res = await eel.notas_guardar(_construirDatosNotaIA(tituloSugerido, contenidoHtmlOPlano), window.rutaNotasPersonalizada || '')();
+        if (res && res.exito) {
+            if (typeof cargarNotasDesdeBackend === 'function') cargarNotasDesdeBackend();
+            _toastOllama('Respuesta importada a tus Notas', 'exito');
+        } else {
+            _toastOllama('Error al guardar en notas', 'advertencia');
         }
+    } catch (e) {
+        _toastOllama('Error al guardar en notas', 'advertencia');
     }
 }
 

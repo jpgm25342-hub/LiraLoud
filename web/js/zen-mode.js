@@ -5,145 +5,115 @@
 
 // js/zen-mode.js
 
+function _obtenerContenedorCercano(inputId, selector) {
+    const el = document.getElementById(inputId);
+    return el ? el.closest(selector) : null;
+}
+
+function _activarLayoutModoZen() {
+    document.body.classList.add('modo-minimalista');
+
+    const filaFiltros = document.querySelector('.fila-filtros');
+    if (filaFiltros) {
+        document.getElementById('zen-filtros-container').appendChild(filaFiltros);
+        filaFiltros.style.flexDirection = 'column';
+        filaFiltros.style.display = 'flex';
+    }
+
+    const boxColumnas = document.querySelector('.fila-top .box-columnas');
+    if (boxColumnas) {
+        document.getElementById('zen-limites-container').appendChild(boxColumnas);
+    }
+
+    const zenVozContainer = document.getElementById('zen-voz-select-container');
+    if (zenVozContainer) {
+        const comboIdioma = _obtenerContenedorCercano('busqueda-idioma-live', '.combo-contenedor');
+        if (comboIdioma) {
+            zenVozContainer.appendChild(comboIdioma);
+            comboIdioma.style.width = '100%';
+            comboIdioma.style.marginBottom = '5px';
+        }
+        const comboVoz = _obtenerContenedorCercano('busqueda-voz-live', '.combo-contenedor');
+        if (comboVoz) {
+            zenVozContainer.appendChild(comboVoz);
+            comboVoz.style.width = '100%';
+        }
+    }
+
+    const slidersZen = [
+        ['rng-velocidad', 'zen-velocidad-container'],
+        ['rng-pausa', 'zen-pausa-container'],
+        ['rng-tono', 'zen-tono-container']
+    ];
+    slidersZen.forEach(([inputId, targetId]) => {
+        const cont = _obtenerContenedorCercano(inputId, '.box-columnas');
+        if (!cont) return;
+        document.getElementById(targetId).appendChild(cont);
+        cont.style.width = '100%';
+        cont.style.justifyContent = 'space-between';
+    });
+}
+
+function _restaurarControlesVozDesdeZen() {
+    const filaAjustes = document.querySelector('.fila-ajustes');
+    const filaControles = document.querySelector('.fila-controles');
+    if (!filaAjustes || !filaControles) return;
+
+    const comboIdioma = _obtenerContenedorCercano('busqueda-idioma-live', '.combo-contenedor');
+    if (comboIdioma) {
+        comboIdioma.style.width = '140px';
+        comboIdioma.style.marginBottom = '0';
+        filaAjustes.insertBefore(comboIdioma, filaControles);
+    }
+
+    const comboVoz = _obtenerContenedorCercano('busqueda-voz-live', '.combo-contenedor');
+    if (comboVoz) {
+        comboVoz.style.width = '250px';
+        filaAjustes.insertBefore(comboVoz, filaControles);
+    }
+
+    ['rng-velocidad', 'rng-tono', 'rng-pausa'].forEach(inputId => {
+        const cont = _obtenerContenedorCercano(inputId, '.box-columnas');
+        if (!cont) return;
+        cont.style.width = 'auto';
+        cont.style.justifyContent = 'center';
+        filaAjustes.insertBefore(cont, filaControles);
+    });
+}
+
+function _restaurarLayoutModoNormal() {
+    document.body.classList.remove('modo-minimalista');
+
+    const filaFiltros = document.querySelector('.fila-filtros');
+    const bannerContainer = document.getElementById('banner-container');
+    if (filaFiltros && bannerContainer) {
+        filaFiltros.style.flexDirection = 'row';
+        bannerContainer.appendChild(filaFiltros);
+    }
+
+    const limitesCont = document.getElementById('zen-limites-container');
+    const boxColumnas = limitesCont ? limitesCont.querySelector('.box-columnas') : null;
+    const filaTop = document.querySelector('.fila-top');
+    const paginacion = document.querySelector('.paginacion-container');
+    if (boxColumnas && filaTop && paginacion) {
+        filaTop.insertBefore(boxColumnas, paginacion.nextSibling);
+    }
+
+    _restaurarControlesVozDesdeZen();
+
+    ['zen-panel-voz', 'zen-panel-menu'].forEach(id => {
+        const panel = document.getElementById(id);
+        if (!panel) return;
+        panel.classList.remove('zen-active');
+        panel.style.display = 'none';
+    });
+}
+
 function toggleModoZen(isActive) {
     if (isActive) {
-        document.body.classList.add('modo-minimalista');
-        
-        // 1. Mover checkboxes de filtros al panel zen-menu
-        const filaFiltros = document.querySelector('.fila-filtros');
-        if (filaFiltros) {
-            document.getElementById('zen-filtros-container').appendChild(filaFiltros);
-            filaFiltros.style.flexDirection = 'column';
-            filaFiltros.style.display = 'flex';
-        }
-        
-        // 2. Mover botones de limites al panel zen-menu
-        // El de límites es el primero que está en la fila superior (dentro de fila-top)
-        const boxColumnas = document.querySelector('.fila-top .box-columnas');
-        if (boxColumnas) {
-            document.getElementById('zen-limites-container').appendChild(boxColumnas);
-        }
-        
-        // 3. Mover los contenedores originales de Idioma y Voz al zen-panel-voz
-        const btnIdioma = document.getElementById('busqueda-idioma-live');
-        const comboIdioma = btnIdioma ? btnIdioma.closest('.combo-contenedor') : null;
-        const btnVoz = document.getElementById('busqueda-voz-live');
-        const comboVoz = btnVoz ? btnVoz.closest('.combo-contenedor') : null;
-        
-        const zenVozContainer = document.getElementById('zen-voz-select-container');
-        if (zenVozContainer) {
-            if (comboIdioma) {
-                zenVozContainer.appendChild(comboIdioma);
-                comboIdioma.style.width = '100%';
-                comboIdioma.style.marginBottom = '5px';
-            }
-            if (comboVoz) {
-                zenVozContainer.appendChild(comboVoz);
-                comboVoz.style.width = '100%';
-            }
-        }
-        
-        // 4. Mover sliders originales al zen-panel-voz
-        const velInput = document.getElementById('rng-velocidad');
-        const velContainer = velInput ? velInput.closest('.box-columnas') : null;
-        if (velContainer) {
-            document.getElementById('zen-velocidad-container').appendChild(velContainer);
-            velContainer.style.width = '100%';
-            velContainer.style.justifyContent = 'space-between';
-        }
-        
-        const pausaInput = document.getElementById('rng-pausa');
-        const pausaContainer = pausaInput ? pausaInput.closest('.box-columnas') : null;
-        if (pausaContainer) {
-            document.getElementById('zen-pausa-container').appendChild(pausaContainer);
-            pausaContainer.style.width = '100%';
-            pausaContainer.style.justifyContent = 'space-between';
-        }
-        
-        const tonoInput = document.getElementById('rng-tono');
-        const tonoContainer = tonoInput ? tonoInput.closest('.box-columnas') : null;
-        if (tonoContainer) {
-            document.getElementById('zen-tono-container').appendChild(tonoContainer);
-            tonoContainer.style.width = '100%';
-            tonoContainer.style.justifyContent = 'space-between';
-        }
-
+        _activarLayoutModoZen();
     } else {
-        document.body.classList.remove('modo-minimalista');
-        
-        // 1. Devolver filtros a su posición original
-        const filaFiltros = document.querySelector('.fila-filtros');
-        const bannerContainer = document.getElementById('banner-container');
-        if (filaFiltros && bannerContainer) {
-            filaFiltros.style.flexDirection = 'row'; 
-            bannerContainer.appendChild(filaFiltros);
-        }
-        
-        // 2. Devolver límites a su posicion original (dentro de fila-top, despues de paginacion-container)
-        // Ojo, document.getElementById('zen-limites-container').querySelector('.box-columnas')
-        const limitesCont = document.getElementById('zen-limites-container');
-        const boxColumnas = limitesCont ? limitesCont.querySelector('.box-columnas') : null;
-        const filaTop = document.querySelector('.fila-top');
-        const paginacion = document.querySelector('.paginacion-container');
-        if (boxColumnas && filaTop && paginacion) {
-            filaTop.insertBefore(boxColumnas, paginacion.nextSibling);
-        }
-        
-        // 3. Devolver componentes de voz a fila-ajustes
-        const filaAjustes = document.querySelector('.fila-ajustes');
-        const filaControles = document.querySelector('.fila-controles');
-        if (filaAjustes && filaControles) {
-            const btnIdioma = document.getElementById('busqueda-idioma-live');
-            const comboIdioma = btnIdioma ? btnIdioma.closest('.combo-contenedor') : null;
-            if (comboIdioma) {
-                comboIdioma.style.width = '140px';
-                comboIdioma.style.marginBottom = '0';
-                filaAjustes.insertBefore(comboIdioma, filaControles);
-            }
-            
-            const btnVoz = document.getElementById('busqueda-voz-live');
-            const comboVoz = btnVoz ? btnVoz.closest('.combo-contenedor') : null;
-            if (comboVoz) {
-                comboVoz.style.width = '250px';
-                filaAjustes.insertBefore(comboVoz, filaControles);
-            }
-            
-            const velInput = document.getElementById('rng-velocidad');
-            const velContainer = velInput ? velInput.closest('.box-columnas') : null;
-            if (velContainer) {
-                velContainer.style.width = 'auto';
-                velContainer.style.justifyContent = 'center';
-                filaAjustes.insertBefore(velContainer, filaControles);
-            }
-            
-            const tonoInput = document.getElementById('rng-tono');
-            const tonoContainer = tonoInput ? tonoInput.closest('.box-columnas') : null;
-            if (tonoContainer) {
-                tonoContainer.style.width = 'auto';
-                tonoContainer.style.justifyContent = 'center';
-                filaAjustes.insertBefore(tonoContainer, filaControles);
-            }
-            
-            const pausaInput = document.getElementById('rng-pausa');
-            const pausaContainer = pausaInput ? pausaInput.closest('.box-columnas') : null;
-            if (pausaContainer) {
-                pausaContainer.style.width = 'auto';
-                pausaContainer.style.justifyContent = 'center';
-                filaAjustes.insertBefore(pausaContainer, filaControles);
-            }
-        }
-        
-        // 4. Ocultar paneles zen
-        const pVoz = document.getElementById('zen-panel-voz');
-        if(pVoz) {
-            pVoz.classList.remove('zen-active');
-            pVoz.style.display = 'none';
-        }
-        const pMenu = document.getElementById('zen-panel-menu');
-        if(pMenu) {
-            pMenu.classList.remove('zen-active');
-            pMenu.style.display = 'none';
-        }
+        _restaurarLayoutModoNormal();
     }
 }
 
@@ -217,101 +187,40 @@ function sincronizarSelectTraduccion(tipo, valor) {
 }
 
 // --- EXCLUSIVIDAD MUTUA UNIVERSAL DE LAS 8 FUNCIONES PRINCIPALES ---
+function _cerrarModalSiVisible(modalId, nombreFnCerrar) {
+    const el = document.getElementById(modalId);
+    if (!el) return;
+    if (el.style.display !== 'flex' && el.style.display !== 'block') return;
+    const fn = nombreFnCerrar ? window[nombreFnCerrar] : null;
+    if (typeof fn === 'function') fn();
+    else el.style.display = 'none';
+}
+
+function _cerrarDetailsSiAbierto(detailsId) {
+    const el = document.getElementById(detailsId);
+    if (el && el.open) el.open = false;
+}
+
+const _REGLAS_CIERRE_ZEN = [
+    { claves: ['mp3'], modales: [['modal-descarga', null]] },
+    { claves: ['teatro'], modales: [['modal-teatro', 'cerrarTeatro']] },
+    { claves: ['diccionario'], modales: [['modal-diccionario', 'cerrarDiccionario']] },
+    { claves: ['ocr'], details: ['zen-details-ocr'] },
+    { claves: ['traduccion'], details: ['zen-details-traduccion'], modales: [['modal-traduccion', 'cerrarModalTraduccion']] },
+    { claves: ['ia'], modales: [['modal-ia', 'cerrarModalIA']] },
+    { claves: ['filtros'], details: ['zen-details-filtros'] },
+    { claves: ['limites'], details: ['zen-details-limites'] },
+    { claves: ['notas', 'nota_rapida'], modales: [['modal-notas', 'cerrarModalNotas'], ['panel-nota-rapida', 'cerrarPanelNotaRapida']] },
+];
+
 // 1. Guardar MP3 | 2. Modo Teatro | 3. Diccionario | 4. OCR
 // 5. Traducción   | 6. LiraAI     | 7. Filtros     | 8. Límites
 function cerrarOtrasFuncionesPrincipales(excepto = '') {
-    // 1. Guardar MP3
-    if (excepto !== 'mp3') {
-        const modalDescarga = document.getElementById('modal-descarga');
-        if (modalDescarga && (modalDescarga.style.display === 'flex' || modalDescarga.style.display === 'block')) {
-            modalDescarga.style.display = 'none';
-        }
-    }
-
-    // 2. Modo Teatro
-    if (excepto !== 'teatro') {
-        const modalTeatro = document.getElementById('modal-teatro');
-        if (modalTeatro && (modalTeatro.style.display === 'flex' || modalTeatro.style.display === 'block')) {
-            if (typeof cerrarTeatro === 'function') {
-                cerrarTeatro();
-            } else {
-                modalTeatro.style.display = 'none';
-            }
-        }
-    }
-
-    // 3. Diccionario / Abreviaturas
-    if (excepto !== 'diccionario') {
-        const modalDicc = document.getElementById('modal-diccionario');
-        if (modalDicc && (modalDicc.style.display === 'flex' || modalDicc.style.display === 'block')) {
-            if (typeof cerrarDiccionario === 'function') {
-                cerrarDiccionario();
-            } else {
-                modalDicc.style.display = 'none';
-            }
-        }
-    }
-
-    // 4. OCR
-    if (excepto !== 'ocr') {
-        const dOCR = document.getElementById('zen-details-ocr');
-        if (dOCR && dOCR.open) dOCR.open = false;
-    }
-
-    // 5. Traducción
-    if (excepto !== 'traduccion') {
-        const dTrad = document.getElementById('zen-details-traduccion');
-        if (dTrad && dTrad.open) dTrad.open = false;
-        const modalTrad = document.getElementById('modal-traduccion');
-        if (modalTrad && (modalTrad.style.display === 'flex' || modalTrad.style.display === 'block')) {
-            if (typeof cerrarModalTraduccion === 'function') cerrarModalTraduccion();
-            else modalTrad.style.display = 'none';
-        }
-    }
-
-    // 6. LiraAI
-    if (excepto !== 'ia') {
-        const modalIA = document.getElementById('modal-ia');
-        if (modalIA && (modalIA.style.display === 'flex' || modalIA.style.display === 'block')) {
-            if (typeof cerrarModalIA === 'function') {
-                cerrarModalIA();
-            } else {
-                modalIA.style.display = 'none';
-            }
-        }
-    }
-
-    // 7. Filtros
-    if (excepto !== 'filtros') {
-        const dFilt = document.getElementById('zen-details-filtros');
-        if (dFilt && dFilt.open) dFilt.open = false;
-    }
-
-    // 8. Límites
-    if (excepto !== 'limites') {
-        const dLim = document.getElementById('zen-details-limites');
-        if (dLim && dLim.open) dLim.open = false;
-    }
-
-    // 9. Cuaderno de Notas y Nota Rápida
-    if (excepto !== 'notas' && excepto !== 'nota_rapida') {
-        const modalNotas = document.getElementById('modal-notas');
-        if (modalNotas && (modalNotas.style.display === 'flex' || modalNotas.style.display === 'block')) {
-            if (typeof cerrarModalNotas === 'function') {
-                cerrarModalNotas();
-            } else {
-                modalNotas.style.display = 'none';
-            }
-        }
-        const panelNotaRapida = document.getElementById('panel-nota-rapida');
-        if (panelNotaRapida && (panelNotaRapida.style.display === 'flex' || panelNotaRapida.style.display === 'block')) {
-            if (typeof cerrarPanelNotaRapida === 'function') {
-                cerrarPanelNotaRapida();
-            } else {
-                panelNotaRapida.style.display = 'none';
-            }
-        }
-    }
+    _REGLAS_CIERRE_ZEN.forEach(regla => {
+        if (regla.claves.includes(excepto)) return;
+        if (regla.details) regla.details.forEach(_cerrarDetailsSiAbierto);
+        if (regla.modales) regla.modales.forEach(([id, fn]) => _cerrarModalSiVisible(id, fn));
+    });
 }
 window.cerrarOtrasFuncionesPrincipales = cerrarOtrasFuncionesPrincipales;
 

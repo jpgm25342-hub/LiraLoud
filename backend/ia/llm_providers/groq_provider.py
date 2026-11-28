@@ -5,7 +5,13 @@
 import json
 import logging
 from typing import List, Dict, Any, Optional
-from .base_provider import BaseLLMProvider, crear_httpx_async_client, obtener_ssl_context
+from .base_provider import (
+    BaseLLMProvider,
+    construir_mensajes_openai,
+    crear_httpx_async_client,
+    obtener_ssl_context,
+    parsear_respuesta_openai_chat,
+)
 
 logger = logging.getLogger("LiraGroqProvider")
 
@@ -37,15 +43,9 @@ class GroqProvider(BaseLLMProvider):
         
         mod = modelo or self.default_model
         url = "https://api.groq.com/openai/v1/chat/completions"
-
-        messages = [{"role": "system", "content": system_prompt}]
-        for m in mensajes_previos:
-            messages.append({"role": m.get("role", "user"), "content": m.get("content", "")})
-        messages.append({"role": "user", "content": user_prompt})
-
         payload = {
             "model": mod,
-            "messages": messages,
+            "messages": construir_mensajes_openai(system_prompt, mensajes_previos, user_prompt),
             "temperature": max(0.0, min(1.0, temperatura)),
             "max_tokens": 8192
         }
@@ -60,73 +60,7 @@ class GroqProvider(BaseLLMProvider):
                     **self.ua_standard
                 }
             )
-
-            if resp.status_code != 200:
-                err_body = resp.text
-                try:
-                    err_json = resp.json()
-                    msg = err_json.get("error", {}).get("message", err_body)
-                except Exception:
-                    msg = err_body
-                raise RuntimeError(f"Error Groq ({resp.status_code}): {msg}")
-
-            headers = dict(resp.headers)
-            res_json = resp.json()
-            choices = res_json.get("choices", [])
-            if not choices:
-                raise ValueError("Groq no devolvió opciones de respuesta.")
-            
-            texto = choices[0].get("message", {}).get("content", "").strip()
-
-            usage = res_json.get("usage", {})
-            p_tok = int(usage.get("prompt_tokens", 0))
-            c_tok = int(usage.get("completion_tokens", 0))
-            t_tok = int(usage.get("total_tokens", p_tok + c_tok))
-
-            lim_hdr = headers.get("x-ratelimit-limit-tokens")
-            rem_hdr = headers.get("x-ratelimit-remaining-tokens")
-            lim_tok = int(lim_hdr) if lim_hdr and str(lim_hdr).isdigit() else 6000
-            rem_tok = int(rem_hdr) if rem_hdr and str(rem_hdr).isdigit() else max(0, lim_tok - t_tok)
-
-            return {
-                "texto": texto,
-                "usage": {
-                    "prompt_tokens": p_tok,
-                    "completion_tokens": c_tok,
-                    "total_tokens": t_tok
-                },
-                "rate_limits": {
-                    "limite_tokens": lim_tok,
-                    "tokens_restantes": rem_tok,
-                    "reset_tokens": headers.get("x-ratelimit-reset-tokens", "")
-                },
-                "modelo": mod
-            }
-
-    async def verificar_conexion_async(self, api_key: str, modelo: str = "") -> Dict[str, Any]:
-        key = str(api_key or "").strip()
-        if not key:
-            return {"exito": False, "error": "No se proporcionó API Key para la prueba de Groq."}
-        
-        mod = modelo or self.default_model
-        try:
-            res = await self.generar_respuesta_async(
-                system_prompt="Eres un asistente de verificación técnica.",
-                mensajes_previos=[],
-                user_prompt="Responde únicamente con la palabra: OK",
-                api_key=key,
-                modelo=mod
-            )
-            return {
-                "exito": True,
-                "proveedor": "groq",
-                "modelo": mod,
-                "respuesta": res.get("texto", "OK"),
-                "mensaje": f"¡Conexión exitosa con GROQ ({mod})!"
-            }
-        except Exception as e:
-            logger.error(f"❌ [GroqProvider] Error de verificación: {e}")
-            return {"exito": False, "proveedor": "groq", "error": str(e)}
+            return parsear_respuesta_openai_chat(resp, mod, "Groq", default_limit=6000, incluir_reset=True)
 
     async def obtener_modelos_async(self, api_key: str = "") -> Dict[str, Any]:
         key = str(api_key or "").strip()

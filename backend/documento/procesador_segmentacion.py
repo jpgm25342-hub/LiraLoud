@@ -133,6 +133,16 @@ def _evaluar_salto_por_bloque_o_linea(
             return True
     return False
 
+def _ajustar_final_por_siguiente_token(es_final, termina_suspensivos, termina_punto_dentro_paren, termina_dos_puntos, siguiente_txt):
+    if termina_suspensivos:
+        return bool(re.match(r'^[A-ZÁÉÍÓÚÜÑ¿¡«(]', siguiente_txt))
+    if termina_punto_dentro_paren and re.match(r'^[a-záéíóúüñ]', siguiente_txt):
+        return False
+    if es_final and not termina_dos_puntos and re.match(r'^[a-záéíóúüñ]', siguiente_txt):
+        return False
+    return es_final
+
+
 def _evaluar_transicion_siguiente_palabra(
     i,
     p,
@@ -157,12 +167,9 @@ def _evaluar_transicion_siguiente_palabra(
     siguiente_y0 = siguiente[1]
     siguiente_y1 = siguiente[3]
 
-    if termina_suspensivos:
-        es_final = bool(re.match(r'^[A-ZÁÉÍÓÚÜÑ¿¡«(]', siguiente_txt))
-    elif termina_punto_dentro_paren and re.match(r'^[a-záéíóúüñ]', siguiente_txt):
-        es_final = False
-    elif es_final and not termina_dos_puntos and re.match(r'^[a-záéíóúüñ]', siguiente_txt):
-        es_final = False
+    es_final = _ajustar_final_por_siguiente_token(
+        es_final, termina_suspensivos, termina_punto_dentro_paren, termina_dos_puntos, siguiente_txt
+    )
     sig_inicia_coma = bool(re.match(r'^[,;]', siguiente_txt))
 
     altura_referencia = max(altura_palabra, siguiente_y1 - siguiente_y0, 8.0)

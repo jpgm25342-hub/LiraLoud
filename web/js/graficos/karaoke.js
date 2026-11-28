@@ -21,9 +21,7 @@ function notificarBloqueoSoloLectura() {
 }
 window.notificarBloqueoSoloLectura = notificarBloqueoSoloLectura;
 
-function toggleModoSoloLectura(activo, silencioso = false) {
-    const nuevo = Boolean(activo);
-    window.modoSoloLecturaActivo = nuevo;
+function _sincronizarUIBotonSoloLectura(nuevo) {
     const btn = document.getElementById('btn-solo-lectura');
     if (btn) {
         btn.classList.toggle('activo', nuevo);
@@ -33,227 +31,165 @@ function toggleModoSoloLectura(activo, silencioso = false) {
         if (iconOn) iconOn.style.display = nuevo ? 'none' : 'inline-block';
         if (iconOff) iconOff.style.display = nuevo ? 'inline-block' : 'none';
     }
-
     const boxLimites = document.getElementById('box-limites-toolbar');
     if (boxLimites) {
         boxLimites.style.opacity = nuevo ? '0.4' : '';
         boxLimites.style.pointerEvents = nuevo ? 'none' : '';
     }
-
     document.querySelectorAll('.linea-corte-v, .linea-limite-h, #capa-cortes-v, #capa-limites-h').forEach(el => {
         el.style.display = nuevo ? 'none' : '';
     });
+}
+
+function _puedeRecargarPaginaSoloLectura(silencioso) {
+    return !silencioso && typeof rutaPDFActual !== 'undefined' && Boolean(rutaPDFActual)
+        && typeof cargarPagina === 'function' && typeof paginaActual === 'number';
+}
+
+function _aplicarTransicionSoloLectura(nuevo, silencioso) {
+    const capaKaraoke = document.getElementById('capa-karaoke');
+    if (capaKaraoke) capaKaraoke.style.display = nuevo ? 'none' : '';
 
     if (nuevo) {
-        if (typeof toggleCapturaCorte === 'function' && window.capturandoCorte) {
-            toggleCapturaCorte(false);
-        }
-        if (typeof detenerLectura === 'function') {
-            detenerLectura(true);
-        }
-        const capaKaraoke = document.getElementById('capa-karaoke');
-        if (capaKaraoke) capaKaraoke.style.display = 'none';
-        if (!silencioso && typeof rutaPDFActual !== 'undefined' && rutaPDFActual && typeof cargarPagina === 'function' && typeof paginaActual === 'number') {
-            cargarPagina(paginaActual);
-        }
-    } else {
-        if (typeof window.limpiarCapaTextoSoloLectura === 'function') {
-            window.limpiarCapaTextoSoloLectura();
-        }
-        const capaKaraoke = document.getElementById('capa-karaoke');
-        if (capaKaraoke) capaKaraoke.style.display = '';
-        if (!silencioso) {
-            if (typeof dibujarCortesEnCanvas === 'function') dibujarCortesEnCanvas();
-            if (typeof rutaPDFActual !== 'undefined' && rutaPDFActual && typeof cargarPagina === 'function' && typeof paginaActual === 'number') {
-                if (typeof window.mostrarOverlayCargaAudio === 'function') window.mostrarOverlayCargaAudio(true);
-                Promise.resolve(cargarPagina(paginaActual)).finally(() => {
-                    if (typeof window.mostrarOverlayCargaAudio === 'function') window.mostrarOverlayCargaAudio(false);
-                });
-            }
-        }
+        if (typeof toggleCapturaCorte === 'function' && window.capturandoCorte) toggleCapturaCorte(false);
+        if (typeof detenerLectura === 'function') detenerLectura(true);
+        if (_puedeRecargarPaginaSoloLectura(silencioso)) cargarPagina(paginaActual);
+        return;
     }
-
-    if (!silencioso && nuevo) {
-        notificarBloqueoSoloLectura();
+    if (typeof window.limpiarCapaTextoSoloLectura === 'function') window.limpiarCapaTextoSoloLectura();
+    if (!silencioso && typeof dibujarCortesEnCanvas === 'function') dibujarCortesEnCanvas();
+    if (_puedeRecargarPaginaSoloLectura(silencioso)) {
+        if (typeof window.mostrarOverlayCargaAudio === 'function') window.mostrarOverlayCargaAudio(true);
+        Promise.resolve(cargarPagina(paginaActual)).finally(() => {
+            if (typeof window.mostrarOverlayCargaAudio === 'function') window.mostrarOverlayCargaAudio(false);
+        });
     }
 }
+
+function toggleModoSoloLectura(activo, silencioso = false) {
+    const nuevo = Boolean(activo);
+    window.modoSoloLecturaActivo = nuevo;
+    _sincronizarUIBotonSoloLectura(nuevo);
+    _aplicarTransicionSoloLectura(nuevo, silencioso);
+    if (!silencioso && nuevo) notificarBloqueoSoloLectura();
+}
 window.toggleModoSoloLectura = toggleModoSoloLectura;
+
+function _resolverVelocidadLectura() {
+    if (typeof velocidadLectura !== 'undefined') return velocidadLectura;
+    const slider = document.getElementById('velocidad') || document.getElementById('rango-velocidad');
+    return slider ? parseFloat(slider.value) : 1.0;
+}
+
+function _buscarPrimeraVozLocalEnSelect(sel) {
+    if (!sel) return null;
+    return Array.from(sel.options).find(o => {
+        const vl = (o.value || '').toLowerCase();
+        const tl = (o.text || '').toLowerCase();
+        return !vl.includes('online') && !tl.includes('online') && !vl.includes('natural') && !tl.includes('natural')
+            && (vl.startsWith('local-') || vl.includes('kokoro') || vl.endsWith('.onnx'));
+    }) || null;
+}
+
+function _resolverVozSeguraParaLectura(vozForzada) {
+    let vozFinal = vozForzada;
+    if (!vozFinal && typeof vozIntencionUsuario !== 'undefined' && vozIntencionUsuario) vozFinal = vozIntencionUsuario;
+    if (!vozFinal) vozFinal = document.getElementById('selector-voz-live')?.value || "";
+
+    if (!window.modoPrivacidadEstricta) return vozFinal;
+    const esOnline = typeof window.esVozOnlineRestringida === 'function'
+        ? window.esVozOnlineRestringida(vozFinal)
+        : /online|natural/i.test(vozFinal || '');
+    if (!esOnline) return vozFinal;
+
+    const sel = document.getElementById('selector-voz-live');
+    const optSegura = _buscarPrimeraVozLocalEnSelect(sel);
+    if (optSegura?.value) {
+        vozFinal = optSegura.value;
+        if (sel) sel.value = vozFinal;
+        if (typeof vozIntencionUsuario !== 'undefined') vozIntencionUsuario = vozFinal;
+        if (typeof vozPredeterminada !== 'undefined') vozPredeterminada = vozFinal;
+    }
+    return vozFinal;
+}
+
+function _asegurarAudioCtxParaLectura(esTransicionAutomatica) {
+    if (!audioCtx) {
+        try { initAudioContext(); } catch (e) { console.warn("AudioCtx init error", e); }
+    } else if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+    if (!esTransicionAutomatica || !audioCtx || !window.nextScheduleTime || window.nextScheduleTime < audioCtx.currentTime) {
+        window.nextScheduleTime = audioCtx ? audioCtx.currentTime + 0.01 : 0;
+    }
+}
+
+function _iniciarReproduccionPiperDiferida(texto, callback, vozForzada, esTransicionAutomatica) {
+    const velFinal = _resolverVelocidadLectura();
+    const vozFinal = _resolverVozSeguraParaLectura(vozForzada);
+
+    if (!esTransicionAutomatica) detenerLectura(false);
+    if (piperQueueTimer) clearInterval(piperQueueTimer);
+    if (window.requestID_Karaoke) {
+        cancelAnimationFrame(window.requestID_Karaoke);
+        window.requestID_Karaoke = null;
+    }
+    window.partituraActual = null;
+    isPlayingPiper = false;
+    eel.detener_streaming_backend(false)();
+
+    window.onPiperEndCallback = callback;
+    _asegurarAudioCtxParaLectura(esTransicionAutomatica);
+
+    const teatroActivoBackend = Boolean(document.getElementById('chk-teatro-global')?.checked);
+    const obraActivaBackend = window.obraActualTeatro || "General";
+    if (typeof eel !== 'undefined' && eel.backend_trigger_duck) eel.backend_trigger_duck()();
+
+    isPlayingPiper = true;
+    window.colaEsperaPalabras = [];
+    const idiomaFiltroActual = document.getElementById('filtro-idioma')?.value || '';
+    eel.iniciar_streaming_hibrido(
+        texto, vozFinal, velFinal, window.currentReadingSession,
+        teatroActivoBackend, obraActivaBackend, idiomaFiltroActual
+    );
+    piperQueueTimer = setInterval(cicloConsumoPiper, 15);
+    window.piperSetupTimeout = null;
+}
+
+function _resetearEstadoVisualHablar(listaPalabrasVisuales, esTransicionAutomatica) {
+    window._karaokeAlignState = { cursorIdx: 0, charOffset: 0, lastPIdx: -1, cachedResult: null };
+    if (typeof currentReadingSession === 'undefined' || isNaN(currentReadingSession)) currentReadingSession = 0;
+    currentReadingSession++;
+    window.currentReadingSession = currentReadingSession;
+
+    if (typeof detenerAudioTutorial === 'function') detenerAudioTutorial();
+    leyendo = true;
+    if (typeof actualizarBotonPlayPause === 'function') actualizarBotonPlayPause(true);
+    if (!esTransicionAutomatica) window.nextScheduleTime = 0;
+    window.piperJsCompensacion = 1.0;
+
+    readingSessionID++;
+    if (window.requestID_Karaoke) { cancelAnimationFrame(window.requestID_Karaoke); window.requestID_Karaoke = null; }
+    window.partituraActual = null;
+    window.progresoFraccional = 0;
+    window.palabraKaraoke = (Array.isArray(listaPalabrasVisuales) && listaPalabrasVisuales.length > 0) ? listaPalabrasVisuales[0] : null;
+    dibujar();
+}
 
 async function hablarTexto(texto, callback, listaPalabrasVisuales = null, vozForzada = null, esTransicionAutomatica = false) {
     if (window.modoSoloLecturaActivo) {
         if (!esTransicionAutomatica) notificarBloqueoSoloLectura();
         return;
     }
+    if (window.piperSetupTimeout) { clearTimeout(window.piperSetupTimeout); window.piperSetupTimeout = null; }
 
-    // 🛡️ 1. SEMÁFORO DE ARRANQUE (Debounce)
-    // Si hay una orden de lectura pendiente de hace menos de 50ms, la cancelamos.
-    if (window.piperSetupTimeout) {
-        console.warn("🚦 [SEGURIDAD] Orden duplicada detectada. Cancelando la anterior.");
-        clearTimeout(window.piperSetupTimeout);
-        window.piperSetupTimeout = null;
-    }
+    _resetearEstadoVisualHablar(listaPalabrasVisuales, esTransicionAutomatica);
+    const textoLimpio = String(texto || "").trim();
+    if (!textoLimpio) { if (callback) callback(); return; }
 
-    // --- 2. PREPARACIÓN DE DATOS (Síncrono) ---
-    const normalizarTextoJS = (t) => String(t || "").toLowerCase().replace(/[^\p{L}\p{N}\p{M}]+/gu, '');
-    window._karaokeAlignState = { cursorIdx: 0, charOffset: 0, lastPIdx: -1, cachedResult: null };
-    if (!texto) texto = "";
-
-    // Actualizamos sesión global INMEDIATAMENTE para invalidar audios viejos
-    if (typeof currentReadingSession === 'undefined' || isNaN(currentReadingSession)) {
-        currentReadingSession = 0;
-    }
-    currentReadingSession++;
-    window.currentReadingSession = currentReadingSession;
-
-    // Detenemos la voz del tutorial si estuviera narrando un paso
-    if (typeof detenerAudioTutorial === 'function') {
-        detenerAudioTutorial();
-    }
-
-    // Detenemos visualmente (pero el audio real lo matamos dentro del timeout)
-    leyendo = true;
-    if (typeof actualizarBotonPlayPause === 'function') actualizarBotonPlayPause(true);
-    if (!esTransicionAutomatica) {
-        window.nextScheduleTime = 0;
-    }
-    window.piperJsCompensacion = 1.0;
-
-    readingSessionID++;
-    if (window.requestID_Karaoke) {
-        cancelAnimationFrame(window.requestID_Karaoke);
-        window.requestID_Karaoke = null;
-    }
-    window.partituraActual = null;
-    window.progresoFraccional = 0;
-    window.palabraKaraoke = (Array.isArray(listaPalabrasVisuales) && listaPalabrasVisuales.length > 0)
-        ? listaPalabrasVisuales[0]
-        : null;
-    dibujar();
-
-    let textoLimpio = "";
-    try { textoLimpio = String(texto).trim(); } catch (e) { textoLimpio = ""; }
-
-    console.log(`📡 [RECEPTOR] Texto en cola...`);
-
-    if (!textoLimpio) {
-        if (callback) callback();
-        return;
-    }
-
-    // --- 3. EJECUCIÓN DIFERIDA (El Blindaje) ---
-    // Envolvemos el arranque en una función para poder ejecutarla al instante en transiciones automáticas
-    // o con 50ms de colchón cuando es un clic manual del usuario.
-    const iniciarReproduccionPiper = () => {
-
-        // A) Recuperar variables globales
-        let velFinal = 1.0;
-        if (typeof velocidadLectura !== 'undefined') {
-            velFinal = velocidadLectura;
-        } else {
-            let slider = document.getElementById('velocidad') || document.getElementById('rango-velocidad');
-            if (slider) velFinal = parseFloat(slider.value);
-        }
-
-        // B) Determinar Voz
-        let vozFinal = vozForzada;
-        if (!vozFinal && typeof vozIntencionUsuario !== 'undefined' && vozIntencionUsuario) {
-            vozFinal = vozIntencionUsuario;
-        }
-        if (!vozFinal) {
-            let sel = document.getElementById('selector-voz-live');
-            vozFinal = (sel && sel.value) ? sel.value : "";
-        }
-
-        // 🛡️ BARRERA ABSOLUTA DE PRIVACIDAD: Si estamos en modo privacidad, impedir el uso de cualquier voz online
-        if (window.modoPrivacidadEstricta) {
-            const vLower = (vozFinal || '').toLowerCase();
-            const esOnline = vLower.includes('online') || vLower.includes('natural') ||
-                            (!vLower.startsWith('local-') && !vLower.endsWith('.onnx') && !vLower.includes('kokoro'));
-            if (esOnline) {
-                const sel = document.getElementById('selector-voz-live');
-                const optSegura = sel ? Array.from(sel.options).find(o => {
-                    const vl = (o.value || '').toLowerCase();
-                    const tl = (o.text || '').toLowerCase();
-                    return !vl.includes('online') && !tl.includes('online') && !vl.includes('natural') && !tl.includes('natural') &&
-                           (vl.startsWith('local-') || vl.includes('kokoro') || vl.endsWith('.onnx'));
-                }) : null;
-
-                if (optSegura && optSegura.value) {
-                    vozFinal = optSegura.value;
-                    if (sel) sel.value = vozFinal;
-                    if (typeof vozIntencionUsuario !== 'undefined') vozIntencionUsuario = vozFinal;
-                    if (typeof vozPredeterminada !== 'undefined') vozPredeterminada = vozFinal;
-                    console.log(`🛡️ [PRIVACIDAD KARAOKE] Voz desviada a local segura: ${vozFinal}`);
-                }
-            }
-        }
-
-        // C) Limpieza Física Real (Solo en arranque manual; en transición automática dejamos terminar A en audioCtx)
-        if (!esTransicionAutomatica) {
-            detenerLectura(false);
-        }
-        if (piperQueueTimer) clearInterval(piperQueueTimer);
-    if (window.requestID_Karaoke) {
-        cancelAnimationFrame(window.requestID_Karaoke);
-        window.requestID_Karaoke = null;
-    }
-    window.partituraActual = null;
-        isPlayingPiper = false;
-        eel.detener_streaming_backend(false)();
-
-        // D) Sincronización Final
-        window.onPiperEndCallback = callback;
-
-        console.log(`🚀 Motor Híbrido (Python V3) -> Voz: ${vozFinal} | Vel: ${velFinal}`);
-
-        if (!audioCtx) {
-            try { initAudioContext(); } catch (e) { console.warn("AudioCtx init error", e); }
-        } else if (audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
-
-        if (!esTransicionAutomatica || !audioCtx || !window.nextScheduleTime || window.nextScheduleTime < audioCtx.currentTime) {
-            window.nextScheduleTime = (audioCtx) ? audioCtx.currentTime + 0.01 : 0;
-        }
-
-        // E) DATOS PARA EL DIRECTOR PYTHON
-        // Importante: Leemos el checkbox AQUÍ y AHORA
-        const chkTeatro = document.getElementById('chk-teatro-global');
-        const teatroActivoBackend = chkTeatro ? chkTeatro.checked : false;
-        const obraActivaBackend = window.obraActualTeatro || "General";
-
-        console.log(`📤 [JS->PY] Enviando Teatro: ${teatroActivoBackend}`);
-
-        if (typeof eel !== 'undefined' && eel.backend_trigger_duck) {
-            eel.backend_trigger_duck()();
-        }
-
-        isPlayingPiper = true;
-        window.colaEsperaPalabras = [];
-
-        // F) LLAMADA ÚNICA A PYTHON
-        const idiomaFiltroActual = document.getElementById('filtro-idioma')?.value || '';
-        eel.iniciar_streaming_hibrido(
-            texto,
-            vozFinal,
-            velFinal,
-            window.currentReadingSession,
-            teatroActivoBackend,
-            obraActivaBackend,
-            idiomaFiltroActual
-        );
-
-        piperQueueTimer = setInterval(cicloConsumoPiper, 15);
-
-        // Limpiamos la referencia
-        window.piperSetupTimeout = null;
-    };
-
-    if (esTransicionAutomatica) {
-        iniciarReproduccionPiper();
-    } else {
-        window.piperSetupTimeout = setTimeout(iniciarReproduccionPiper, 50); // 50ms de "colchón" para absorber el doble clic
-    }
+    const lanzar = () => _iniciarReproduccionPiperDiferida(texto || "", callback, vozForzada, esTransicionAutomatica);
+    if (esTransicionAutomatica) lanzar();
+    else window.piperSetupTimeout = setTimeout(lanzar, 50);
 }
 
 
@@ -313,277 +249,206 @@ function obtenerTraduccionOptimizada(texto, origen, destino, motor) {
  * TITULO: DIRECTOR DE ORQUESTA (Blindado V5.0)
  * Diagnóstico: Protegido contra nulos y tipos incorrectos.
  */
-async function reproducirSecuencia(idx, esAutomatico = false) {
-    // 1. VERIFICACIÓN DE SEGURIDAD
-    if (!leyendo || !datosPagina || !datosPagina.oraciones) {
-        console.warn("⚠️ [SEC] Lectura detenida o datos no disponibles.");
-        detenerLectura();
+function _manejarFinDePaginaLectura() {
+    detenerLectura();
+    const chkAuto = document.getElementById('chk-auto-avance');
+    if (!window.tutorialActivo && chkAuto?.checked && datosPagina.oraciones.length > 0) {
+        if (window.timerAutoAvance) clearTimeout(window.timerAutoAvance);
+        window.autoContinuarLectura = true;
+        window.timerAutoAvance = setTimeout(() => cambiarPagina(1), 500);
+    }
+}
+
+function _calcularLimitesHorno(vozActual, traduccionActiva) {
+    if (traduccionActiva) return { limitePalabras: 150, limiteOraciones: 3 };
+    if (vozActual.includes("pocket") || vozActual.includes("kokoro")) return { limitePalabras: 80, limiteOraciones: 2 };
+    const isLocal = vozActual.startsWith("Local-");
+    return { limitePalabras: isLocal ? 1500 : 1200, limiteOraciones: isLocal ? 35 : 28 };
+}
+
+function _alimentarHornoOracionFutura(textoFuturo, vozActual, tradCfg) {
+    const idiomaFiltro = document.getElementById('filtro-idioma')?.value || '';
+    if (!tradCfg.activa || typeof eel.traducir_texto_backend !== 'function') {
+        eel.prender_horno_para_siguiente(textoFuturo, vozActual, velocidadLectura, idiomaFiltro);
         return;
     }
+    obtenerTraduccionOptimizada(textoFuturo, tradCfg.origen, tradCfg.destino, tradCfg.motor).then(res => {
+        if (!leyendo) return;
+        const txtTrad = res?.texto_traducido || res?.traducido || textoFuturo;
+        const objetivo = tradCfg.modo === 'solo_traduccion' ? txtTrad : textoFuturo;
+        eel.prender_horno_para_siguiente(objetivo, vozActual, velocidadLectura, idiomaFiltro);
+    }).catch(() => {
+        eel.prender_horno_para_siguiente(textoFuturo, vozActual, velocidadLectura, idiomaFiltro);
+    });
+}
 
-    // Validación de rango
-    if (idx < 0 || idx >= datosPagina.oraciones.length) {
-        console.log("🏁 [SEC] Fin de la página alcanzado.");
-        detenerLectura();
-
-        // Tarea 7: Modos de Ritmo (Auto-avance) - Solo si la página tenía oraciones reales y el tutorial no está activo
-        let chkAuto = document.getElementById('chk-auto-avance');
-        if (!window.tutorialActivo && chkAuto && chkAuto.checked && datosPagina.oraciones.length > 0) {
-            console.log("⏩ Auto-avanzando a la siguiente página...");
-            if (window.timerAutoAvance) clearTimeout(window.timerAutoAvance);
-            window.autoContinuarLectura = true;
-            window.timerAutoAvance = setTimeout(() => {
-                cambiarPagina(1);
-            }, 500);
+function _programarHornoProactivo(idx, vozActual, tradCfg) {
+    if (!vozActual) return;
+    const { limitePalabras, limiteOraciones } = _calcularLimitesHorno(vozActual, tradCfg.activa);
+    setTimeout(() => {
+        let palabrasEnHorno = 0;
+        for (let i = 1; i < limiteOraciones; i++) {
+            const oracionFutura = datosPagina.oraciones[idx + i];
+            if (!oracionFutura) break;
+            let textoFuturo = String(oracionFutura.texto || "");
+            if (oracionFutura.palabras?.length > 0) {
+                const resF = aplicarMascaraParentesis(oracionFutura.palabras);
+                if (resF.textoClean) textoFuturo = resF.textoClean;
+            }
+            if (!textoFuturo.trim()) continue;
+            if (palabrasEnHorno >= limitePalabras) break;
+            _alimentarHornoOracionFutura(textoFuturo, vozActual, tradCfg);
+            palabrasEnHorno += textoFuturo.split(' ').length;
         }
+    }, 30);
+}
 
-        return;
+function _aplicarAutoScrollOracion(idx) {
+    const chkSeguir = document.getElementById('chk-seguimiento');
+    if (!chkSeguir?.checked || !oracionActiva?.rects?.length || idx >= datosPagina.oraciones.length - 1) return;
+    try {
+        const yPos = oracionActiva.rects[0][1] * datosPagina.factor_zoom;
+        const visor = document.getElementById('visor-container');
+        if (visor) visor.scrollTo({ top: yPos - (visor.clientHeight / 3), behavior: 'smooth' });
+    } catch (e) { console.warn("Error en scroll:", e); }
+}
+
+function _mostrarSubtituloSiCorresponde(res, idxCapturado, tradCfg) {
+    const txt = res?.texto_traducido || res?.traducido;
+    if (txt && leyendo && indiceOracion === idxCapturado && typeof mostrarSubtituloTraduccion === 'function') {
+        mostrarSubtituloTraduccion(txt, res?.origen_detectado || tradCfg.origen, tradCfg.destino);
     }
+}
 
-    // 2. SINCRONIZACIÓN DE DATOS
+async function _reproducirModoSoloTraduccion(idx, textoClean, vozActual, tradCfg, esAutomatico) {
+    try {
+        const res = await obtenerTraduccionOptimizada(textoClean, tradCfg.origen, tradCfg.destino, tradCfg.motor);
+        if (!leyendo) return true;
+        const textoTraducido = res?.texto_traducido || res?.traducido || textoClean;
+        window.subtituloEsAudioDirecto = true;
+        if (typeof mostrarSubtituloTraduccion === 'function') {
+            mostrarSubtituloTraduccion(textoTraducido, res?.origen_detectado || tradCfg.origen, tradCfg.destino);
+        }
+        hablarTexto(textoTraducido, () => { if (leyendo) reproducirSecuencia(idx + 1, true); }, window.listaPalabrasActuales, vozActual, esAutomatico);
+        return true;
+    } catch (err) {
+        console.error("🔥 Error al traducir:", err);
+        return false;
+    }
+}
+
+function _reproducirModoAprendizajeDual(idx, textoParaAudio, textoClean, vozActual, tradCfg) {
+    const promesaTraduccion = obtenerTraduccionOptimizada(textoClean, tradCfg.origen, tradCfg.destino, tradCfg.motor);
+    window.subtituloEsAudioDirecto = false;
+
+    hablarTexto(textoParaAudio, async () => {
+        if (!leyendo) return;
+        try {
+            const res = await promesaTraduccion;
+            const textoTraducido = res?.texto_traducido || res?.traducido || "";
+            if (textoTraducido && leyendo) {
+                window.subtituloEsAudioDirecto = true;
+                if (typeof mostrarSubtituloTraduccion === 'function') {
+                    mostrarSubtituloTraduccion(textoTraducido, res?.origen_detectado || tradCfg.origen, tradCfg.destino);
+                }
+                setTimeout(() => {
+                    if (!leyendo) return;
+                    hablarTexto(textoTraducido, () => {
+                        if (leyendo) setTimeout(() => reproducirSecuencia(idx + 1), textoTraducido.length < 3 ? 50 : pausaPunto);
+                    }, null, vozActual);
+                }, Math.max(300, pausaPunto / 2));
+                return;
+            }
+        } catch (e) { console.warn("Error en aprendizaje dual:", e); }
+        if (leyendo) setTimeout(() => reproducirSecuencia(idx + 1), pausaPunto);
+    }, window.listaPalabrasActuales, vozActual);
+
+    promesaTraduccion.then(res => _mostrarSubtituloSiCorresponde(res, idx, tradCfg)).catch(() => {});
+}
+
+function _leerConfigTraduccionSecuencia() {
+    return {
+        activa: document.getElementById('chk-traduccion-activa')?.checked ?? false,
+        origen: document.getElementById('sel-traduccion-origen')?.value || 'auto',
+        destino: document.getElementById('sel-traduccion-destino')?.value || 'es',
+        motor: document.getElementById('sel-traduccion-motor')?.value || 'online',
+        modo: document.getElementById('sel-traduccion-modo')?.value || 'solo_traduccion',
+    };
+}
+
+function _prepararOracionActualSecuencia(idx) {
     if (window._oracionRecortadaActivaIdx !== undefined && window._oracionRecortadaActivaIdx !== -1 && window._oracionRecortadaActivaIdx !== idx) {
-        if (typeof window.restaurarOracionesRecortadas === 'function') {
-            window.restaurarOracionesRecortadas();
-        }
+        if (typeof window.restaurarOracionesRecortadas === 'function') window.restaurarOracionesRecortadas();
         window._oracionRecortadaActivaIdx = -1;
     }
     indiceOracion = idx;
     oracionActiva = datosPagina.oraciones[idx];
-    if (window.requestID_Karaoke) {
-        cancelAnimationFrame(window.requestID_Karaoke);
-        window.requestID_Karaoke = null;
-    }
+    if (window.requestID_Karaoke) { cancelAnimationFrame(window.requestID_Karaoke); window.requestID_Karaoke = null; }
     window.partituraActual = null;
     window.progresoFraccional = 0;
     window.palabraKaraoke = null;
+}
 
-    // --- ESCUDO ANTI-CRASH: Objeto nulo ---
-    if (!oracionActiva) {
-        console.error(`❌ [ERROR CRÍTICO] La oración ${idx} es NULL en el array. Saltando...`);
-        setTimeout(() => reproducirSecuencia(idx + 1), 10);
-        return;
-    }
-
-    const textoParaAudio = String(oracionActiva.texto || "");
-
-    // Preparación Visual + Filtrado de paréntesis/referencias/URLs
-    const resultado = aplicarMascaraParentesis(oracionActiva.palabras || []);
+function _prepararPalabrasVisualesSecuencia(oracion) {
+    const textoParaAudio = String(oracion.texto || "");
+    const resultado = aplicarMascaraParentesis(oracion.palabras || []);
     window.listaPalabrasActuales = resultado.listaVisual;
-    if (Array.isArray(window.listaPalabrasActuales) && window.listaPalabrasActuales.length > 0) {
+    if (window.listaPalabrasActuales.length > 0) {
         window.listaPalabrasActuales.forEach(p => { p.yaLeida = false; });
         window.palabraKaraoke = window.listaPalabrasActuales[0];
         dibujar();
     }
+    return { textoParaAudio, textoClean: resultado.textoClean || textoParaAudio };
+}
 
-    // textoClean = texto ya sin paréntesis, URLs, referencias (según opciones del usuario)
-    // Es el que debe ir al traductor para no traducir ruido tipográfico
-    const textoClean = resultado.textoClean || textoParaAudio;
+async function _despacharTraduccionSecuencia(idx, textoParaAudio, textoClean, vozActual, tradCfg, esAutomatico) {
+    if (!tradCfg.activa || typeof eel === 'undefined' || typeof eel.traducir_texto_backend !== 'function') {
+        return false;
+    }
+    if (tradCfg.modo === 'solo_traduccion') {
+        return await _reproducirModoSoloTraduccion(idx, textoClean, vozActual, tradCfg, esAutomatico);
+    }
+    if (tradCfg.modo === 'aprendizaje') {
+        _reproducirModoAprendizajeDual(idx, textoParaAudio, textoClean, vozActual, tradCfg);
+        return true;
+    }
+    window.subtituloEsAudioDirecto = false;
+    obtenerTraduccionOptimizada(textoClean, tradCfg.origen, tradCfg.destino, tradCfg.motor)
+        .then(res => _mostrarSubtituloSiCorresponde(res, idx, tradCfg))
+        .catch(e => console.warn("Error en subtítulo:", e));
+    return false;
+}
 
-    // VALIDACIÓN ANTI-VACÍO BLINDADA
-    if (window.listaPalabrasActuales.length === 0 && textoParaAudio.trim().length === 0) {
-        console.warn(`⏩ Oración ${idx} vacía. Saltando automáticamente.`);
+async function reproducirSecuencia(idx, esAutomatico = false) {
+    if (!leyendo || !datosPagina?.oraciones) { detenerLectura(); return; }
+    if (idx < 0 || idx >= datosPagina.oraciones.length) { _manejarFinDePaginaLectura(); return; }
+
+    _prepararOracionActualSecuencia(idx);
+    if (!oracionActiva) { setTimeout(() => reproducirSecuencia(idx + 1), 10); return; }
+
+    const { textoParaAudio, textoClean } = _prepararPalabrasVisualesSecuencia(oracionActiva);
+    if (window.listaPalabrasActuales.length === 0 && !textoParaAudio.trim()) {
         setTimeout(() => reproducirSecuencia(idx + 1), 10);
         return;
     }
 
-    // 4. REAFIRMACIÓN DE VOZ BASE
-    let vozActual = window.vozActivaSnapshot || vozPredeterminada;
-    if (!vozActual) {
-        let sel = document.getElementById('selector-voz-live');
-        vozActual = (sel && sel.value) ? sel.value : "";
-    }
+    const vozActual = window.vozActivaSnapshot || vozPredeterminada || document.getElementById('selector-voz-live')?.value || "";
+    const tradCfg = _leerConfigTraduccionSecuencia();
+    _programarHornoProactivo(idx, vozActual, tradCfg);
 
-    // 5. CACHÉ PROACTIVA BLINDADA (Para Local, Nube y Traducción)
-    const traduccionActiva = document.getElementById('chk-traduccion-activa')?.checked ?? false;
-    const tradOrigen = document.getElementById('sel-traduccion-origen')?.value || 'auto';
-    const tradDestino = document.getElementById('sel-traduccion-destino')?.value || 'es';
-    const tradMotor = document.getElementById('sel-traduccion-motor')?.value || 'online';
-    const tradModo = document.getElementById('sel-traduccion-modo')?.value || 'solo_traduccion';
-
-    if (vozActual) {
-        let isPocketOKokoro = vozActual.includes("pocket") || vozActual.includes("kokoro");
-        let isLocal = vozActual.startsWith("Local-");
-        
-        let limitePalabrasHorno = isLocal ? 1500 : 1200;
-        let limiteOracionesHorno = isLocal ? 35 : 28;
-
-        // Modelos neuronales pesados (Pocket / Kokoro): ventana corta para evitar saturación de CPU
-        if (isPocketOKokoro) {
-            limitePalabrasHorno = 80;
-            limiteOracionesHorno = 2; // Solo la siguiente oración inmediata
-        }
-
-        // [OPTIMIZACIÓN DE COLA DE TRADUCCIÓN: Ventana anticipada de 2 oraciones]
-        if (traduccionActiva) {
-            limitePalabrasHorno = 150; // Aprox 2 o 3 oraciones
-            limiteOracionesHorno = 3;  // Ventana deslizante de 2 oraciones siguientes
-        }
-
-        // Ejecutar en segundo plano con un ligero retraso para darle prioridad a la oración ACTUAL (Paso 7)
-        setTimeout(() => {
-            let palabrasEnHorno = 0;
-            for (let i = 1; i < limiteOracionesHorno; i++) {
-                let sigIdx = idx + i;
-                if (sigIdx >= datosPagina.oraciones.length) break;
-
-                let oracionFutura = datosPagina.oraciones[sigIdx];
-                if (!oracionFutura) continue;
-
-                let textoFuturo = String(oracionFutura.texto || "");
-
-                // Filtrar paréntesis/URLs del prefetch igual que la oración actual
-                if (oracionFutura.palabras && oracionFutura.palabras.length > 0) {
-                    const resFuturo = aplicarMascaraParentesis(oracionFutura.palabras);
-                    if (resFuturo.textoClean) textoFuturo = resFuturo.textoClean;
-                }
-
-                if (textoFuturo.trim().length > 0) {
-                    if (palabrasEnHorno < limitePalabrasHorno) {
-                        const idiomaFiltroHorno = document.getElementById('filtro-idioma')?.value || '';
-                        if (traduccionActiva && typeof eel.traducir_texto_backend === 'function') {
-                            // Pre-traducir anticipadamente en RAM y alimentar el horno de audio con el texto traducido
-                            obtenerTraduccionOptimizada(textoFuturo, tradOrigen, tradDestino, tradMotor).then(res => {
-                                if (!leyendo) return;
-                                const txtTrad = (res && (res.texto_traducido || res.traducido)) ? (res.texto_traducido || res.traducido) : textoFuturo;
-                                if (tradModo === 'solo_traduccion') {
-                                    eel.prender_horno_para_siguiente(txtTrad, vozActual, velocidadLectura, idiomaFiltroHorno);
-                                } else {
-                                    eel.prender_horno_para_siguiente(textoFuturo, vozActual, velocidadLectura, idiomaFiltroHorno);
-                                }
-                            }).catch(() => {
-                                eel.prender_horno_para_siguiente(textoFuturo, vozActual, velocidadLectura, idiomaFiltroHorno);
-                            });
-                        } else {
-                            eel.prender_horno_para_siguiente(textoFuturo, vozActual, velocidadLectura, idiomaFiltroHorno);
-                        }
-                        palabrasEnHorno += textoFuturo.split(' ').length;
-                    } else break;
-                }
-            }
-        }, 30);
-    }
-
-    // 6. ACTUALIZACIÓN UI
-    let cajaTexto = document.getElementById('texto-lectura');
+    const cajaTexto = document.getElementById('texto-lectura');
     if (cajaTexto) cajaTexto.innerText = textoParaAudio;
     dibujar();
+    _aplicarAutoScrollOracion(idx);
 
-    // Auto-Scroll Seguro
-    const chkSeguir = document.getElementById('chk-seguimiento');
-    if (chkSeguir && chkSeguir.checked && oracionActiva.rects && oracionActiva.rects.length > 0) {
-        try {
-            if (idx < datosPagina.oraciones.length - 1) {
-                let z = datosPagina.factor_zoom;
-                let yPos = oracionActiva.rects[0][1] * z;
-                let visor = document.getElementById('visor-container');
-                if (visor) visor.scrollTo({ top: yPos - (visor.clientHeight / 3), behavior: 'smooth' });
-            }
-        } catch (e) { console.warn("Error en scroll:", e); }
-    }
-
-    // Reset de contadores
     window.contadorPalabrasOracion = 0;
     window.colaEsperaPalabras = [];
     window.duracionAudioAcumulada = 0;
 
-    // 7. GESTIÓN DE TRADUCCIÓN HÍBRIDA & LECTURA DUAL
-    // ⚠️ IMPORTANTE: usamos textoClean (sin paréntesis/referencias) en lugar de textoParaAudio crudo
-    if (traduccionActiva && typeof eel !== 'undefined' && typeof eel.traducir_texto_backend === 'function') {
-        console.log("🌐 [TRADUCCIÓN ACTIVA NITRO]", { tradOrigen, tradDestino, tradMotor, tradModo, textoClean });
+    if (await _despacharTraduccionSecuencia(idx, textoParaAudio, textoClean, vozActual, tradCfg, esAutomatico)) return;
 
-        // -------------------------------------------------------------
-        // CASO A: MODO SOLO TRADUCCIÓN (Lee directamente el texto traducido)
-        // -------------------------------------------------------------
-        if (tradModo === 'solo_traduccion') {
-            try {
-                let res = await obtenerTraduccionOptimizada(textoClean, tradOrigen, tradDestino, tradMotor);
-                if (!leyendo) return;
-                const textoTraducido = (res && (res.texto_traducido || res.traducido)) ? (res.texto_traducido || res.traducido) : textoClean;
-
-                window.subtituloEsAudioDirecto = true;
-                if (typeof mostrarSubtituloTraduccion === 'function') {
-                    mostrarSubtituloTraduccion(textoTraducido, res?.origen_detectado || tradOrigen, tradDestino);
-                }
-                hablarTexto(textoTraducido, () => {
-                    if (leyendo) {
-                        reproducirSecuencia(idx + 1, true);
-                    }
-                }, window.listaPalabrasActuales, vozActual, esAutomatico);
-                return;
-            } catch (err) {
-                console.error("🔥 Error al traducir:", err);
-            }
-        }
-
-        // -------------------------------------------------------------
-        // CASO B: MODO APRENDIZAJE DUAL (Lee original + Lee traducción)
-        // -------------------------------------------------------------
-        if (tradModo === 'aprendizaje') {
-            let promesaTraduccion = obtenerTraduccionOptimizada(textoClean, tradOrigen, tradDestino, tradMotor);
-            window.subtituloEsAudioDirecto = false;
-
-            hablarTexto(textoParaAudio, async () => {
-                if (!leyendo) return;
-                try {
-                    const res = await promesaTraduccion;
-                    const textoTraducido = (res && (res.texto_traducido || res.traducido)) ? (res.texto_traducido || res.traducido) : "";
-                    if (textoTraducido && leyendo) {
-                        window.subtituloEsAudioDirecto = true;
-                        if (typeof mostrarSubtituloTraduccion === 'function') {
-                            mostrarSubtituloTraduccion(textoTraducido, res?.origen_detectado || tradOrigen, tradDestino);
-                        }
-                        // Pausa breve pedagógica entre el idioma original y la traducción
-                        setTimeout(() => {
-                            if (!leyendo) return;
-                            hablarTexto(textoTraducido, () => {
-                                if (leyendo) {
-                                    let pausa = (textoTraducido.length < 3) ? 50 : pausaPunto;
-                                    setTimeout(() => reproducirSecuencia(idx + 1), pausa);
-                                }
-                            }, null, vozActual);
-                        }, Math.max(300, pausaPunto / 2));
-                        return;
-                    }
-                } catch (e) {
-                    console.warn("Error en aprendizaje dual:", e);
-                }
-                if (leyendo) {
-                    setTimeout(() => reproducirSecuencia(idx + 1), pausaPunto);
-                }
-            }, window.listaPalabrasActuales, vozActual);
-
-            const idxCapturado = idx;
-            promesaTraduccion.then(res => {
-                if (res && (res.texto_traducido || res.traducido) && leyendo && typeof mostrarSubtituloTraduccion === 'function') {
-                    if (indiceOracion === idxCapturado) {
-                        mostrarSubtituloTraduccion(res.texto_traducido || res.traducido, res?.origen_detectado || tradOrigen, tradDestino);
-                    }
-                }
-            }).catch(() => { });
-            return;
-        }
-
-        // -------------------------------------------------------------
-        // CASO C: MODO SUBTÍTULOS TRADUCIDOS (Audio original + Subtítulo en pantalla)
-        // -------------------------------------------------------------
-        window.subtituloEsAudioDirecto = false;
-        const idxCapturadoC = idx;
-        obtenerTraduccionOptimizada(textoClean, tradOrigen, tradDestino, tradMotor).then(res => {
-            if (res && (res.texto_traducido || res.traducido) && leyendo && typeof mostrarSubtituloTraduccion === 'function') {
-                if (indiceOracion === idxCapturadoC) {
-                    mostrarSubtituloTraduccion(res.texto_traducido || res.traducido, res?.origen_detectado || tradOrigen, tradDestino);
-                }
-            }
-        }).catch(e => console.warn("Error en subtítulo:", e));
-    }
-
-    // DISPARO DE LECTURA ESTÁNDAR
     window.subtituloEsAudioDirecto = false;
-    hablarTexto(textoParaAudio, () => {
-        if (leyendo) {
-            reproducirSecuencia(idx + 1, true);
-        }
-    }, window.listaPalabrasActuales, vozActual, esAutomatico);
+    hablarTexto(textoParaAudio, () => { if (leyendo) reproducirSecuencia(idx + 1, true); }, window.listaPalabrasActuales, vozActual, esAutomatico);
 }
 
 
@@ -613,36 +478,23 @@ function toggleLectura() {
 }
 
 async function iniciarLectura() {
-    if (window.modoSoloLecturaActivo) {
-        notificarBloqueoSoloLectura();
-        return;
+    if (window.modoSoloLecturaActivo) { notificarBloqueoSoloLectura(); return; }
+    if (leyendo) return;
+    if (typeof bloqueoCambioPagina !== 'undefined' && bloqueoCambioPagina && window._promesaCargaPaginaActual) {
+        try { await window._promesaCargaPaginaActual; } catch (e) {}
     }
-    if (!leyendo) {
-        if (typeof bloqueoCambioPagina !== 'undefined' && bloqueoCambioPagina && window._promesaCargaPaginaActual) {
-            try {
-                await window._promesaCargaPaginaActual;
-            } catch (e) {}
-        }
-        if (leyendo) return;
-        if (!datosPagina || !datosPagina.oraciones || datosPagina.oraciones.length === 0) {
-            console.log("ℹ️ No hay oraciones disponibles en la página actual para lectura.");
-            return;
-        }
-        if (typeof eel !== 'undefined' && eel.backend_trigger_duck) {
-            eel.backend_trigger_duck()();
-        }
-        leyendo = true;
-        actualizarBotonPlayPause(true);
+    if (leyendo || !datosPagina?.oraciones?.length) return;
+    if (typeof eel !== 'undefined' && eel.backend_trigger_duck) eel.backend_trigger_duck()();
+    leyendo = true;
+    actualizarBotonPlayPause(true);
 
-        // Reanudación exacta usando el motor de "Reproducir desde aquí"
-        if (window.palabraPausada && typeof empezarDesdePalabra === 'function') {
-            let palabraReanudar = window.palabraPausada;
-            window.palabraPausada = null; // Limpiamos para el futuro
-            empezarDesdePalabra(palabraReanudar);
-        } else {
-            if (indiceOracion === -1) indiceOracion = 0;
-            reproducirSecuencia(indiceOracion);
-        }
+    if (window.palabraPausada && typeof empezarDesdePalabra === 'function') {
+        const palabraReanudar = window.palabraPausada;
+        window.palabraPausada = null;
+        empezarDesdePalabra(palabraReanudar);
+    } else {
+        if (indiceOracion === -1) indiceOracion = 0;
+        reproducirSecuencia(indiceOracion);
     }
 }
 
@@ -668,150 +520,112 @@ function limpiarTexto(texto) {
     return texto.trim();
 }
 
-function detenerLectura(resetUI = true) {
-    if (window.timerAutoAvance) {
-        clearTimeout(window.timerAutoAvance);
-        window.timerAutoAvance = null;
-    }
-
-    // 1. FILTRO DE TRANSICIÓN: Si es un cambio interno de frase, no matamos el audio
-    if (resetUI === false && leyendo === true) {
-        // Solo limpiamos el timer para evitar solapamientos
-        if (piperQueueTimer) clearInterval(piperQueueTimer);
-    if (window.requestID_Karaoke) {
-        cancelAnimationFrame(window.requestID_Karaoke);
-        window.requestID_Karaoke = null;
-    }
-    window.partituraActual = null;
-        return;
-    }
-
-    // 2. APAGADO GENERAL
-    if (leyendo && typeof eel !== 'undefined' && eel.backend_trigger_unduck) {
-        eel.backend_trigger_unduck()();
-    }
-    leyendo = false;
-    isPlayingPiper = false;
-    if (window.speechSynthesis) window.speechSynthesis.cancel();
-
+function _limpiarTimersKaraoke() {
     if (piperQueueTimer) clearInterval(piperQueueTimer);
     if (window.requestID_Karaoke) {
         cancelAnimationFrame(window.requestID_Karaoke);
         window.requestID_Karaoke = null;
     }
     window.partituraActual = null;
+}
 
-    // 3. LA GUILLOTINA DE AUDIO (Matar sonidos pendientes)
-    if (window.activeAudioSources && window.activeAudioSources.length > 0) {
-        window.activeAudioSources.forEach(src => {
-            try { src.stop(); } catch (e) { }
-        });
-        window.activeAudioSources = []; // Vaciamos la lista
+function _limpiarUILecturaTotal() {
+    if (typeof window.restaurarOracionesRecortadas === 'function') window.restaurarOracionesRecortadas();
+    window._oracionRecortadaActivaIdx = -1;
+    actualizarBotonPlayPause(false);
+    window.palabraPausada = null;
+    oracionActiva = null;
+    palabraKaraoke = null;
+    if (typeof limpiarSubtitulosTraduccion === 'function') limpiarSubtitulosTraduccion();
+    if (window.promesasTraduccionJS) window.promesasTraduccionJS.clear();
+    dibujar();
+}
+
+function _detenerFuentesAudioActivas(suspenderCtx) {
+    if (window.activeAudioSources?.length > 0) {
+        window.activeAudioSources.forEach(src => { try { src.stop(); } catch (e) {} });
+        window.activeAudioSources = [];
     }
-
-    // 4. GESTIÓN DEL CONTEXTO DE AUDIO
-    if (audioCtx && audioCtx.state !== 'closed' && resetUI) {
-        try { audioCtx.suspend(); } catch (e) { }
-        window.nextScheduleTime = 0; // Reiniciar reloj interno
-    }
-
-    // 5. AVISAR A PYTHON
-    try { eel.detener_streaming_backend()(); } catch (e) { }
-
-    // 6. LIMPIEZA VISUAL (Solo si es STOP total)
-    if (resetUI) {
-        if (typeof window.restaurarOracionesRecortadas === 'function') {
-            window.restaurarOracionesRecortadas();
-        }
-        window._oracionRecortadaActivaIdx = -1;
-        actualizarBotonPlayPause(false);
-        window.palabraPausada = null;
-        oracionActiva = null;
-        palabraKaraoke = null;
-        if (typeof limpiarSubtitulosTraduccion === 'function') limpiarSubtitulosTraduccion();
-        if (window.promesasTraduccionJS) window.promesasTraduccionJS.clear();
-        dibujar();
+    if (suspenderCtx && audioCtx && audioCtx.state !== 'closed') {
+        try { audioCtx.suspend(); } catch (e) {}
+        window.nextScheduleTime = 0;
     }
 }
 
+function detenerLectura(resetUI = true) {
+    if (window.timerAutoAvance) { clearTimeout(window.timerAutoAvance); window.timerAutoAvance = null; }
+    if (resetUI === false && leyendo === true) { _limpiarTimersKaraoke(); return; }
 
+    if (leyendo && typeof eel !== 'undefined' && eel.backend_trigger_unduck) eel.backend_trigger_unduck()();
+    leyendo = false;
+    isPlayingPiper = false;
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    _limpiarTimersKaraoke();
+    _detenerFuentesAudioActivas(resetUI);
+    try { eel.detener_streaming_backend()(); } catch (e) {}
+    if (resetUI) _limpiarUILecturaTotal();
+}
 
 function _normUnicodeKaraoke(t) {
     return String(t || "").toLowerCase().replace(/[^\p{L}\p{N}\p{M}]+/gu, '');
 }
 
-window.resolverPalabraKaraoke = function(pAudio, listaPalabras, pIdx = -1) {
-    if (!pAudio || !Array.isArray(listaPalabras) || listaPalabras.length === 0) return null;
+function _buscarPalabraKaraokeCJK(tokNorm, listaPalabras, st) {
+    const startIdx = Math.max(0, Math.min(st.cursorIdx, listaPalabras.length - 1));
+    const maxLook = Math.min(listaPalabras.length - 1, startIdx + 3);
+    for (let i = startIdx; i <= maxLook; i++) {
+        const bloque = listaPalabras[i];
+        const blockNorm = _normUnicodeKaraoke(bloque?.texto || "");
+        if (!blockNorm) continue;
+        const pos = blockNorm.indexOf(tokNorm, i === startIdx ? st.charOffset : 0);
+        if (pos === -1) continue;
+        const endPos = pos + tokNorm.length;
+        const res = blockNorm.length > tokNorm.length
+            ? Object.assign({}, bloque, { _cjkSlice: { startFrac: pos / blockNorm.length, endFrac: Math.min(1, endPos / blockNorm.length) } })
+            : bloque;
+        st.cursorIdx = endPos >= blockNorm.length ? i + 1 : i;
+        st.charOffset = endPos >= blockNorm.length ? 0 : endPos;
+        return res;
+    }
+    return null;
+}
 
+function _buscarPalabraKaraokeLatina(tokNorm, listaPalabras, st) {
+    const startIdx = Math.max(0, Math.min(st.cursorIdx, listaPalabras.length - 1));
+    const maxLook = Math.min(listaPalabras.length - 1, startIdx + 3);
+    for (let i = startIdx; i <= maxLook; i++) {
+        const palNorm = _normUnicodeKaraoke(listaPalabras[i]?.texto || "");
+        if (!palNorm) continue;
+        if (palNorm === tokNorm || palNorm.includes(tokNorm) || tokNorm.includes(palNorm)) {
+            st.cursorIdx = i + 1;
+            st.charOffset = 0;
+            return listaPalabras[i];
+        }
+    }
+    return null;
+}
+
+function _obtenerEstadoAlineacionKaraoke() {
     if (!window._karaokeAlignState) {
         window._karaokeAlignState = { cursorIdx: 0, charOffset: 0, lastPIdx: -1, cachedResult: null };
     }
-    const st = window._karaokeAlignState;
-    if (pIdx !== -1 && pIdx === st.lastPIdx && st.cachedResult) {
-        return st.cachedResult;
-    }
+    return window._karaokeAlignState;
+}
+
+window.resolverPalabraKaraoke = function(pAudio, listaPalabras, pIdx = -1) {
+    if (!pAudio || !Array.isArray(listaPalabras) || listaPalabras.length === 0) return null;
+    const st = _obtenerEstadoAlineacionKaraoke();
+    if (pIdx !== -1 && pIdx === st.lastPIdx && st.cachedResult) return st.cachedResult;
 
     const tokNorm = _normUnicodeKaraoke(pAudio.w || "");
-    const cjkRe = /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF]/;
-    const fallbackVIdx = (typeof pAudio.vIdx === 'number' && listaPalabras[pAudio.vIdx])
-        ? listaPalabras[pAudio.vIdx]
-        : null;
-
-    let resultado = fallbackVIdx;
+    let resultado = (typeof pAudio.vIdx === 'number') ? (listaPalabras[pAudio.vIdx] || null) : null;
 
     if (tokNorm) {
-        if (cjkRe.test(tokNorm)) {
-            const startIdx = Math.max(0, Math.min(st.cursorIdx, listaPalabras.length - 1));
-            const maxLook = Math.min(listaPalabras.length - 1, startIdx + 3);
-            for (let i = startIdx; i <= maxLook; i++) {
-                const bloque = listaPalabras[i];
-                const blockNorm = _normUnicodeKaraoke(bloque?.texto || "");
-                if (!blockNorm) continue;
-
-                const offset = (i === startIdx) ? st.charOffset : 0;
-                const pos = blockNorm.indexOf(tokNorm, offset);
-                if (pos !== -1) {
-                    const endPos = pos + tokNorm.length;
-                    if (blockNorm.length > tokNorm.length) {
-                        resultado = Object.assign({}, bloque, {
-                            _cjkSlice: {
-                                startFrac: pos / blockNorm.length,
-                                endFrac: Math.min(1, endPos / blockNorm.length)
-                            }
-                        });
-                    } else {
-                        resultado = bloque;
-                    }
-                    if (endPos >= blockNorm.length) {
-                        st.cursorIdx = i + 1;
-                        st.charOffset = 0;
-                    } else {
-                        st.cursorIdx = i;
-                        st.charOffset = endPos;
-                    }
-                    break;
-                }
-            }
-        } else {
-            const startIdx = Math.max(0, Math.min(st.cursorIdx, listaPalabras.length - 1));
-            const maxLook = Math.min(listaPalabras.length - 1, startIdx + 3);
-            for (let i = startIdx; i <= maxLook; i++) {
-                const palNorm = _normUnicodeKaraoke(listaPalabras[i]?.texto || "");
-                if (!palNorm) continue;
-                if (palNorm === tokNorm || palNorm.includes(tokNorm) || tokNorm.includes(palNorm)) {
-                    resultado = listaPalabras[i];
-                    st.cursorIdx = i + 1;
-                    st.charOffset = 0;
-                    break;
-                }
-            }
-        }
+        const esCjk = /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF]/.test(tokNorm);
+        const match = esCjk ? _buscarPalabraKaraokeCJK(tokNorm, listaPalabras, st) : _buscarPalabraKaraokeLatina(tokNorm, listaPalabras, st);
+        if (match) resultado = match;
     }
-
-    if (pIdx !== -1) {
-        st.lastPIdx = pIdx;
-        st.cachedResult = resultado;
-    }
+    if (pIdx !== -1) { st.lastPIdx = pIdx; st.cachedResult = resultado; }
     return resultado;
 };
 

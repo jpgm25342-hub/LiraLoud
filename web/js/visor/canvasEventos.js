@@ -7,135 +7,173 @@ window.zonaExcluidaTemp = null;
 window.puntoInicioZona = null;
 window.corteVSeleccionado = -1;
 
-canvas.addEventListener('mousedown', (e) => {
-    // Alt + Clic izquierdo: Iniciar dibujo de Zona Excluida (Caja Negra)
-    if (e.altKey && e.button === 0 && datosPagina) {
-        let rect = canvas.getBoundingClientRect(); 
-        let x = (e.clientX - rect.left) * (canvas.width / rect.width); 
-        let y = (e.clientY - rect.top) * (canvas.height / rect.height); 
-        let z = datosPagina.factor_zoom;
+function _obtenerCoordsCanvasEvento(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+    const z = datosPagina.factor_zoom;
+    return { x, y, z, pdfX: x / z, pdfY: y / z };
+}
+
+function _notificarToastCanvas(msg, icono) {
+    if (typeof window.mostrarToast === 'function') {
+        window.mostrarToast(msg, icono);
+    } else if (typeof mostrarToastLira === 'function') {
+        mostrarToastLira(msg, icono);
+    }
+}
+
+function _eliminarZonaExcluidaEnIndice(index) {
+    zonasExcluidas.splice(index, 1);
+    window.zonaExcluidaHoverIndex = -1;
+    window.hoverTacheZonaExcluida = -1;
+    guardarEstadoPaginaActual();
+    _notificarToastCanvas("Zona excluida eliminada", "borrar");
+    cargarPagina(paginaActual);
+}
+
+function _asegurarObjCorteV(index) {
+    let cur = cortesV[index];
+    if (typeof cur !== 'object' || cur === null) {
+        cur = { x: Number(cur), yMin: 0, yMax: datosPagina.alto_pagina_pdf };
+        cortesV[index] = cur;
+    }
+    return cur;
+}
+
+function _marcarHandleRecienPulsada() {
+    window.handleJustClicked = true;
+    setTimeout(() => { window.handleJustClicked = false; }, 150);
+}
+
+function _detectarHitCorteV(x, y, z, vis) {
+    for (let i = 0; i < cortesV.length; i++) {
+        const cv = cortesV[i];
+        const esObj = typeof cv === 'object' && cv !== null;
+        const cvX = (esObj ? cv.x : Number(cv)) * z;
+        const y0Vis = Math.max(vis.minY, (esObj && cv.yMin !== undefined ? cv.yMin : 0) * z);
+        const y1Vis = Math.min(vis.maxY, (esObj && cv.yMax !== undefined ? cv.yMax : datosPagina.alto_pagina_pdf) * z);
+        if (Math.abs(x - cvX) >= 18) continue;
+        if (Math.abs(y - y0Vis) < 16) return { tipo: 'V_TOP', index: i, cursor: 'row-resize' };
+        if (Math.abs(y - y1Vis) < 16) return { tipo: 'V_BOTTOM', index: i, cursor: 'row-resize' };
+        if (y >= y0Vis - 5 && y <= y1Vis + 5) return { tipo: 'V', index: i, cursor: 'col-resize' };
+    }
+    return null;
+}
+
+function _detectarHitLimiteH(x, y, z, vis) {
+    const sortedV = [
+        0,
+        ...cortesV.map(c => (typeof c === 'object' && c !== null ? c.x : Number(c))).sort((a, b) => a - b),
+        datosPagina.ancho_pagina_pdf
+    ];
+    const numCols = cortesV.length > 0 ? cortesV.length + 1 : 1;
+    for (let i = 0; i < numCols; i++) {
+        const key = i.toString();
+        const limits = limitesH[key];
+        if (!limits) continue;
+        const xMinVis = Math.max(sortedV[i] * z, vis.minX);
+        const xMaxVis = Math.min(sortedV[i + 1] * z, vis.maxX);
+        if (xMaxVis <= xMinVis || x < xMinVis - 10 || x > xMaxVis + 10) continue;
+
+        const yTopVis = Math.max(vis.minY, limits[0] * z);
+        const yBotVis = Math.min(vis.maxY, limits[1] * z);
+        const handleTopY = Math.max(vis.minY, Math.min(vis.maxY - 20, yTopVis - 10));
+        const handleBotY = Math.min(vis.maxY - 20, Math.max(vis.minY, yBotVis - 10));
+
+        if (Math.abs(y - yTopVis) < 18 || Math.abs(y - (handleTopY + 10)) < 22) {
+            return { tipo: 'H', colKey: key, cual: 0 };
+        }
+        if (Math.abs(y - yBotVis) < 18 || Math.abs(y - (handleBotY + 10)) < 22) {
+            return { tipo: 'H', colKey: key, cual: 1 };
+        }
+    }
+    return null;
+}
+
+function _buscarIndiceZonaExcluidaEnPunto(pdfX, pdfY) {
+    if (!Array.isArray(zonasExcluidas)) return -1;
+    for (let i = zonasExcluidas.length - 1; i >= 0; i--) {
+        const zBox = zonasExcluidas[i];
+        if (!zBox || zBox.length < 4) continue;
+        const x0 = Math.min(zBox[0], zBox[2]), x1 = Math.max(zBox[0], zBox[2]);
+        const y0 = Math.min(zBox[1], zBox[3]), y1 = Math.max(zBox[1], zBox[3]);
+        if (pdfX >= x0 && pdfX <= x1 && pdfY >= y0 && pdfY <= y1) return i;
+    }
+    return -1;
+}
+
+function _manejarMouseDownZonaExcluida(e, coords) {
+    if (e.altKey && e.button === 0) {
         window.creandoZonaExcluida = true;
-        window.puntoInicioZona = { x: x / z, y: y / z };
-        window.zonaExcluidaTemp = { x0: x / z, y0: y / z, x1: x / z, y1: y / z };
+        window.puntoInicioZona = { x: coords.pdfX, y: coords.pdfY };
+        window.zonaExcluidaTemp = { x0: coords.pdfX, y0: coords.pdfY, x1: coords.pdfX, y1: coords.pdfY };
         arrastre = { tipo: null, index: -1 };
         e.preventDefault();
         e.stopPropagation();
-        return;
+        return true;
     }
+    if (!Array.isArray(zonasExcluidas) || e.button !== 0) return false;
+    const inter = obtenerInteraccionZonaExcluida(coords.x, coords.y, coords.z);
+    if (!inter) return false;
 
-    // Comprobar interacción con zonas excluidas existentes (eliminar, redimensionar o mover)
-    if (Array.isArray(zonasExcluidas) && e.button === 0 && datosPagina) {
-        let rect = canvas.getBoundingClientRect(); 
-        let x = (e.clientX - rect.left) * (canvas.width / rect.width); 
-        let y = (e.clientY - rect.top) * (canvas.height / rect.height); 
-        let z = datosPagina.factor_zoom;
-        let inter = obtenerInteraccionZonaExcluida(x, y, z);
-        if (inter) {
-            if (inter.tipo === 'delete') {
-                zonasExcluidas.splice(inter.index, 1);
-                window.zonaExcluidaHoverIndex = -1;
-                window.hoverTacheZonaExcluida = -1;
-                guardarEstadoPaginaActual();
-                if (typeof window.mostrarToast === 'function') {
-                    window.mostrarToast("Zona excluida eliminada", "borrar");
-                } else if (typeof mostrarToastLira === 'function') {
-                    mostrarToastLira("Zona excluida eliminada", "borrar");
-                }
-                cargarPagina(paginaActual);
-                e.preventDefault();
-                e.stopPropagation();
-                return;
-            } else if (inter.tipo === 'resize' || inter.tipo === 'move') {
-                window.arrastreZonaExcluida = {
-                    index: inter.index,
-                    tipo: inter.tipo,
-                    handle: inter.handle,
-                    origBox: [...zonasExcluidas[inter.index]],
-                    startX: x / z,
-                    startY: y / z
-                };
-                arrastre = { tipo: null, index: -1 };
-                e.preventDefault();
-                e.stopPropagation();
-                return;
-            }
-        }
+    if (inter.tipo === 'delete') {
+        _eliminarZonaExcluidaEnIndice(inter.index);
+    } else if (inter.tipo === 'resize' || inter.tipo === 'move') {
+        window.arrastreZonaExcluida = {
+            index: inter.index,
+            tipo: inter.tipo,
+            handle: inter.handle,
+            origBox: [...zonasExcluidas[inter.index]],
+            startX: coords.pdfX,
+            startY: coords.pdfY
+        };
+        arrastre = { tipo: null, index: -1 };
+    } else {
+        return false;
     }
+    e.preventDefault();
+    e.stopPropagation();
+    return true;
+}
 
+function _manejarMouseDownSubrayadorOBorrador(e, coords) {
     if (window.modoSubrayadorActivo) {
-        if (e.button === 0) { // Clic izquierdo
+        if (e.button === 0) {
             window.isDraggingSubrayador = true;
-            if (palabraHover) {
-                window.startIndexSubrayado = datosPagina.palabras.indexOf(palabraHover);
-                window.currentIndexSubrayado = window.startIndexSubrayado;
-            } else {
-                window.startIndexSubrayado = -1;
-                window.currentIndexSubrayado = -1;
-            }
+            window.startIndexSubrayado = palabraHover ? datosPagina.palabras.indexOf(palabraHover) : -1;
+            window.currentIndexSubrayado = window.startIndexSubrayado;
             if (typeof iniciarTrazoSubrayado === 'function') iniciarTrazoSubrayado();
             if (typeof procesarPalabraSubrayado === 'function') procesarPalabraSubrayado();
-            return;
-        } else if (e.button === 2) { // Clic derecho (Borrado puntual)
-            let rect = canvas.getBoundingClientRect(); 
-            let x = (e.clientX - rect.left) * (canvas.width / rect.width); 
-            let y = (e.clientY - rect.top) * (canvas.height / rect.height); 
-            let z = datosPagina.factor_zoom;
-            if (typeof borrarSubrayadoPuntual === 'function') borrarSubrayadoPuntual(x / z, y / z);
-            return;
+            return true;
         }
-    } else if (window.modoBorradorActivo) {
-        if (e.button === 0 || e.button === 2) {
-            let rect = canvas.getBoundingClientRect(); 
-            let x = (e.clientX - rect.left) * (canvas.width / rect.width); 
-            let y = (e.clientY - rect.top) * (canvas.height / rect.height); 
-            let z = datosPagina.factor_zoom;
-            if (typeof borrarSubrayadoPuntual === 'function') borrarSubrayadoPuntual(x / z, y / z);
-            return;
+        if (e.button === 2) {
+            if (typeof borrarSubrayadoPuntual === 'function') borrarSubrayadoPuntual(coords.pdfX, coords.pdfY);
+            return true;
         }
+        return false;
     }
-    if (!datosPagina) return; 
-    let rect = canvas.getBoundingClientRect(); 
-    let x = (e.clientX - rect.left) * (canvas.width / rect.width); 
-    let y = (e.clientY - rect.top) * (canvas.height / rect.height); 
-    let z = datosPagina.factor_zoom;
+    if (window.modoBorradorActivo && (e.button === 0 || e.button === 2)) {
+        if (typeof borrarSubrayadoPuntual === 'function') borrarSubrayadoPuntual(coords.pdfX, coords.pdfY);
+        return true;
+    }
+    return false;
+}
+
+canvas.addEventListener('mousedown', (e) => {
+    if (!datosPagina) return;
+    const coords = _obtenerCoordsCanvasEvento(e);
+    if (_manejarMouseDownZonaExcluida(e, coords)) return;
+    if (_manejarMouseDownSubrayadorOBorrador(e, coords)) return;
+
     const vis = obtenerLimitesVisiblesRecorte();
-
-    // 1. Manijas y líneas de columnas verticales (V)
-    for (let i = 0; i < cortesV.length; i++) {
-        let cv = cortesV[i];
-        let cvX = (typeof cv === 'object' && cv !== null ? cv.x : Number(cv)) * z;
-        let y0_vis = Math.max(vis.minY, (typeof cv === 'object' && cv !== null && cv.yMin !== undefined ? cv.yMin : 0) * z);
-        let y1_vis = Math.min(vis.maxY, (typeof cv === 'object' && cv !== null && cv.yMax !== undefined ? cv.yMax : datosPagina.alto_pagina_pdf) * z);
-
-        if (Math.abs(x - cvX) < 18) {
-            // Clic en extremo superior (para mover yMin hacia arriba o abajo)
-            if (Math.abs(y - y0_vis) < 16) {
-                arrastre = { tipo: 'V_TOP', index: i };
-                window.corteVSeleccionado = i;
-                window.handleJustClicked = true;
-                setTimeout(() => { window.handleJustClicked = false; }, 150);
-                dibujar();
-                return;
-            }
-            // Clic en extremo inferior (para mover yMax hacia arriba o abajo)
-            if (Math.abs(y - y1_vis) < 16) {
-                arrastre = { tipo: 'V_BOTTOM', index: i };
-                window.corteVSeleccionado = i;
-                window.handleJustClicked = true;
-                setTimeout(() => { window.handleJustClicked = false; }, 150);
-                dibujar();
-                return;
-            }
-            // Clic sobre el cuerpo de la línea (para moverla horizontalmente)
-            if (y >= y0_vis - 5 && y <= y1_vis + 5) {
-                arrastre = { tipo: 'V', index: i };
-                window.corteVSeleccionado = i;
-                window.handleJustClicked = true;
-                setTimeout(() => { window.handleJustClicked = false; }, 150);
-                dibujar();
-                return;
-            }
-        }
+    const hitV = _detectarHitCorteV(coords.x, coords.y, coords.z, vis);
+    if (hitV) {
+        arrastre = { tipo: hitV.tipo, index: hitV.index };
+        window.corteVSeleccionado = hitV.index;
+        _marcarHandleRecienPulsada();
+        dibujar();
+        return;
     }
 
     if (window.corteVSeleccionado !== -1) {
@@ -143,244 +181,102 @@ canvas.addEventListener('mousedown', (e) => {
         dibujar();
     }
 
-    // 2. Manijas y líneas de límites horizontales (H)
-    let sortedV = [0, ...cortesV.map(c => (typeof c === 'object' && c !== null ? c.x : Number(c))).sort((a, b) => a - b), datosPagina.ancho_pagina_pdf]; 
-    let numCols = cortesV.length > 0 ? cortesV.length + 1 : 1; 
-    for (let i = 0; i < numCols; i++) { 
-        let key = i.toString(); 
-        let limits = limitesH[key]; 
-        if (!limits) continue; 
-        let xMin = sortedV[i] * z; 
-        let xMax = sortedV[i + 1] * z; 
-        let xMinVisual = Math.max(xMin, vis.minX);
-        let xMaxVisual = Math.min(xMax, vis.maxX);
-        if (xMaxVisual <= xMinVisual) continue;
-
-        let yTopReal = limits[0] * z; 
-        let yBottomReal = limits[1] * z; 
-        let yTopVisual = Math.max(vis.minY, yTopReal);
-        let yBottomVisual = Math.min(vis.maxY, yBottomReal);
-
-        let handleTopY = Math.max(vis.minY, Math.min(vis.maxY - 20, yTopVisual - 10));
-        let handleBotY = Math.min(vis.maxY - 20, Math.max(vis.minY, yBottomVisual - 10));
-
-        // Permite presionar y arrastrar en la manija o a lo largo de toda la línea superior
-        if (x >= xMinVisual - 10 && x <= xMaxVisual + 10 && (Math.abs(y - yTopVisual) < 18 || Math.abs(y - (handleTopY + 10)) < 22)) { 
-            arrastre = { tipo: 'H', colKey: key, cual: 0 }; 
-            window.handleJustClicked = true;
-            setTimeout(() => { window.handleJustClicked = false; }, 150);
-            return; 
-        } 
-        // Permite presionar y arrastrar en la manija o a lo largo de toda la línea inferior
-        if (x >= xMinVisual - 10 && x <= xMaxVisual + 10 && (Math.abs(y - yBottomVisual) < 18 || Math.abs(y - (handleBotY + 10)) < 22)) { 
-            arrastre = { tipo: 'H', colKey: key, cual: 1 }; 
-            window.handleJustClicked = true;
-            setTimeout(() => { window.handleJustClicked = false; }, 150);
-            return; 
-        } 
+    const hitH = _detectarHitLimiteH(coords.x, coords.y, coords.z, vis);
+    if (hitH) {
+        arrastre = hitH;
+        _marcarHandleRecienPulsada();
     }
 });
+
 canvas.addEventListener('mousemove', (e) => {
-    if (!datosPagina) return; 
-    let rect = canvas.getBoundingClientRect(); 
-    let x = (e.clientX - rect.left) * (canvas.width / rect.width); 
-    let y = (e.clientY - rect.top) * (canvas.height / rect.height); 
-    let z = datosPagina.factor_zoom;
+    if (!datosPagina) return;
+    const { x, y, z } = _obtenerCoordsCanvasEvento(e);
     const vis = obtenerLimitesVisiblesRecorte();
 
-    // Si estamos dibujando una zona excluida con Alt
     if (window.creandoZonaExcluida && window.puntoInicioZona) {
         const visor = document.getElementById('visor-container');
         if (visor) {
             const vRect = visor.getBoundingClientRect();
-            if (e.clientY > vRect.bottom - 45) {
-                visor.scrollTop += 16;
-            } else if (e.clientY < vRect.top + 45) {
-                visor.scrollTop -= 16;
-            }
+            if (e.clientY > vRect.bottom - 45) visor.scrollTop += 16;
+            else if (e.clientY < vRect.top + 45) visor.scrollTop -= 16;
         }
-        let curPdfX = Math.max(0, Math.min(datosPagina.ancho_pagina_pdf, x / z));
-        let curPdfY = Math.max(0, Math.min(datosPagina.alto_pagina_pdf, y / z));
         window.zonaExcluidaTemp = {
             x0: window.puntoInicioZona.x,
             y0: window.puntoInicioZona.y,
-            x1: curPdfX,
-            y1: curPdfY
+            x1: Math.max(0, Math.min(datosPagina.ancho_pagina_pdf, x / z)),
+            y1: Math.max(0, Math.min(datosPagina.alto_pagina_pdf, y / z))
         };
         dibujar();
         return;
     }
 
-    // Si estamos redimensionando o moviendo una zona excluida existente
     if (window.arrastreZonaExcluida) {
-        let info = window.arrastreZonaExcluida;
-        let curPdfX = x / z;
-        let curPdfY = y / z;
-        let dx = curPdfX - info.startX;
-        let dy = curPdfY - info.startY;
-        let [origX0, origY0, origX1, origY1] = info.origBox;
-        let minX = Math.min(origX0, origX1);
-        let maxX = Math.max(origX0, origX1);
-        let minY = Math.min(origY0, origY1);
-        let maxY = Math.max(origY0, origY1);
-        let maxPdfW = datosPagina.ancho_pagina_pdf;
-        let maxPdfH = datosPagina.alto_pagina_pdf;
+        const info = window.arrastreZonaExcluida;
+        const dx = (x / z) - info.startX;
+        const dy = (y / z) - info.startY;
+        const [origX0, origY0, origX1, origY1] = info.origBox;
+        const minX = Math.min(origX0, origX1), maxX = Math.max(origX0, origX1);
+        const minY = Math.min(origY0, origY1), maxY = Math.max(origY0, origY1);
+        const maxPdfW = datosPagina.ancho_pagina_pdf;
+        const maxPdfH = datosPagina.alto_pagina_pdf;
 
         let newBox = [minX, minY, maxX, maxY];
-
         if (info.tipo === 'move') {
-            let bw = maxX - minX;
-            let bh = maxY - minY;
-            let nx = Math.max(0, Math.min(maxPdfW - bw, minX + dx));
-            let ny = Math.max(0, Math.min(maxPdfH - bh, minY + dy));
+            const bw = maxX - minX, bh = maxY - minY;
+            const nx = Math.max(0, Math.min(maxPdfW - bw, minX + dx));
+            const ny = Math.max(0, Math.min(maxPdfH - bh, minY + dy));
             newBox = [nx, ny, nx + bw, ny + bh];
         } else if (info.tipo === 'resize') {
-            let h = info.handle;
-            let nx0 = minX, ny0 = minY, nx1 = maxX, ny1 = maxY;
-            if (h.includes('w')) nx0 = Math.max(0, Math.min(maxX - 8, minX + dx));
-            if (h.includes('e')) nx1 = Math.max(minX + 8, Math.min(maxPdfW, maxX + dx));
-            if (h.includes('n')) ny0 = Math.max(0, Math.min(maxY - 8, minY + dy));
-            if (h.includes('s')) ny1 = Math.max(minY + 8, Math.min(maxPdfH, maxY + dy));
+            const h = info.handle;
+            const nx0 = h.includes('w') ? Math.max(0, Math.min(maxX - 8, minX + dx)) : minX;
+            const nx1 = h.includes('e') ? Math.max(minX + 8, Math.min(maxPdfW, maxX + dx)) : maxX;
+            const ny0 = h.includes('n') ? Math.max(0, Math.min(maxY - 8, minY + dy)) : minY;
+            const ny1 = h.includes('s') ? Math.max(minY + 8, Math.min(maxPdfH, maxY + dy)) : maxY;
             newBox = [nx0, ny0, nx1, ny1];
         }
-
         zonasExcluidas[info.index] = newBox;
         dibujar();
         return;
     }
 
-    if (arrastre.tipo === 'V') { 
-        let minX_pdf = (vis.minX + 20) / z;
-        let maxX_pdf = (vis.maxX - 20) / z;
-        let valX = Math.max(minX_pdf, Math.min(maxX_pdf, x / z));
-        let cur = cortesV[arrastre.index];
-        if (typeof cur === 'object' && cur !== null) {
-            cur.x = valX;
-        } else {
-            cortesV[arrastre.index] = { x: valX, yMin: 0, yMax: datosPagina.alto_pagina_pdf };
-        }
-        dibujar(); 
-        return; 
-    } 
-    if (arrastre.tipo === 'V_TOP') {
-        let cur = cortesV[arrastre.index];
-        if (typeof cur !== 'object' || cur === null) {
-            cur = { x: Number(cur), yMin: 0, yMax: datosPagina.alto_pagina_pdf };
-            cortesV[arrastre.index] = cur;
-        }
-        let valY = Math.max(0, Math.min(cur.yMax - 20, y / z));
-        cur.yMin = valY;
+    if (arrastre.tipo === 'V') {
+        const valX = Math.max((vis.minX + 20) / z, Math.min((vis.maxX - 20) / z, x / z));
+        _asegurarObjCorteV(arrastre.index).x = valX;
         dibujar();
         return;
     }
-    if (arrastre.tipo === 'V_BOTTOM') {
-        let cur = cortesV[arrastre.index];
-        if (typeof cur !== 'object' || cur === null) {
-            cur = { x: Number(cur), yMin: 0, yMax: datosPagina.alto_pagina_pdf };
-            cortesV[arrastre.index] = cur;
-        }
-        let valY = Math.max(cur.yMin + 20, Math.min(datosPagina.alto_pagina_pdf, y / z));
-        cur.yMax = valY;
+    if (arrastre.tipo === 'V_TOP' || arrastre.tipo === 'V_BOTTOM') {
+        const cur = _asegurarObjCorteV(arrastre.index);
+        if (arrastre.tipo === 'V_TOP') cur.yMin = Math.max(0, Math.min(cur.yMax - 20, y / z));
+        else cur.yMax = Math.max(cur.yMin + 20, Math.min(datosPagina.alto_pagina_pdf, y / z));
         dibujar();
         return;
-    } 
-    if (arrastre.tipo === 'H') { 
-        let maxPdfH = datosPagina.alto_pagina_pdf;
+    }
+    if (arrastre.tipo === 'H') {
+        const maxPdfH = datosPagina.alto_pagina_pdf;
         let targetKeys = e.shiftKey ? Object.keys(limitesH || {}) : [arrastre.colKey];
         if (targetKeys.length === 0) targetKeys = [arrastre.colKey];
-        for (let k of targetKeys) {
+        for (const k of targetKeys) {
             if (!limitesH[k]) continue;
             if (arrastre.cual === 0) {
-                if (y <= vis.minY + 15) {
-                    limitesH[k][0] = 0;
-                } else {
-                    let val = y / z;
-                    let maxVal = (limitesH[k][1] || maxPdfH) - 15;
-                    limitesH[k][0] = Math.max(0, Math.min(maxVal, val));
-                }
+                limitesH[k][0] = y <= vis.minY + 15 ? 0 : Math.max(0, Math.min((limitesH[k][1] || maxPdfH) - 15, y / z));
             } else {
-                if (y >= vis.maxY - 15) {
-                    limitesH[k][1] = maxPdfH;
-                } else {
-                    let val = y / z;
-                    let minVal = (limitesH[k][0] || 0) + 15;
-                    limitesH[k][1] = Math.max(minVal, Math.min(maxPdfH, val));
-                }
+                limitesH[k][1] = y >= vis.maxY - 15 ? maxPdfH : Math.max((limitesH[k][0] || 0) + 15, Math.min(maxPdfH, y / z));
             }
         }
-        dibujar(); 
-        return; 
+        dibujar();
+        return;
     }
 
-    // Feedback de cursor sobre manijas y líneas
     let hoveredHandle = false;
     if (!arrastre.tipo && !window.modoSubrayadorActivo && !window.modoBorradorActivo) {
-        // Manijas y líneas verticales
-        for (let i = 0; i < cortesV.length; i++) {
-            let cv = cortesV[i];
-            let cvX = (typeof cv === 'object' && cv !== null ? cv.x : Number(cv)) * z;
-            let y0_vis = Math.max(vis.minY, (typeof cv === 'object' && cv !== null && cv.yMin !== undefined ? cv.yMin : 0) * z);
-            let y1_vis = Math.min(vis.maxY, (typeof cv === 'object' && cv !== null && cv.yMax !== undefined ? cv.yMax : datosPagina.alto_pagina_pdf) * z);
-
-            if (Math.abs(x - cvX) < 18) {
-                if (Math.abs(y - y0_vis) < 16 || Math.abs(y - y1_vis) < 16) {
-                    canvas.style.cursor = 'row-resize';
-                    hoveredHandle = true;
-                    break;
-                }
-                if (y >= y0_vis - 5 && y <= y1_vis + 5) {
-                    canvas.style.cursor = 'col-resize';
-                    hoveredHandle = true;
-                    break;
-                }
-            }
-        }
-        // Manijas y líneas horizontales
-        if (!hoveredHandle) {
-            // Helper para normalizar cortesV (número plano u objeto con rango vertical)
-        const obtenerObjCorteV = (cv) => {
-            if (typeof cv === 'object' && cv !== null) {
-                return {
-                    x: cv.x,
-                    yMin: cv.yMin !== undefined ? cv.yMin : 0,
-                    yMax: cv.yMax !== undefined ? cv.yMax : datosPagina.alto_pagina_pdf
-                };
-            }
-            return { x: Number(cv), yMin: 0, yMax: datosPagina.alto_pagina_pdf };
-        };
-
-        let sortedV = [0, ...cortesV.map(c => (typeof c === 'object' && c !== null ? c.x : Number(c))).sort((a, b) => a - b), datosPagina.ancho_pagina_pdf];
-
-            let numCols = cortesV.length > 0 ? cortesV.length + 1 : 1;
-            for (let i = 0; i < numCols; i++) {
-                let key = i.toString();
-                let limits = limitesH[key];
-                if (!limits) continue;
-                let xMin = sortedV[i] * z;
-                let xMax = sortedV[i + 1] * z;
-                let xMinVisual = Math.max(xMin, vis.minX);
-                let xMaxVisual = Math.min(xMax, vis.maxX);
-                if (xMaxVisual <= xMinVisual) continue;
-
-                let yTopReal = limits[0] * z;
-                let yBottomReal = limits[1] * z;
-                let yTopVisual = Math.max(vis.minY, yTopReal);
-                let yBottomVisual = Math.min(vis.maxY, yBottomReal);
-
-                let handleTopY = Math.max(vis.minY, Math.min(vis.maxY - 20, yTopVisual - 10));
-                let handleBotY = Math.min(vis.maxY - 20, Math.max(vis.minY, yBottomVisual - 10));
-
-                if (x >= xMinVisual - 10 && x <= xMaxVisual + 10 && (Math.abs(y - yTopVisual) < 18 || Math.abs(y - (handleTopY + 10)) < 22)) {
-                    canvas.style.cursor = 'row-resize';
-                    hoveredHandle = true;
-                    break;
-                }
-                if (x >= xMinVisual - 10 && x <= xMaxVisual + 10 && (Math.abs(y - yBottomVisual) < 18 || Math.abs(y - (handleBotY + 10)) < 22)) {
-                    canvas.style.cursor = 'row-resize';
-                    hoveredHandle = true;
-                    break;
-                }
-            }
+        const hitV = _detectarHitCorteV(x, y, z, vis);
+        if (hitV) {
+            canvas.style.cursor = hitV.cursor;
+            hoveredHandle = true;
+        } else if (_detectarHitLimiteH(x, y, z, vis)) {
+            canvas.style.cursor = 'row-resize';
+            hoveredHandle = true;
         }
     }
 
@@ -560,81 +456,37 @@ window.addEventListener('mouseup', () => {
 
 // Soporte de rueda del mouse (wheel) para hacer scroll mientras se marca con Alt
 canvas.addEventListener('wheel', (e) => {
-    if (window.creandoZonaExcluida && datosPagina) {
-        let rect = canvas.getBoundingClientRect();
-        let z = datosPagina.factor_zoom;
-        let curX = (e.clientX - rect.left) * (canvas.width / rect.width);
-        let curY = (e.clientY - rect.top) * (canvas.height / rect.height);
-        if (window.zonaExcluidaTemp) {
-            window.zonaExcluidaTemp.x1 = Math.max(0, Math.min(datosPagina.ancho_pagina_pdf, curX / z));
-            window.zonaExcluidaTemp.y1 = Math.max(0, Math.min(datosPagina.alto_pagina_pdf, curY / z));
-            dibujar();
-        }
+    if (window.creandoZonaExcluida && datosPagina && window.zonaExcluidaTemp) {
+        const { pdfX, pdfY } = _obtenerCoordsCanvasEvento(e);
+        window.zonaExcluidaTemp.x1 = Math.max(0, Math.min(datosPagina.ancho_pagina_pdf, pdfX));
+        window.zonaExcluidaTemp.y1 = Math.max(0, Math.min(datosPagina.alto_pagina_pdf, pdfY));
+        dibujar();
     }
 }, { passive: true });
 
 canvas.addEventListener('contextmenu', (e) => {
-    // Si se hace clic derecho sobre una zona excluida, eliminarla directamente
-    if (Array.isArray(zonasExcluidas) && datosPagina) {
-        let rect = canvas.getBoundingClientRect(); 
-        let x = (e.clientX - rect.left) * (canvas.width / rect.width); 
-        let y = (e.clientY - rect.top) * (canvas.height / rect.height); 
-        let z = datosPagina.factor_zoom;
-        let pdfX = x / z, pdfY = y / z;
-        for (let i = zonasExcluidas.length - 1; i >= 0; i--) {
-            let zBox = zonasExcluidas[i];
-            if (!zBox || zBox.length < 4) continue;
-            let x0 = Math.min(zBox[0], zBox[2]), x1 = Math.max(zBox[0], zBox[2]);
-            let y0 = Math.min(zBox[1], zBox[3]), y1 = Math.max(zBox[1], zBox[3]);
-            if (pdfX >= x0 && pdfX <= x1 && pdfY >= y0 && pdfY <= y1) {
-                e.preventDefault();
-                e.stopPropagation();
-                zonasExcluidas.splice(i, 1);
-                window.zonaExcluidaHoverIndex = -1;
-                window.hoverTacheZonaExcluida = -1;
-                guardarEstadoPaginaActual();
-                if (typeof window.mostrarToast === 'function') {
-                    window.mostrarToast("Zona excluida eliminada", "borrar");
-                } else if (typeof mostrarToastLira === 'function') {
-                    mostrarToastLira("Zona excluida eliminada", "borrar");
-                }
-                cargarPagina(paginaActual);
-                return;
-            }
+    if (datosPagina) {
+        const { pdfX, pdfY } = _obtenerCoordsCanvasEvento(e);
+        const idxZona = _buscarIndiceZonaExcluidaEnPunto(pdfX, pdfY);
+        if (idxZona !== -1) {
+            e.preventDefault();
+            e.stopPropagation();
+            _eliminarZonaExcluidaEnIndice(idxZona);
+            return;
         }
     }
-
-    if (window.modoSubrayadorActivo || window.modoBorradorActivo) {
-        e.preventDefault();
-    }
+    if (window.modoSubrayadorActivo || window.modoBorradorActivo) e.preventDefault();
 });
+
 canvas.addEventListener('click', (e) => {
     const menuCtx = document.getElementById('menu-contextual');
-    if (menuCtx && menuCtx.style.display === 'block') {
-        menuCtx.style.display = 'none';
-    }
-
-    // Si estamos en modo subrayador o borrador, ignoramos el clic para no activar lectura
+    if (menuCtx && menuCtx.style.display === 'block') menuCtx.style.display = 'none';
     if (window.modoSubrayadorActivo || window.modoBorradorActivo) return;
-
-    // Si estamos arrastrando una columna o acabamos de pulsar una manija, ignoramos el clic para evitar saltos accidentales
     if (arrastre.tipo || window.handleJustClicked) return;
 
-    // Si el clic cayó dentro de una zona excluida, ignorar lectura
-    if (Array.isArray(zonasExcluidas) && datosPagina && e) {
-        let rect = canvas.getBoundingClientRect(); 
-        let x = (e.clientX - rect.left) * (canvas.width / rect.width); 
-        let y = (e.clientY - rect.top) * (canvas.height / rect.height); 
-        let z = datosPagina.factor_zoom;
-        let pdfX = x / z, pdfY = y / z;
-        for (let zBox of zonasExcluidas) {
-            if (!zBox || zBox.length < 4) continue;
-            let x0 = Math.min(zBox[0], zBox[2]), x1 = Math.max(zBox[0], zBox[2]);
-            let y0 = Math.min(zBox[1], zBox[3]), y1 = Math.max(zBox[1], zBox[3]);
-            if (pdfX >= x0 && pdfX <= x1 && pdfY >= y0 && pdfY <= y1) {
-                return;
-            }
-        }
+    if (datosPagina && e) {
+        const { pdfX, pdfY } = _obtenerCoordsCanvasEvento(e);
+        if (_buscarIndiceZonaExcluidaEnPunto(pdfX, pdfY) !== -1) return;
     }
 
     if (palabraHover) {

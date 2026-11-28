@@ -25,7 +25,7 @@ function abrirDiccionario() {
                 renderizarSidebar();
                 renderizarTerminos();
             }
-        }).catch(() => {});
+        }).catch(() => { });
     }
 
     // Ordenamos el dibujo inmediato de la interfaz
@@ -36,7 +36,7 @@ function abrirDiccionario() {
 }
 function cerrarDiccionario() {
     if (dbDiccionario && dbDiccionario["Este Libro"] && typeof eel !== 'undefined' && typeof eel.guardar_reglas_libro === 'function') {
-        eel.guardar_reglas_libro(null, 'diccionario', dbDiccionario["Este Libro"])().catch(() => {});
+        eel.guardar_reglas_libro(null, 'diccionario', dbDiccionario["Este Libro"])().catch(() => { });
     }
     document.getElementById('modal-diccionario').style.display = 'none';
     modoEdicionDiccionario = false;
@@ -180,101 +180,92 @@ function cambiarPestañaDiccionario(nombreSec) {
 }
 window.cambiarPestañaDiccionario = cambiarPestañaDiccionario;
 
+function _crearTabSeccionDiccionario(nombreSec) {
+    const div = document.createElement('div');
+    div.className = `tab-item ${seccionActual === nombreSec ? 'active' : ''}`;
+    div.draggable = true;
+    div.dataset.nombre = nombreSec;
+
+    div.addEventListener('dragstart', () => div.classList.add('dragging-tab'));
+    div.addEventListener('dragend', () => {
+        div.classList.remove('dragging-tab');
+        guardarOrdenSecciones();
+    });
+    div.addEventListener('click', (e) => {
+        if (e.target.closest('.tab-acciones')) return;
+        cambiarPestañaDiccionario(nombreSec);
+    });
+    div.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        mostrarMenuContextualTab(e, nombreSec);
+    });
+    div.addEventListener('dblclick', async (e) => {
+        if (e.target.closest('.tab-acciones')) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const nuevoNombre = await liraPrompt(`Cambiar nombre del bloque "${nombreSec}":`, nombreSec, 'etiqueta');
+        if (nuevoNombre && nuevoNombre.trim() && nuevoNombre.trim() !== nombreSec) {
+            renombrarSeccion(nombreSec, nuevoNombre.trim());
+        }
+    });
+
+    const esEsteLibro = nombreSec === "Este Libro";
+    const iconoReloj = esEsteLibro
+        ? `<svg width="14" height="14" style="vertical-align:-2px; margin-right:5px;"><title>Abreviaturas y reglas exclusivas de este PDF</title><use href="assets/icons.svg#icon-clock"></use></svg>`
+        : '';
+    const tituloTab = esEsteLibro
+        ? "Reglas exclusivas de este PDF (clic derecho o doble clic para cambiar nombre)"
+        : "Clic derecho o doble clic para cambiar nombre";
+
+    div.innerHTML = `
+        <span class="tab-nombre-texto" style="flex:1;" title="${tituloTab}">
+            ${iconoReloj}${nombreSec}
+        </span>
+        <div class="tab-acciones">
+            <input type="checkbox" ${dbDiccionario[nombreSec].active ? 'checked' : ''} 
+                   onchange="toggleSeccion('${nombreSec}', this.checked); event.stopPropagation();"
+                   style="cursor:pointer;" title="Activar/desactivar bloque">
+            
+            <span onclick="eliminarSeccion('${nombreSec}'); event.stopPropagation();" 
+                  class="btn-cerrar-bloque" title="Eliminar bloque">✕</span>
+        </div>
+    `;
+    return div;
+}
+
+function _habilitarDragReordenarTabsDiccionario(lista) {
+    if (lista.dataset.dragEnabled) return;
+    lista.dataset.dragEnabled = "true";
+    lista.addEventListener('dragover', e => {
+        e.preventDefault();
+        const draggingTab = document.querySelector('.dragging-tab');
+        if (!draggingTab) return;
+
+        const tabs = [...lista.querySelectorAll('.tab-item:not(.dragging-tab)')];
+        const afterElement = tabs.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = e.clientY - box.top - box.height / 2;
+            return (offset < 0 && offset > closest.offset) ? { offset, element: child } : closest;
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+
+        if (afterElement == null) lista.appendChild(draggingTab);
+        else lista.insertBefore(draggingTab, afterElement);
+    });
+}
+
 function renderizarSidebar() {
-    let lista = document.getElementById('lista-secciones');
+    const lista = document.getElementById('lista-secciones');
     if (!lista) return;
     lista.innerHTML = "";
 
     const fragment = document.createDocumentFragment();
-
     const seccionesOrdenadas = Object.keys(dbDiccionario).sort((a, b) => (a === "Este Libro" ? -1 : b === "Este Libro" ? 1 : 0));
-    for (let nombreSec of seccionesOrdenadas) {
-        let div = document.createElement('div');
-        div.className = `tab-item ${seccionActual === nombreSec ? 'active' : ''}`;
-        div.draggable = true;
-        div.dataset.nombre = nombreSec;
-
-        div.addEventListener('dragstart', () => div.classList.add('dragging-tab'));
-        div.addEventListener('dragend', () => {
-            div.classList.remove('dragging-tab');
-            guardarOrdenSecciones();
-        });
-
-        // Cambio instantáneo al hacer clic en cualquier parte de la pestaña
-        div.addEventListener('click', (e) => {
-            if (e.target.closest('.tab-acciones')) return; // Evitar disparar si se hace clic en checkbox o eliminar
-            cambiarPestañaDiccionario(nombreSec);
-        });
-
-        // Menú contextual con clic derecho para Renombrar / Eliminar
-        div.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            mostrarMenuContextualTab(e, nombreSec);
-        });
-
-        // Doble clic directo para renombrar
-        div.addEventListener('dblclick', async (e) => {
-            if (e.target.closest('.tab-acciones')) return;
-            e.preventDefault();
-            e.stopPropagation();
-            const nuevoNombre = await liraPrompt(`Cambiar nombre del bloque "${nombreSec}":`, nombreSec, 'etiqueta');
-            if (nuevoNombre && nuevoNombre.trim() && nuevoNombre.trim() !== nombreSec) {
-                renombrarSeccion(nombreSec, nuevoNombre.trim());
-            }
-        });
-
-        const iconoReloj = nombreSec === "Este Libro"
-            ? `<svg width="14" height="14" style="vertical-align:-2px; margin-right:5px;"><title>Abreviaturas y reglas exclusivas de este PDF</title><use href="assets/icons.svg#icon-clock"></use></svg>`
-            : '';
-
-        const tituloTab = nombreSec === "Este Libro"
-            ? "Reglas exclusivas de este PDF (clic derecho o doble clic para cambiar nombre)"
-            : "Clic derecho o doble clic para cambiar nombre";
-
-        div.innerHTML = `
-            <span class="tab-nombre-texto" style="flex:1;" title="${tituloTab}">
-                ${iconoReloj}${nombreSec}
-            </span>
-            <div class="tab-acciones">
-                <input type="checkbox" ${dbDiccionario[nombreSec].active ? 'checked' : ''} 
-                       onchange="toggleSeccion('${nombreSec}', this.checked); event.stopPropagation();"
-                       style="cursor:pointer;" title="Activar/desactivar bloque">
-                
-                <span onclick="eliminarSeccion('${nombreSec}'); event.stopPropagation();" 
-                      class="btn-cerrar-bloque" title="Eliminar bloque">✕</span>
-            </div>
-        `;
-        fragment.appendChild(div);
+    for (const nombreSec of seccionesOrdenadas) {
+        fragment.appendChild(_crearTabSeccionDiccionario(nombreSec));
     }
     lista.appendChild(fragment);
-
-    // Habilitar Reordenamiento Visual de Pestañas
-    if (!lista.dataset.dragEnabled) {
-        lista.dataset.dragEnabled = "true";
-        lista.addEventListener('dragover', e => {
-            e.preventDefault();
-            const draggingTab = document.querySelector('.dragging-tab');
-            if (!draggingTab) return;
-
-            const tabs = [...lista.querySelectorAll('.tab-item:not(.dragging-tab)')];
-            const afterElement = tabs.reduce((closest, child) => {
-                const box = child.getBoundingClientRect();
-                const offset = e.clientY - box.top - box.height / 2;
-                if (offset < 0 && offset > closest.offset) {
-                    return { offset: offset, element: child };
-                } else {
-                    return closest;
-                }
-            }, { offset: Number.NEGATIVE_INFINITY }).element;
-
-            if (afterElement == null) {
-                lista.appendChild(draggingTab);
-            } else {
-                lista.insertBefore(draggingTab, afterElement);
-            }
-        });
-    }
+    _habilitarDragReordenarTabsDiccionario(lista);
 }
 
 let timeoutGuardadoSecciones = null;

@@ -1,56 +1,64 @@
+function _leerFlagsMascaraParentesis() {
+    return {
+        saltarUrls: document.getElementById('chk-urls')?.checked,
+        saltarParen: document.getElementById('chk-paren')?.checked,
+        saltarCorch: document.getElementById('chk-corch')?.checked,
+        saltarLlaves: document.getElementById('chk-llaves')?.checked,
+        saltarBarras: document.getElementById('chk-barras')?.checked,
+        saltarSup: document.getElementById('chk-superindices')?.checked ?? document.getElementById('chk-referencias')?.checked ?? true,
+        saltarSub: document.getElementById('chk-subindices')?.checked ?? false
+    };
+}
+
+function _abrirBloquesEnTexto(niveles, txtRaw, flags) {
+    if (flags.saltarParen) niveles.paren += (txtRaw.match(/\(/g) || []).length;
+    if (flags.saltarCorch) niveles.corch += (txtRaw.match(/\[/g) || []).length;
+    if (flags.saltarLlaves) niveles.llaves += (txtRaw.match(/\{/g) || []).length;
+}
+
+function _cerrarBloquesEnTexto(niveles, txtRaw, flags) {
+    if (flags.saltarParen) niveles.paren = Math.max(0, niveles.paren - (txtRaw.match(/\)/g) || []).length);
+    if (flags.saltarCorch) niveles.corch = Math.max(0, niveles.corch - (txtRaw.match(/\]/g) || []).length);
+    if (flags.saltarLlaves) niveles.llaves = Math.max(0, niveles.llaves - (txtRaw.match(/\}/g) || []).length);
+}
+
+function _limpiarPalabraMascaraAudio(txtRaw, flags) {
+    let pAudio = txtRaw;
+    if (flags.saltarSup) {
+        pAudio = pAudio.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, '').replace(/\[\d{1,3}\]/g, '');
+    }
+    if (flags.saltarSub) {
+        pAudio = pAudio.replace(/[₀₁₂₃₄₅₆₇₈₉]+/g, '');
+    }
+    if (flags.saltarBarras) {
+        pAudio = pAudio.split('/').join(' ').split('\\').join(' ');
+    }
+    return pAudio;
+}
+
 function aplicarMascaraParentesis(listaOriginalPalabras) {
-    let listaFiltrada = [];
-    let textoParaAudio = "";
-    let nivelParen = 0;
-    let nivelCorch = 0;
-    let nivelLlaves = 0;
-
-    const saltarUrls = document.getElementById('chk-urls')?.checked;
-    const saltarParen = document.getElementById('chk-paren')?.checked;
-    const saltarCorch = document.getElementById('chk-corch')?.checked;
-    const saltarLlaves = document.getElementById('chk-llaves')?.checked;
-    const saltarBarras = document.getElementById('chk-barras')?.checked;
-    const saltarSup = document.getElementById('chk-superindices')?.checked ?? document.getElementById('chk-referencias')?.checked ?? true;
-    const saltarSub = document.getElementById('chk-subindices')?.checked ?? false;
-
     if (!listaOriginalPalabras) return { listaVisual: [], textoClean: "" };
 
+    const flags = _leerFlagsMascaraParentesis();
+    const niveles = { paren: 0, corch: 0, llaves: 0 };
+    const listaFiltrada = [];
+    let textoParaAudio = "";
+
     for (let i = 0; i < listaOriginalPalabras.length; i++) {
-        let p = listaOriginalPalabras[i];
-        let txtRaw = p.texto.trim();
+        const p = listaOriginalPalabras[i];
+        const txtRaw = p.texto.trim();
         if (!txtRaw) continue;
 
-        // 1. APERTURA DE BLOQUES (Soporta anidamiento seguro sin romper niveles)
-        if (saltarParen) nivelParen += (txtRaw.match(/\(/g) || []).length;
-        if (saltarCorch) nivelCorch += (txtRaw.match(/\[/g) || []).length;
-        if (saltarLlaves) nivelLlaves += (txtRaw.match(/\{/g) || []).length;
+        _abrirBloquesEnTexto(niveles, txtRaw, flags);
+        const ignorarBloque = (niveles.paren > 0) || (niveles.corch > 0) || (niveles.llaves > 0);
+        const esLink = flags.saltarUrls && /https?:\/\/\S+|www\.\S+|\b\w+\.(?:com|org|net|edu|gov|mx)\b/i.test(txtRaw);
 
-        const ignorarBloque = (nivelParen > 0) || (nivelCorch > 0) || (nivelLlaves > 0);
-        let esLink = saltarUrls && /https?:\/\/\S+|www\.\S+|\b\w+\.(?:com|org|net|edu|gov|mx)\b/i.test(txtRaw);
-
-        // 2. PROCESAMIENTO (Detección de Voz y Silencios del Usuario)
         if (!ignorarBloque && !esLink) {
-            let p_audio = txtRaw;
-
-            if (saltarSup) {
-                p_audio = p_audio.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, '').replace(/\[\d{1,3}\]/g, '');
-            }
-            if (saltarSub) {
-                p_audio = p_audio.replace(/[₀₁₂₃₄₅₆₇₈₉]+/g, '');
-            }
-
-            // A) Filtro Manual de Barras (UI)
-            if (saltarBarras) {
-                p_audio = p_audio.split('/').join(' ').split('\\').join(' ');
-            }
-
-            // B) Validación de Contenido Real
-            const tieneContenido = /[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ⁰¹²³⁴⁵⁶⁷⁸⁹]/.test(p_audio);
-            const esDecimalProtegido = p_audio.includes("punto");
-
-            if (tieneContenido || esDecimalProtegido) {
+            const pAudio = _limpiarPalabraMascaraAudio(txtRaw, flags);
+            const tieneContenido = /[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ⁰¹²³⁴⁵⁶⁷⁸⁹]/.test(pAudio);
+            if (tieneContenido || pAudio.includes("punto")) {
                 listaFiltrada.push(p);
-                textoParaAudio += p_audio + " ";
+                textoParaAudio += pAudio + " ";
             } else {
                 p.yaLeida = true;
             }
@@ -58,13 +66,10 @@ function aplicarMascaraParentesis(listaOriginalPalabras) {
             p.yaLeida = true;
         }
 
-        // 3. CIERRE DE BLOQUES (Decremento protegido contra negativos)
-        if (saltarParen) nivelParen = Math.max(0, nivelParen - (txtRaw.match(/\)/g) || []).length);
-        if (saltarCorch) nivelCorch = Math.max(0, nivelCorch - (txtRaw.match(/\]/g) || []).length);
-        if (saltarLlaves) nivelLlaves = Math.max(0, nivelLlaves - (txtRaw.match(/\}/g) || []).length);
-    } // <--- Cierre del FOR
+        _cerrarBloquesEnTexto(niveles, txtRaw, flags);
+    }
     return { listaVisual: listaFiltrada, textoClean: textoParaAudio.trim() };
-} // <--- Cierre de la FUNCIÓN
+}
 
 function obtenerEstadosFiltros() {
     return {
@@ -120,129 +125,44 @@ function sincronizarVolumen(val) {
  * CIERRE UNIVERSAL (Tecla Escape)
  * Cierra diccionarios o configuraciones abiertas.
  */
+const _MODALES_CIERRE_ESC = [
+    { id: 'modal-creditos', fn: 'cerrarModalCreditos', modo: 'visible' },
+    { id: 'modal-ver-captura', fn: 'cerrarModalVerCaptura', modo: 'visible' },
+    { id: 'modal-guardar-captura', fn: 'cerrarModalGuardarCaptura', modo: 'visible' },
+    { id: 'modal-ocr-rango', fn: 'cerrarModalRangoOCR', modo: 'visible' },
+    { id: 'modal-ocr-decision', fn: 'cerrarModalOCRDecision', modo: 'visible' },
+    { id: 'modal-ocr-progreso', fn: 'cancelarBatchOCRYLeer', modo: 'visible' },
+    { id: 'modal-tienda-ollama', fn: 'cerrarTiendaOllama', modo: 'visible', fallbackOcultar: true },
+    { id: 'modal-tienda-voces', fn: 'cerrarTiendaVoces', modo: 'visible', fallbackOcultar: true },
+    { id: 'modal-subrayados', fn: 'cerrarPanelSubrayados', modo: 'visible' },
+    { id: 'panel-busqueda', fn: 'cerrarBuscadorPDF', modo: 'visible' },
+    { id: 'modal-teatro', fn: 'cerrarTeatro', modo: 'flex', log: '[UI] Modo Teatro cerrado vía ESC' },
+    { id: 'modal-diccionario', fn: 'cerrarDiccionario', modo: 'flex', log: '[UI] Diccionario cerrado vía ESC' },
+    { id: 'modalConfig', fn: 'cerrarConfiguracion', modo: 'flex', log: '[UI] Configuración cerrada vía ESC' },
+    { id: 'modal-descarga', fn: 'cerrarModalDescarga', modo: 'flex', log: '[UI] Descarga cerrada vía ESC' },
+    { id: 'modal-ia', fn: 'cerrarModalIA', modo: 'flex', log: '[UI] LiraAI cerrado vía ESC' },
+    { id: 'panel-nota-rapida', fn: 'cerrarPanelNotaRapida', modo: 'flex' },
+    { id: 'modal-notas', fn: 'cerrarModalNotas', modo: 'flex' }
+];
+
+function _modalAbiertoParaEsc(el, modo) {
+    if (!el) return false;
+    if (modo === 'flex') return el.style.display === 'flex';
+    return el.style.display !== 'none' && getComputedStyle(el).display !== 'none';
+}
+
 function cerrarModalesAbiertos() {
-    // Si hay un diálogo modal de LiraDialog abierto, no cerrar paneles subyacentes
     const dlgOverlay = document.getElementById('lira-dialog-overlay');
-    if (dlgOverlay && dlgOverlay.classList.contains('activo')) {
-        return true;
-    }
+    if (dlgOverlay && dlgOverlay.classList.contains('activo')) return true;
 
-    const estaVisible = (el) => Boolean(el && el.style.display !== 'none' && getComputedStyle(el).display !== 'none');
+    for (const regla of _MODALES_CIERRE_ESC) {
+        const el = document.getElementById(regla.id);
+        if (!_modalAbiertoParaEsc(el, regla.modo)) continue;
 
-    // Lightbox / Captura (prioridad más alta)
-    const modalCreditos = document.getElementById('modal-creditos');
-    if (estaVisible(modalCreditos)) {
-        if (typeof cerrarModalCreditos === 'function') cerrarModalCreditos();
-        return true;
-    }
-
-    const modalVerCaptura = document.getElementById('modal-ver-captura');
-    if (estaVisible(modalVerCaptura)) {
-        if (typeof cerrarModalVerCaptura === 'function') cerrarModalVerCaptura();
-        return true;
-    }
-
-    const modalGuardarCaptura = document.getElementById('modal-guardar-captura');
-    if (estaVisible(modalGuardarCaptura)) {
-        if (typeof cerrarModalGuardarCaptura === 'function') cerrarModalGuardarCaptura();
-        return true;
-    }
-
-    // Modales OCR
-    const modalOcrRango = document.getElementById('modal-ocr-rango');
-    if (estaVisible(modalOcrRango)) {
-        if (typeof cerrarModalRangoOCR === 'function') cerrarModalRangoOCR();
-        return true;
-    }
-
-    const modalOcrDecision = document.getElementById('modal-ocr-decision');
-    if (estaVisible(modalOcrDecision)) {
-        if (typeof cerrarModalOCRDecision === 'function') cerrarModalOCRDecision();
-        return true;
-    }
-
-    const modalOcrProgreso = document.getElementById('modal-ocr-progreso');
-    if (estaVisible(modalOcrProgreso)) {
-        if (typeof cancelarBatchOCRYLeer === 'function') cancelarBatchOCRYLeer();
-        return true;
-    }
-
-    // Tiendas (Ollama y Voces)
-    const modalTiendaOllama = document.getElementById('modal-tienda-ollama');
-    if (estaVisible(modalTiendaOllama)) {
-        if (typeof cerrarTiendaOllama === 'function') cerrarTiendaOllama();
-        else modalTiendaOllama.style.display = 'none';
-        return true;
-    }
-
-    const modalTiendaVoces = document.getElementById('modal-tienda-voces');
-    if (estaVisible(modalTiendaVoces)) {
-        if (typeof cerrarTiendaVoces === 'function') cerrarTiendaVoces();
-        else modalTiendaVoces.style.display = 'none';
-        return true;
-    }
-
-    // Panel de Subrayados / Extracción y Buscador PDF
-    const modalSubrayados = document.getElementById('modal-subrayados');
-    if (estaVisible(modalSubrayados)) {
-        if (typeof cerrarPanelSubrayados === 'function') cerrarPanelSubrayados();
-        return true;
-    }
-
-    const panelBusqueda = document.getElementById('panel-busqueda');
-    if (estaVisible(panelBusqueda)) {
-        if (typeof cerrarBuscadorPDF === 'function') cerrarBuscadorPDF();
-        return true;
-    }
-
-    // 0. Prioridad: Modo Teatro (Añadido)
-    const modalTeatro = document.getElementById('modal-teatro');
-    if (modalTeatro && modalTeatro.style.display === 'flex') {
-        cerrarTeatro();
-        console.log("[UI] Modo Teatro cerrado vía ESC");
-        return true;
-    }
-    // 1. Prioridad: Diccionario
-    const modalDicc = document.getElementById('modal-diccionario');
-    if (modalDicc && modalDicc.style.display === 'flex') {
-        cerrarDiccionario();
-        console.log("[UI] Diccionario cerrado vía ESC");
-        return true; // Retornamos true para indicar que ya hicimos una acción
-    }
-
-    // 2. Prioridad: Configuración Avanzada
-    const modalConfig = document.getElementById('modalConfig');
-    if (modalConfig && modalConfig.style.display === 'flex') {
-        cerrarConfiguracion();
-        console.log("[UI] Configuración cerrada vía ESC");
-        return true;
-    }
-
-    // 3. Prioridad: Modal de Descarga MP3
-    const modalDescarga = document.getElementById('modal-descarga');
-    if (modalDescarga && modalDescarga.style.display === 'flex') {
-        cerrarModalDescarga();
-        console.log("[UI] Descarga cerrada vía ESC");
-        return true;
-    }
-
-    // 4. Prioridad: Asistente LiraAI
-    const modalIA = document.getElementById('modal-ia');
-    if (modalIA && modalIA.style.display === 'flex') {
-        if (typeof cerrarModalIA === 'function') cerrarModalIA();
-        console.log("[UI] LiraAI cerrado vía ESC");
-        return true;
-    }
-
-    // 5. Prioridad: Notas (Panel Rápido o Gestor General)
-    const panelNotaRapida = document.getElementById('panel-nota-rapida');
-    if (panelNotaRapida && panelNotaRapida.style.display === 'flex') {
-        if (typeof cerrarPanelNotaRapida === 'function') cerrarPanelNotaRapida();
-        return true;
-    }
-    const modalNotas = document.getElementById('modal-notas');
-    if (modalNotas && modalNotas.style.display === 'flex') {
-        if (typeof cerrarModalNotas === 'function') cerrarModalNotas();
+        const fnCerrar = window[regla.fn];
+        if (typeof fnCerrar === 'function') fnCerrar();
+        else if (regla.fallbackOcultar) el.style.display = 'none';
+        if (regla.log) console.log(regla.log);
         return true;
     }
 

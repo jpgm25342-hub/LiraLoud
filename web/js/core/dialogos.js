@@ -319,274 +319,36 @@
         }
     }
 
-    /**
-     * Muestra un diálogo modal de alerta personalizado.
-     * Acepta `(msg, icono)` y soporta legado de 3 argumentos `(titulo, msg, icono)`.
-     * @param {string} msg - Mensaje a mostrar.
-     * @param {string} [icono='info'] - Clave SVG o emoji legado.
-     * @param {string} [iconoTercerArg] - Soporte opcional para llamadas de 3 argumentos.
-     * @returns {Promise<void>}
-     */
-    window.liraAlert = function (msg, icono, iconoTercerArg) {
+    function _crearBotonDialogo(id, cls, texto) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = cls;
+        btn.id = id;
+        btn.textContent = texto;
+        return btn;
+    }
+
+    function _montarDialogoModalBase(cfg) {
         return new Promise((resolve) => {
             const overlay = obtenerOverlayDialogo();
             const previousActiveElement = document.activeElement;
 
-            let mensajeCrudo = msg;
-            let iconoSolicitado = icono;
-            if (typeof iconoTercerArg !== 'undefined') {
-                const titulo = String(msg ?? '').trim();
-                const cuerpo = String(icono ?? '').trim();
-                mensajeCrudo = (titulo && cuerpo) ? `${titulo}\n\n${cuerpo}` : (titulo || cuerpo);
-                iconoSolicitado = iconoTercerArg;
-            }
-
-            const { texto, clave: claveDetectada } = limpiarTextoEmoji(mensajeCrudo);
-            const clave = resolverClaveIcono(iconoSolicitado || claveDetectada || 'info', 'info');
-            const txtAceptar = traducir('btn-aceptar', 'Aceptar');
-
             const box = document.createElement('div');
             box.className = 'lira-dialog-box';
-
-            const iconEl = crearIconoElemento(clave, 'lira-dialog-icon');
+            box.appendChild(crearIconoElemento(cfg.clave, 'lira-dialog-icon'));
 
             const msgEl = document.createElement('div');
             msgEl.className = 'lira-dialog-msg';
             msgEl.id = 'lira-dialog-msg';
-            msgEl.textContent = texto;
+            msgEl.textContent = cfg.texto;
+            box.appendChild(msgEl);
+
+            if (cfg.extraNode) box.appendChild(cfg.extraNode);
 
             const btnsEl = document.createElement('div');
             btnsEl.className = 'lira-dialog-btns';
-
-            const btnOk = document.createElement('button');
-            btnOk.type = 'button';
-            btnOk.className = CLAVES_DESTRUCTIVAS.has(clave)
-                ? 'lira-dialog-btn lira-dialog-btn-ok lira-dialog-btn-danger'
-                : 'lira-dialog-btn lira-dialog-btn-ok';
-            btnOk.id = 'lira-dlg-ok';
-            btnOk.textContent = txtAceptar;
-
-            btnsEl.appendChild(btnOk);
-            box.appendChild(iconEl);
-            box.appendChild(msgEl);
-            box.appendChild(btnsEl);
-
-            overlay.replaceChildren(box);
-            overlay.classList.add('activo');
-
-            let cerrado = false;
-            const limpiar = () => {
-                if (cerrado) return;
-                cerrado = true;
-                document.removeEventListener('keydown', onKey, { capture: true });
-                overlay.removeEventListener('click', onBackdropClick);
-                overlay.classList.remove('activo');
-                overlay.replaceChildren();
-                if (overlay._liraCleanup === cancelarPorReemplazo) {
-                    overlay._liraCleanup = null;
-                }
-            };
-
-            const close = () => {
-                if (cerrado) return;
-                limpiar();
-                restaurarFoco(previousActiveElement);
-                resolve();
-            };
-
-            const cancelarPorReemplazo = () => {
-                limpiar();
-                resolve();
-            };
-
-            const onKey = (e) => {
-                if (e.key === 'Escape' || e.key === 'Enter') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    close();
-                }
-            };
-
-            const onBackdropClick = (e) => {
-                if (e.target === overlay) {
-                    close();
-                }
-            };
-
-            overlay._liraCleanup = cancelarPorReemplazo;
-            btnOk.addEventListener('click', close, { once: true });
-            overlay.addEventListener('click', onBackdropClick);
-            document.addEventListener('keydown', onKey, { capture: true });
-            setTimeout(() => {
-                if (!cerrado && document.contains(btnOk)) btnOk.focus();
-            }, 30);
-        });
-    };
-
-    /**
-     * Muestra un diálogo modal de confirmación personalizado.
-     * @param {string} msg - Mensaje a mostrar.
-     * @param {string} [icono='pregunta'] - Clave SVG o emoji legado.
-     * @returns {Promise<boolean>} true si confirmó, false si canceló.
-     */
-    window.liraConfirm = function (msg, icono) {
-        return new Promise((resolve) => {
-            const overlay = obtenerOverlayDialogo();
-            const previousActiveElement = document.activeElement;
-
-            const { texto, clave: claveDetectada } = limpiarTextoEmoji(msg);
-            const clave = resolverClaveIcono(icono || claveDetectada || 'pregunta', 'pregunta');
-            const txtCancelar = traducir('btn-cancelar', 'Cancelar');
-            const txtContinuar = traducir('btn-si-continuar', 'Sí, continuar');
-
-            const box = document.createElement('div');
-            box.className = 'lira-dialog-box';
-
-            const iconEl = crearIconoElemento(clave, 'lira-dialog-icon');
-
-            const msgEl = document.createElement('div');
-            msgEl.className = 'lira-dialog-msg';
-            msgEl.id = 'lira-dialog-msg';
-            msgEl.textContent = texto;
-
-            const btnsEl = document.createElement('div');
-            btnsEl.className = 'lira-dialog-btns';
-
-            const btnCancel = document.createElement('button');
-            btnCancel.type = 'button';
-            btnCancel.className = 'lira-dialog-btn lira-dialog-btn-cancel';
-            btnCancel.id = 'lira-dlg-cancel';
-            btnCancel.textContent = txtCancelar;
-
-            const btnOk = document.createElement('button');
-            btnOk.type = 'button';
-            btnOk.className = CLAVES_DESTRUCTIVAS.has(clave)
-                ? 'lira-dialog-btn lira-dialog-btn-ok lira-dialog-btn-danger'
-                : 'lira-dialog-btn lira-dialog-btn-ok';
-            btnOk.id = 'lira-dlg-ok';
-            btnOk.textContent = txtContinuar;
-
-            btnsEl.appendChild(btnCancel);
-            btnsEl.appendChild(btnOk);
-            box.appendChild(iconEl);
-            box.appendChild(msgEl);
-            box.appendChild(btnsEl);
-
-            overlay.replaceChildren(box);
-            overlay.classList.add('activo');
-
-            let cerrado = false;
-            const limpiar = () => {
-                if (cerrado) return;
-                cerrado = true;
-                document.removeEventListener('keydown', onKey, { capture: true });
-                overlay.removeEventListener('click', onBackdropClick);
-                overlay.classList.remove('activo');
-                overlay.replaceChildren();
-                if (overlay._liraCleanup === cancelarPorReemplazo) {
-                    overlay._liraCleanup = null;
-                }
-            };
-
-            const close = (result) => {
-                if (cerrado) return;
-                limpiar();
-                restaurarFoco(previousActiveElement);
-                resolve(Boolean(result));
-            };
-
-            const cancelarPorReemplazo = () => {
-                limpiar();
-                resolve(false);
-            };
-
-            const onKey = (e) => {
-                if (e.key === 'Escape') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    close(false);
-                } else if (e.key === 'Enter') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    close(document.activeElement !== btnCancel);
-                }
-            };
-
-            const onBackdropClick = (e) => {
-                if (e.target === overlay) {
-                    close(false);
-                }
-            };
-
-            overlay._liraCleanup = cancelarPorReemplazo;
-            btnOk.addEventListener('click', () => close(true), { once: true });
-            btnCancel.addEventListener('click', () => close(false), { once: true });
-            overlay.addEventListener('click', onBackdropClick);
-            document.addEventListener('keydown', onKey, { capture: true });
-            setTimeout(() => {
-                if (!cerrado && document.contains(btnOk)) btnOk.focus();
-            }, 30);
-        });
-    };
-
-    /**
-     * Muestra un diálogo modal de entrada de texto personalizado.
-     * @param {string} msg - Mensaje a mostrar.
-     * @param {string} [valorPorDefecto=''] - Valor inicial en el campo de texto.
-     * @param {string} [icono='editar'] - Clave SVG o emoji legado.
-     * @returns {Promise<string|null>} Texto ingresado o null si canceló.
-     */
-    window.liraPrompt = function (msg, valorPorDefecto = '', icono) {
-        return new Promise((resolve) => {
-            const overlay = obtenerOverlayDialogo();
-            const previousActiveElement = document.activeElement;
-
-            const { texto, clave: claveDetectada } = limpiarTextoEmoji(msg);
-            const clave = resolverClaveIcono(icono || claveDetectada || 'editar', 'editar');
-            const txtCancelar = traducir('btn-cancelar', 'Cancelar');
-            const txtAceptar = traducir('btn-aceptar', 'Aceptar');
-
-            const box = document.createElement('div');
-            box.className = 'lira-dialog-box';
-
-            const iconEl = crearIconoElemento(clave, 'lira-dialog-icon');
-
-            const msgEl = document.createElement('div');
-            msgEl.className = 'lira-dialog-msg';
-            msgEl.id = 'lira-dialog-msg';
-            msgEl.textContent = texto;
-
-            const inputWrap = document.createElement('div');
-            inputWrap.className = 'lira-dialog-input-wrap';
-
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'lira-dialog-input';
-            input.id = 'lira-dlg-input';
-            input.value = String(valorPorDefecto ?? '');
-
-            inputWrap.appendChild(input);
-
-            const btnsEl = document.createElement('div');
-            btnsEl.className = 'lira-dialog-btns';
-
-            const btnCancel = document.createElement('button');
-            btnCancel.type = 'button';
-            btnCancel.className = 'lira-dialog-btn lira-dialog-btn-cancel';
-            btnCancel.id = 'lira-dlg-cancel';
-            btnCancel.textContent = txtCancelar;
-
-            const btnOk = document.createElement('button');
-            btnOk.type = 'button';
-            btnOk.className = 'lira-dialog-btn lira-dialog-btn-ok';
-            btnOk.id = 'lira-dlg-ok';
-            btnOk.textContent = txtAceptar;
-
-            btnsEl.appendChild(btnCancel);
-            btnsEl.appendChild(btnOk);
-            box.appendChild(iconEl);
-            box.appendChild(msgEl);
-            box.appendChild(inputWrap);
+            if (cfg.btnCancel) btnsEl.appendChild(cfg.btnCancel);
+            btnsEl.appendChild(cfg.btnOk);
             box.appendChild(btnsEl);
 
             overlay.replaceChildren(box);
@@ -614,42 +376,140 @@
 
             const cancelarPorReemplazo = () => {
                 limpiar();
-                resolve(null);
+                resolve(cfg.valorCancel);
             };
 
             const onKey = (e) => {
-                if (e.key === 'Enter') {
+                if (e.key === 'Escape') {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (document.activeElement === btnCancel) {
-                        close(null);
-                    } else {
-                        close(input.value);
-                    }
-                } else if (e.key === 'Escape') {
+                    close(cfg.valorCancel);
+                } else if (e.key === 'Enter') {
                     e.preventDefault();
                     e.stopPropagation();
-                    close(null);
+                    close(cfg.onEnter());
                 }
             };
 
             const onBackdropClick = (e) => {
-                if (e.target === overlay) {
-                    close(null);
-                }
+                if (e.target === overlay) close(cfg.valorCancel);
             };
 
             overlay._liraCleanup = cancelarPorReemplazo;
-            btnOk.addEventListener('click', () => close(input.value), { once: true });
-            btnCancel.addEventListener('click', () => close(null), { once: true });
+            cfg.btnOk.addEventListener('click', () => close(cfg.onAccept()), { once: true });
+            if (cfg.btnCancel) {
+                cfg.btnCancel.addEventListener('click', () => close(cfg.valorCancel), { once: true });
+            }
             overlay.addEventListener('click', onBackdropClick);
             document.addEventListener('keydown', onKey, { capture: true });
             setTimeout(() => {
-                if (!cerrado && document.contains(input)) {
+                if (!cerrado) cfg.onFocus();
+            }, cfg.focusDelayMs || 30);
+        });
+    }
+
+    /**
+     * Muestra un diálogo modal de alerta personalizado.
+     * Acepta `(msg, icono)` y soporta legado de 3 argumentos `(titulo, msg, icono)`.
+     * @param {string} msg - Mensaje a mostrar.
+     * @param {string} [icono='info'] - Clave SVG o emoji legado.
+     * @param {string} [iconoTercerArg] - Soporte opcional para llamadas de 3 argumentos.
+     * @returns {Promise<void>}
+     */
+    window.liraAlert = function (msg, icono, iconoTercerArg) {
+        let mensajeCrudo = msg;
+        let iconoSolicitado = icono;
+        if (typeof iconoTercerArg !== 'undefined') {
+            const titulo = String(msg ?? '').trim();
+            const cuerpo = String(icono ?? '').trim();
+            mensajeCrudo = (titulo && cuerpo) ? `${titulo}\n\n${cuerpo}` : (titulo || cuerpo);
+            iconoSolicitado = iconoTercerArg;
+        }
+
+        const { texto, clave: claveDetectada } = limpiarTextoEmoji(mensajeCrudo);
+        const clave = resolverClaveIcono(iconoSolicitado || claveDetectada || 'info', 'info');
+        const okCls = CLAVES_DESTRUCTIVAS.has(clave)
+            ? 'lira-dialog-btn lira-dialog-btn-ok lira-dialog-btn-danger'
+            : 'lira-dialog-btn lira-dialog-btn-ok';
+        const btnOk = _crearBotonDialogo('lira-dlg-ok', okCls, traducir('btn-aceptar', 'Aceptar'));
+
+        return _montarDialogoModalBase({
+            clave,
+            texto,
+            btnOk,
+            valorCancel: undefined,
+            onAccept: () => undefined,
+            onEnter: () => undefined,
+            onFocus: () => { if (document.contains(btnOk)) btnOk.focus(); }
+        });
+    };
+
+    /**
+     * Muestra un diálogo modal de confirmación personalizado.
+     * @param {string} msg - Mensaje a mostrar.
+     * @param {string} [icono='pregunta'] - Clave SVG o emoji legado.
+     * @returns {Promise<boolean>} true si confirmó, false si canceló.
+     */
+    window.liraConfirm = function (msg, icono) {
+        const { texto, clave: claveDetectada } = limpiarTextoEmoji(msg);
+        const clave = resolverClaveIcono(icono || claveDetectada || 'pregunta', 'pregunta');
+        const btnCancel = _crearBotonDialogo('lira-dlg-cancel', 'lira-dialog-btn lira-dialog-btn-cancel', traducir('btn-cancelar', 'Cancelar'));
+        const okCls = CLAVES_DESTRUCTIVAS.has(clave)
+            ? 'lira-dialog-btn lira-dialog-btn-ok lira-dialog-btn-danger'
+            : 'lira-dialog-btn lira-dialog-btn-ok';
+        const btnOk = _crearBotonDialogo('lira-dlg-ok', okCls, traducir('btn-si-continuar', 'Sí, continuar'));
+
+        return _montarDialogoModalBase({
+            clave,
+            texto,
+            btnCancel,
+            btnOk,
+            valorCancel: false,
+            onAccept: () => true,
+            onEnter: () => document.activeElement !== btnCancel,
+            onFocus: () => { if (document.contains(btnOk)) btnOk.focus(); }
+        });
+    };
+
+    /**
+     * Muestra un diálogo modal de entrada de texto personalizado.
+     * @param {string} msg - Mensaje a mostrar.
+     * @param {string} [valorPorDefecto=''] - Valor inicial en el campo de texto.
+     * @param {string} [icono='editar'] - Clave SVG o emoji legado.
+     * @returns {Promise<string|null>} Texto ingresado o null si canceló.
+     */
+    window.liraPrompt = function (msg, valorPorDefecto = '', icono) {
+        const { texto, clave: claveDetectada } = limpiarTextoEmoji(msg);
+        const clave = resolverClaveIcono(icono || claveDetectada || 'editar', 'editar');
+
+        const inputWrap = document.createElement('div');
+        inputWrap.className = 'lira-dialog-input-wrap';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'lira-dialog-input';
+        input.id = 'lira-dlg-input';
+        input.value = String(valorPorDefecto ?? '');
+        inputWrap.appendChild(input);
+
+        const btnCancel = _crearBotonDialogo('lira-dlg-cancel', 'lira-dialog-btn lira-dialog-btn-cancel', traducir('btn-cancelar', 'Cancelar'));
+        const btnOk = _crearBotonDialogo('lira-dlg-ok', 'lira-dialog-btn lira-dialog-btn-ok', traducir('btn-aceptar', 'Aceptar'));
+
+        return _montarDialogoModalBase({
+            clave,
+            texto,
+            extraNode: inputWrap,
+            btnCancel,
+            btnOk,
+            valorCancel: null,
+            focusDelayMs: 40,
+            onAccept: () => input.value,
+            onEnter: () => (document.activeElement === btnCancel ? null : input.value),
+            onFocus: () => {
+                if (document.contains(input)) {
                     input.focus();
                     input.select();
                 }
-            }, 40);
+            }
         });
     };
 

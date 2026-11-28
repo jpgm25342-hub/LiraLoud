@@ -70,45 +70,74 @@ function limpiarTimeoutsTutorial() {
 // ---------------------------------------------------------------------------
 // GESTIÓN DE AUDIO Y SÍNTESIS NARRADA DEL TUTORIAL (CON TOKENS DE CANCELACIÓN)
 
+function _esModoMinimalistaTour() {
+    return document.body.classList.contains('modo-minimalista');
+}
+
+function _setDetailsOpenTour(id, abierto) {
+    const el = document.getElementById(id);
+    if (el) el.open = abierto;
+}
+
+function _ocultarPanelZenTour(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('zen-active');
+    el.style.display = 'none';
+}
+
+function _cerrarModalDescargaTour() {
+    if (typeof cerrarModalDescarga === 'function') cerrarModalDescarga();
+    const modalDescarga = document.getElementById('modal-descarga');
+    if (modalDescarga) modalDescarga.style.display = 'none';
+}
+
+function _cerrarMenuOcrTour() {
+    _setDetailsOpenTour('zen-details-ocr', false);
+    const ocrDropdown = document.getElementById('dropdown-ocr-menu');
+    if (ocrDropdown) ocrDropdown.classList.remove('show');
+}
+
+function _desactivarTraduccionYSubtitulosTour() {
+    if (typeof configurarTraduccionTutorial === 'function') configurarTraduccionTutorial(false);
+    if (typeof window.limpiarSubtitulosTraduccion === 'function') window.limpiarSubtitulosTraduccion();
+}
+
+function _obtenerElementosSpotlightPaso1() {
+    return {
+        btnPdf: document.getElementById('btn-pdf'),
+        cardModalPdf: document.getElementById('modal-lanzador-card-pdf')
+            || document.querySelector('#lira-lanzador-overlay .lanzador-card:first-child'),
+        cardBienvenidaPdf: document.getElementById('card-bienvenida-pdf')
+            || document.querySelector('#lira-bienvenida .lanzador-card:first-child')
+    };
+}
+
 function sincronizarSpotlightPaso1() {
     const overlay = document.getElementById('tour-guia-overlay');
     const tourVisible = overlay && overlay.style.display !== 'none';
-
-    // Si el tour no está activo o ya no está en el paso 1, limpiar todo y salir
     if (!window.tutorialActivo || !tourVisible || window.tutorialPasoActual !== 0) {
         quitarResaltadoTour();
         return;
     }
 
     const overlayLanzador = document.getElementById('lira-lanzador-overlay');
-    const lanzadorAbierto = overlayLanzador && overlayLanzador.classList.contains('activo');
-
+    const lanzadorAbierto = Boolean(overlayLanzador && overlayLanzador.classList.contains('activo'));
     const bienvenida = document.getElementById('lira-bienvenida');
-    const bienvenidaVisible = bienvenida && bienvenida.style.display !== 'none' && document.body.contains(bienvenida);
+    const bienvenidaVisible = Boolean(bienvenida && bienvenida.style.display !== 'none' && document.body.contains(bienvenida));
 
-    const btnPdf = document.getElementById('btn-pdf');
-    const cardModalPdf = document.getElementById('modal-lanzador-card-pdf')
-        || document.querySelector('#lira-lanzador-overlay .lanzador-card:first-child');
-    const cardBienvenidaPdf = document.getElementById('card-bienvenida-pdf')
-        || document.querySelector('#lira-bienvenida .lanzador-card:first-child');
-
-    // Apagar focos previos de estos tres elementos
-    btnPdf?.classList.remove('tour-spotlight-active');
-    cardModalPdf?.classList.remove('tour-spotlight-active');
-    cardBienvenidaPdf?.classList.remove('tour-spotlight-active');
+    const { btnPdf, cardModalPdf, cardBienvenidaPdf } = _obtenerElementosSpotlightPaso1();
+    [btnPdf, cardModalPdf, cardBienvenidaPdf].forEach(el => el?.classList.remove('tour-spotlight-active'));
 
     if (lanzadorAbierto) {
-        // Estado 1: Modal "¿Qué quieres abrir?" abierto -> brilla SOLO la tarjeta del modal
-        if (cardModalPdf) cardModalPdf.classList.add('tour-spotlight-active');
+        cardModalPdf?.classList.add('tour-spotlight-active');
         document.body.classList.remove('tour-activo-lanzador');
     } else if (bienvenidaVisible) {
-        // Estado 2: Pantalla de bienvenida activa -> brillan tarjeta de bienvenida y botón barra
-        if (cardBienvenidaPdf) cardBienvenidaPdf.classList.add('tour-spotlight-active');
-        if (btnPdf) btnPdf.classList.add('tour-spotlight-active');
+        cardBienvenidaPdf?.classList.add('tour-spotlight-active');
+        btnPdf?.classList.add('tour-spotlight-active');
         document.body.classList.add('tour-activo-lanzador');
     } else {
-        // Estado 3: Modal cerrado en el visor -> brilla el botón PDF de la barra
-        if (btnPdf) btnPdf.classList.add('tour-spotlight-active');
+        btnPdf?.classList.add('tour-spotlight-active');
         document.body.classList.remove('tour-activo-lanzador');
     }
 }
@@ -143,240 +172,113 @@ function asegurarModalConfigAbiertoEnTab(tabId) {
 // SELECTOR DE IDIOMA INICIAL (PRE-TUTORIAL — SOLO PRIMERA APERTURA)
 // ============================================================================
 
+const _IDIOMAS_DISPONIBLES_TOUR = [
+    { code: 'es', label: 'Español (América Latina)' },
+    { code: 'en', label: 'English (United States)' },
+    { code: 'fr', label: 'Français (France)' },
+    { code: 'de', label: 'Deutsch (Deutschland)' },
+    { code: 'pt', label: 'Português (Brasil)' },
+    { code: 'zh', label: '中文 (China)' },
+    { code: 'ru', label: 'Русский (Россия)' },
+    { code: 'ar', label: 'العربية (Arabic)' },
+    { code: 'hi', label: 'हिन्दी (Hindi)' },
+    { code: 'bn', label: 'বাংলা (Bengali)' }
+];
+
+function _obtenerListaIdiomasSelectorInicial() {
+    const radiosMenu = Array.from(document.querySelectorAll('#tab-idioma input[name="radio-idioma"]'));
+    if (radiosMenu.length === 0) return _IDIOMAS_DISPONIBLES_TOUR;
+    return radiosMenu.map(r => ({
+        code: r.value,
+        label: (r.parentElement ? r.parentElement.textContent : r.value).trim()
+    }));
+}
+
+function _inyectarEstilosSelectorIdiomaInicial() {
+    if (document.getElementById('lira-idioma-inicial-styles')) return;
+    const st = document.createElement('style');
+    st.id = 'lira-idioma-inicial-styles';
+    st.textContent = `
+        #lira-modal-idioma-inicial {
+            position: fixed; inset: 0; z-index: 98000; display: flex;
+            align-items: center; justify-content: center;
+            background: rgba(15, 23, 42, 0.62); backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px); animation: liraFadeInIdioma 0.22s ease-out;
+        }
+        @keyframes liraFadeInIdioma {
+            from { opacity: 0; transform: scale(0.97); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .lira-idioma-card {
+            width: 500px; max-width: calc(100vw - 32px); background: #ffffff; color: #1e293b;
+            border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+            padding: 24px; display: flex; flex-direction: column; gap: 16px;
+        }
+        .lira-idioma-header { display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; }
+        .lira-idioma-icon { width: 40px; height: 40px; border-radius: 10px; background: #f1f5f9; color: #334155; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .lira-idioma-title { margin: 0; font-size: 17px; font-weight: 700; color: #0f172a; }
+        .lira-idioma-desc { margin: 3px 0 0 0; font-size: 12px; color: #64748b; line-height: 1.4; }
+        .lira-idioma-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; max-height: 310px; overflow-y: auto; padding-right: 2px; }
+        .lira-idioma-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; background: #f8fafc; color: #1e293b; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.16s ease; user-select: none; }
+        .lira-idioma-item:hover { background: #f1f5f9; border-color: #94a3b8; }
+        .lira-idioma-item.activo { background: #eff6ff; border-color: #3b82f6; color: #1d4ed8; box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25); }
+        .lira-idioma-radio-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #94a3b8; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .lira-idioma-item.activo .lira-idioma-radio-dot { border-color: #2563eb; }
+        .lira-idioma-item.activo .lira-idioma-radio-dot::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #2563eb; }
+        .lira-idioma-footer { display: flex; justify-content: flex-end; padding-top: 8px; border-top: 1px solid #e2e8f0; }
+        .lira-idioma-btn-continuar { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 22px; border-radius: 8px; border: 1px solid transparent; background: #2563eb; color: #ffffff; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.18s ease; }
+        .lira-idioma-btn-continuar:hover { background: #1d4ed8; transform: translateY(-1px); }
+        body.ui-dark-mode .lira-idioma-card { background: #161b22; color: #e6edf3; border-color: #30363d; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7); }
+        body.ui-dark-mode .lira-idioma-header, body.ui-dark-mode .lira-idioma-footer { border-color: #30363d; }
+        body.ui-dark-mode .lira-idioma-icon { background: #21262d; color: #e6edf3; border: 1px solid #30363d; }
+        body.ui-dark-mode .lira-idioma-title { color: #f0f6fc; }
+        body.ui-dark-mode .lira-idioma-desc { color: #8b949e; }
+        body.ui-dark-mode .lira-idioma-item { background: #0d1117; border-color: #30363d; color: #c9d1d9; }
+        body.ui-dark-mode .lira-idioma-item:hover { background: #21262d; border-color: #484f58; color: #f0f6fc; }
+        body.ui-dark-mode .lira-idioma-item.activo { background: #21262d; border-color: #58a6ff; color: #ffffff; box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.3); }
+        body.ui-dark-mode .lira-idioma-item.activo .lira-idioma-radio-dot { border-color: #58a6ff; }
+        body.ui-dark-mode .lira-idioma-item.activo .lira-idioma-radio-dot::after { background: #58a6ff; }
+        body.ui-dark-mode .lira-idioma-btn-continuar { background: #21262d; color: #f0f6fc; border-color: #484f58; }
+        body.ui-dark-mode .lira-idioma-btn-continuar:hover { background: #30363d; border-color: #8b949e; color: #ffffff; }
+    `;
+    document.head.appendChild(st);
+}
+
+function _actualizarTextosModalIdiomaInicial(overlay) {
+    const tFn = (typeof window.t === 'function') ? window.t : ((k, fb) => fb);
+    const limpiarEmoji = (txt) => String(txt || '').replace(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\s]+/u, '').trim();
+    const elTitulo = overlay.querySelector('#lira-idioma-inicial-titulo');
+    const elDesc = overlay.querySelector('#lira-idioma-inicial-desc');
+    const elBtnTxt = overlay.querySelector('#lira-idioma-btn-texto');
+    if (elTitulo) elTitulo.textContent = limpiarEmoji(tFn('lbl-idioma-titulo', 'Idioma de la Interfaz')) || 'Idioma de la Interfaz';
+    if (elDesc) elDesc.textContent = tFn('lbl-idioma-desc', 'Selecciona el idioma con el que deseas utilizar la aplicación.');
+    if (elBtnTxt) elBtnTxt.textContent = tFn('btn-listo', 'Listo');
+}
+
+function _aplicarIdiomaEnSelectorInicial(overlay, code) {
+    const radio = document.querySelector(`input[name="radio-idioma"][value="${code}"]`);
+    if (radio) radio.checked = true;
+    if (typeof toggleIdiomaDrop === 'function') toggleIdiomaDrop(code);
+    if (typeof window.sincronizarVozConIdiomaUI === 'function') window.sincronizarVozConIdiomaUI(code);
+    overlay.querySelectorAll('.lira-idioma-item').forEach(btn => {
+        btn.classList.toggle('activo', btn.dataset.lang === code);
+    });
+    _actualizarTextosModalIdiomaInicial(overlay);
+}
+
 window.mostrarSelectorIdiomaInicial = function () {
     if (window.tutorialCompletado || window.tutorialActivo) return;
     if (document.getElementById('lira-modal-idioma-inicial')) return;
 
-    const IDIOMAS_DISPONIBLES = [
-        { code: 'es', label: 'Español (América Latina)' },
-        { code: 'en', label: 'English (United States)' },
-        { code: 'fr', label: 'Français (France)' },
-        { code: 'de', label: 'Deutsch (Deutschland)' },
-        { code: 'pt', label: 'Português (Brasil)' },
-        { code: 'zh', label: '中文 (China)' },
-        { code: 'ru', label: 'Русский (Россия)' },
-        { code: 'ar', label: 'العربية (Arabic)' },
-        { code: 'hi', label: 'हिन्दी (Hindi)' },
-        { code: 'bn', label: 'বাংলা (Bengali)' }
-    ];
-
-    // Si existen los radios del menú Configuración (#tab-idioma), sincronizar etiquetas desde ahí
-    const radiosMenu = Array.from(document.querySelectorAll('#tab-idioma input[name="radio-idioma"]'));
-    const listaIdiomas = radiosMenu.length > 0
-        ? radiosMenu.map(r => ({
-            code: r.value,
-            label: (r.parentElement ? r.parentElement.textContent : r.value).trim()
-        }))
-        : IDIOMAS_DISPONIBLES;
-
+    const listaIdiomas = _obtenerListaIdiomasSelectorInicial();
     let idiomaSeleccionado = (typeof currentLanguage !== 'undefined' && currentLanguage)
         ? currentLanguage
         : (document.querySelector('input[name="radio-idioma"]:checked')?.value || 'es');
 
-    if (!document.getElementById('lira-idioma-inicial-styles')) {
-        const st = document.createElement('style');
-        st.id = 'lira-idioma-inicial-styles';
-        st.textContent = `
-            #lira-modal-idioma-inicial {
-                position: fixed;
-                inset: 0;
-                z-index: 98000;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                background: rgba(15, 23, 42, 0.62);
-                backdrop-filter: blur(6px);
-                -webkit-backdrop-filter: blur(6px);
-                animation: liraFadeInIdioma 0.22s ease-out;
-            }
-            @keyframes liraFadeInIdioma {
-                from { opacity: 0; transform: scale(0.97); }
-                to { opacity: 1; transform: scale(1); }
-            }
-            .lira-idioma-card {
-                width: 500px;
-                max-width: calc(100vw - 32px);
-                background: #ffffff;
-                color: #1e293b;
-                border-radius: 14px;
-                border: 1px solid #e2e8f0;
-                box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
-                padding: 24px;
-                display: flex;
-                flex-direction: column;
-                gap: 16px;
-            }
-            .lira-idioma-header {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                border-bottom: 1px solid #e2e8f0;
-                padding-bottom: 12px;
-            }
-            .lira-idioma-icon {
-                width: 40px;
-                height: 40px;
-                border-radius: 10px;
-                background: #f1f5f9;
-                color: #334155;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                flex-shrink: 0;
-            }
-            .lira-idioma-title {
-                margin: 0;
-                font-size: 17px;
-                font-weight: 700;
-                color: #0f172a;
-            }
-            .lira-idioma-desc {
-                margin: 3px 0 0 0;
-                font-size: 12px;
-                color: #64748b;
-                line-height: 1.4;
-            }
-            .lira-idioma-grid {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 8px;
-                max-height: 310px;
-                overflow-y: auto;
-                padding-right: 2px;
-            }
-            .lira-idioma-item {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                padding: 10px 12px;
-                border-radius: 8px;
-                border: 1px solid #cbd5e1;
-                background: #f8fafc;
-                color: #1e293b;
-                font-size: 13px;
-                font-weight: 600;
-                cursor: pointer;
-                transition: all 0.16s ease;
-                user-select: none;
-            }
-            .lira-idioma-item:hover {
-                background: #f1f5f9;
-                border-color: #94a3b8;
-            }
-            .lira-idioma-item.activo {
-                background: #eff6ff;
-                border-color: #3b82f6;
-                color: #1d4ed8;
-                box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
-            }
-            .lira-idioma-radio-dot {
-                width: 16px;
-                height: 16px;
-                border-radius: 50%;
-                border: 2px solid #94a3b8;
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                flex-shrink: 0;
-            }
-            .lira-idioma-item.activo .lira-idioma-radio-dot {
-                border-color: #2563eb;
-            }
-            .lira-idioma-item.activo .lira-idioma-radio-dot::after {
-                content: '';
-                width: 8px;
-                height: 8px;
-                border-radius: 50%;
-                background: #2563eb;
-            }
-            .lira-idioma-footer {
-                display: flex;
-                justify-content: flex-end;
-                padding-top: 8px;
-                border-top: 1px solid #e2e8f0;
-            }
-            .lira-idioma-btn-continuar {
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                gap: 8px;
-                padding: 10px 22px;
-                border-radius: 8px;
-                border: 1px solid transparent;
-                background: #2563eb;
-                color: #ffffff;
-                font-size: 13px;
-                font-weight: 700;
-                cursor: pointer;
-                transition: all 0.18s ease;
-            }
-            .lira-idioma-btn-continuar:hover {
-                background: #1d4ed8;
-                transform: translateY(-1px);
-            }
-            /* Dark Mode */
-            body.ui-dark-mode .lira-idioma-card {
-                background: #161b22;
-                color: #e6edf3;
-                border-color: #30363d;
-                box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
-            }
-            body.ui-dark-mode .lira-idioma-header,
-            body.ui-dark-mode .lira-idioma-footer {
-                border-color: #30363d;
-            }
-            body.ui-dark-mode .lira-idioma-icon {
-                background: #21262d;
-                color: #e6edf3;
-                border: 1px solid #30363d;
-            }
-            body.ui-dark-mode .lira-idioma-title {
-                color: #f0f6fc;
-            }
-            body.ui-dark-mode .lira-idioma-desc {
-                color: #8b949e;
-            }
-            body.ui-dark-mode .lira-idioma-item {
-                background: #0d1117;
-                border-color: #30363d;
-                color: #c9d1d9;
-            }
-            body.ui-dark-mode .lira-idioma-item:hover {
-                background: #21262d;
-                border-color: #484f58;
-                color: #f0f6fc;
-            }
-            body.ui-dark-mode .lira-idioma-item.activo {
-                background: #21262d;
-                border-color: #58a6ff;
-                color: #ffffff;
-                box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.3);
-            }
-            body.ui-dark-mode .lira-idioma-item.activo .lira-idioma-radio-dot {
-                border-color: #58a6ff;
-            }
-            body.ui-dark-mode .lira-idioma-item.activo .lira-idioma-radio-dot::after {
-                background: #58a6ff;
-            }
-            body.ui-dark-mode .lira-idioma-btn-continuar {
-                background: #21262d;
-                color: #f0f6fc;
-                border-color: #484f58;
-            }
-            body.ui-dark-mode .lira-idioma-btn-continuar:hover {
-                background: #30363d;
-                border-color: #8b949e;
-                color: #ffffff;
-            }
-        `;
-        document.head.appendChild(st);
-    }
+    _inyectarEstilosSelectorIdiomaInicial();
 
     const overlay = document.createElement('div');
     overlay.id = 'lira-modal-idioma-inicial';
-
-    const limpiarEmojiTitulo = (txt) => String(txt || '').replace(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\s]+/u, '').trim();
-
     overlay.innerHTML = `
         <div class="lira-idioma-card" role="dialog" aria-modal="true">
             <div class="lira-idioma-header">
@@ -404,52 +306,27 @@ window.mostrarSelectorIdiomaInicial = function () {
             </div>
         </div>
     `;
-
     document.body.appendChild(overlay);
 
     const grid = overlay.querySelector('#lira-idioma-inicial-grid');
-    const elTitulo = overlay.querySelector('#lira-idioma-inicial-titulo');
-    const elDesc = overlay.querySelector('#lira-idioma-inicial-desc');
-    const elBtnTxt = overlay.querySelector('#lira-idioma-btn-texto');
-
-    const actualizarTextosModal = () => {
-        const tFn = (typeof window.t === 'function') ? window.t : ((k, fb) => fb);
-        if (elTitulo) elTitulo.textContent = limpiarEmojiTitulo(tFn('lbl-idioma-titulo', 'Idioma de la Interfaz')) || 'Idioma de la Interfaz';
-        if (elDesc) elDesc.textContent = tFn('lbl-idioma-desc', 'Selecciona el idioma con el que deseas utilizar la aplicación.');
-        if (elBtnTxt) elBtnTxt.textContent = tFn('btn-listo', 'Listo');
-    };
-
-    const aplicarIdiomaElegido = (code) => {
-        idiomaSeleccionado = code;
-        const radio = document.querySelector(`input[name="radio-idioma"][value="${code}"]`);
-        if (radio) radio.checked = true;
-        if (typeof toggleIdiomaDrop === 'function') {
-            toggleIdiomaDrop(code);
-        }
-        if (typeof window.sincronizarVozConIdiomaUI === 'function') {
-            window.sincronizarVozConIdiomaUI(code);
-        }
-        grid.querySelectorAll('.lira-idioma-item').forEach(btn => {
-            btn.classList.toggle('activo', btn.dataset.lang === code);
-        });
-        actualizarTextosModal();
-    };
-
     listaIdiomas.forEach(item => {
         const btn = document.createElement('div');
         btn.className = 'lira-idioma-item' + (item.code === idiomaSeleccionado ? ' activo' : '');
         btn.dataset.lang = item.code;
         btn.innerHTML = `<span class="lira-idioma-radio-dot"></span><span>${item.label}</span>`;
-        btn.addEventListener('click', () => aplicarIdiomaElegido(item.code));
+        btn.addEventListener('click', () => {
+            idiomaSeleccionado = item.code;
+            _aplicarIdiomaEnSelectorInicial(overlay, item.code);
+        });
         grid.appendChild(btn);
     });
 
-    actualizarTextosModal();
+    _actualizarTextosModalIdiomaInicial(overlay);
 
     const btnConfirmar = overlay.querySelector('#lira-idioma-btn-confirmar');
     if (btnConfirmar) {
         btnConfirmar.addEventListener('click', () => {
-            aplicarIdiomaElegido(idiomaSeleccionado);
+            _aplicarIdiomaEnSelectorInicial(overlay, idiomaSeleccionado);
             overlay.remove();
             window.abrirTutorial(0, { auto: true, desdeSelectorIdioma: true });
         });
@@ -488,138 +365,111 @@ window.abrirTutorial = function (pasoInicial = 0, { auto = false, desdeSelectorI
     renderizarPasoTour();
 };
 
-window.cerrarTutorial = async function (completado = true) {
-    detenerAudioTutorial();
-    window.tutorialActivo = false;
+function _cerrarPanelesYModalesAlSalirTutorial() {
     document.body.classList.remove('tour-guia-activo', 'tour-traductor-abierto', 'tour-gestor-abierto', 'tour-notas-abierto', 'tour-activo-zen-menu', 'tour-config-abierto');
-    const detZenEd = document.getElementById('zen-details-edicion-bar');
-    if (detZenEd) detZenEd.open = false;
-    const detOcr = document.getElementById('zen-details-ocr');
-    if (detOcr) detOcr.open = false;
-    const ocrDropdown = document.getElementById('dropdown-ocr-menu');
-    if (ocrDropdown) ocrDropdown.classList.remove('show');
-    if (typeof cerrarModalDescarga === 'function') {
-        cerrarModalDescarga();
-    }
-    const modalDescarga = document.getElementById('modal-descarga');
-    if (modalDescarga) modalDescarga.style.display = 'none';
+    _setDetailsOpenTour('zen-details-edicion-bar', false);
+    _cerrarMenuOcrTour();
+    _cerrarModalDescargaTour();
     const modalCfg = document.getElementById('modalConfig');
     if (modalCfg) modalCfg.style.display = 'none';
-    if (typeof cerrarPanelSubrayados === 'function') {
-        cerrarPanelSubrayados();
-    }
-    if (typeof cerrarModalNotas === 'function') {
-        cerrarModalNotas();
-    }
-    if (typeof cerrarPanelNotaRapida === 'function') {
-        cerrarPanelNotaRapida();
-    }
+    if (typeof cerrarPanelSubrayados === 'function') cerrarPanelSubrayados();
+    if (typeof cerrarModalNotas === 'function') cerrarModalNotas();
+    if (typeof cerrarPanelNotaRapida === 'function') cerrarPanelNotaRapida();
     desactivarMocksTutorialExtraccion();
-    // Desactivar Modo Teatro al finalizar o saltar el tutorial para evitar bloqueos de voz o lentitud
     try {
         const chkTeatro = document.getElementById('chk-teatro-global');
         if (chkTeatro && chkTeatro.checked) {
             chkTeatro.checked = false;
-            if (typeof toggleModoTeatroGlobal === 'function') {
-                toggleModoTeatroGlobal(false);
-            }
+            if (typeof toggleModoTeatroGlobal === 'function') toggleModoTeatroGlobal(false);
         }
         window.modoTeatroActivo = false;
-    } catch (eTeatro) { }
-    if (typeof configurarTraduccionTutorial === 'function') {
-        configurarTraduccionTutorial(false);
-    }
-    if (typeof window.limpiarSubtitulosTraduccion === 'function') {
-        window.limpiarSubtitulosTraduccion();
-    }
+    } catch (eTeatro) {}
+    _desactivarTraduccionYSubtitulosTour();
     const overlay = document.getElementById('tour-guia-overlay');
     const card = document.getElementById('tour-card');
     if (overlay) overlay.style.display = 'none';
     if (card) card.style.display = 'none';
+}
 
+async function _limpiarDiccionarioDemoTutorial(langIso) {
+    const cfgAbrev = DEMO_ABREVIATURAS_POR_IDIOMA[langIso] || DEMO_ABREVIATURAS_POR_IDIOMA.es;
+    if (typeof dbDiccionario === 'undefined' || !dbDiccionario) return;
+    const objetivos = [cfgAbrev.siglaEjemplo, cfgAbrev.siglaExtra].filter(Boolean).map(s => s.toLowerCase());
+    for (const sec in dbDiccionario) {
+        const termsObj = dbDiccionario[sec]?.terms;
+        if (!termsObj) continue;
+        Object.keys(termsObj).forEach(k => {
+            if (objetivos.includes(k.toLowerCase())) delete termsObj[k];
+        });
+    }
+    if (typeof eel !== 'undefined' && typeof eel.guardar_diccionario === 'function') {
+        await eel.guardar_diccionario(dbDiccionario)();
+    }
+}
+
+async function _limpiarTeatroDemoTutorial(langIso) {
+    const cfgTeatro = DEMO_TEATRO_POR_IDIOMA[langIso] || DEMO_TEATRO_POR_IDIOMA.es;
+    if (typeof dbTeatro === 'undefined' || !dbTeatro) return;
+    const norm = (s) => String(s || '').replace(/[:.,;]/g, '').trim().toLowerCase();
+    const preNorm = norm(cfgTeatro.actorPreRegistrado);
+    const ejNorm = norm(cfgTeatro.actorEjemplo);
+    for (const obra in dbTeatro) {
+        const actorsObj = dbTeatro[obra]?.actors;
+        if (!actorsObj) continue;
+        Object.keys(actorsObj).forEach(k => {
+            const kNorm = norm(k);
+            if (kNorm === preNorm || kNorm === ejNorm) delete actorsObj[k];
+        });
+    }
+    if (typeof eel !== 'undefined' && typeof eel.guardar_diccionario_teatro === 'function') {
+        await eel.guardar_diccionario_teatro(dbTeatro)();
+    }
+}
+
+async function _persistirCierreTutorialCompletado() {
+    if (typeof window.sincronizarVozConIdiomaUI === 'function') {
+        window.sincronizarVozConIdiomaUI(typeof currentLanguage !== 'undefined' ? currentLanguage : 'es');
+    }
+    window.tutorialCompletado = true;
+    try { localStorage.setItem('liraloud_tutorial_completado', 'true'); } catch (e) {}
+
+    if (typeof eel !== 'undefined' && typeof eel.guardar_estado_tutorial === 'function') {
+        try { await eel.guardar_estado_tutorial(true)(); }
+        catch (err) { console.warn("⚠️ No se pudo guardar tutorial_estado.json:", err); }
+    }
+
+    if (window._soloLecturaPrevioTutorial) {
+        if (typeof toggleModoSoloLectura === 'function') toggleModoSoloLectura(true, true);
+        else window.modoSoloLecturaActivo = true;
+        window._soloLecturaPrevioTutorial = false;
+    }
+
+    if (typeof guardarTodosAjustes === 'function') {
+        try { await guardarTodosAjustes(false); }
+        catch (err) { console.warn("⚠️ No se pudo ejecutar guardarTodosAjustes:", err); }
+    }
+}
+
+window.cerrarTutorial = async function (completado = true) {
+    detenerAudioTutorial();
+    window.tutorialActivo = false;
+    _cerrarPanelesYModalesAlSalirTutorial();
     limpiarListenersCondicionales();
     quitarResaltadoTour();
 
-    // Limpiar términos y actores de prueba del tutorial para no dejar residuos en disco
     try {
         const langIso = detectarIdiomaTutorialActivo();
-        const cfgAbrev = DEMO_ABREVIATURAS_POR_IDIOMA[langIso] || DEMO_ABREVIATURAS_POR_IDIOMA.es;
-        if (typeof dbDiccionario !== 'undefined' && dbDiccionario) {
-            for (const sec in dbDiccionario) {
-                const termsObj = dbDiccionario[sec]?.terms;
-                if (!termsObj) continue;
-                for (const k of Object.keys(termsObj)) {
-                    if ((cfgAbrev.siglaEjemplo && k.toLowerCase() === cfgAbrev.siglaEjemplo.toLowerCase()) ||
-                        (cfgAbrev.siglaExtra && k.toLowerCase() === cfgAbrev.siglaExtra.toLowerCase())) {
-                        delete termsObj[k];
-                    }
-                }
-            }
-            if (typeof eel !== 'undefined' && typeof eel.guardar_diccionario === 'function') {
-                await eel.guardar_diccionario(dbDiccionario)();
-            }
-        }
-        const cfgTeatro = DEMO_TEATRO_POR_IDIOMA[langIso] || DEMO_TEATRO_POR_IDIOMA.es;
-        if (typeof dbTeatro !== 'undefined' && dbTeatro) {
-            for (const obra in dbTeatro) {
-                const actorsObj = dbTeatro[obra]?.actors;
-                if (!actorsObj) continue;
-                for (const k of Object.keys(actorsObj)) {
-                    const kNorm = k.replace(/[:.,;]/g, '').trim().toLowerCase();
-                    const preNorm = (cfgTeatro.actorPreRegistrado || '').replace(/[:.,;]/g, '').trim().toLowerCase();
-                    const ejNorm = (cfgTeatro.actorEjemplo || '').replace(/[:.,;]/g, '').trim().toLowerCase();
-                    if (kNorm === preNorm || kNorm === ejNorm) {
-                        delete actorsObj[k];
-                    }
-                }
-            }
-            if (typeof eel !== 'undefined' && typeof eel.guardar_diccionario_teatro === 'function') {
-                await eel.guardar_diccionario_teatro(dbTeatro)();
-            }
-        }
+        await _limpiarDiccionarioDemoTutorial(langIso);
+        await _limpiarTeatroDemoTutorial(langIso);
     } catch (e) {
         console.warn("⚠️ Error limpiando datos de prueba del tutorial:", e);
     }
 
     if (completado) {
-        if (typeof window.sincronizarVozConIdiomaUI === 'function') {
-            window.sincronizarVozConIdiomaUI(typeof currentLanguage !== 'undefined' ? currentLanguage : 'es');
-        }
-        window.tutorialCompletado = true;
-        try {
-            localStorage.setItem('liraloud_tutorial_completado', 'true');
-        } catch (e) { }
-
-        if (typeof eel !== 'undefined' && typeof eel.guardar_estado_tutorial === 'function') {
-            try {
-                await eel.guardar_estado_tutorial(true)();
-            } catch (err) {
-                console.warn("⚠️ No se pudo guardar tutorial_estado.json:", err);
-            }
-        }
-
-        if (window._soloLecturaPrevioTutorial) {
-            if (typeof toggleModoSoloLectura === 'function') {
-                toggleModoSoloLectura(true, true);
-            } else {
-                window.modoSoloLecturaActivo = true;
-            }
-            window._soloLecturaPrevioTutorial = false;
-        }
-
-        if (typeof guardarTodosAjustes === 'function') {
-            try {
-                await guardarTodosAjustes(false);
-            } catch (err) {
-                console.warn("⚠️ No se pudo ejecutar guardarTodosAjustes:", err);
-            }
-        }
+        await _persistirCierreTutorialCompletado();
     }
 
-    // Reiniciar la interfaz (tipo F5) para limpiar por completo todos los documentos y estados temporales del tutorial
-    setTimeout(() => {
-        window.location.reload();
-    }, 120);
+    setTimeout(() => { window.location.reload(); }, 120);
 };
 
 window.saltarTutorial = async function () {
@@ -631,331 +481,239 @@ window.saltarTutorial = async function () {
     await window.cerrarTutorial(true);
 };
 
-window.avanzarPasoTutorial = function () {
-    detenerAudioTutorial();
+function _restaurarSelectorSiVacio(selId, inpId, prevVal, prevTxt) {
+    const sel = document.getElementById(selId);
+    const inp = document.getElementById(inpId);
+    if (sel && sel.selectedIndex < 0 && prevVal) sel.value = prevVal;
+    if (inp && !inp.value && prevTxt) inp.value = prevTxt;
+}
+
+function _avanzarPaso1Y2Tour() {
     if (window.tutorialPasoActual === 1 && subEtapaPaso2 < 3) {
-        if (subEtapaPaso2 === 1) {
-            const selId = document.getElementById('filtro-idioma');
-            const inpId = document.getElementById('busqueda-idioma-live');
-            if (selId && selId.selectedIndex < 0 && window._tourPrevIdiomaVal) {
-                selId.value = window._tourPrevIdiomaVal;
-            }
-            if (inpId && !inpId.value && window._tourPrevIdiomaTxt) {
-                inpId.value = window._tourPrevIdiomaTxt;
-            }
-        } else if (subEtapaPaso2 === 2) {
-            const selV = document.getElementById('selector-voz-live');
-            const inpV = document.getElementById('busqueda-voz-live');
-            if (selV && selV.selectedIndex < 0 && window._tourPrevVozVal) {
-                selV.value = window._tourPrevVozVal;
-            }
-            if (inpV && !inpV.value && window._tourPrevVozTxt) {
-                inpV.value = window._tourPrevVozTxt;
-            }
-        }
+        if (subEtapaPaso2 === 1) _restaurarSelectorSiVacio('filtro-idioma', 'busqueda-idioma-live', window._tourPrevIdiomaVal, window._tourPrevIdiomaTxt);
+        else if (subEtapaPaso2 === 2) _restaurarSelectorSiVacio('selector-voz-live', 'busqueda-voz-live', window._tourPrevVozVal, window._tourPrevVozTxt);
         subEtapaPaso2++;
-        renderizarPasoTour();
-        return;
+        return true;
     }
-    if (window.tutorialPasoActual === 1) {
-        const pVoz = document.getElementById('zen-panel-voz');
-        if (pVoz) {
-            pVoz.classList.remove('zen-active');
-            pVoz.style.display = 'none';
-        }
-    }
-    if (window.tutorialPasoActual === 2 && subEtapaPaso3 === 0) {
-        subEtapaPaso3 = 1;
-        renderizarPasoTour();
-        return;
-    }
+    if (window.tutorialPasoActual === 1) _ocultarPanelZenTour('zen-panel-voz');
+    if (window.tutorialPasoActual === 2 && subEtapaPaso3 === 0) { subEtapaPaso3 = 1; return true; }
     if (window.tutorialPasoActual === 2 && subEtapaPaso3 === 2) {
-        const detFiltros = document.getElementById('zen-details-filtros');
-        if (detFiltros) detFiltros.open = false;
-        const pMenu = document.getElementById('zen-panel-menu');
-        if (pMenu) {
-            pMenu.classList.remove('zen-active');
-            pMenu.style.display = 'none';
-        }
+        _setDetailsOpenTour('zen-details-filtros', false);
+        _ocultarPanelZenTour('zen-panel-menu');
         document.body.classList.remove('tour-activo-zen-menu');
     }
+    return false;
+}
+
+function _avanzarPasoPorIndiceTour() {
+    if (_avanzarPaso1Y2Tour()) return true;
     if (window.tutorialPasoActual === 3) {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        if (esMinimalista && subEtapaPaso4a === 0 && subEtapaZenLimites < 2) {
-            subEtapaZenLimites++;
-            renderizarPasoTour();
-            return;
-        }
-        if (subEtapaPaso4a < 4) {
-            subEtapaPaso4a++;
-            renderizarPasoTour();
-            return;
-        }
+        if (_esModoMinimalistaTour() && subEtapaPaso4a === 0 && subEtapaZenLimites < 2) { subEtapaZenLimites++; return true; }
+        if (subEtapaPaso4a < 4) { subEtapaPaso4a++; return true; }
     }
-    if (window.tutorialPasoActual === 6) {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        if (esMinimalista && subEtapaZenDicc < 1) {
-            subEtapaZenDicc++;
-            renderizarPasoTour();
-            return;
-        }
+    if (window.tutorialPasoActual === 6 && _esModoMinimalistaTour() && subEtapaZenDicc < 1) {
+        subEtapaZenDicc++;
+        return true;
     }
-    const pasoIdActual = PASOS_TOUR_GUI[window.tutorialPasoActual]?.id;
-    if (pasoIdActual === 'paso_7b_campo_significado') {
-        if (subEtapaPaso7c === 0) {
-            asegurarEstadoDiccionarioTutorial(true, false);
-            subEtapaPaso7c = 1;
-            renderizarPasoTour();
-            return;
-        } else {
-            asegurarEstadoDiccionarioTutorial(true, false);
-            const modalDicc = document.getElementById('modal-diccionario');
-            if (modalDicc) modalDicc.style.display = 'none';
+    return false;
+}
+
+function _avanzarPaso8bDesactivarAbrev() {
+    if (subEtapaPaso8b === 0) {
+        if (_esModoMinimalistaTour() && subEtapaZenDicc < 1) {
+            subEtapaZenDicc = 1;
+            return true;
         }
-    }
-    if (pasoIdActual === 'paso_8b_desactivar_abreviatura') {
-        if (subEtapaPaso8b === 0) {
-            const esMinimalista = document.body.classList.contains('modo-minimalista');
-            if (esMinimalista && subEtapaZenDicc < 1) {
-                subEtapaZenDicc = 1;
-                renderizarPasoTour();
-                return;
-            }
-            const modalDicc = document.getElementById('modal-diccionario');
-            if (modalDicc && modalDicc.style.display !== 'flex') {
-                if (typeof abrirDiccionario === 'function') abrirDiccionario();
-                else modalDicc.style.display = 'flex';
-            }
-            subEtapaPaso8b = 1;
-            renderizarPasoTour();
-            return;
-        } else if (subEtapaPaso8b === 1) {
-            // Si el usuario avanza sin desmarcar la abreviatura, la máquina la desactiva automáticamente
-            asegurarEstadoDiccionarioTutorial(false, false);
-            subEtapaPaso8b = 2;
-            renderizarPasoTour();
-            return;
-        } else {
-            // Garantizar que quede desactivada al pasar al siguiente paso
-            asegurarEstadoDiccionarioTutorial(false, false);
-            const modalDicc = document.getElementById('modal-diccionario');
-            if (modalDicc) modalDicc.style.display = 'none';
+        const modalDicc = document.getElementById('modal-diccionario');
+        if (modalDicc && modalDicc.style.display !== 'flex') {
+            if (typeof abrirDiccionario === 'function') abrirDiccionario();
+            else modalDicc.style.display = 'flex';
         }
+        subEtapaPaso8b = 1;
+        return true;
     }
-    if (pasoIdActual === 'paso_9a_abrir_teatro') {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        if (esMinimalista && subEtapaZenTeatro < 1) {
-            subEtapaZenTeatro = 1;
-            renderizarPasoTour();
-            return;
-        }
+    if (subEtapaPaso8b === 1) {
+        asegurarEstadoDiccionarioTutorial(false, false);
+        subEtapaPaso8b = 2;
+        return true;
     }
-    if (pasoIdActual === 'paso_9c_asignar_voz_teatro') {
-        if (subEtapaPaso9c === 0) {
-            asegurarEstadoTeatroTutorial(true, false);
-            subEtapaPaso9c = 1;
-            renderizarPasoTour();
-            return;
-        } else {
-            asegurarEstadoTeatroTutorial(true, false);
-            const modalTeatro = document.getElementById('modal-teatro');
-            if (modalTeatro) modalTeatro.style.display = 'none';
-        }
+    asegurarEstadoDiccionarioTutorial(false, false);
+    const modalDicc = document.getElementById('modal-diccionario');
+    if (modalDicc) modalDicc.style.display = 'none';
+    return false;
+}
+
+function _avanzarPasoDiccionarioYTeatro(pasoId) {
+    if (pasoId === 'paso_7b_campo_significado') {
+        asegurarEstadoDiccionarioTutorial(true, false);
+        if (subEtapaPaso7c === 0) { subEtapaPaso7c = 1; return true; }
+        const modalDicc = document.getElementById('modal-diccionario');
+        if (modalDicc) modalDicc.style.display = 'none';
+    } else if (pasoId === 'paso_8b_desactivar_abreviatura') {
+        return _avanzarPaso8bDesactivarAbrev();
+    } else if (pasoId === 'paso_9a_abrir_teatro') {
+        if (_esModoMinimalistaTour() && subEtapaZenTeatro < 1) { subEtapaZenTeatro = 1; return true; }
+    } else if (pasoId === 'paso_9c_asignar_voz_teatro') {
+        asegurarEstadoTeatroTutorial(true, false);
+        if (subEtapaPaso9c === 0) { subEtapaPaso9c = 1; return true; }
+        const modalTeatro = document.getElementById('modal-teatro');
+        if (modalTeatro) modalTeatro.style.display = 'none';
     }
-    if (pasoIdActual === 'paso_10a_abrir_ia') {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        if (esMinimalista && subEtapaZenIA < 1) {
-            subEtapaZenIA = 1;
-            renderizarPasoTour();
-            return;
-        }
-    }
-    if (pasoIdActual === 'paso_10e_modelos_ia') {
+    return false;
+}
+
+function _avanzarPasoIAYTraductor(pasoId) {
+    if (pasoId === 'paso_10a_abrir_ia') {
+        if (_esModoMinimalistaTour() && subEtapaZenIA < 1) { subEtapaZenIA = 1; return true; }
+    } else if (pasoId === 'paso_10e_modelos_ia') {
         if (typeof cerrarModalIA === 'function') cerrarModalIA();
         else {
             const modalIA = document.getElementById('modal-ia');
             if (modalIA) modalIA.style.display = 'none';
         }
         document.body.classList.remove('tour-ia-abierto');
-    }
-    if (pasoIdActual === 'paso_10f_abrir_traductor') {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        if (esMinimalista && subEtapaZenTraductor < 1) {
-            subEtapaZenTraductor = 1;
-            renderizarPasoTour();
-            return;
-        }
-        const detMain = document.getElementById('details-traduccion-main');
-        if (detMain) detMain.open = true;
-        const detZen = document.getElementById('zen-details-traduccion');
-        if (detZen) detZen.open = true;
+    } else if (pasoId === 'paso_10f_abrir_traductor') {
+        if (_esModoMinimalistaTour() && subEtapaZenTraductor < 1) { subEtapaZenTraductor = 1; return true; }
+        _setDetailsOpenTour('details-traduccion-main', true);
+        _setDetailsOpenTour('zen-details-traduccion', true);
         document.body.classList.add('tour-traductor-abierto');
-    }
-    if (pasoIdActual === 'paso_10j_trad_modos') {
-        const detMain = document.getElementById('details-traduccion-main');
-        if (detMain) detMain.open = false;
-        const detZen = document.getElementById('zen-details-traduccion');
-        if (detZen) detZen.open = false;
+    } else if (pasoId === 'paso_10j_trad_modos') {
+        _setDetailsOpenTour('details-traduccion-main', false);
+        _setDetailsOpenTour('zen-details-traduccion', false);
         document.body.classList.remove('tour-traductor-abierto');
+    } else if (pasoId === 'paso_10k_probar_traductor') {
+        _desactivarTraduccionYSubtitulosTour();
     }
-    if (pasoIdActual === 'paso_10k_probar_traductor') {
-        configurarTraduccionTutorial(false);
-        if (typeof window.limpiarSubtitulosTraduccion === 'function') {
-            window.limpiarSubtitulosTraduccion();
-        }
+    return false;
+}
+
+function _avanzarSubrayadoDemoTour(subActual, setSub, hexColor, demoHecho, nombreColor) {
+    if (subActual === 0) {
+        setSub(1);
+        _setDetailsOpenTour('zen-details-edicion-bar', true);
+        return true;
     }
-    if (pasoIdActual === 'paso_10l_subrayar_azul') {
+    if (subActual === 1) {
+        setSub(2);
+        if (typeof setSubrayadoColor === 'function') setSubrayadoColor(hexColor);
+        _setDetailsOpenTour('zen-details-edicion-bar', false);
+        return true;
+    }
+    if (!demoHecho) simularSubrayadoDemo(nombreColor);
+    _setDetailsOpenTour('zen-details-edicion-bar', false);
+    return false;
+}
+
+function _avanzarPaso10nRecorte() {
+    if (_esModoMinimalistaTour() && subEtapaEdicionRecorte === 0) {
+        subEtapaEdicionRecorte = 1;
+        _setDetailsOpenTour('zen-details-edicion-bar', true);
+        return true;
+    }
+    if (subEtapaEdicionRecorte <= 1) {
+        subEtapaEdicionRecorte = 2;
+        _setDetailsOpenTour('zen-details-edicion-bar', false);
+        if (typeof toggleModoRecorteExtraccion === 'function' && !window.modoRecorteActivo) toggleModoRecorteExtraccion();
+        return true;
+    }
+    if (!demoCapturaHecha) simularCapturaDemo();
+    if (window.modoRecorteActivo && typeof toggleModoRecorteExtraccion === 'function') toggleModoRecorteExtraccion(false);
+    _setDetailsOpenTour('zen-details-edicion-bar', false);
+    return false;
+}
+
+function _avanzarPasoRecorteYGestor(pasoId) {
+    if (pasoId === 'paso_10n_capturar_recorte') return _avanzarPaso10nRecorte();
+    if (pasoId === 'paso_10o_abrir_gestor') {
         const detZen = document.getElementById('zen-details-edicion-bar');
-        if (subEtapaEdicionAzul === 0) {
-            subEtapaEdicionAzul = 1;
-            if (detZen) detZen.open = true;
-            renderizarPasoTour();
-            return;
-        } else if (subEtapaEdicionAzul === 1) {
-            subEtapaEdicionAzul = 2;
-            if (typeof setSubrayadoColor === 'function') setSubrayadoColor('#00FFFF');
-            if (detZen) detZen.open = false;
-            renderizarPasoTour();
-            return;
-        }
-        if (!demoSubrayadoAzulHecho) {
-            simularSubrayadoDemo('azul');
-        }
-        if (detZen) detZen.open = false;
-    }
-    if (pasoIdActual === 'paso_10m_subrayar_rosa') {
-        const detZen = document.getElementById('zen-details-edicion-bar');
-        if (subEtapaEdicionRosa === 0) {
-            subEtapaEdicionRosa = 1;
-            if (detZen) detZen.open = true;
-            renderizarPasoTour();
-            return;
-        } else if (subEtapaEdicionRosa === 1) {
-            subEtapaEdicionRosa = 2;
-            if (typeof setSubrayadoColor === 'function') setSubrayadoColor('#FF00FF');
-            if (detZen) detZen.open = false;
-            renderizarPasoTour();
-            return;
-        }
-        if (!demoSubrayadoRosaHecho) {
-            simularSubrayadoDemo('rosa');
-        }
-        if (detZen) detZen.open = false;
-    }
-    if (pasoIdActual === 'paso_10n_capturar_recorte') {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        const detZen = document.getElementById('zen-details-edicion-bar');
-        if (esMinimalista && subEtapaEdicionRecorte === 0) {
-            subEtapaEdicionRecorte = 1;
-            if (detZen) detZen.open = true;
-            renderizarPasoTour();
-            return;
-        } else if (subEtapaEdicionRecorte <= 1) {
-            subEtapaEdicionRecorte = 2;
-            if (detZen) detZen.open = false;
-            if (typeof toggleModoRecorteExtraccion === 'function' && !window.modoRecorteActivo) {
-                toggleModoRecorteExtraccion();
-            }
-            renderizarPasoTour();
-            return;
-        }
-        if (!demoCapturaHecha) {
-            simularCapturaDemo();
-        }
-        if (window.modoRecorteActivo && typeof toggleModoRecorteExtraccion === 'function') {
-            toggleModoRecorteExtraccion(false);
-        }
-        if (detZen) detZen.open = false;
-    }
-    if (pasoIdActual === 'paso_10o_abrir_gestor') {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        const detZen = document.getElementById('zen-details-edicion-bar');
-        if (esMinimalista && subEtapaEdicionGestor < 1 && !detZen?.open) {
+        if (_esModoMinimalistaTour() && subEtapaEdicionGestor < 1 && !detZen?.open) {
             subEtapaEdicionGestor = 1;
-            if (detZen) detZen.open = true;
-            renderizarPasoTour();
-            return;
+            _setDetailsOpenTour('zen-details-edicion-bar', true);
+            return true;
         }
-        if (detZen) detZen.open = false;
-    }
-    if (pasoIdActual === 'paso_10p_explorar_gestor') {
+        _setDetailsOpenTour('zen-details-edicion-bar', false);
+    } else if (pasoId === 'paso_10p_explorar_gestor') {
         document.body.classList.remove('tour-gestor-abierto');
-        if (typeof cerrarPanelSubrayados === 'function') {
-            cerrarPanelSubrayados();
-        }
+        if (typeof cerrarPanelSubrayados === 'function') cerrarPanelSubrayados();
     }
-    if (pasoIdActual === 'paso_10q_nota_rapida') {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        const panelRapido = document.getElementById('panel-nota-rapida');
-        const panelAbierto = panelRapido && (panelRapido.style.display === 'flex' || window.getComputedStyle(panelRapido).display === 'flex');
-        if (esMinimalista && subEtapaZenNotaRapida < 1 && !panelAbierto) {
+    return false;
+}
+
+function _esPanelNotaAbiertoTour(id, aceptarBlock = false) {
+    const el = document.getElementById(id);
+    if (!el) return false;
+    if (el.style.display === 'flex') return true;
+    if (aceptarBlock) return el.style.display === 'block';
+    return window.getComputedStyle(el).display === 'flex';
+}
+
+function _avanzarPasoNotasTour(pasoId) {
+    if (pasoId === 'paso_10q_nota_rapida') {
+        if (_esModoMinimalistaTour() && subEtapaZenNotaRapida < 1 && !_esPanelNotaAbiertoTour('panel-nota-rapida', false)) {
             subEtapaZenNotaRapida = 1;
-            renderizarPasoTour();
-            return;
+            return true;
         }
-        document.body.classList.remove('tour-nota-rapida-abierta');
-        document.body.classList.remove('tour-activo-zen-menu');
-        if (typeof cerrarPanelNotaRapida === 'function') {
-            cerrarPanelNotaRapida();
-        }
-    }
-    if (pasoIdActual === 'paso_10r_cuaderno_apuntes') {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        const modalNotas = document.getElementById('modal-notas');
-        const modalAbierto = modalNotas && (modalNotas.style.display === 'flex' || modalNotas.style.display === 'block');
-        if (esMinimalista && subEtapaZenCuaderno < 1 && !modalAbierto) {
+        document.body.classList.remove('tour-nota-rapida-abierta', 'tour-activo-zen-menu');
+        if (typeof cerrarPanelNotaRapida === 'function') cerrarPanelNotaRapida();
+    } else if (pasoId === 'paso_10r_cuaderno_apuntes') {
+        if (_esModoMinimalistaTour() && subEtapaZenCuaderno < 1 && !_esPanelNotaAbiertoTour('modal-notas', true)) {
             subEtapaZenCuaderno = 1;
-            renderizarPasoTour();
-            return;
+            return true;
         }
-        document.body.classList.remove('tour-notas-abierto');
+        document.body.classList.remove('tour-notas-abierto', 'tour-activo-zen-menu');
+        if (typeof cerrarModalNotas === 'function') cerrarModalNotas();
+    }
+    return false;
+}
+
+function _avanzarPasoOCRYDescargaTour(pasoId) {
+    if (pasoId === 'paso_10s_reconocimiento_ocr') {
+        if (subEtapaZenOCR < 2) {
+            subEtapaZenOCR = _esModoMinimalistaTour() ? (subEtapaZenOCR + 1) : 2;
+            return true;
+        }
+        _cerrarMenuOcrTour();
+    } else if (pasoId === 'paso_10t_descargar_audio') {
+        const pm = document.getElementById('zen-panel-menu');
+        const abierto = pm && (pm.classList.contains('zen-active') || pm.style.display === 'flex' || pm.style.display === 'block');
+        if (_esModoMinimalistaTour() && subEtapaZenDescarga < 1 && !abierto) { subEtapaZenDescarga = 1; return true; }
         document.body.classList.remove('tour-activo-zen-menu');
-        if (typeof cerrarModalNotas === 'function') {
-            cerrarModalNotas();
-        }
+        _ocultarPanelZenTour('zen-panel-menu');
+        _cerrarModalDescargaTour();
     }
-    if (pasoIdActual === 'paso_10s_reconocimiento_ocr') {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        if (esMinimalista && subEtapaZenOCR < 2) {
-            subEtapaZenOCR++;
-            renderizarPasoTour();
-            return;
-        } else if (!esMinimalista && subEtapaZenOCR < 2) {
-            subEtapaZenOCR = 2;
-            renderizarPasoTour();
-            return;
-        }
-        const detOcr = document.getElementById('zen-details-ocr');
-        if (detOcr) detOcr.open = false;
-        const ocrDropdown = document.getElementById('dropdown-ocr-menu');
-        if (ocrDropdown) ocrDropdown.classList.remove('show');
+    return false;
+}
+
+function _avanzarPasoNotasOCRYDescarga(pasoId) {
+    return _avanzarPasoNotasTour(pasoId) || _avanzarPasoOCRYDescargaTour(pasoId);
+}
+
+function _avanzarPasoPorIdTour(pasoId) {
+    if (pasoId === 'paso_10l_subrayar_azul') {
+        return _avanzarSubrayadoDemoTour(subEtapaEdicionAzul, v => { subEtapaEdicionAzul = v; }, '#00FFFF', demoSubrayadoAzulHecho, 'azul');
     }
-    if (pasoIdActual === 'paso_10t_descargar_audio') {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        const panelMenu = document.getElementById('zen-panel-menu');
-        const menuAbierto = panelMenu && (panelMenu.classList.contains('zen-active') || panelMenu.style.display === 'flex' || panelMenu.style.display === 'block');
-        if (esMinimalista && subEtapaZenDescarga < 1 && !menuAbierto) {
-            subEtapaZenDescarga = 1;
-            renderizarPasoTour();
-            return;
-        }
-        document.body.classList.remove('tour-activo-zen-menu');
-        const pMenu = document.getElementById('zen-panel-menu');
-        if (pMenu) {
-            pMenu.classList.remove('zen-active');
-            pMenu.style.display = 'none';
-        }
-        if (typeof cerrarModalDescarga === 'function') {
-            cerrarModalDescarga();
-        }
-        const modalDescarga = document.getElementById('modal-descarga');
-        if (modalDescarga) modalDescarga.style.display = 'none';
+    if (pasoId === 'paso_10m_subrayar_rosa') {
+        return _avanzarSubrayadoDemoTour(subEtapaEdicionRosa, v => { subEtapaEdicionRosa = v; }, '#FF00FF', demoSubrayadoRosaHecho, 'rosa');
     }
+    return _avanzarPasoDiccionarioYTeatro(pasoId)
+        || _avanzarPasoIAYTraductor(pasoId)
+        || _avanzarPasoRecorteYGestor(pasoId)
+        || _avanzarPasoNotasOCRYDescarga(pasoId);
+}
+
+window.avanzarPasoTutorial = function () {
+    detenerAudioTutorial();
+    const pasoIdActual = PASOS_TOUR_GUI[window.tutorialPasoActual]?.id;
+    if (_avanzarPasoPorIndiceTour() || _avanzarPasoPorIdTour(pasoIdActual)) {
+        renderizarPasoTour();
+        return;
+    }
+
     limpiarListenersCondicionales();
     subEtapaPaso3 = 0;
     if (window.tutorialPasoActual < PASOS_TOUR_GUI.length - 1) {
         window.tutorialPasoActual++;
-        if (PASOS_TOUR_GUI[window.tutorialPasoActual]?.id === 'paso_10t_descargar_audio' && document.body.classList.contains('modo-minimalista')) {
+        if (PASOS_TOUR_GUI[window.tutorialPasoActual]?.id === 'paso_10t_descargar_audio' && _esModoMinimalistaTour()) {
             subEtapaZenDescarga = 1;
             const pMenu = document.getElementById('zen-panel-menu');
             if (pMenu) {
@@ -970,173 +728,98 @@ window.avanzarPasoTutorial = function () {
     }
 };
 
+function _retrocederPaso3Y6Tour() {
+    if (window.tutorialPasoActual === 3) {
+        if (_esModoMinimalistaTour() && subEtapaPaso4a === 0 && subEtapaZenLimites > 0) { subEtapaZenLimites--; return true; }
+        if (subEtapaPaso4a > 0) { subEtapaPaso4a--; return true; }
+    }
+    if (window.tutorialPasoActual === 6 && _esModoMinimalistaTour() && subEtapaZenDicc > 0) { subEtapaZenDicc--; return true; }
+    return false;
+}
+
+function _retrocederPasoPorIndiceTour() {
+    if (window.tutorialPasoActual === 1 && subEtapaPaso2 > 0 && (_esModoMinimalistaTour() || subEtapaPaso2 > 1)) {
+        subEtapaPaso2--;
+        return true;
+    }
+    if (window.tutorialPasoActual === 2 && subEtapaPaso3 > 0) { subEtapaPaso3--; return true; }
+    return _retrocederPaso3Y6Tour();
+}
+
+function _retrocederPasoTeatroIAYDescarga(pasoId) {
+    if (pasoId === 'paso_9a_abrir_teatro' && _esModoMinimalistaTour() && subEtapaZenTeatro > 0) { subEtapaZenTeatro--; return true; }
+    if (pasoId === 'paso_9c_asignar_voz_teatro' && subEtapaPaso9c > 0) { subEtapaPaso9c--; return true; }
+    if (pasoId === 'paso_10a_abrir_ia' && _esModoMinimalistaTour() && subEtapaZenIA > 0) { subEtapaZenIA--; return true; }
+    if (pasoId === 'paso_11a_abrir_config') {
+        if (typeof cerrarModalDescarga === 'function') cerrarModalDescarga();
+    } else if (pasoId === 'paso_10t_descargar_audio') {
+        if (_esModoMinimalistaTour() && subEtapaZenDescarga > 0) { subEtapaZenDescarga--; return true; }
+        _cerrarModalDescargaTour();
+    }
+    return false;
+}
+
+function _retrocederPaso10rY10qNotas(pasoId) {
+    if (pasoId === 'paso_10r_cuaderno_apuntes') {
+        if (_esModoMinimalistaTour() && subEtapaZenCuaderno > 0) { subEtapaZenCuaderno--; return true; }
+        document.body.classList.remove('tour-notas-abierto', 'tour-activo-zen-menu');
+        if (typeof cerrarModalNotas === 'function') cerrarModalNotas();
+        document.body.classList.add('tour-nota-rapida-abierta');
+        if (typeof abrirPanelNotaRapida === 'function') abrirPanelNotaRapida();
+    } else if (pasoId === 'paso_10q_nota_rapida') {
+        if (_esModoMinimalistaTour() && subEtapaZenNotaRapida > 0) { subEtapaZenNotaRapida--; return true; }
+        document.body.classList.remove('tour-nota-rapida-abierta', 'tour-activo-zen-menu');
+        if (typeof cerrarPanelNotaRapida === 'function') cerrarPanelNotaRapida();
+        document.body.classList.add('tour-gestor-abierto');
+        if (typeof mostrarPanelSubrayados === 'function') mostrarPanelSubrayados();
+    }
+    return false;
+}
+
+function _retrocederPasoOCRYNotas(pasoId) {
+    if (pasoId === 'paso_10s_reconocimiento_ocr') {
+        if (_esModoMinimalistaTour() && subEtapaZenOCR > 0) { subEtapaZenOCR--; return true; }
+        _cerrarMenuOcrTour();
+        document.body.classList.add('tour-notas-abierto');
+        if (typeof abrirModalNotas === 'function') abrirModalNotas();
+        return false;
+    }
+    return _retrocederPaso10rY10qNotas(pasoId);
+}
+
+function _retrocederPasoEdicionYTraductor(pasoId) {
+    if (pasoId === 'paso_10p_explorar_gestor') {
+        document.body.classList.remove('tour-gestor-abierto');
+        if (typeof cerrarPanelSubrayados === 'function') cerrarPanelSubrayados();
+        if (_esModoMinimalistaTour()) _setDetailsOpenTour('zen-details-edicion-bar', true);
+    } else if (pasoId === 'paso_10o_abrir_gestor' && _esModoMinimalistaTour() && subEtapaEdicionGestor > 0) {
+        subEtapaEdicionGestor = 0;
+        _setDetailsOpenTour('zen-details-edicion-bar', false);
+        return true;
+    } else if (pasoId === 'paso_10l_subrayar_azul') {
+        _setDetailsOpenTour('zen-details-edicion-bar', false);
+    } else if (pasoId === 'paso_10k_probar_traductor') {
+        _setDetailsOpenTour('details-traduccion-main', true);
+        _setDetailsOpenTour('zen-details-traduccion', true);
+        document.body.classList.add('tour-traductor-abierto');
+    } else if (pasoId === 'paso_10g_trad_activar') {
+        document.body.classList.remove('tour-traductor-abierto');
+    } else if (pasoId === 'paso_10f_abrir_traductor' && _esModoMinimalistaTour() && subEtapaZenTraductor > 0) {
+        subEtapaZenTraductor--;
+        return true;
+    }
+    return false;
+}
+
 window.retrocederPasoTutorial = function () {
     detenerAudioTutorial();
-    if (window.tutorialPasoActual === 1 && subEtapaPaso2 > 0) {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        if (esMinimalista || subEtapaPaso2 > 1) {
-            subEtapaPaso2--;
-            renderizarPasoTour();
-            return;
-        }
-    }
-    if (window.tutorialPasoActual === 2 && subEtapaPaso3 > 0) {
-        subEtapaPaso3--;
-        renderizarPasoTour();
-        return;
-    }
-    if (window.tutorialPasoActual === 3) {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        if (esMinimalista && subEtapaPaso4a === 0 && subEtapaZenLimites > 0) {
-            subEtapaZenLimites--;
-            renderizarPasoTour();
-            return;
-        }
-        if (subEtapaPaso4a > 0) {
-            subEtapaPaso4a--;
-            renderizarPasoTour();
-            return;
-        }
-    }
-    if (window.tutorialPasoActual === 6) {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        if (esMinimalista && subEtapaZenDicc > 0) {
-            subEtapaZenDicc--;
-            renderizarPasoTour();
-            return;
-        }
-    }
     const pasoIdRetro = PASOS_TOUR_GUI[window.tutorialPasoActual]?.id;
-    if (pasoIdRetro === 'paso_9a_abrir_teatro') {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        if (esMinimalista && subEtapaZenTeatro > 0) {
-            subEtapaZenTeatro--;
-            renderizarPasoTour();
-            return;
-        }
-    }
-    if (pasoIdRetro === 'paso_9c_asignar_voz_teatro' && subEtapaPaso9c > 0) {
-        subEtapaPaso9c--;
+    if (_retrocederPasoPorIndiceTour()
+        || _retrocederPasoTeatroIAYDescarga(pasoIdRetro)
+        || _retrocederPasoOCRYNotas(pasoIdRetro)
+        || _retrocederPasoEdicionYTraductor(pasoIdRetro)) {
         renderizarPasoTour();
         return;
-    }
-    if (pasoIdRetro === 'paso_10a_abrir_ia') {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        if (esMinimalista && subEtapaZenIA > 0) {
-            subEtapaZenIA--;
-            renderizarPasoTour();
-            return;
-        }
-    }
-    if (pasoIdRetro === 'paso_11a_abrir_config') {
-        if (typeof cerrarModalDescarga === 'function') {
-            cerrarModalDescarga();
-        }
-    }
-    if (pasoIdRetro === 'paso_10t_descargar_audio') {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        if (esMinimalista && subEtapaZenDescarga > 0) {
-            subEtapaZenDescarga--;
-            renderizarPasoTour();
-            return;
-        }
-        if (typeof cerrarModalDescarga === 'function') {
-            cerrarModalDescarga();
-        }
-        const modalDescarga = document.getElementById('modal-descarga');
-        if (modalDescarga) modalDescarga.style.display = 'none';
-    }
-    if (pasoIdRetro === 'paso_10s_reconocimiento_ocr') {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        if (esMinimalista && subEtapaZenOCR > 0) {
-            subEtapaZenOCR--;
-            renderizarPasoTour();
-            return;
-        }
-        const detOcr = document.getElementById('zen-details-ocr');
-        if (detOcr) detOcr.open = false;
-        const ocrDropdown = document.getElementById('dropdown-ocr-menu');
-        if (ocrDropdown) ocrDropdown.classList.remove('show');
-        document.body.classList.add('tour-notas-abierto');
-        if (typeof abrirModalNotas === 'function') {
-            abrirModalNotas();
-        }
-    }
-    if (pasoIdRetro === 'paso_10r_cuaderno_apuntes') {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        if (esMinimalista && subEtapaZenCuaderno > 0) {
-            subEtapaZenCuaderno--;
-            renderizarPasoTour();
-            return;
-        }
-        document.body.classList.remove('tour-notas-abierto');
-        document.body.classList.remove('tour-activo-zen-menu');
-        if (typeof cerrarModalNotas === 'function') {
-            cerrarModalNotas();
-        }
-        document.body.classList.add('tour-nota-rapida-abierta');
-        if (typeof abrirPanelNotaRapida === 'function') {
-            abrirPanelNotaRapida();
-        }
-    }
-    if (pasoIdRetro === 'paso_10q_nota_rapida') {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        if (esMinimalista && subEtapaZenNotaRapida > 0) {
-            subEtapaZenNotaRapida--;
-            renderizarPasoTour();
-            return;
-        }
-        document.body.classList.remove('tour-nota-rapida-abierta');
-        document.body.classList.remove('tour-activo-zen-menu');
-        if (typeof cerrarPanelNotaRapida === 'function') {
-            cerrarPanelNotaRapida();
-        }
-        document.body.classList.add('tour-gestor-abierto');
-        if (typeof mostrarPanelSubrayados === 'function') {
-            mostrarPanelSubrayados();
-        }
-    }
-    if (pasoIdRetro === 'paso_10p_explorar_gestor') {
-        document.body.classList.remove('tour-gestor-abierto');
-        if (typeof cerrarPanelSubrayados === 'function') {
-            cerrarPanelSubrayados();
-        }
-        const detZen = document.getElementById('zen-details-edicion-bar');
-        if (detZen && document.body.classList.contains('modo-minimalista')) {
-            detZen.open = true;
-        }
-    }
-    if (pasoIdRetro === 'paso_10o_abrir_gestor') {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        const detZen = document.getElementById('zen-details-edicion-bar');
-        if (esMinimalista && subEtapaEdicionGestor > 0) {
-            subEtapaEdicionGestor = 0;
-            if (detZen) detZen.open = false;
-            renderizarPasoTour();
-            return;
-        }
-    }
-    if (pasoIdRetro === 'paso_10l_subrayar_azul') {
-        const detZen = document.getElementById('zen-details-edicion-bar');
-        if (detZen) detZen.open = false;
-    }
-    if (pasoIdRetro === 'paso_10k_probar_traductor') {
-        const detMain = document.getElementById('details-traduccion-main');
-        if (detMain) detMain.open = true;
-        const detZen = document.getElementById('zen-details-traduccion');
-        if (detZen) detZen.open = true;
-        document.body.classList.add('tour-traductor-abierto');
-    }
-    if (pasoIdRetro === 'paso_10g_trad_activar') {
-        document.body.classList.remove('tour-traductor-abierto');
-    }
-    if (pasoIdRetro === 'paso_10f_abrir_traductor') {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        if (esMinimalista && subEtapaZenTraductor > 0) {
-            subEtapaZenTraductor--;
-            renderizarPasoTour();
-            return;
-        }
     }
     limpiarListenersCondicionales();
     if (window.tutorialPasoActual > 0) {
@@ -1145,96 +828,41 @@ window.retrocederPasoTutorial = function () {
     }
 };
 
-function limpiarListenersCondicionales() {
-    detenerAudioTutorial();
-    limpiarTimeoutsTutorial();
-    if (observerLanzadorPaso1) {
-        observerLanzadorPaso1.disconnect();
-        observerLanzadorPaso1 = null;
-    }
-    if (intervalPaso2) {
-        clearInterval(intervalPaso2);
-        intervalPaso2 = null;
-    }
-    if (intervalPaso3) {
-        clearInterval(intervalPaso3);
-        intervalPaso3 = null;
-    }
-    if (timer5sPaso3) {
-        clearInterval(timer5sPaso3);
-        timer5sPaso3 = null;
-    }
-    if (intervalPaso4) {
-        clearInterval(intervalPaso4);
-        intervalPaso4 = null;
-    }
-    if (intervalPaso5) {
-        clearInterval(intervalPaso5);
-        intervalPaso5 = null;
-    }
-    if (intervalPaso6) {
-        clearInterval(intervalPaso6);
-        intervalPaso6 = null;
-    }
-    if (intervalPasoTraductor) {
-        clearInterval(intervalPasoTraductor);
-        intervalPasoTraductor = null;
-    }
-    if (timeoutMouseHintPaso3) {
-        clearTimeout(timeoutMouseHintPaso3);
-        timeoutMouseHintPaso3 = null;
-    }
-    if (timeoutSubEtapaPaso3) {
-        clearTimeout(timeoutSubEtapaPaso3);
-        timeoutSubEtapaPaso3 = null;
-    }
-    if (listenerResizePaso3) {
-        window.removeEventListener('resize', listenerResizePaso3);
-        listenerResizePaso3 = null;
-    }
-    if (listenerMouseMovePaso3) {
-        document.removeEventListener('mousemove', listenerMouseMovePaso3);
-        listenerMouseMovePaso3 = null;
-    }
-    if (listenerContextMenuPaso3) {
-        document.removeEventListener('contextmenu', listenerContextMenuPaso3);
-        listenerContextMenuPaso3 = null;
-    }
-    if (listenerDocClickPaso3) {
-        document.removeEventListener('click', listenerDocClickPaso3, true);
-        listenerDocClickPaso3 = null;
-    }
-    if (listenerKeydownPaso4) {
-        document.removeEventListener('keydown', listenerKeydownPaso4, true);
-        listenerKeydownPaso4 = null;
-    }
-    removerMouseHintPaso3();
-    removerKeyboardHint();
-    window.tutorialGuiaCorteV = null;
-    window.tutorialGuiaLimiteH = null;
-    window.tutorialGuiaZonaExcluida = null;
-    const btnLeer = document.getElementById('opcion-leer');
-    if (btnLeer) btnLeer.classList.remove('tour-spotlight-active');
-    const btnSig = (document.getElementById('btn-tour-next') || document.getElementById('tour-btn-siguiente'));
-    if (btnSig) {
-        btnSig.style.opacity = '1';
-        btnSig.style.pointerEvents = 'auto';
-    }
-    window.tutorialBloquearEspacio = false;
-    document.body.classList.remove('tour-paso-lectura');
-    document.body.classList.remove('tour-activo-zen-menu');
-    document.body.classList.remove('tour-diccionario-abierto');
-    document.body.classList.remove('tour-teatro-abierto');
-    document.body.classList.remove('tour-ia-abierto');
+function _limpiarTimersEIntervalosTutorial() {
+    if (observerLanzadorPaso1) { observerLanzadorPaso1.disconnect(); observerLanzadorPaso1 = null; }
+    [intervalPaso2, intervalPaso3, timer5sPaso3, intervalPaso4, intervalPaso5, intervalPaso6, intervalPasoTraductor]
+        .forEach(id => { if (id) clearInterval(id); });
+    intervalPaso2 = intervalPaso3 = timer5sPaso3 = intervalPaso4 = intervalPaso5 = intervalPaso6 = intervalPasoTraductor = null;
+    if (timeoutMouseHintPaso3) { clearTimeout(timeoutMouseHintPaso3); timeoutMouseHintPaso3 = null; }
+    if (timeoutSubEtapaPaso3) { clearTimeout(timeoutSubEtapaPaso3); timeoutSubEtapaPaso3 = null; }
+}
+
+function _limpiarListenersPaso3Y4Tutorial() {
+    if (listenerResizePaso3) { window.removeEventListener('resize', listenerResizePaso3); listenerResizePaso3 = null; }
+    if (listenerMouseMovePaso3) { document.removeEventListener('mousemove', listenerMouseMovePaso3); listenerMouseMovePaso3 = null; }
+    if (listenerContextMenuPaso3) { document.removeEventListener('contextmenu', listenerContextMenuPaso3); listenerContextMenuPaso3 = null; }
+    if (listenerDocClickPaso3) { document.removeEventListener('click', listenerDocClickPaso3, true); listenerDocClickPaso3 = null; }
+    if (listenerKeydownPaso4) { document.removeEventListener('keydown', listenerKeydownPaso4, true); listenerKeydownPaso4 = null; }
     window.removeEventListener('resize', posicionarMouseHintPaso3);
+}
+
+function _desvincularListenerCondicionalActivo() {
     if (listenerMouseDownActivo) {
         document.removeEventListener('mousedown', listenerMouseDownActivo);
         listenerMouseDownActivo = null;
     }
-    subEtapaPaso2 = 0;
-    if (window.tutorialPasoActual !== 2) {
-        subEtapaPaso3 = 0;
+    if (targetCondicionalActivo && listenerCondicionalActivo) {
+        targetCondicionalActivo.removeEventListener('click', listenerCondicionalActivo);
+        targetCondicionalActivo.removeEventListener('change', listenerCondicionalActivo);
+        targetCondicionalActivo.removeEventListener('input', listenerCondicionalActivo);
     }
+    targetCondicionalActivo = null;
+    listenerCondicionalActivo = null;
+}
+
+function _resetearSubEtapasTutorial() {
+    subEtapaPaso2 = 0;
+    if (window.tutorialPasoActual !== 2) subEtapaPaso3 = 0;
     subEtapaPaso4a = 0;
     subEtapaZenLimites = 0;
     subEtapaZenDicc = 0;
@@ -1251,76 +879,69 @@ function limpiarListenersCondicionales() {
     subEtapaPaso7c = 0;
     subEtapaPaso8b = 0;
     subEtapaPaso9c = 0;
-    const pasoActualId = PASOS_TOUR_GUI[window.tutorialPasoActual]?.id;
-    const estaEnTraductor = pasoActualId && (pasoActualId.includes("trad") || pasoActualId === "paso_10k_probar_traductor");
-    if (!estaEnTraductor) {
-        document.body.classList.remove('tour-traductor-abierto');
-        subEtapaZenTraductor = 0;
-        if (typeof configurarTraduccionTutorial === 'function') {
-            configurarTraduccionTutorial(false);
-        }
-        if (typeof window.limpiarSubtitulosTraduccion === 'function') {
-            window.limpiarSubtitulosTraduccion();
-        }
-    }
+}
+
+const _PASOS_EDICION_TOUR = new Set(['paso_10l_subrayar_azul', 'paso_10m_subrayar_rosa', 'paso_10n_capturar_recorte', 'paso_10o_abrir_gestor']);
+const _PASOS_CONFIG_TOUR = new Set(['paso_11b_tab_teclado', 'paso_11c_tab_audio', 'paso_11d_tab_estilo', 'paso_11e_tab_rendimiento', 'paso_11f_tab_idioma']);
+
+function _cerrarPanelesNotasYGestorAjenos(pasoActualId) {
     if (pasoActualId !== 'paso_10p_explorar_gestor') {
         document.body.classList.remove('tour-gestor-abierto');
-        if (typeof cerrarPanelSubrayados === 'function') {
-            cerrarPanelSubrayados();
-        }
+        if (typeof cerrarPanelSubrayados === 'function') cerrarPanelSubrayados();
     }
     if (pasoActualId !== 'paso_10q_nota_rapida') {
-        document.body.classList.remove('tour-nota-rapida-abierta');
-        document.body.classList.remove('tour-activo-zen-menu');
-        if (typeof cerrarPanelNotaRapida === 'function') {
-            cerrarPanelNotaRapida();
-        }
+        document.body.classList.remove('tour-nota-rapida-abierta', 'tour-activo-zen-menu');
+        if (typeof cerrarPanelNotaRapida === 'function') cerrarPanelNotaRapida();
     }
     if (pasoActualId !== 'paso_10r_cuaderno_apuntes') {
         document.body.classList.remove('tour-notas-abierto');
-        if (typeof cerrarModalNotas === 'function') {
-            cerrarModalNotas();
-        }
+        if (typeof cerrarModalNotas === 'function') cerrarModalNotas();
     }
-    if (pasoActualId !== 'paso_10s_reconocimiento_ocr') {
-        const detOcr = document.getElementById('zen-details-ocr');
-        if (detOcr) detOcr.open = false;
-        const ocrDropdown = document.getElementById('dropdown-ocr-menu');
-        if (ocrDropdown) ocrDropdown.classList.remove('show');
+}
+
+function _cerrarPanelesAjenosAlPasoTutorial(pasoActualId) {
+    const estaEnTraductor = Boolean(pasoActualId && (pasoActualId.includes("trad") || pasoActualId === "paso_10k_probar_traductor"));
+    if (!estaEnTraductor) {
+        document.body.classList.remove('tour-traductor-abierto');
+        subEtapaZenTraductor = 0;
+        _desactivarTraduccionYSubtitulosTour();
     }
-    if (pasoActualId !== 'paso_10t_descargar_audio') {
-        if (typeof cerrarModalDescarga === 'function') {
-            cerrarModalDescarga();
-        }
-        const modalDescarga = document.getElementById('modal-descarga');
-        if (modalDescarga) modalDescarga.style.display = 'none';
-    }
-    const esPasoEdicion = pasoActualId && (pasoActualId === 'paso_10l_subrayar_azul' || pasoActualId === 'paso_10m_subrayar_rosa' || pasoActualId === 'paso_10n_capturar_recorte' || pasoActualId === 'paso_10o_abrir_gestor');
-    if (!esPasoEdicion) {
-        const detZenEd = document.getElementById('zen-details-edicion-bar');
-        if (detZenEd) detZenEd.open = false;
-    }
-    const esPasoConfig = pasoActualId && (pasoActualId === 'paso_11b_tab_teclado' || pasoActualId === 'paso_11c_tab_audio' || pasoActualId === 'paso_11d_tab_estilo' || pasoActualId === 'paso_11e_tab_rendimiento' || pasoActualId === 'paso_11f_tab_idioma');
-    if (!esPasoConfig) {
+    _cerrarPanelesNotasYGestorAjenos(pasoActualId);
+    if (pasoActualId !== 'paso_10s_reconocimiento_ocr') _cerrarMenuOcrTour();
+    if (pasoActualId !== 'paso_10t_descargar_audio') _cerrarModalDescargaTour();
+    if (!_PASOS_EDICION_TOUR.has(pasoActualId)) _setDetailsOpenTour('zen-details-edicion-bar', false);
+    if (!_PASOS_CONFIG_TOUR.has(pasoActualId)) {
         document.body.classList.remove('tour-config-abierto');
         const modalCfg = document.getElementById('modalConfig');
         if (modalCfg) modalCfg.style.display = 'none';
     }
+}
+
+function limpiarListenersCondicionales() {
+    detenerAudioTutorial();
+    limpiarTimeoutsTutorial();
+    _limpiarTimersEIntervalosTutorial();
+    _limpiarListenersPaso3Y4Tutorial();
+    removerMouseHintPaso3();
+    removerKeyboardHint();
+    window.tutorialGuiaCorteV = null;
+    window.tutorialGuiaLimiteH = null;
+    window.tutorialGuiaZonaExcluida = null;
+    document.getElementById('opcion-leer')?.classList.remove('tour-spotlight-active');
+    const btnSig = document.getElementById('btn-tour-next') || document.getElementById('tour-btn-siguiente');
+    if (btnSig) {
+        btnSig.style.opacity = '1';
+        btnSig.style.pointerEvents = 'auto';
+    }
+    window.tutorialBloquearEspacio = false;
+    document.body.classList.remove('tour-paso-lectura', 'tour-activo-zen-menu', 'tour-diccionario-abierto', 'tour-teatro-abierto', 'tour-ia-abierto');
+    _resetearSubEtapasTutorial();
+    _cerrarPanelesAjenosAlPasoTutorial(PASOS_TOUR_GUI[window.tutorialPasoActual]?.id);
     window.onTrazoSubrayadoTutorial = null;
     window.onColorSubrayadorCambiado = null;
     window.onRecorteVisualTutorial = null;
-    const pMenu = document.getElementById('zen-panel-menu');
-    if (pMenu && !window.tutorialActivo) {
-        pMenu.classList.remove('zen-active');
-        pMenu.style.display = 'none';
-    }
-    if (targetCondicionalActivo && listenerCondicionalActivo) {
-        targetCondicionalActivo.removeEventListener('click', listenerCondicionalActivo);
-        targetCondicionalActivo.removeEventListener('change', listenerCondicionalActivo);
-        targetCondicionalActivo.removeEventListener('input', listenerCondicionalActivo);
-    }
-    targetCondicionalActivo = null;
-    listenerCondicionalActivo = null;
+    if (!window.tutorialActivo) _ocultarPanelZenTour('zen-panel-menu');
+    _desvincularListenerCondicionalActivo();
 }
 
 // ============================================================================
@@ -1401,155 +1022,86 @@ function _actualizarBotonAudioTour(btnAudio) {
 }
 window._actualizarBotonAudioTour = _actualizarBotonAudioTour;
 
-function renderizarPasoTour() {
-    const paso = PASOS_TOUR_GUI[window.tutorialPasoActual];
-    if (!paso) return;
+function _escaparHtmlTour(s) {
+    if (typeof window.escapeHtml === 'function') return window.escapeHtml(s);
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 
-    if (paso.id !== 'paso_3_leer_y_pausar') {
-        removerMouseHintPaso3();
+function _sincronizarSubEtapasEdicionEnRender(pasoId) {
+    const esMinimalista = _esModoMinimalistaTour();
+    const detZenAbierto = Boolean(document.getElementById('zen-details-edicion-bar')?.open);
+    if (pasoId === 'paso_10l_subrayar_azul' && esMinimalista && detZenAbierto && subEtapaEdicionAzul === 0) {
+        subEtapaEdicionAzul = 1;
+    } else if (pasoId === 'paso_10m_subrayar_rosa' && esMinimalista && detZenAbierto && subEtapaEdicionRosa === 0) {
+        subEtapaEdicionRosa = 1;
+    } else if (pasoId === 'paso_10n_capturar_recorte' && subEtapaEdicionRecorte === 0 && (!esMinimalista || detZenAbierto)) {
+        subEtapaEdicionRecorte = 1;
+    } else if (pasoId === 'paso_10o_abrir_gestor' && subEtapaEdicionGestor === 0 && (!esMinimalista || detZenAbierto)) {
+        subEtapaEdicionGestor = 1;
     }
+}
 
-    const card = document.getElementById('tour-card');
-    const badge = document.getElementById('tour-step-badge');
-    const titleEl = document.getElementById('tour-card-title');
-    const bodyEl = document.getElementById('tour-card-body');
-    const btnPrev = document.getElementById('btn-tour-prev');
-    const btnNext = document.getElementById('btn-tour-next');
-
-    // Sincronizar sub-etapas de herramientas de edición antes de calcular textos, focos y locución
-    if (paso.id === 'paso_10l_subrayar_azul') {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        const detZen = document.getElementById('zen-details-edicion-bar');
-        if (esMinimalista && detZen?.open && subEtapaEdicionAzul === 0) {
-            subEtapaEdicionAzul = 1;
-        }
-    } else if (paso.id === 'paso_10m_subrayar_rosa') {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        const detZen = document.getElementById('zen-details-edicion-bar');
-        if (esMinimalista && detZen?.open && subEtapaEdicionRosa === 0) {
-            subEtapaEdicionRosa = 1;
-        }
-    } else if (paso.id === 'paso_10n_capturar_recorte') {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        const detZen = document.getElementById('zen-details-edicion-bar');
-        if (!esMinimalista && subEtapaEdicionRecorte === 0) {
-            subEtapaEdicionRecorte = 1;
-        } else if (esMinimalista && detZen?.open && subEtapaEdicionRecorte === 0) {
-            subEtapaEdicionRecorte = 1;
-        }
-    } else if (paso.id === 'paso_10o_abrir_gestor') {
-        const esMinimalista = document.body.classList.contains('modo-minimalista');
-        const detZen = document.getElementById('zen-details-edicion-bar');
-        if (!esMinimalista && subEtapaEdicionGestor === 0) {
-            subEtapaEdicionGestor = 1;
-        } else if (esMinimalista && detZen?.open && subEtapaEdicionGestor === 0) {
-            subEtapaEdicionGestor = 1;
-        }
-    }
-
-    if (badge) badge.innerText = getTourText("tour-progreso-paso", "Paso {actual} de {total}")
-        .replace("{actual}", window.tutorialPasoActual + 1)
-        .replace("{total}", PASOS_TOUR_GUI.length);
-
-    const titulo = typeof paso.getTitulo === 'function' ? paso.getTitulo() : paso.titulo;
-    const instruccion = _limpiarEmojisTourHtml(typeof paso.getInstruccion === 'function' ? paso.getInstruccion() : paso.instruccion);
-    const detalleExtraRaw = typeof paso.getDetalleExtra === 'function' ? paso.getDetalleExtra() : paso.detalleExtra;
-    const detalleExtra = detalleExtraRaw ? _limpiarEmojisTourHtml(detalleExtraRaw) : '';
-
-    _renderizarTituloTour(titleEl, titulo, _claveIconoPasoTour(paso.id));
-
-    if (bodyEl) {
-        let demoBtnHtml = '';
-        if (paso.botonDemoExtra) {
-            const txtDemoRaw = typeof paso.botonDemoExtra.getTexto === 'function' ? paso.botonDemoExtra.getTexto() : paso.botonDemoExtra.texto;
-            const txtDemo = _limpiarEmojisTourHtml(txtDemoRaw);
-            const esc = (typeof window.escapeHtml === 'function')
-                ? window.escapeHtml
-                : (s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'));
-            const demoSvg = '<svg class="lira-svg-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>';
-            demoBtnHtml = `
-                <div style="margin-top:12px; text-align:center;">
-                    <button id="btn-tour-demo-action" class="tour-btn tour-btn-demo" style="width:100%; justify-content:center; padding:7px 14px; font-size:0.83rem;">
-                        ${demoSvg}<span>${esc(txtDemo)}</span>
-                    </button>
-                </div>
-            `;
-        }
-
-        bodyEl.innerHTML = `
-            <div style="font-size:0.9rem; color:#ffffff; line-height:1.45; margin-bottom:8px;">
-                ${instruccion}
+function _renderizarCuerpoPasoTour(bodyEl, paso, instruccion, detalleExtra) {
+    if (!bodyEl) return;
+    let demoBtnHtml = '';
+    if (paso.botonDemoExtra) {
+        const txtDemoRaw = typeof paso.botonDemoExtra.getTexto === 'function' ? paso.botonDemoExtra.getTexto() : paso.botonDemoExtra.texto;
+        const txtDemo = _limpiarEmojisTourHtml(txtDemoRaw);
+        const demoSvg = '<svg class="lira-svg-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>';
+        demoBtnHtml = `
+            <div style="margin-top:12px; text-align:center;">
+                <button id="btn-tour-demo-action" class="tour-btn tour-btn-demo" style="width:100%; justify-content:center; padding:7px 14px; font-size:0.83rem;">
+                    ${demoSvg}<span>${_escaparHtmlTour(txtDemo)}</span>
+                </button>
             </div>
-            ${detalleExtra ? `
-                <div class="tutorial-speech-bubble" style="font-size:0.84rem; margin:8px 0 0 0;">
-                    ${detalleExtra}
-                </div>
-            ` : ''}
-            ${demoBtnHtml}
         `;
+    }
 
-        if (paso.botonDemoExtra) {
-            const btnDemo = document.getElementById('btn-tour-demo-action');
-            if (btnDemo && typeof paso.botonDemoExtra.accion === 'function') {
-                btnDemo.onclick = paso.botonDemoExtra.accion;
-            }
+    bodyEl.innerHTML = `
+        <div style="font-size:0.9rem; color:#ffffff; line-height:1.45; margin-bottom:8px;">
+            ${instruccion}
+        </div>
+        ${detalleExtra ? `
+            <div class="tutorial-speech-bubble" style="font-size:0.84rem; margin:8px 0 0 0;">
+                ${detalleExtra}
+            </div>
+        ` : ''}
+        ${demoBtnHtml}
+    `;
+
+    if (paso.botonDemoExtra) {
+        const btnDemo = document.getElementById('btn-tour-demo-action');
+        if (btnDemo && typeof paso.botonDemoExtra.accion === 'function') {
+            btnDemo.onclick = paso.botonDemoExtra.accion;
         }
     }
+}
 
-    if (btnPrev) {
-        btnPrev.style.display = window.tutorialPasoActual === 0 ? 'none' : 'inline-flex';
-    }
-    if (btnNext) {
-        const esUltimoPaso = window.tutorialPasoActual === PASOS_TOUR_GUI.length - 1;
-        const txtNext = _limpiarEmojisTourHtml(
-            esUltimoPaso
-                ? getTourText("tour-btn-finalizar", "Finalizar")
-                : getTourText("tour-btn-siguiente", "Siguiente")
-        );
-        const esc = (typeof window.escapeHtml === 'function')
-            ? window.escapeHtml
-            : (s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'));
-        const nextSvg = esUltimoPaso
-            ? '<svg class="lira-svg-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>'
-            : '<svg class="lira-svg-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>';
-        btnNext.innerHTML = `<span id="btn-tour-next-texto" data-i18n="${esUltimoPaso ? 'tour-btn-finalizar' : 'btn-tut-siguiente'}">${esc(txtNext)}</span>${nextSvg}`;
-    }
+function _renderizarBotonesNavPasoTour(btnPrev, btnNext) {
+    if (btnPrev) btnPrev.style.display = window.tutorialPasoActual === 0 ? 'none' : 'inline-flex';
+    if (!btnNext) return;
+    const esUltimoPaso = window.tutorialPasoActual === PASOS_TOUR_GUI.length - 1;
+    const txtNext = _limpiarEmojisTourHtml(
+        esUltimoPaso ? getTourText("tour-btn-finalizar", "Finalizar") : getTourText("tour-btn-siguiente", "Siguiente")
+    );
+    const nextSvg = esUltimoPaso
+        ? '<svg class="lira-svg-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+        : '<svg class="lira-svg-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+    btnNext.innerHTML = `<span id="btn-tour-next-texto" data-i18n="${esUltimoPaso ? 'tour-btn-finalizar' : 'btn-tut-siguiente'}">${_escaparHtmlTour(txtNext)}</span>${nextSvg}`;
+}
 
-    const btnAudio = document.getElementById('btn-tour-audio-toggle');
-    if (btnAudio) {
-        _actualizarBotonAudioTour(btnAudio);
-    }
-
-    // Gestionar visualización del lanzador de bienvenida
-    const bienvenidaEl = document.getElementById('lira-bienvenida');
-    if (paso.id === "paso_1_lanzador") {
-        if (bienvenidaEl) bienvenidaEl.style.display = 'flex';
-    } else {
-        if (bienvenidaEl && bienvenidaEl.style.display !== 'none') {
-            bienvenidaEl.style.display = 'none';
-        }
-    }
-
-    // Quitar resaltados previos
+function _resolverTargetYAplicarSpotlightTour(paso) {
     quitarResaltadoTour();
-
-    // Obtener elementos objetivo (soporta getTargets(), selector o array)
     let targets = [];
-    if (typeof paso.getTargets === 'function') {
-        targets = paso.getTargets();
-    } else if (paso.targetSelector) {
-        targets = Array.from(document.querySelectorAll(paso.targetSelector));
-    }
+    if (typeof paso.getTargets === 'function') targets = paso.getTargets();
+    else if (paso.targetSelector) targets = Array.from(document.querySelectorAll(paso.targetSelector));
 
     let targetEl = targets.find(t => t && (t.offsetParent !== null || t.getBoundingClientRect().width > 0)) || targets[0];
     if (!targetEl || (targetEl.offsetParent === null && targetEl.getBoundingClientRect().width === 0)) {
         targetEl = document.getElementById('banner-container') || document.body;
     }
 
-    const evitarSpotlight = typeof paso.sinSpotlightAnim === 'function'
-        ? paso.sinSpotlightAnim()
-        : Boolean(paso.sinSpotlightAnim);
-
+    const evitarSpotlight = typeof paso.sinSpotlightAnim === 'function' ? paso.sinSpotlightAnim() : Boolean(paso.sinSpotlightAnim);
     if (!evitarSpotlight) {
         targets.forEach(el => {
             if (el && el !== document.body && el.id !== 'visor-container' && el.id !== 'lienzo-pdf') {
@@ -1557,220 +1109,68 @@ function renderizarPasoTour() {
             }
         });
     }
+    if (paso.id === "paso_1_lanzador") document.body.classList.add('tour-activo-lanzador');
+    return targetEl;
+}
 
+function _montarAccionCondicionalPasoTour(paso) {
+    _desvincularListenerCondicionalActivo();
+    if (typeof paso.accionCondicional !== 'function') return;
+
+    window.tutorialRenderToken = (window.tutorialRenderToken || 0) + 1;
+    const tokenRender = window.tutorialRenderToken;
+    const pasoRender = window.tutorialPasoActual;
+    let yaAvanzoRender = false;
+    paso.accionCondicional(() => {
+        if (yaAvanzoRender) return;
+        if (tokenRender !== window.tutorialRenderToken || pasoRender !== window.tutorialPasoActual) return;
+        yaAvanzoRender = true;
+        window.avanzarPasoTutorial();
+    });
+}
+
+function renderizarPasoTour() {
+    const paso = PASOS_TOUR_GUI[window.tutorialPasoActual];
+    if (!paso) return;
+    if (paso.id !== 'paso_3_leer_y_pausar') removerMouseHintPaso3();
+
+    _sincronizarSubEtapasEdicionEnRender(paso.id);
+
+    const badge = document.getElementById('tour-step-badge');
+    if (badge) {
+        badge.innerText = getTourText("tour-progreso-paso", "Paso {actual} de {total}")
+            .replace("{actual}", window.tutorialPasoActual + 1)
+            .replace("{total}", PASOS_TOUR_GUI.length);
+    }
+
+    const titulo = typeof paso.getTitulo === 'function' ? paso.getTitulo() : paso.titulo;
+    const instruccion = _limpiarEmojisTourHtml(typeof paso.getInstruccion === 'function' ? paso.getInstruccion() : paso.instruccion);
+    const detalleExtraRaw = typeof paso.getDetalleExtra === 'function' ? paso.getDetalleExtra() : paso.detalleExtra;
+    const detalleExtra = detalleExtraRaw ? _limpiarEmojisTourHtml(detalleExtraRaw) : '';
+
+    _renderizarTituloTour(document.getElementById('tour-card-title'), titulo, _claveIconoPasoTour(paso.id));
+    _renderizarCuerpoPasoTour(document.getElementById('tour-card-body'), paso, instruccion, detalleExtra);
+    _renderizarBotonesNavPasoTour(document.getElementById('btn-tour-prev'), document.getElementById('btn-tour-next'));
+
+    const btnAudio = document.getElementById('btn-tour-audio-toggle');
+    if (btnAudio) _actualizarBotonAudioTour(btnAudio);
+
+    const bienvenidaEl = document.getElementById('lira-bienvenida');
     if (paso.id === "paso_1_lanzador") {
-        document.body.classList.add('tour-activo-lanzador');
+        if (bienvenidaEl) bienvenidaEl.style.display = 'flex';
+    } else if (bienvenidaEl && bienvenidaEl.style.display !== 'none') {
+        bienvenidaEl.style.display = 'none';
     }
 
-    _posicionarCardTour(card, paso, targetEl);
+    const targetEl = _resolverTargetYAplicarSpotlightTour(paso);
+    _posicionarCardTour(document.getElementById('tour-card'), paso, targetEl);
+    _montarAccionCondicionalPasoTour(paso);
 
-    // Quitar escuchas previas activas antes de renderizar y montar la nueva acción condicional
-    if (listenerMouseDownActivo) {
-        document.removeEventListener('mousedown', listenerMouseDownActivo);
-        listenerMouseDownActivo = null;
-    }
-    if (targetCondicionalActivo && listenerCondicionalActivo) {
-        targetCondicionalActivo.removeEventListener('click', listenerCondicionalActivo);
-        targetCondicionalActivo.removeEventListener('change', listenerCondicionalActivo);
-        targetCondicionalActivo.removeEventListener('input', listenerCondicionalActivo);
-        targetCondicionalActivo = null;
-        listenerCondicionalActivo = null;
-    }
-
-    // Activar escucha condicional de la acción del usuario
-    if (typeof paso.accionCondicional === 'function') {
-        // Token de renderizado: los listeners de renders anteriores (sub-etapas viejas) quedan anulados
-        // y cada render solo puede avanzar una vez, evitando saltos dobles de paso.
-        window.tutorialRenderToken = (window.tutorialRenderToken || 0) + 1;
-        const tokenRender = window.tutorialRenderToken;
-        const pasoRender = window.tutorialPasoActual;
-        let yaAvanzoRender = false;
-        paso.accionCondicional(() => {
-            if (yaAvanzoRender) return;
-            if (tokenRender !== window.tutorialRenderToken || pasoRender !== window.tutorialPasoActual) return;
-            yaAvanzoRender = true;
-            window.avanzarPasoTutorial();
-        });
-    }
-
-    // Narrar el paso actual con síntesis de voz y token de cancelación (sin concatenar detalleExtra para evitar redundancia)
     const textoParaNarrar = typeof paso.getLocucion === 'function' ? paso.getLocucion() : (paso.locucion || instruccion || "");
     const autoAvanzarEfectivo = typeof paso.autoAvanzarTrasLectura === 'function'
         ? paso.autoAvanzarTrasLectura()
         : Boolean(paso.autoAvanzarTrasLectura);
     narrarPasoTutorial(textoParaNarrar, autoAvanzarEfectivo);
-}
-
-function _posicionarCardTour(card, paso, targetEl) {
-    if (!card || !paso) return;
-    const rect = (targetEl || document.body).getBoundingClientRect();
-    const cardWidth = Math.min(420, Math.max(280, window.innerWidth - 24));
-    const cardHeight = card.offsetHeight || 260;
-
-    let top = 80;
-    let left = 40;
-    card.style.right = "auto";
-    card.style.bottom = "auto";
-
-    const posEfectiva = typeof paso.posicion === 'function' ? paso.posicion() : paso.posicion;
-
-    if (posEfectiva === "top-left" || (paso.id === "paso_3_leer_y_pausar" && typeof subEtapaPaso3 !== 'undefined' && subEtapaPaso3 === 2) || paso.id === "paso_10q_nota_rapida" || (paso.id === "paso_10r_cuaderno_apuntes" && (!document.getElementById('modal-notas') || (document.getElementById('modal-notas').style.display !== 'flex' && document.getElementById('modal-notas').style.display !== 'block')))) {
-        card.style.bottom = "auto";
-        card.style.transform = "none";
-        if (window.innerWidth >= 760) {
-            card.style.right = "auto";
-            card.style.left = "28px";
-            card.style.top = "90px";
-        } else {
-            card.style.left = "12px";
-            card.style.right = "12px";
-            card.style.top = "auto";
-            card.style.bottom = "16px";
-        }
-    } else if (posEfectiva === "adaptable-paso-1" || posEfectiva === "adaptable-paso-2" || paso.id === "paso_10a_abrir_ia") {
-        card.style.bottom = "auto";
-        card.style.transform = "none";
-
-        const pMenu = document.getElementById('zen-panel-menu');
-        const pMenuRect = (pMenu && (pMenu.classList.contains('zen-active') || pMenu.style.display === 'flex' || pMenu.style.display === 'block')) ? pMenu.getBoundingClientRect() : null;
-
-        if (window.innerWidth >= 1050) {
-            card.style.left = "auto";
-            card.style.right = "28px";
-            card.style.top = "90px";
-        } else if (window.innerWidth >= 760 && pMenuRect && (window.innerWidth - pMenuRect.right) >= 440) {
-            card.style.left = `${Math.round(pMenuRect.right + 20)}px`;
-            card.style.right = "auto";
-            card.style.top = "85px";
-        } else if (window.innerWidth >= 720 && !pMenuRect) {
-            card.style.left = "auto";
-            card.style.right = "16px";
-            card.style.top = "85px";
-        } else {
-            card.style.left = "12px";
-            card.style.right = "12px";
-            card.style.top = "auto";
-            card.style.bottom = "16px";
-        }
-    } else if (posEfectiva === "bottom-center" || paso.posicion === "bottom-center") {
-        card.style.top = "auto";
-        card.style.bottom = "28px";
-        card.style.left = "50%";
-        card.style.transform = "translateX(-50%)";
-    } else if (paso.posicion === "center" || targetEl === document.body) {
-        card.style.bottom = "auto";
-        card.style.top = "50%";
-        card.style.left = "50%";
-        card.style.transform = "translate(-50%, -50%)";
-    } else if (paso.posicion === "below-offset") {
-        card.style.bottom = "auto";
-        top = Math.min(window.innerHeight - cardHeight - 16, rect.bottom + 15);
-        left = Math.max(16, Math.min(window.innerWidth - cardWidth - 25, rect.left + 80));
-        card.style.transform = "none";
-        card.style.top = `${top}px`;
-        card.style.left = `${left}px`;
-    } else if (paso.posicion === "right-panel") {
-        const esPasoDiccionario = paso.id && (paso.id.startsWith("paso_7") || paso.id === "paso_8b_desactivar_abreviatura");
-        const esPasoTeatroModal = paso.id && (paso.id === "paso_9b_explicar_dos_puntos" || paso.id === "paso_9c_asignar_voz_teatro");
-        const esPasoIAModal = paso.id && (paso.id === 'paso_10b_chat_ia' || paso.id === 'paso_10c_solicitudes_ia' || paso.id === 'paso_10d_fuentes_ia' || paso.id === 'paso_10e_modelos_ia');
-        const esPasoGestorModal = paso.id === "paso_10p_explorar_gestor";
-        const esPasoConfigModal = paso.id && (paso.id === "paso_11b_tab_teclado" || paso.id === "paso_11c_tab_audio" || paso.id === "paso_11d_tab_estilo" || paso.id === "paso_11e_tab_rendimiento" || paso.id === "paso_11f_tab_idioma");
-        if (esPasoDiccionario || esPasoTeatroModal || esPasoIAModal || esPasoGestorModal || esPasoConfigModal) {
-            if (esPasoDiccionario) {
-                document.body.classList.add('tour-diccionario-abierto');
-                document.body.classList.remove('tour-teatro-abierto', 'tour-ia-abierto', 'tour-gestor-abierto', 'tour-config-abierto');
-            } else if (esPasoTeatroModal) {
-                document.body.classList.add('tour-teatro-abierto');
-                document.body.classList.remove('tour-diccionario-abierto', 'tour-ia-abierto', 'tour-gestor-abierto', 'tour-config-abierto');
-            } else if (esPasoGestorModal) {
-                document.body.classList.add('tour-gestor-abierto');
-                document.body.classList.remove('tour-diccionario-abierto', 'tour-teatro-abierto', 'tour-ia-abierto', 'tour-config-abierto');
-            } else if (esPasoConfigModal) {
-                document.body.classList.add('tour-config-abierto');
-                document.body.classList.remove('tour-diccionario-abierto', 'tour-teatro-abierto', 'tour-ia-abierto', 'tour-gestor-abierto');
-            } else {
-                document.body.classList.add('tour-ia-abierto');
-                document.body.classList.remove('tour-diccionario-abierto', 'tour-teatro-abierto', 'tour-gestor-abierto', 'tour-config-abierto');
-            }
-            card.style.bottom = "auto";
-            card.style.transform = "none";
-            if (window.innerWidth >= 720) {
-                card.style.right = "auto";
-                card.style.left = "24px";
-                if (esPasoConfigModal) {
-                    const modalBox = document.querySelector('#modalConfig .modal-content');
-                    const mRect = modalBox ? modalBox.getBoundingClientRect() : null;
-                    top = mRect && mRect.top > 0
-                        ? Math.max(80, Math.min(window.innerHeight - cardHeight - 24, Math.round(mRect.top + 20)))
-                        : Math.max(120, Math.min(window.innerHeight - cardHeight - 24, Math.round(window.innerHeight * 0.25)));
-                } else {
-                    top = Math.max(250, Math.min(window.innerHeight - cardHeight - 24, Math.round(window.innerHeight * 0.36)));
-                }
-                card.style.top = `${top}px`;
-            } else {
-                card.style.left = "12px";
-                card.style.right = "12px";
-                card.style.top = "auto";
-                card.style.bottom = "16px";
-            }
-        } else {
-            document.body.classList.remove('tour-diccionario-abierto');
-            document.body.classList.remove('tour-teatro-abierto');
-            document.body.classList.remove('tour-ia-abierto');
-            document.body.classList.remove('tour-gestor-abierto');
-            document.body.classList.remove('tour-config-abierto');
-            const panelContenedor = targetEl.closest('#panel-diccionario, #panel-teatro, #panel-ia') || targetEl;
-            const pRect = panelContenedor.getBoundingClientRect();
-            card.style.bottom = "auto";
-            card.style.right = "auto";
-            top = Math.max(20, Math.min(window.innerHeight - cardHeight - 20, pRect.top));
-            left = Math.min(window.innerWidth - cardWidth - 20, pRect.right + 20);
-            if (left + cardWidth > window.innerWidth - 10) {
-                left = Math.max(10, pRect.left - cardWidth - 20);
-            }
-            card.style.transform = "none";
-            card.style.top = `${top}px`;
-            card.style.left = `${left}px`;
-        }
-    } else if (paso.posicion === "left-panel") {
-        card.style.bottom = "auto";
-        top = Math.max(30, Math.min(window.innerHeight - cardHeight - 20, rect.top));
-        left = Math.max(16, rect.left - cardWidth - 25);
-        card.style.transform = "none";
-        card.style.top = `${top}px`;
-        card.style.left = `${left}px`;
-    } else if (paso.posicion === "top-right") {
-        card.style.bottom = "auto";
-        top = 70;
-        left = Math.max(16, window.innerWidth - cardWidth - 30);
-        card.style.transform = "none";
-        card.style.top = `${top}px`;
-        card.style.left = `${left}px`;
-    } else if (paso.posicion === "above-right") {
-        card.style.bottom = "auto";
-        top = Math.max(16, rect.top - cardHeight - 15);
-        left = Math.max(16, Math.min(rect.right + 10, window.innerWidth - cardWidth - 20));
-        card.style.transform = "none";
-        card.style.top = `${top}px`;
-        card.style.left = `${left}px`;
-    } else if (paso.posicion === "below-left") {
-        card.style.bottom = "auto";
-        top = Math.min(window.innerHeight - cardHeight - 16, rect.bottom + 15);
-        left = Math.max(16, Math.min(rect.left, window.innerWidth - cardWidth - 20));
-        card.style.transform = "none";
-        card.style.top = `${top}px`;
-        card.style.left = `${left}px`;
-    } else {
-        card.style.bottom = "auto";
-        top = rect.bottom + 12;
-        left = Math.max(16, Math.min(rect.left, window.innerWidth - cardWidth - 20));
-        if (top + cardHeight > window.innerHeight - 20) {
-            top = Math.max(16, rect.top - cardHeight - 12);
-        }
-        card.style.transform = "none";
-        card.style.top = `${top}px`;
-        card.style.left = `${left}px`;
-    }
 }
 
 function _posicionarCardTour(card, paso, targetEl) {

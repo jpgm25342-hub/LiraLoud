@@ -20,18 +20,22 @@ def _extraer_items_geometria(items, tiene_trazo, clasificar_rect, verticales, ho
             clasificar_rect(fitz.Rect(item[1]), tiene_trazo, emitir_bordes_trazo=True)
 
 
+def _debe_clasificar_rect_drawing(r, items, tiene_trazo):
+    if r is None or not items or any(it and it[0] == "re" for it in items):
+        return False
+    solo_lineas = all(it and it[0] == "l" for it in items)
+    return (not solo_lineas and len(items) <= 12) or (not tiene_trazo and len(items) <= 4)
+
+
 def _procesar_drawing_geometria(d, clasificar_rect, verticales, horizontales):
     """Extrae líneas y rectángulos clasificables de un dibujo individual de PyMuPDF."""
     tiene_trazo = (d.get("color") is not None) and (
         d.get("width") is None or float(d.get("width") or 0.0) > 0.0
     )
     items = d.get("items", [])
-    tiene_re = any(it and it[0] == "re" for it in items)
     r = d.get("rect")
-    if r is not None and not tiene_re and items:
-        solo_lineas = all(it and it[0] == "l" for it in items)
-        if (not solo_lineas and len(items) <= 12) or (not tiene_trazo and len(items) <= 4):
-            clasificar_rect(fitz.Rect(r), tiene_trazo, emitir_bordes_trazo=False)
+    if _debe_clasificar_rect_drawing(r, items, tiene_trazo):
+        clasificar_rect(fitz.Rect(r), tiene_trazo, emitir_bordes_trazo=False)
 
     _extraer_items_geometria(items, tiene_trazo, clasificar_rect, verticales, horizontales)
 

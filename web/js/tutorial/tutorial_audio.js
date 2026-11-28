@@ -40,41 +40,45 @@ function detenerAudioTutorial() {
 }
 window.detenerAudioTutorial = detenerAudioTutorial;
 
+function _renderizarBotonAudioTourFallback(btn, muteado) {
+    if (!btn) return;
+    if (typeof window._actualizarBotonAudioTour === 'function') {
+        window._actualizarBotonAudioTour(btn);
+        return;
+    }
+    const obtenerTxt = (clave, def) => (typeof getTourText === 'function') ? getTourText(clave, def) : def;
+    const svg = muteado
+        ? `<svg class="lira-svg-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>`
+        : `<svg class="lira-svg-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>`;
+    const txt = obtenerTxt(muteado ? "tour-btn-voz-mute" : "tour-btn-voz-on", "Voz");
+    btn.innerHTML = `${svg}<span id="tour-btn-voz-texto" data-i18n="tour-btn-voz">${txt}</span>`;
+    btn.title = obtenerTxt(
+        muteado ? "tour-btn-voz-mute-title" : "tour-btn-voz-on-title",
+        muteado ? "Voz del tutorial silenciada (haz clic para activar)" : "Voz del tutorial activa (haz clic para silenciar)"
+    );
+}
+
+function _narrarPasoTutorialActual(paso) {
+    if (!paso) return;
+    const instruccion = typeof paso.getInstruccion === 'function' ? paso.getInstruccion() : paso.instruccion;
+    const locucion = typeof paso.getLocucion === 'function' ? paso.getLocucion() : (paso.locucion || instruccion);
+    const autoAvanzarEfectivo = typeof paso.autoAvanzarTrasLectura === 'function'
+        ? paso.autoAvanzarTrasLectura()
+        : Boolean(paso.autoAvanzarTrasLectura);
+    narrarPasoTutorial(locucion, autoAvanzarEfectivo);
+}
+
 function toggleAudioTutorial() {
     window.tutorialAudioMuteado = !window.tutorialAudioMuteado;
     const btn = document.getElementById('btn-tour-audio-toggle');
     if (window.tutorialAudioMuteado) {
         detenerAudioTutorial();
-        if (btn) {
-            if (typeof window._actualizarBotonAudioTour === 'function') {
-                window._actualizarBotonAudioTour(btn);
-            } else {
-                const txt = (typeof getTourText === 'function') ? getTourText("tour-btn-voz-mute", "Voz") : "Voz";
-                btn.innerHTML = `<svg class="lira-svg-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg><span id="tour-btn-voz-texto" data-i18n="tour-btn-voz">${txt}</span>`;
-                btn.title = (typeof getTourText === 'function') ? getTourText("tour-btn-voz-mute-title", "Voz del tutorial silenciada (haz clic para activar)") : "Voz del tutorial silenciada (haz clic para activar)";
-            }
-        }
-    } else {
-        if (btn) {
-            if (typeof window._actualizarBotonAudioTour === 'function') {
-                window._actualizarBotonAudioTour(btn);
-            } else {
-                const txt = (typeof getTourText === 'function') ? getTourText("tour-btn-voz-on", "Voz") : "Voz";
-                btn.innerHTML = `<svg class="lira-svg-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg><span id="tour-btn-voz-texto" data-i18n="tour-btn-voz">${txt}</span>`;
-                btn.title = (typeof getTourText === 'function') ? getTourText("tour-btn-voz-on-title", "Voz del tutorial activa (haz clic para silenciar)") : "Voz del tutorial activa (haz clic para silenciar)";
-            }
-        }
-        if (window.tutorialActivo) {
-            const paso = PASOS_TOUR_GUI[window.tutorialPasoActual];
-            if (paso) {
-                const instruccion = typeof paso.getInstruccion === 'function' ? paso.getInstruccion() : paso.instruccion;
-                const locucion = typeof paso.getLocucion === 'function' ? paso.getLocucion() : (paso.locucion || instruccion);
-                const autoAvanzarEfectivo = typeof paso.autoAvanzarTrasLectura === 'function'
-                    ? paso.autoAvanzarTrasLectura()
-                    : Boolean(paso.autoAvanzarTrasLectura);
-                narrarPasoTutorial(locucion, autoAvanzarEfectivo);
-            }
-        }
+        _renderizarBotonAudioTourFallback(btn, true);
+        return;
+    }
+    _renderizarBotonAudioTourFallback(btn, false);
+    if (window.tutorialActivo) {
+        _narrarPasoTutorialActual(PASOS_TOUR_GUI[window.tutorialPasoActual]);
     }
 }
 window.toggleAudioTutorial = toggleAudioTutorial;
@@ -85,23 +89,9 @@ function repetirAudioTutorial() {
     if (!paso) return;
     if (window.tutorialAudioMuteado) {
         window.tutorialAudioMuteado = false;
-        const btn = document.getElementById('btn-tour-audio-toggle');
-        if (btn) {
-            if (typeof window._actualizarBotonAudioTour === 'function') {
-                window._actualizarBotonAudioTour(btn);
-            } else {
-                const txt = (typeof getTourText === 'function') ? getTourText("tour-btn-voz-on", "Voz") : "Voz";
-                btn.innerHTML = `<svg class="lira-svg-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg><span id="tour-btn-voz-texto" data-i18n="tour-btn-voz">${txt}</span>`;
-                btn.title = (typeof getTourText === 'function') ? getTourText("tour-btn-voz-on-title", "Voz del tutorial activa (haz clic para silenciar)") : "Voz del tutorial activa (haz clic para silenciar)";
-            }
-        }
+        _renderizarBotonAudioTourFallback(document.getElementById('btn-tour-audio-toggle'), false);
     }
-    const instruccion = typeof paso.getInstruccion === 'function' ? paso.getInstruccion() : paso.instruccion;
-    const locucion = typeof paso.getLocucion === 'function' ? paso.getLocucion() : (paso.locucion || instruccion);
-    const autoAvanzarEfectivo = typeof paso.autoAvanzarTrasLectura === 'function'
-        ? paso.autoAvanzarTrasLectura()
-        : Boolean(paso.autoAvanzarTrasLectura);
-    narrarPasoTutorial(locucion, autoAvanzarEfectivo);
+    _narrarPasoTutorialActual(paso);
 }
 window.repetirAudioTutorial = repetirAudioTutorial;
 

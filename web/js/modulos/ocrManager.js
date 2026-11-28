@@ -393,14 +393,9 @@ async function seleccionarOpcionOCR(modo) {
     }
 }
 
-async function iniciarBatchOCR(inicio = 0, fin = null) {
-    ocrBatchEnCurso = true;
+function _inicializarUIModalProgresoOCR(inicio, maxPags) {
     const modalProgreso = document.getElementById('modal-ocr-progreso');
     if (modalProgreso) modalProgreso.style.display = 'flex';
-    
-    let finVal = (fin && fin > 0) ? fin : (totalPaginas && totalPaginas > 0 ? totalPaginas : null);
-    const maxPags = finVal || (totalPaginas && totalPaginas > 0 ? totalPaginas : '...');
-    const totalRango = (typeof maxPags === 'number') ? (maxPags - inicio) : '...';
 
     const fill = document.getElementById('barra-ocr-progreso-fill');
     if (fill) fill.style.width = '0%';
@@ -410,6 +405,7 @@ async function iniciarBatchOCR(inicio = 0, fin = null) {
     if (pct) pct.innerText = '0%';
     const estado = document.getElementById('ocr-progreso-texto-estado');
     if (estado) estado.innerText = `Iniciando RapidOCR...`;
+
     const tiempoEl = document.getElementById('ocr-progreso-tiempo-estimado');
     if (tiempoEl) {
         const iconoReloj = (typeof obtenerIconoDialogoSVG === 'function')
@@ -417,6 +413,15 @@ async function iniciarBatchOCR(inicio = 0, fin = null) {
             : '';
         tiempoEl.innerHTML = `${iconoReloj}<span id="ocr-progreso-tiempo-texto">Calculando tiempo estimado...</span>`;
     }
+}
+
+async function iniciarBatchOCR(inicio = 0, fin = null) {
+    ocrBatchEnCurso = true;
+    const totalValido = (totalPaginas && totalPaginas > 0) ? totalPaginas : null;
+    const finVal = (fin && fin > 0) ? fin : totalValido;
+    const maxPags = finVal || totalValido || '...';
+
+    _inicializarUIModalProgresoOCR(inicio, maxPags);
 
     try {
         await eel.ejecutar_batch_ocr(inicio, finVal)();

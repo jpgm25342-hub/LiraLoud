@@ -1,178 +1,213 @@
+function _leerDomCheck(id, defecto) {
+    const el = document.getElementById(id);
+    return el ? el.checked : defecto;
+}
+
+function _leerDomValor(id, defecto) {
+    const el = document.getElementById(id);
+    return (el && el.value) ? el.value : defecto;
+}
+
+function _leerDomInt(id, defecto) {
+    const el = document.getElementById(id);
+    const val = el ? parseInt(el.value, 10) : NaN;
+    return isNaN(val) ? defecto : val;
+}
+
+function _leerDomFloat(id, defecto) {
+    const el = document.getElementById(id);
+    const val = el ? parseFloat(el.value) : NaN;
+    return isNaN(val) ? defecto : val;
+}
+
+function _leerDomCheckAlterno(idPrimario, idSecundario, defecto) {
+    const el1 = document.getElementById(idPrimario);
+    if (el1) return el1.checked;
+    const el2 = document.getElementById(idSecundario);
+    return el2 ? el2.checked : defecto;
+}
+
+function _leerDomValorAlterno(idPrimario, idSecundario, defecto) {
+    const v1 = _leerDomValor(idPrimario, '');
+    if (v1) return v1;
+    return _leerDomValor(idSecundario, defecto);
+}
+
+function _sincronizarCampoCloudIA(mapaDestino, mapaGlobal, proveedorActivo, valor) {
+    if (!valor) return;
+    mapaDestino[proveedorActivo] = valor;
+    if (mapaGlobal) mapaGlobal[proveedorActivo] = valor;
+}
+
+function _sincronizarYGuardarApiKeysIA() {
+    const cfg = (typeof configProveedores !== 'undefined' && configProveedores) ? configProveedores : null;
+    const proveedorActivo = cfg?.proveedorActivo || _leerDomValor('sel-ia-proveedor', 'ollama');
+    const cloudKeys = cfg?.keys ? { ...cfg.keys } : {};
+    const cloudModelos = cfg?.modelos ? { ...cfg.modelos } : {};
+
+    if (proveedorActivo && proveedorActivo !== 'ollama') {
+        _sincronizarCampoCloudIA(cloudKeys, cfg?.keys, proveedorActivo, _leerDomValor('txt-ia-api-key', '').trim());
+        const modeloVal = _leerDomValor('sel-ia-modelo-cloud', '').trim();
+        if (modeloVal !== '__custom_model_prompt__') {
+            _sincronizarCampoCloudIA(cloudModelos, cfg?.modelos, proveedorActivo, modeloVal);
+        }
+    }
+
+    if (typeof eel !== 'undefined' && typeof eel.guardar_api_keys_json === 'function') {
+        eel.guardar_api_keys_json({ proveedorActivo, keys: cloudKeys, modelos: cloudModelos })();
+    }
+    return { proveedorActivo, cloudKeys, cloudModelos };
+}
+
+function _construirConfigAjustesLectura(iaCtx) {
+    const elIdiomaUi = document.querySelector('input[name="radio-idioma"]:checked');
+    const elSidebar = document.getElementById('sidebar-izquierda');
+    const precargaHojas = Math.max(0, Math.min(5, _leerDomInt('num-precarga-hojas', 2)));
+    const tutorialLS = typeof localStorage !== 'undefined' && localStorage.getItem('liraloud_tutorial_completado') === 'true';
+
+    return {
+        "velocidad": velocidadLectura,
+        "tono": pitchLectura,
+        "pausa": pausaPunto,
+        "volumen": volumenPorcentaje,
+        "idioma": document.getElementById('busqueda-idioma-live')?.value,
+        "color": _leerDomValor('color-resaltado', "#ffff00"),
+        "padKaraoke": _leerDomInt('rng-pad-karaoke', 2),
+        "colorGuia": _leerDomValor('color-guia-oracion', "#00b4ff"),
+        "padGuia": _leerDomInt('rng-pad-guia', 2),
+        "llenado": _leerDomCheck('chk-llenado-fluido', false),
+        "recortePDF": _leerDomInt('rng-recorte-pdf', 0),
+        "zoomPDF": _leerDomInt('rng-zoom-pdf', 100),
+        "margenPDF": _leerDomInt('rng-margen-pdf', 20),
+        "seguirTexto": _leerDomCheck('chk-seguimiento', true),
+        "omitirParen": _leerDomCheck('chk-paren', true),
+        "omitirCorch": _leerDomCheck('chk-corch', true),
+        "omitirLlaves": _leerDomCheck('chk-llaves', true),
+        "omitirUrls": _leerDomCheck('chk-urls', true),
+        "omitirReferencias": _leerDomCheck('chk-superindices', true),
+        "omitirSuperindices": _leerDomCheck('chk-superindices', true),
+        "omitirSubindices": _leerDomCheck('chk-subindices', false),
+        "usarBloquesNativos": _leerDomCheck('chk-usar-bloques', true),
+        "modo_subrayador": Boolean(window.modoSubrayadorActivo),
+        "modo_borrador": Boolean(window.modoBorradorActivo),
+        "modo_editor_texto": Boolean(window.modoEditorTextoActivo),
+        "modo_mover_elementos": Boolean(window.modoMoverElementosActivo),
+        "color_subrayador": typeof colorSubrayadorActual !== 'undefined' ? colorSubrayadorActual : "#FFFF00",
+        "sensibilidadSalto": _leerDomFloat('rng-sensibilidad-salto', 0.5),
+        "detectarSangria": _leerDomCheck('chk-detectar-sangria', true),
+        "modo_privacidad": _leerDomCheck('chk-modo-privacidad', false),
+        "alto_rendimiento": _leerDomCheck('chk-alto-rendimiento', false),
+        "tema_oscuro": _leerDomCheck('btn-tema-config', false),
+        "buffer_extendido": _leerDomCheck('chk-buffer-extendido', false),
+        "teatro_activo": _leerDomCheck('chk-teatro-global', false),
+        "precargaRAM": _leerDomCheck('chk-precarga-ram', false),
+        "precarga_hojas": precargaHojas,
+        "ollama_auto_inicio": _leerDomCheck('chk-ollama-auto-inicio', false),
+        "ollama_auto_solicitud": _leerDomCheck('chk-ollama-auto-solicitud', false),
+        "obra_actual": obraActualTeatro,
+        "mostrarKofi": _leerDomCheck('chk-kofi', true),
+        "solo_lectura": Boolean(window.modoSoloLecturaActivo),
+        "auto_avance": _leerDomCheck('chk-auto-avance', true),
+        "idioma_ui": elIdiomaUi ? elIdiomaUi.value : 'en',
+        "pausa_sistema": _leerDomCheck('chk-pausa-sistema', false),
+        "ducking_volumen": _leerDomCheck('chk-ducking-volumen', false),
+        "ducking_nivel": _leerDomInt('rng-ducking-nivel', 20),
+        "kokoro_blend_voza": _leerDomValor('sel-kokoro-blend-voza', "ef_dora"),
+        "kokoro_blend_vozb": _leerDomValor('sel-kokoro-blend-vozb', "af_bella"),
+        "kokoro_blend_vozc": _leerDomValor('sel-kokoro-blend-vozc', "ninguna"),
+        "kokoro_blend_ratio": _leerDomInt('rng-kokoro-blend-ratio', 70),
+        "kokoro_blend_pesoc": _leerDomInt('rng-kokoro-blend-pesoc', 0),
+        "kokoro_blend_acento": _leerDomValor('sel-kokoro-blend-acento', "es-419"),
+        "kokoro_blend_eq": _leerDomValor('sel-kokoro-blend-eq', "estudio"),
+        "perfil_eq_piper": _leerDomValor('sel-eq-piper-perfil', "estudio"),
+        "eq_piper_graves": _leerDomFloat('rng-eq-piper-graves', 0),
+        "eq_piper_medios": _leerDomFloat('rng-eq-piper-medios', 0),
+        "eq_piper_agudos": _leerDomFloat('rng-eq-piper-agudos', 0),
+        "eq_piper_corte": _leerDomFloat('rng-eq-piper-corte', 8000),
+        "kokoro_blend_expresividad": _leerDomFloat('sel-kokoro-blend-expresividad', 1.0),
+        "kokoro_blend_cadencia": _leerDomFloat('sel-kokoro-blend-cadencia', 1.0),
+        "modo_zen": _leerDomCheck('chk-modo-zen', true),
+        "etiquetas_zen": _leerDomCheck('chk-etiquetas-zen', true),
+        "unir_solo_lectura_zen": _leerDomCheck('chk-unir-solo-lectura-zen', false),
+        "ocr_alta_precision": Boolean(window.ocrAltaPrecisionActivo),
+        "ocr_idioma": window.ocrIdiomaActual || "latin",
+        "hide_filtros": _leerDomCheck('chk-hide-filtros', false),
+        "hide_dicc": _leerDomCheck('chk-hide-dicc', false),
+        "hide_teatro": _leerDomCheck('chk-hide-teatro', false),
+        "hide_mp3": _leerDomCheck('chk-hide-mp3', false),
+        "traduccion_activa": _leerDomCheckAlterno('chk-traduccion-activa', 'zen-chk-traduccion-activa', false),
+        "traduccion_origen": _leerDomValorAlterno('sel-traduccion-origen', 'zen-sel-traduccion-origen', 'auto'),
+        "traduccion_destino": _leerDomValorAlterno('sel-traduccion-destino', 'zen-sel-traduccion-destino', 'es'),
+        "traduccion_motor": _leerDomValor('sel-traduccion-motor', 'online'),
+        "traduccion_modo": _leerDomValorAlterno('sel-traduccion-modo', 'zen-sel-traduccion-modo', 'solo_traduccion'),
+        "sub_lineheight": _leerDomInt('rng-sub-lineheight', 13),
+        "sub_wordgap": _leerDomInt('rng-sub-wordgap', 4),
+        "ia_modelo_chat": _leerDomValor('ia-select-modelo-chat', typeof estadoIA !== 'undefined' ? estadoIA.modeloChatSeleccionado : 'gemma4:12b'),
+        "ia_modelo_embed": _leerDomValor('ia-select-modelo-embed', typeof estadoIA !== 'undefined' ? estadoIA.modeloEmbedSeleccionado : 'nomic-embed-text'),
+        "ia_leer_bloque_clic": _leerDomCheck('chk-ia-leer-bloque', true),
+        "ia_modo_salida": _leerDomValorAlterno('sel-ia-modo-salida', 'sel-ia-modo-salida-config', typeof modoSalidaIA !== 'undefined' ? modoSalidaIA : 'trazabilidad'),
+        "ia_proveedor_activo": iaCtx.proveedorActivo,
+        "ia_cloud_keys": iaCtx.cloudKeys,
+        "ia_cloud_modelos": iaCtx.cloudModelos,
+        "ia_fuente_pdf": _leerDomCheck('chk-ia-fuente-pdf', true),
+        "ia_fuente_subrayados": _leerDomCheck('chk-ia-fuente-subrayados', false),
+        "ia_fuente_notas": _leerDomCheck('chk-ia-fuente-notas', false),
+        "ia_sub_alcance": _leerDomValor('sel-ia-sub-alcance', "libro_actual"),
+        "ia_notas_alcance": _leerDomValor('sel-ia-notas-alcance', "libro_actual"),
+        "ia_sub_amarillo": _leerDomCheck('chk-ia-sub-amarillo', true),
+        "ia_sub_verde": _leerDomCheck('chk-ia-sub-verde', true),
+        "ia_sub_cian": _leerDomCheck('chk-ia-sub-cian', true),
+        "ia_sub_magenta": _leerDomCheck('chk-ia-sub-magenta', true),
+        "ia_sub_dorado": _leerDomCheck('chk-ia-sub-dorado', true),
+        "ia_sub_rojo": _leerDomCheck('chk-ia-sub-rojo', true),
+        "ia_sub_paginas": _leerDomValor('txt-ia-sub-paginas', ""),
+        "ia_notas_paginas": _leerDomValor('txt-ia-notas-paginas', ""),
+        "notas_filtro_modo": window.filtroNotasModo || "pagina_actual",
+        "notas_filtro_clasif": window.filtroNotasClasificacion || "TODAS",
+        "sidebar_colapsado": elSidebar ? elSidebar.classList.contains('colapsado') : false,
+        "auto_ocr": (typeof window.autoOCRActivo !== 'undefined') ? window.autoOCRActivo : _leerDomCheck('chk-auto-ocr', true),
+        "auto_layout": (typeof window.autoLayoutActivo !== 'undefined') ? window.autoLayoutActivo : _leerDomCheck('chk-auto-layout', false),
+        "tutorial_completado": (window.tutorialCompletado === true) || tutorialLS
+    };
+}
+
+async function _recargarRamFavoritosConOverlay() {
+    const pantalla = document.getElementById('pantalla-carga');
+    const hud = document.getElementById('txt-paso-carga');
+    if (pantalla) {
+        pantalla.style.display = 'flex';
+        setTimeout(() => { pantalla.style.opacity = '1'; }, 10);
+    }
+    if (hud) hud.innerText = "Inyectando modelos en RAM...";
+    if (typeof cerrarConfiguracion === 'function') cerrarConfiguracion();
+
+    try {
+        await eel.gestionar_ram_favoritos(vocesFavoritas)();
+        await new Promise(resolve => setTimeout(resolve, 3500));
+    } catch (err) {
+        console.error("🔥 Error en la inyección dinámica de RAM:", err);
+    } finally {
+        if (pantalla) {
+            pantalla.style.opacity = '0';
+            setTimeout(() => { pantalla.style.display = 'none'; }, 500);
+        }
+    }
+}
+
 async function guardarTodosAjustes(forceRamReload = false) {
     if (!ajustesInicialesCargados) {
         console.log("⏳ [PERSISTENCIA] Ignorado: El sistema aún está arrancando.");
         return;
     }
     try {
-        const proveedorActivo = (typeof configProveedores !== 'undefined' && configProveedores?.proveedorActivo)
-            ? configProveedores.proveedorActivo
-            : (document.getElementById('sel-ia-proveedor')?.value || 'ollama');
-
-        let cloudKeys = (typeof configProveedores !== 'undefined' && configProveedores?.keys)
-            ? { ...configProveedores.keys }
-            : {};
-        let cloudModelos = (typeof configProveedores !== 'undefined' && configProveedores?.modelos)
-            ? { ...configProveedores.modelos }
-            : {};
-
-        // Sincronizar campo de clave API solo si el usuario escribió directamente una clave válida
-        const txtApiKeyVal = document.getElementById('txt-ia-api-key')?.value;
-        if (txtApiKeyVal && txtApiKeyVal.trim() && proveedorActivo && proveedorActivo !== 'ollama') {
-            cloudKeys[proveedorActivo] = txtApiKeyVal.trim();
-            if (typeof configProveedores !== 'undefined' && configProveedores.keys) {
-                configProveedores.keys[proveedorActivo] = txtApiKeyVal.trim();
-            }
-        }
-
-        // Sincronizar selector de modelo cloud
-        const selModeloCloudVal = document.getElementById('sel-ia-modelo-cloud')?.value;
-        if (selModeloCloudVal && selModeloCloudVal.trim() && selModeloCloudVal !== '__custom_model_prompt__' && proveedorActivo && proveedorActivo !== 'ollama') {
-            cloudModelos[proveedorActivo] = selModeloCloudVal.trim();
-            if (typeof configProveedores !== 'undefined' && configProveedores.modelos) {
-                configProveedores.modelos[proveedorActivo] = selModeloCloudVal.trim();
-            }
-        }
-
-        if (typeof eel !== 'undefined' && typeof eel.guardar_api_keys_json === 'function') {
-            eel.guardar_api_keys_json({
-                proveedorActivo: proveedorActivo,
-                keys: cloudKeys,
-                modelos: cloudModelos
-            })();
-        }
-
-        const config = {
-            "velocidad": velocidadLectura,
-            "tono": pitchLectura,
-            "pausa": pausaPunto,
-            "volumen": volumenPorcentaje,
-            "idioma": document.getElementById('busqueda-idioma-live')?.value,
-            "color": document.getElementById('color-resaltado')?.value || "#ffff00",
-            "padKaraoke": parseInt(document.getElementById('rng-pad-karaoke')?.value || 2),
-            "colorGuia": document.getElementById('color-guia-oracion')?.value || "#00b4ff",
-            "padGuia": parseInt(document.getElementById('rng-pad-guia')?.value || 2),
-            "llenado": document.getElementById('chk-llenado-fluido')?.checked ?? false,
-            "recortePDF": parseInt(document.getElementById('rng-recorte-pdf')?.value || 0),
-            "zoomPDF": parseInt(document.getElementById('rng-zoom-pdf')?.value || 100),
-            "margenPDF": parseInt(document.getElementById('rng-margen-pdf')?.value ?? 20),
-            "seguirTexto": document.getElementById('chk-seguimiento')?.checked ?? true,
-            "omitirParen": document.getElementById('chk-paren')?.checked ?? true,
-            "omitirCorch": document.getElementById('chk-corch')?.checked ?? true,
-            "omitirLlaves": document.getElementById('chk-llaves')?.checked ?? true,
-            "omitirUrls": document.getElementById('chk-urls')?.checked ?? true,
-            "omitirReferencias": document.getElementById('chk-superindices')?.checked ?? true,
-            "omitirSuperindices": document.getElementById('chk-superindices')?.checked ?? true,
-            "omitirSubindices": document.getElementById('chk-subindices')?.checked ?? false,
-            "usarBloquesNativos": document.getElementById('chk-usar-bloques')?.checked ?? true,
-            "modo_subrayador": window.modoSubrayadorActivo ?? false,
-            "modo_borrador": window.modoBorradorActivo ?? false,
-            "modo_editor_texto": window.modoEditorTextoActivo ?? false,
-            "modo_mover_elementos": window.modoMoverElementosActivo ?? false,
-            "color_subrayador": typeof colorSubrayadorActual !== 'undefined' ? colorSubrayadorActual : "#FFFF00",
-            "sensibilidadSalto": parseFloat(document.getElementById('rng-sensibilidad-salto')?.value || 0.5),
-            "detectarSangria": document.getElementById('chk-detectar-sangria')?.checked ?? true,
-            "modo_privacidad": document.getElementById('chk-modo-privacidad')?.checked ?? false,
-            "alto_rendimiento": document.getElementById('chk-alto-rendimiento')?.checked ?? false,
-            "tema_oscuro": document.getElementById('btn-tema-config')?.checked ?? false,
-            "buffer_extendido": document.getElementById('chk-buffer-extendido')?.checked || false,
-            "teatro_activo": document.getElementById('chk-teatro-global')?.checked ?? false,
-            "precargaRAM": document.getElementById('chk-precarga-ram') ? document.getElementById('chk-precarga-ram').checked : false,
-            "precarga_hojas": Math.max(0, Math.min(5, parseInt(document.getElementById('num-precarga-hojas')?.value ?? 2) || 0)),
-            "ollama_auto_inicio": document.getElementById('chk-ollama-auto-inicio')?.checked ?? false,
-            "ollama_auto_solicitud": document.getElementById('chk-ollama-auto-solicitud')?.checked ?? false,
-            "obra_actual": obraActualTeatro,
-            "mostrarKofi": document.getElementById('chk-kofi')?.checked ?? true,
-            "solo_lectura": window.modoSoloLecturaActivo ?? false,
-            "auto_avance": document.getElementById('chk-auto-avance')?.checked ?? true,
-            "idioma_ui": document.querySelector('input[name="radio-idioma"]:checked')?.value || 'en',
-            "pausa_sistema": document.getElementById('chk-pausa-sistema')?.checked ?? false,
-            "ducking_volumen": document.getElementById('chk-ducking-volumen')?.checked ?? false,
-            "ducking_nivel": parseInt(document.getElementById('rng-ducking-nivel')?.value || 20),
-            "kokoro_blend_voza": document.getElementById('sel-kokoro-blend-voza')?.value || "ef_dora",
-            "kokoro_blend_vozb": document.getElementById('sel-kokoro-blend-vozb')?.value || "af_bella",
-            "kokoro_blend_vozc": document.getElementById('sel-kokoro-blend-vozc')?.value || "ninguna",
-            "kokoro_blend_ratio": parseInt(document.getElementById('rng-kokoro-blend-ratio')?.value || 70),
-            "kokoro_blend_pesoc": parseInt(document.getElementById('rng-kokoro-blend-pesoc')?.value || 0),
-            "kokoro_blend_acento": document.getElementById('sel-kokoro-blend-acento')?.value || "es-419",
-            "kokoro_blend_eq": document.getElementById('sel-kokoro-blend-eq')?.value || "estudio",
-            "perfil_eq_piper": document.getElementById('sel-eq-piper-perfil')?.value || "estudio",
-            "eq_piper_graves": parseFloat(document.getElementById('rng-eq-piper-graves')?.value || 0),
-            "eq_piper_medios": parseFloat(document.getElementById('rng-eq-piper-medios')?.value || 0),
-            "eq_piper_agudos": parseFloat(document.getElementById('rng-eq-piper-agudos')?.value || 0),
-            "eq_piper_corte": parseFloat(document.getElementById('rng-eq-piper-corte')?.value || 8000),
-            "kokoro_blend_expresividad": parseFloat(document.getElementById('sel-kokoro-blend-expresividad')?.value || 1.0),
-            "kokoro_blend_cadencia": parseFloat(document.getElementById('sel-kokoro-blend-cadencia')?.value || 1.0),
-            "modo_zen": document.getElementById('chk-modo-zen')?.checked ?? true,
-            "etiquetas_zen": document.getElementById('chk-etiquetas-zen')?.checked ?? true,
-            "unir_solo_lectura_zen": document.getElementById('chk-unir-solo-lectura-zen')?.checked ?? false,
-            "ocr_alta_precision": Boolean(window.ocrAltaPrecisionActivo),
-            "ocr_idioma": window.ocrIdiomaActual || "latin",
-            "hide_filtros": document.getElementById('chk-hide-filtros')?.checked ?? false,
-            "hide_dicc": document.getElementById('chk-hide-dicc')?.checked ?? false,
-            "hide_teatro": document.getElementById('chk-hide-teatro')?.checked ?? false,
-            "hide_mp3": document.getElementById('chk-hide-mp3')?.checked ?? false,
-            "traduccion_activa": document.getElementById('chk-traduccion-activa')?.checked ?? document.getElementById('zen-chk-traduccion-activa')?.checked ?? false,
-            "traduccion_origen": document.getElementById('sel-traduccion-origen')?.value || document.getElementById('zen-sel-traduccion-origen')?.value || 'auto',
-            "traduccion_destino": document.getElementById('sel-traduccion-destino')?.value || document.getElementById('zen-sel-traduccion-destino')?.value || 'es',
-            "traduccion_motor": document.getElementById('sel-traduccion-motor')?.value || 'online',
-            "traduccion_modo": document.getElementById('sel-traduccion-modo')?.value || document.getElementById('zen-sel-traduccion-modo')?.value || 'solo_traduccion',
-            "sub_lineheight": parseInt(document.getElementById('rng-sub-lineheight')?.value ?? 13),
-            "sub_wordgap": parseInt(document.getElementById('rng-sub-wordgap')?.value ?? 4),
-            "ia_modelo_chat": document.getElementById('ia-select-modelo-chat')?.value || (typeof estadoIA !== 'undefined' ? estadoIA.modeloChatSeleccionado : 'gemma4:12b'),
-            "ia_modelo_embed": document.getElementById('ia-select-modelo-embed')?.value || (typeof estadoIA !== 'undefined' ? estadoIA.modeloEmbedSeleccionado : 'nomic-embed-text'),
-            "ia_leer_bloque_clic": document.getElementById('chk-ia-leer-bloque')?.checked ?? true,
-            "ia_modo_salida": document.getElementById('sel-ia-modo-salida')?.value || document.getElementById('sel-ia-modo-salida-config')?.value || (typeof modoSalidaIA !== 'undefined' ? modoSalidaIA : 'trazabilidad'),
-            "ia_proveedor_activo": proveedorActivo,
-            "ia_cloud_keys": cloudKeys,
-            "ia_cloud_modelos": cloudModelos,
-            "ia_fuente_pdf": document.getElementById('chk-ia-fuente-pdf')?.checked ?? true,
-            "ia_fuente_subrayados": document.getElementById('chk-ia-fuente-subrayados')?.checked ?? false,
-            "ia_fuente_notas": document.getElementById('chk-ia-fuente-notas')?.checked ?? false,
-            "ia_sub_alcance": document.getElementById('sel-ia-sub-alcance')?.value || "libro_actual",
-            "ia_notas_alcance": document.getElementById('sel-ia-notas-alcance')?.value || "libro_actual",
-            "ia_sub_amarillo": document.getElementById('chk-ia-sub-amarillo')?.checked ?? true,
-            "ia_sub_verde": document.getElementById('chk-ia-sub-verde')?.checked ?? true,
-            "ia_sub_cian": document.getElementById('chk-ia-sub-cian')?.checked ?? true,
-            "ia_sub_magenta": document.getElementById('chk-ia-sub-magenta')?.checked ?? true,
-            "ia_sub_dorado": document.getElementById('chk-ia-sub-dorado')?.checked ?? true,
-            "ia_sub_rojo": document.getElementById('chk-ia-sub-rojo')?.checked ?? true,
-            "ia_sub_paginas": document.getElementById('txt-ia-sub-paginas')?.value || "",
-            "ia_notas_paginas": document.getElementById('txt-ia-notas-paginas')?.value || "",
-            "notas_filtro_modo": window.filtroNotasModo || "pagina_actual",
-            "notas_filtro_clasif": window.filtroNotasClasificacion || "TODAS",
-            "sidebar_colapsado": document.getElementById('sidebar-izquierda')?.classList.contains('colapsado') ?? false,
-            "auto_ocr": (typeof window.autoOCRActivo !== 'undefined') ? window.autoOCRActivo : (document.getElementById('chk-auto-ocr')?.checked ?? true),
-            "auto_layout": (typeof window.autoLayoutActivo !== 'undefined') ? window.autoLayoutActivo : (document.getElementById('chk-auto-layout')?.checked ?? false),
-            "tutorial_completado": (window.tutorialCompletado === true) || ((typeof localStorage !== 'undefined') && localStorage.getItem('liraloud_tutorial_completado') === 'true')
-        };
+        const iaCtx = _sincronizarYGuardarApiKeysIA();
+        const config = _construirConfigAjustesLectura(iaCtx);
 
         console.log("💾 [PERSISTENCIA] Grabando paquete completo:", config);
         await eel.guardar_ajustes_lectura(config)();
 
-        // 🧠 EJECUCIÓN REACTIVA: Si el usuario activa la precarga en caliente
         if (config.precargaRAM && vocesFavoritas && vocesFavoritas.length > 0 && forceRamReload) {
-            const pantalla = document.getElementById('pantalla-carga');
-            const hud = document.getElementById('txt-paso-carga');
-
-            if (pantalla) {
-                pantalla.style.display = 'flex';
-                setTimeout(() => pantalla.style.opacity = '1', 10);
-            }
-            if (hud) hud.innerText = "Inyectando modelos en RAM...";
-
-            if (typeof cerrarConfiguracion === 'function') cerrarConfiguracion();
-
-            try {
-                await eel.gestionar_ram_favoritos(vocesFavoritas)();
-                await new Promise(resolve => setTimeout(resolve, 3500));
-            } catch (err) {
-                console.error("🔥 Error en la inyección dinámica de RAM:", err);
-            } finally {
-                if (pantalla) {
-                    pantalla.style.opacity = '0';
-                    setTimeout(() => { pantalla.style.display = 'none'; }, 500);
-                }
-            }
+            await _recargarRamFavoritosConOverlay();
         }
     } catch (e) {
         console.error("🔥 Fallo en persistencia:", e);
@@ -854,18 +889,6 @@ window.onload = async () => {
         }
     }
 }; // Fin del window.onload
-
-
-
-
-// --- GUILLOTINA FINAL: RETIRAR PANTALLA DE CARGA
-// Se ejecuta solo cuando todo el modelo interno ha sido construido
-const pantallaCarga = document.getElementById('pantalla-carga');
-if (pantallaCarga) {
-    pantallaCarga.style.opacity = '0';
-    setTimeout(() => pantallaCarga.style.display = 'none', 500);
-
-};
 
 
 // Listeners de alta eficiencia (Solo guardan al soltar el control)

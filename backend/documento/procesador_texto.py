@@ -352,6 +352,13 @@ def _emitir_oracion_acumulada(
         })
 
 
+def _estado_inicial_linea(palabras, altura_moda):
+    if not palabras:
+        return 0.0, "", altura_moda
+    p0 = palabras[0]
+    return p0[0], p0[4], p0[3] - p0[1]
+
+
 def procesar_oraciones_de_palabras(palabras, dict_activo, filtros_externos=None, estructura_ia=None):
     palabras = _pretokenizar_palabras(palabras)
     oraciones = []
@@ -367,9 +374,7 @@ def procesar_oraciones_de_palabras(palabras, dict_activo, filtros_externos=None,
 
     patron_cierre = re.compile(r'(?:[.?!][)\]"\'”’»]?|[)\]"\'”’»][.?!])$')
     patron_letra = re.compile(r'[a-zA-ZÁÉÍÓÚáéíóúñÑüÜ]')
-    inicio_linea_x0 = palabras[0][0] if palabras else 0.0
-    inicio_linea_txt = palabras[0][4] if palabras else ""
-    inicio_linea_alto = (palabras[0][3] - palabras[0][1]) if palabras else altura_moda
+    inicio_linea_x0, inicio_linea_txt, inicio_linea_alto = _estado_inicial_linea(palabras, altura_moda)
 
     for i, p in enumerate(palabras):
         x0, y0, x1, y1, txt = p[0], p[1], p[2], p[3], p[4]
